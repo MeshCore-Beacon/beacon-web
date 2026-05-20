@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeshCore Tower — Indigo Clean Palette</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-base: #0B0B14;
+    --bg-surface: #12121C;
+    --bg-raised: #1A1A28;
+    --border: #252536;
+    --border-subtle: #1C1C2A;
+    --primary: #6366F1;
+    --primary-dim: #4338CA;
+    --primary-bg: rgba(99, 102, 241, 0.06);
+    --secondary: #06B6D4;
+    --secondary-bg: rgba(6, 182, 212, 0.06);
+    --green: #10B981;
+    --green-bg: rgba(16, 185, 129, 0.08);
+    --danger: #F43F5E;
+    --danger-bg: rgba(244, 63, 94, 0.08);
+    --warn: #F59E0B;
+    --warn-bg: rgba(245, 158, 11, 0.07);
+    --text-bright: #F8F8FC;
+    --text-normal: #A0A0B8;
+    --text-muted: #64648A;
+    --text-dim: #3C3C58;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+  }
+  body { background: var(--bg-base); color: var(--text-normal); font-family: var(--font-sans); font-size: 13px; line-height: 1.5; min-height: 100vh; }
+  .app-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 42px; background: var(--bg-surface); border-bottom: 1px solid var(--border); }
+  .app-title { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--text-bright); letter-spacing: 0.5px; }
+  .app-title span { color: var(--text-dim); font-weight: 400; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .ws-badge { display: flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--green); background: var(--green-bg); border: 1px solid rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 3px; }
+  .ws-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  .scope-selector { display: flex; align-items: center; gap: 6px; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; color: var(--text-bright); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+  .scope-selector .label { color: var(--text-muted); font-weight: 400; font-size: 10px; margin-right: 2px; }
+  .scope-selector .arrow { color: var(--text-dim); font-size: 10px; }
+  .tab-bar { display: flex; background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 0 16px; }
+  .tab { padding: 9px 18px; font-size: 12px; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; letter-spacing: 0.3px; transition: color 0.15s; }
+  .tab.active { color: var(--text-bright); border-bottom-color: var(--primary); }
+  .tab:hover:not(.active) { color: var(--text-normal); }
+  .filter-bar { display: flex; align-items: center; gap: 6px; padding: 7px 16px; border-bottom: 1px solid var(--border-subtle); background: var(--bg-base); }
+  .filter-pill { font-size: 11px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-surface); font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; }
+  .filter-pill:hover { border-color: var(--text-dim); color: var(--text-normal); }
+  .filter-pill.active { border-color: var(--primary-dim); background: var(--primary-bg); color: var(--primary); }
+  .filter-sep { color: var(--border); font-size: 14px; margin: 0 2px; }
+  .catchup-banner { margin: 0 16px; padding: 6px 12px; background: var(--primary-bg); border: 1px solid rgba(99, 102, 241, 0.12); border-top: none; color: var(--primary); font-size: 12px; font-weight: 500; text-align: center; cursor: pointer; font-family: var(--font-mono); border-radius: 0 0 6px 6px; }
+  .packet-list { padding: 4px 16px 40px; }
+  .packet-row { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; margin-top: 2px; padding: 8px 12px; cursor: pointer; transition: all 0.15s; }
+  .packet-row:hover { border-color: #30304A; background: #15151E; }
+  .packet-row.expanded { border-color: var(--primary); background: #13131E; }
+  .packet-row.new-pulse { border-color: var(--primary); box-shadow: 0 0 12px rgba(99, 102, 241, 0.1); }
+  .row-main { display: flex; align-items: center; gap: 10px; }
+  .row-expand { color: var(--text-dim); font-size: 11px; width: 14px; font-family: var(--font-mono); }
+  .row-hash { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--primary); letter-spacing: 0.5px; }
+  .row-type { font-family: var(--font-mono); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .type-advert { background: var(--green-bg); color: var(--green); }
+  .type-text { background: var(--secondary-bg); color: var(--secondary); }
+  .type-trace { background: var(--warn-bg); color: var(--warn); }
+  .type-ack { background: rgba(100, 100, 138, 0.1); color: var(--text-muted); }
+  .type-group { background: var(--primary-bg); color: var(--primary); }
+  .type-req { background: rgba(249, 115, 22, 0.07); color: #F97316; }
+  .row-summary { flex: 1; color: var(--text-bright); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-summary .quoted { color: var(--text-muted); }
+  .row-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-normal); font-weight: 600; background: rgba(100, 100, 138, 0.08); padding: 1px 6px; border-radius: 4px; }
+  .row-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-left: 24px; font-size: 11px; color: var(--text-dim); }
+  .row-meta .dot { font-size: 4px; color: var(--border); }
+  .row-meta .route { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .row-meta .observer { color: var(--text-normal); }
+  .row-meta .iata { font-family: var(--font-mono); font-weight: 700; color: var(--primary); font-size: 10px; }
+  .observations { margin-top: 8px; padding-left: 24px; display: flex; flex-direction: column; gap: 3px; }
+  .obs-card { background: var(--bg-base); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; }
+  .obs-header { display: flex; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 6px; }
+  .obs-header .obs-name { color: var(--text-bright); font-weight: 600; }
+  .obs-header .obs-iata { font-family: var(--font-mono); color: var(--primary); font-weight: 600; font-size: 10px; background: var(--primary-bg); padding: 1px 5px; border-radius: 4px; }
+  .obs-header .obs-time { color: var(--text-dim); margin-left: auto; font-family: var(--font-mono); font-size: 10px; }
+  .obs-stats { display: flex; gap: 18px; font-family: var(--font-mono); font-size: 11px; }
+  .obs-stats .stat { display: flex; flex-direction: column; }
+  .obs-stats .label { color: var(--text-dim); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .obs-stats .value { color: var(--text-normal); font-weight: 500; }
+  .obs-stats .value.good { color: var(--green); }
+  .obs-stats .value.mid { color: var(--warn); }
+  .obs-stats .value.bad { color: var(--danger); }
+  .obs-path { display: flex; align-items: center; gap: 4px; margin-top: 7px; font-family: var(--font-mono); font-size: 10px; padding-top: 6px; border-top: 1px solid var(--border-subtle); }
+  .obs-path .path-label { color: var(--text-dim); text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; margin-right: 4px; }
+  .hop { padding: 2px 6px; border-radius: 4px; font-weight: 500; }
+  .hop.resolved { background: var(--green-bg); color: var(--green); }
+  .hop.ambiguous { background: var(--warn-bg); color: var(--warn); }
+  .obs-path .arrow { color: var(--text-dim); font-size: 12px; }
+  .obs-actions { display: flex; gap: 14px; margin-top: 7px; font-size: 10px; }
+  .obs-actions a { color: var(--primary); text-decoration: none; font-weight: 500; }
+  .status-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 5px 16px; background: var(--bg-surface); border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .status-left { display: flex; align-items: center; gap: 16px; }
+  .status-item .val { color: var(--text-muted); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .palette-label { text-align: center; padding: 24px 16px 8px; font-size: 18px; font-weight: 700; color: var(--text-bright); font-family: var(--font-mono); letter-spacing: 1px; }
+  .palette-label span { display: block; font-size: 12px; color: var(--text-muted); font-weight: 400; margin-top: 4px; letter-spacing: 0; }
+  .palette-label .sub { font-size: 11px; color: var(--text-dim); margin-top: 8px; max-width: 600px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+  .swatches { display: flex; gap: 8px; padding: 12px 16px 16px; flex-wrap: wrap; justify-content: center; }
+  .swatch { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); }
+  .swatch .dot { width: 12px; height: 12px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+<div class="palette-label">
+  OPTION N — INDIGO CLEAN
+  <span>Modern app aesthetic · indigo primary on cool dark base · teal + emerald accents</span>
+  <div class="sub">Like Linear, Vercel, or Arc — a polished modern dark theme with indigo as the signature color. Slightly warmer than plain blue, gives it just enough personality to not feel generic. Clean rounded corners, generous spacing.</div>
+</div>
+<div class="swatches">
+  <div class="swatch"><div class="dot" style="background:#6366F1"></div>Primary</div>
+  <div class="swatch"><div class="dot" style="background:#06B6D4"></div>Secondary</div>
+  <div class="swatch"><div class="dot" style="background:#10B981"></div>Good</div>
+  <div class="swatch"><div class="dot" style="background:#F43F5E"></div>Danger</div>
+  <div class="swatch"><div class="dot" style="background:#0B0B14"></div>Base</div>
+  <div class="swatch"><div class="dot" style="background:#12121C"></div>Surface</div>
+  <div class="swatch"><div class="dot" style="background:#F8F8FC"></div>Bright</div>
+  <div class="swatch"><div class="dot" style="background:#64648A"></div>Muted</div>
+</div>
+<div class="app-header"><div class="app-title">Tower <span>v0.1</span></div><div class="header-right"><div class="ws-badge"><span class="dot"></span> LIVE</div><div class="scope-selector"><span class="label">SCOPE</span> YOW <span class="arrow">▾</span></div></div></div>
+<div class="tab-bar"><div class="tab active">Packets</div><div class="tab">Nodes</div><div class="tab">Observers</div><div class="tab">Channels</div><div class="tab">Stats</div><div class="tab">Map</div></div>
+<div class="filter-bar"><div class="filter-pill active">All types</div><div class="filter-pill">Advert</div><div class="filter-pill">Text</div><div class="filter-pill">Group</div><div class="filter-pill">Trace</div><div class="filter-pill">Ack</div><div class="filter-sep">│</div><div class="filter-pill active">All routes</div><div class="filter-pill">Flood</div><div class="filter-pill">Direct</div></div>
+<div class="catchup-banner">▲ 47 new packets · click to scroll to top</div>
+<div class="packet-list">
+  <div class="packet-row expanded">
+    <div class="row-main"><span class="row-expand">▾</span><span class="row-hash">9E9B7D6A</span><span class="row-type type-advert">Advert</span><span class="row-summary">Advert <span class="quoted">"WW7STR/PugetMesh Cougar"</span></span><span class="row-count">×15</span></div>
+    <div class="row-meta"><span class="route">Flood</span><span class="dot">·</span><span>02:37 PM</span><span class="dot">·</span><span class="observer">FlightlessDt</span><span class="dot">·</span><span class="iata">KEH</span></div>
+    <div class="observations">
+      <div class="obs-card"><div class="obs-header"><span class="obs-name">FlightlessDt</span><span class="obs-iata">KEH</span><span class="obs-time">02:37:36</span></div><div class="obs-stats"><div class="stat"><span class="label">SNR</span><span class="value good">10.75</span></div><div class="stat"><span class="label">RSSI</span><span class="value mid">-98</span></div><div class="stat"><span class="label">Prop</span><span class="value">1.936s</span></div><div class="stat"><span class="label">Hops</span><span class="value">1</span></div></div><div class="obs-path"><span class="path-label">Path</span><span class="hop resolved">YOW_Kanata</span><span class="arrow">→</span><span class="hop resolved">FlightlessDt</span></div><div class="obs-actions"><a href="#">Open analyzer</a><a href="#">Show on map</a></div></div>
+      <div class="obs-card"><div class="obs-header"><span class="obs-name">NodeRunner</span><span class="obs-iata">SEA</span><span class="obs-time">02:37:38</span></div><div class="obs-stats"><div class="stat"><span class="label">SNR</span><span class="value mid">7.20</span></div><div class="stat"><span class="label">RSSI</span><span class="value bad">-105</span></div><div class="stat"><span class="label">Prop</span><span class="value">4.122s</span></div><div class="stat"><span class="label">Hops</span><span class="value">2</span></div></div><div class="obs-path"><span class="path-label">Path</span><span class="hop resolved">YOW_Kanata</span><span class="arrow">→</span><span class="hop ambiguous">AE9B (2 candidates)</span><span class="arrow">→</span><span class="hop resolved">NodeRunner</span></div><div class="obs-actions"><a href="#">Open analyzer</a><a href="#">Show on map</a></div></div>
+    </div>
+  </div>
+  <div class="packet-row"><div class="row-main"><span class="row-expand">▸</span><span class="row-hash">3FA1C20E</span><span class="row-type type-group">Group</span><span class="row-summary">Group text on <span class="quoted">#ottawa</span></span><span class="row-count">×8</span></div><div class="row-meta"><span class="route">Flood</span><span class="dot">·</span><span>02:36 PM</span><span class="dot">·</span><span class="observer">Hull_Hospital</span><span class="dot">·</span><span class="iata">YOW</span></div></div>
+  <div class="packet-row new-pulse"><div class="row-main"><span class="row-expand">▸</span><span class="row-hash">B7D44F19</span><span class="row-type type-trace">Trace</span><span class="row-summary">Trace 4-byte path, 6 hops</span><span class="row-count">×3</span></div><div class="row-meta"><span class="route">Flood</span><span class="dot">·</span><span>02:36 PM</span><span class="dot">·</span><span class="observer">GatineauPeak</span><span class="dot">·</span><span class="iata">YOW</span></div></div>
+  <div class="packet-row"><div class="row-main"><span class="row-expand">▸</span><span class="row-hash">1CE88A03</span><span class="row-type type-ack">Ack</span><span class="row-summary">Acknowledgment</span><span class="row-count">×2</span></div><div class="row-meta"><span class="route">Direct</span><span class="dot">·</span><span>02:35 PM</span><span class="dot">·</span><span class="observer">RobaStick_YOW</span><span class="dot">·</span><span class="iata">YOW</span></div></div>
+  <div class="packet-row"><div class="row-main"><span class="row-expand">▸</span><span class="row-hash">D9F21B7C</span><span class="row-type type-text">Text</span><span class="row-summary">Plain text message</span><span class="row-count">×12</span></div><div class="row-meta"><span class="route">Flood</span><span class="dot">·</span><span>02:34 PM</span><span class="dot">·</span><span class="observer">Bells_Corners</span><span class="dot">·</span><span class="iata">YOW</span></div></div>
+  <div class="packet-row"><div class="row-main"><span class="row-expand">▸</span><span class="row-hash">44AE0FD2</span><span class="row-type type-req">Request</span><span class="row-summary">Request dest=A3F1 src=9E2B</span><span class="row-count">×5</span></div><div class="row-meta"><span class="route">Direct</span><span class="dot">·</span><span>02:33 PM</span><span class="dot">·</span><span class="observer">Hull_Hospital</span><span class="dot">·</span><span class="iata">YOW</span></div></div>
+  <div class="packet-row"><div class="row-main"><span class="row-expand">▸</span><span class="row-hash">E501CAFE</span><span class="row-type type-advert">Advert</span><span class="row-summary">Advert <span class="quoted">"VE3XYZ/Ottawa_South"</span></span><span class="row-count">×22</span></div><div class="row-meta"><span class="route">Flood</span><span class="dot">·</span><span>02:32 PM</span><span class="dot">·</span><span class="observer">GatineauPeak</span><span class="dot">·</span><span class="iata">YOW</span></div></div>
+</div>
+<div class="status-bar"><div class="status-left"><div class="status-item"><span class="val">1,247</span> packets</div><div class="status-item"><span class="val">34</span> observers</div><div class="status-item"><span class="val">189</span> nodes</div></div><div>mqtt1 + mqtt2</div></div>
+</body>
+</html>

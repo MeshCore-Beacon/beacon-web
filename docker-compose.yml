@@ -1,0 +1,12 @@
+services:
+  tower-web:
+    # For local development, build from source:
+    build: .
+    # For production, pull the published image instead:
+    # image: ghcr.io/meshcore-tower/tower-web:latest
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE=http://localhost:8080/api/v1
+      - VITE_WS_URL=ws://localhost:8080/ws
+    restart: unless-stopped

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+.next/
+.nuxt/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Testing
+coverage/
+
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
