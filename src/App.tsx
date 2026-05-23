@@ -57,7 +57,7 @@ function AppInner() {
     Observers: <ObserverTable />,
     Channels: <ChannelList />,
     Stats: <StatsOverview />,
-    Map: <MapView />,
+    Map: <MapView wsManager={wsManager} />,
   };
 
   return (
