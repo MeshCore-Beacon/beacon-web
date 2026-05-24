@@ -1,0 +1,20 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN:?DOMAIN environment variable is required}
+    volumes:
+      - ./data/Caddy/CaddyFile/Caddyfile.proxy:/etc/caddy/Caddyfile
+      - ./data/Caddy/data:/data
+      - ./data/Caddy/config:/config
+    restart: unless-stopped
+
+  tower-web:
+    image: ghcr.io/meshcore-tower/tower-web:latest
+    environment:
+      - VITE_API_BASE=${VITE_API_BASE:?VITE_API_BASE environment variable is required}
+      - VITE_WS_URL=${VITE_WS_URL:?VITE_WS_URL environment variable is required}
+    restart: unless-stopped

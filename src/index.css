@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* theme tokens from palette CSS vars */
+@theme {
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-bg-base: var(--palette-bg-base, #09090B);
+  --color-bg-surface: var(--palette-bg-surface, #111114);
+  --color-bg-raised: var(--palette-bg-raised, #1A1A1F);
+  --color-border: var(--palette-border, #27272A);
+  --color-border-subtle: var(--palette-border-subtle, #1E1E22);
+
+  --color-primary: var(--palette-primary, #3B82F6);
+  --color-primary-dim: var(--palette-primary-dim, #1D4ED8);
+  --color-secondary: var(--palette-secondary, #A78BFA);
+  --color-green: var(--palette-green, #22C55E);
+  --color-danger: var(--palette-danger, #EF4444);
+  --color-warn: var(--palette-warn, #EAB308);
+
+  --color-text-bright: var(--palette-text-bright, #FAFAFA);
+  --color-text-normal: var(--palette-text-normal, #A1A1AA);
+  --color-text-muted: var(--palette-text-muted, #73737B);
+  --color-text-dim: var(--palette-text-dim, #5F5F65);
+}
+
+/* base resets */
+@layer base {
+  html, body, #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-bg-base text-text-normal font-sans text-[13px] leading-relaxed m-0;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+/* animations and utilities */
+@keyframes packet-pulse {
+  0% { border-color: var(--color-secondary); box-shadow: 0 0 12px color-mix(in srgb, var(--color-secondary) 15%, transparent); }
+  100% { border-color: var(--color-border); box-shadow: none; }
+}
+
+.packet-fresh {
+  animation: packet-pulse 1s ease-out forwards;
+}
+
+.writing-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
