@@ -8,8 +8,8 @@ services:
       - DOMAIN=${DOMAIN:?DOMAIN environment variable is required}
     volumes:
       - ./data/Caddy/CaddyFile/Caddyfile.proxy:/etc/caddy/Caddyfile
-      - ./data/Caddy/data:/data
-      - ./data/Caddy/config:/config
+      - ./data/Caddy/data:/data/caddy/
+      - ./data/Caddy/config:/config/caddy/
     restart: unless-stopped
 
   tower-web:
