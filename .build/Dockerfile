@@ -8,8 +8,8 @@ ENV VITE_WS_URL=__VITE_WS_URL__
 RUN npm run build
 
 FROM caddy:2-alpine
-COPY docker/Caddyfile /etc/caddy/Caddyfile
-COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
+COPY .build/Caddyfile /etc/caddy/Caddyfile
+COPY .build/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 COPY --from=build /app/dist /srv
 ENTRYPOINT ["/docker-entrypoint.sh"]
