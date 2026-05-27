@@ -19,6 +19,7 @@ build/
 
 # Testing
 coverage/
+.references/
 
 # Claude
 .claude/

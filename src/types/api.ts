@@ -95,3 +95,8 @@ export interface IataCode {
   approxLat: number | null;
   approxLng: number | null;
 }
+
+export interface BrokerStatus {
+  name: string;
+  connected: boolean;
+}

@@ -32,7 +32,7 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
   const region = useRegion();
 
   useEffect(() => {
-    mgr.updateSubscription({ iatas: region === "*" ? undefined : [region], events: ["packetObservation"] });
+    mgr.updateSubscription({ iatas: region === "*" ? undefined : [region], events: ["packetObservation", "channelMessage", "observerStatus"] });
   }, [mgr, region]);
 
   return null;
@@ -41,12 +41,21 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 // tab state and region init
 
 function AppInner() {
-  const [activeTab, setActiveTab] = useState("Packets");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
   const initialRegion = searchParams.get("region") ?? localStorage.getItem("tower-region") ?? "*";
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", tab);
+      return next;
+    });
+  };
+
   useEffect(() => {
-    wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation"] });
+    wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation", "channelMessage", "observerStatus"] });
     return () => wsManager.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -54,8 +63,8 @@ function AppInner() {
   const tabContent: Record<string, React.ReactNode> = {
     Packets: <PacketList wsManager={wsManager} />,
     Nodes: <NodeTable />,
-    Observers: <ObserverTable />,
-    Channels: <ChannelList />,
+    Observers: <ObserverTable wsManager={wsManager} />,
+    Channels: <ChannelList wsManager={wsManager} />,
     Stats: <StatsOverview />,
     Map: <MapView />,
   };
@@ -63,7 +72,7 @@ function AppInner() {
   return (
     <RegionProvider defaultRegion={initialRegion}>
       <RegionWatcher wsManager={wsManager} />
-      <AppShell activeTab={activeTab} onTabChange={setActiveTab} wsManager={wsManager}>
+      <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         {tabContent[activeTab]}
       </AppShell>
     </RegionProvider>

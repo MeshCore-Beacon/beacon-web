@@ -1,14 +1,29 @@
-export interface Channel {
+export interface ChannelSummary {
+  id: number;
+  name: string | null;
   channelHash: string;
-  memberCount: number;
-  lastActivityAt: number;
+  lastSeen: string;
+  isHashtag: boolean;
+  keyKnown: boolean;
+}
+
+export interface ChannelDetail extends ChannelSummary {
+  hashtag: string | null;
+  keyFingerprint: string | null;
+  messageCount: number;
+}
+
+export function channelDisplayName(ch: ChannelSummary): string {
+  if (!ch.name) return ch.channelHash;
+  if (ch.isHashtag || ch.name === "Public") return ch.name;
+  return `#${ch.name}`;
 }
 
 export interface ChannelMessage {
-  id: string;
+  id: number;
+  packetHash: string;
   channelHash: string;
-  senderName: string | null;
+  senderName: string;
   content: string;
-  decrypted: boolean;
-  timestamp: number;
+  sentAt: string;
 }

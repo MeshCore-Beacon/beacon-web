@@ -1,4 +1,5 @@
 import type { Observation } from "./api";
+import type { ChannelMessage } from "../features/channels/types";
 
 // individual server-sent message shapes
 
@@ -78,6 +79,13 @@ export interface WsNodeUpdate {
   };
 }
 
+export interface WsChannelMessage {
+  v: 1;
+  type: "event";
+  event: "channelMessage";
+  data: ChannelMessage;
+}
+
 export interface WsLagged {
   v: 1;
   type: "lagged";
@@ -103,6 +111,7 @@ export type WsServerMessage =
   | WsPacketObservation
   | WsObserverStatus
   | WsNodeUpdate
+  | WsChannelMessage
   | WsLagged
   | WsError;
 
