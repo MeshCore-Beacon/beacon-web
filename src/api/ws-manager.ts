@@ -1,4 +1,4 @@
-import type { SubscriptionFilter, WsServerMessage, WsPacketObservation, WsLagged } from "../types/ws";
+import type { SubscriptionFilter, WsServerMessage, WsPacketObservation, WsLagged, WsChannelMessage, WsObserverStatus } from "../types/ws";
 import {
   WS_PING_INTERVAL_MS,
   WS_RECONNECT_BASE_MS,
@@ -12,6 +12,8 @@ export type WsStatus = "connected" | "connecting" | "disconnected" | "error";
 
 type PacketHandler = (data: WsPacketObservation["data"]) => void;
 type LaggedHandler = (data: WsLagged) => void;
+type ChannelMessageHandler = (data: WsChannelMessage["data"]) => void;
+type ObserverStatusHandler = (data: WsObserverStatus["data"]) => void;
 type StatusHandler = (status: WsStatus) => void;
 
 export class WsManager {
@@ -28,6 +30,8 @@ export class WsManager {
 
   private packetHandlers: PacketHandler[] = [];
   private laggedHandlers: LaggedHandler[] = [];
+  private channelMessageHandlers: ChannelMessageHandler[] = [];
+  private observerStatusHandlers: ObserverStatusHandler[] = [];
   private statusHandlers: StatusHandler[] = [];
 
   constructor(url: string) {
@@ -53,6 +57,20 @@ export class WsManager {
     this.laggedHandlers.push(handler);
     return () => {
       this.laggedHandlers = this.laggedHandlers.filter((h) => h !== handler);
+    };
+  }
+
+  onChannelMessage(handler: ChannelMessageHandler): () => void {
+    this.channelMessageHandlers.push(handler);
+    return () => {
+      this.channelMessageHandlers = this.channelMessageHandlers.filter((h) => h !== handler);
+    };
+  }
+
+  onObserverStatus(handler: ObserverStatusHandler): () => void {
+    this.observerStatusHandlers.push(handler);
+    return () => {
+      this.observerStatusHandlers = this.observerStatusHandlers.filter((h) => h !== handler);
     };
   }
 
@@ -146,6 +164,14 @@ export class WsManager {
         this.lastEventTimestamp = Date.now();
         if (msg.event === "packetObservation") {
           for (const handler of this.packetHandlers) {
+            handler(msg.data);
+          }
+        } else if (msg.event === "channelMessage") {
+          for (const handler of this.channelMessageHandlers) {
+            handler(msg.data);
+          }
+        } else if (msg.event === "observerStatus") {
+          for (const handler of this.observerStatusHandlers) {
             handler(msg.data);
           }
         }

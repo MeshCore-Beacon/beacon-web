@@ -48,3 +48,31 @@ export function formatPropagation(ms: number | null): string {
   if (ms === null) return "—";
   return `${(ms / 1000).toFixed(3)}s`;
 }
+
+export function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+export function formatBattery(volts: number): string {
+  return `${volts.toFixed(2)}V`;
+}
+
+// clamp negative values from clock skew
+export function timeAgoMs(epochMs: number): string {
+  const seconds = Math.max(0, Math.floor((Date.now() - epochMs) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+export function timeAgo(iso: string): string {
+  return timeAgoMs(new Date(iso).getTime());
+}

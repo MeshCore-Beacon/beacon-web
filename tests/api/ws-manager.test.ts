@@ -183,4 +183,47 @@ describe("WsManager", () => {
     expect(handler).toHaveBeenCalledOnce();
     expect(handler.mock.calls[0]![0].droppedCount).toBe(47);
   });
+
+  it("dispatches channelMessage events to handlers", () => {
+    const mgr = new WsManager("ws://test/ws");
+    const handler = vi.fn();
+    mgr.onChannelMessage(handler);
+
+    mgr.connect({ events: ["channelMessage"] });
+    const ws = MockWebSocket.instances[0];
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+
+    const msgData = {
+      id: 1,
+      packetHash: "abc123",
+      channelHash: "f3",
+      senderName: "TestNode",
+      content: "hello mesh",
+      sentAt: "2026-05-26T14:00:00Z",
+    };
+
+    ws.simulateMessage({ v: 1, type: "event", event: "channelMessage", data: msgData });
+    expect(handler).toHaveBeenCalledWith(msgData);
+  });
+
+  it("unsubscribes channelMessage handler on cleanup", () => {
+    const mgr = new WsManager("ws://test/ws");
+    const handler = vi.fn();
+    const unsub = mgr.onChannelMessage(handler);
+    unsub();
+
+    mgr.connect({ events: ["channelMessage"] });
+    const ws = MockWebSocket.instances[0];
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    ws.simulateMessage({
+      v: 1,
+      type: "event",
+      event: "channelMessage",
+      data: { id: 1, packetHash: "x", channelHash: "f3", senderName: "N", content: "hi", sentAt: "2026-05-26T14:00:00Z" },
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
 });

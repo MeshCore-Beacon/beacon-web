@@ -1,5 +1,7 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, BrokerStatus } from "../types/api";
+import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
+import type { ObserverSummary, Observer } from "../features/observers/types";
 
 // typed fetch wrapper with query params
 
@@ -16,7 +18,7 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  const url = new URL(`${API_BASE}${path}`);
+  const url = new URL(`${API_BASE}${path}`, window.location.origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
@@ -55,6 +57,42 @@ export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
 
 export function getIatas(): Promise<IataCode[]> {
   return request("/iatas");
+}
+
+export function getChannels(params?: { iata?: string; limit?: number }): Promise<ChannelSummary[]> {
+  return request("/channels", {
+    iata: params?.iata,
+    limit: params?.limit,
+  });
+}
+
+export function getChannelMessages(
+  channelId: number,
+  params?: { iata?: string; limit?: number },
+): Promise<ChannelMessage[]> {
+  return request(`/channels/${channelId}/messages`, {
+    iata: params?.iata,
+    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+  });
+}
+
+export function getBrokers(): Promise<BrokerStatus[]> {
+  return request("/brokers");
+}
+
+export function getObservers(
+  params?: { iata?: string; type?: string; broker?: string; status?: string },
+): Promise<ObserverSummary[]> {
+  return request("/observers", {
+    iata: params?.iata,
+    type: params?.type,
+    broker: params?.broker,
+    status: params?.status,
+  });
+}
+
+export function getObserver(observerId: string): Promise<Observer> {
+  return request(`/observers/${observerId}`);
 }
 
 export { ApiError };

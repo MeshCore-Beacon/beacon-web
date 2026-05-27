@@ -8,7 +8,7 @@ import { Dropdown } from "./Dropdown";
 import { getIatas } from "../api/client";
 import type { WsManager } from "../api/ws-manager";
 
-const TABS = ["Packets", "Nodes", "Observers", "Channels", "Stats", "Map"] as const;
+const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Stats"] as const;
 
 // header widgets: WS status, region picker, theme picker
 
