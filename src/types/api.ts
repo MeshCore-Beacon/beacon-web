@@ -3,7 +3,7 @@ import type { PathConfidence } from "./enums";
 // response wrappers
 
 export interface CursorPage<T> {
-  packets: T[];
+  items: T[];
   nextCursor: string | null;
 }
 

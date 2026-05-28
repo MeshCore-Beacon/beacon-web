@@ -9,9 +9,9 @@ import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
 
 // merge and deduplicate live + paginated packets
 
-function flattenPages(data: { pages: Array<{ packets: PacketSummary[] }> } | undefined): PacketSummary[] {
+function flattenPages(data: { pages: Array<{ items: PacketSummary[] }> } | undefined): PacketSummary[] {
   if (!data) return [];
-  return data.pages.flatMap((p) => p.packets);
+  return data.pages.flatMap((p) => p.items);
 }
 
 function dedup(packets: PacketSummary[]): PacketSummary[] {
