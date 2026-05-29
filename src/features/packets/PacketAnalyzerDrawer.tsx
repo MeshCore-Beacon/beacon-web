@@ -4,7 +4,7 @@ import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValu
 import { Badge } from "../../components/Badge";
 import { VARIANT_CLASSES, payloadTypeVariant } from "../../components/badge-utils";
 import { formatHex, formatTimestamp } from "../../lib/formatters";
-import { computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
+import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
 import { ObservationCard } from "./ObservationCard";
 
@@ -58,7 +58,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
     ?? detail?.observations[0]
     ?? null;
 
-  const rawHex = detail?.rawPayload ?? "";
+  const rawHex = detail ? buildObservationFrame(detail, selectedObs) : "";
   const totalBytes = rawHex.length / 2;
 
   const fieldRanges = detail

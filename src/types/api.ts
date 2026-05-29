@@ -73,6 +73,7 @@ export interface PacketDetail {
   transportCodes?: string;
   originPubkey?: string;
   parsedPayload?: Record<string, unknown> | string;
+  rawHeader: string;
   rawPayload: string;
   decrypted: boolean;
   channelHash?: string;

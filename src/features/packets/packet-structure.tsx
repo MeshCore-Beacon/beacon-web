@@ -14,6 +14,18 @@ export interface ByteRange {
   end: number;
 }
 
+// Reconstruct the full on-air frame for one observer:
+//   rawHeader + pathLengthByte + pathBytes + rawPayload
+// Header/payload are packet-scope (observer-independent); the path is per-observer.
+export function buildObservationFrame(detail: PacketDetail, obs: Observation | null): string {
+  const header = detail.rawHeader ?? "";
+  const payload = detail.rawPayload ?? "";
+  if (!obs) return header + payload;
+  const pathLen = obs.pathLengthByte.toString(16).padStart(2, "0");
+  const path = obs.pathBytes ?? "";
+  return header + pathLen + path + payload;
+}
+
 export function computeFieldRanges(
   detail: PacketDetail,
   obs: Observation | null,
