@@ -6,6 +6,17 @@ import { formatHex, formatTimestamp } from "../../lib/formatters";
 import { computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
 
+function decodePayloadHex(encoded: string): string | null {
+  try {
+    const inner = JSON.parse(atob(encoded));
+    if (typeof inner !== "string") return null;
+    const raw = atob(inner);
+    return Array.from(raw, (c) => c.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+  } catch {
+    return null;
+  }
+}
+
 interface PacketAnalyzerDrawerProps {
   detail: PacketDetail | undefined;
   selectedObservationId: number | null;
@@ -190,13 +201,31 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
               </div>
             </DrawerSection>
 
-            {detail.parsedPayload && Object.keys(detail.parsedPayload).length > 0 && (
+            {detail.parsedPayload && typeof detail.parsedPayload === "object" && Object.keys(detail.parsedPayload).length > 0 && (
               <DrawerSection title="Payload Breakdown">
                 <div className="font-mono text-[13px]">
                   <PayloadBreakdown payload={detail.parsedPayload} />
                 </div>
               </DrawerSection>
             )}
+
+            {detail.parsedPayload && typeof detail.parsedPayload === "string" && (() => {
+              const hex = decodePayloadHex(detail.parsedPayload);
+              if (!hex) return null;
+              return (
+                <DrawerSection title="Payload Data">
+                  <div className="bg-bg-base border border-border rounded p-2 max-h-40 overflow-y-auto">
+                    <pre className="text-[13px] font-mono text-text-muted leading-relaxed overflow-x-auto whitespace-pre">
+                      {(hex.match(/.{1,2}/g) ?? []).reduce((acc, b, i) => {
+                        const sep = i > 0 && i % 16 === 0 ? "\n" : i > 0 ? " " : "";
+                        return acc + sep + b.toUpperCase();
+                      }, "")}
+                    </pre>
+                  </div>
+                  <div className="text-[11px] text-text-dim mt-1">{hex.length / 2} bytes</div>
+                </DrawerSection>
+              );
+            })()}
           </>
         )}
       </div>

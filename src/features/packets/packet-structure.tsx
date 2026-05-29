@@ -47,7 +47,7 @@ export function computeFieldRanges(
     ranges.payload = { start: offset, end: totalBytes };
 
     const pp = detail.parsedPayload;
-    if (pp) {
+    if (pp && typeof pp === "object") {
       if (pp.type === "ADVERT" && typeof pp.publicKey === "string") {
         let sub = offset;
         const pkLen = (pp.publicKey as string).length / 2;

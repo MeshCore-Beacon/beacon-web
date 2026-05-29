@@ -77,7 +77,7 @@ export interface PacketDetail {
   routeType: number;
   transportCodes: { regionCode: number; subRegionCode: number } | null;
   originPubkey: string | null;
-  parsedPayload: Record<string, unknown> | null;
+  parsedPayload: Record<string, unknown> | string | null;
   rawPayload: string;
   decrypted: boolean;
   channelHash: string | null;
