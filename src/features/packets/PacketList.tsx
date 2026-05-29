@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { usePackets } from "./usePackets";
 import { usePacketFilters, matchesFilters } from "./usePacketFilters";
@@ -27,6 +28,7 @@ const DRAWER_STORAGE_KEY = "tower-analyzer-open";
 // main packet view: filters, banner, virtual list, analyzer
 
 export function PacketList({ wsManager }: { wsManager: WsManager }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   const {
     allPackets,
@@ -51,7 +53,7 @@ export function PacketList({ wsManager }: { wsManager: WsManager }) {
   const [isScrolledAway, setIsScrolledAway] = useState(false);
   const scrollToTopRef = useRef<(() => void) | null>(null);
 
-  const [expandedHash, setExpandedHash] = useState<string | null>(null);
+  const [expandedHash, setExpandedHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(() => {
     const stored = localStorage.getItem(DRAWER_STORAGE_KEY);
@@ -70,14 +72,16 @@ export function PacketList({ wsManager }: { wsManager: WsManager }) {
 
   const handleToggleExpand = useCallback((hash: string) => {
     setExpandedHash((prev) => {
-      if (prev === hash) {
-        setSelectedObservationId(null);
-        return null;
-      }
+      const next = prev === hash ? null : hash;
       setSelectedObservationId(null);
-      return hash;
+      setSearchParams((p) => {
+        const n = new URLSearchParams(p);
+        if (next) n.set("hash", next); else n.delete("hash");
+        return n;
+      }, { replace: true });
+      return next;
     });
-  }, []);
+  }, [setSearchParams]);
 
   const handleToggleDrawer = useCallback(() => {
     setDrawerOpen((prev) => {

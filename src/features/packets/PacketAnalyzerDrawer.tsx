@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValue, type RouteTypeValue } from "../../types/enums";
 import { Badge } from "../../components/Badge";
@@ -15,6 +16,39 @@ function decodePayloadHex(encoded: string): string | null {
   } catch {
     return null;
   }
+}
+
+function CopyLinkButton({ packetHash }: { packetHash: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", "Packets");
+    url.searchParams.set("hash", packetHash);
+    navigator.clipboard.writeText(url.toString());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [packetHash]);
+
+  return (
+    <button
+      type="button"
+      className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+      onClick={handleCopy}
+      aria-label="Copy packet link"
+    >
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M6.5 10.5L5.5 11.5C4.4 12.6 2.6 12.6 1.5 11.5V11.5C0.4 10.4 0.4 8.6 1.5 7.5L4.5 4.5C5.6 3.4 7.4 3.4 8.5 4.5V4.5C9.1 5.1 9.3 5.9 9.2 6.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M9.5 5.5L10.5 4.5C11.6 3.4 13.4 3.4 14.5 4.5V4.5C15.6 5.6 15.6 7.4 14.5 8.5L11.5 11.5C10.4 12.6 8.6 12.6 7.5 11.5V11.5C6.9 10.9 6.7 10.1 6.8 9.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
+  );
 }
 
 interface PacketAnalyzerDrawerProps {
@@ -67,16 +101,19 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
     <div className="shrink-0 w-[400px] border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">Packet Analyzer</span>
-        <button
-          type="button"
-          className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
-          onClick={onToggle}
-          aria-label="Collapse analyzer"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {detail && <CopyLinkButton packetHash={detail.packetHash} />}
+          <button
+            type="button"
+            className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+            onClick={onToggle}
+            aria-label="Collapse analyzer"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
