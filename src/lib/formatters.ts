@@ -32,20 +32,20 @@ export const SIGNAL_LEVEL_CLASSES: Record<SignalLevel, string> = {
   bad: "text-danger",
 };
 
-export function snrLevel(snr: number | null): SignalLevel | null {
-  if (snr === null) return null;
+export function snrLevel(snr: number | null | undefined): SignalLevel | null {
+  if (snr == null) return null;
   if (snr >= 10) return "good";
   if (snr >= 5) return "mid";
   return "bad";
 }
 
-export function formatSnr(snr: number | null): string {
-  if (snr === null) return "—";
+export function formatSnr(snr: number | null | undefined): string {
+  if (snr == null) return "—";
   return snr.toFixed(2);
 }
 
-export function formatPropagation(ms: number | null): string {
-  if (ms === null) return "—";
+export function formatPropagation(ms: number | null | undefined): string {
+  if (ms == null) return "—";
   return `${(ms / 1000).toFixed(3)}s`;
 }
 

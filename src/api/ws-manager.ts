@@ -1,4 +1,4 @@
-import type { SubscriptionFilter, WsServerMessage, WsPacketObservation, WsLagged, WsChannelMessage, WsObserverStatus } from "../types/ws";
+import type { SubscriptionFilter, WsServerMessage, WsPacketObservation, WsLagged, WsChannelMessage, WsObserverStatus, WsNodeUpdate } from "../types/ws";
 import {
   WS_PING_INTERVAL_MS,
   WS_RECONNECT_BASE_MS,
@@ -14,6 +14,7 @@ type PacketHandler = (data: WsPacketObservation["data"]) => void;
 type LaggedHandler = (data: WsLagged) => void;
 type ChannelMessageHandler = (data: WsChannelMessage["data"]) => void;
 type ObserverStatusHandler = (data: WsObserverStatus["data"]) => void;
+type NodeUpdateHandler = (data: WsNodeUpdate["data"]) => void;
 type StatusHandler = (status: WsStatus) => void;
 
 export class WsManager {
@@ -32,6 +33,7 @@ export class WsManager {
   private laggedHandlers: LaggedHandler[] = [];
   private channelMessageHandlers: ChannelMessageHandler[] = [];
   private observerStatusHandlers: ObserverStatusHandler[] = [];
+  private nodeUpdateHandlers: NodeUpdateHandler[] = [];
   private statusHandlers: StatusHandler[] = [];
 
   constructor(url: string) {
@@ -71,6 +73,13 @@ export class WsManager {
     this.observerStatusHandlers.push(handler);
     return () => {
       this.observerStatusHandlers = this.observerStatusHandlers.filter((h) => h !== handler);
+    };
+  }
+
+  onNodeUpdate(handler: NodeUpdateHandler): () => void {
+    this.nodeUpdateHandlers.push(handler);
+    return () => {
+      this.nodeUpdateHandlers = this.nodeUpdateHandlers.filter((h) => h !== handler);
     };
   }
 
@@ -172,6 +181,10 @@ export class WsManager {
           }
         } else if (msg.event === "observerStatus") {
           for (const handler of this.observerStatusHandlers) {
+            handler(msg.data);
+          }
+        } else if (msg.event === "nodeUpdate") {
+          for (const handler of this.nodeUpdateHandlers) {
             handler(msg.data);
           }
         }

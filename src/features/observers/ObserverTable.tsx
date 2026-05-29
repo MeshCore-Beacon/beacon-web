@@ -6,6 +6,7 @@ import { useTick } from "../../hooks/useTick";
 import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
 import { formatHex } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
+import { DataTable, type Column } from "../../components/DataTable";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverDetailPanel } from "./ObserverDetailPanel";
 import type { ObserverSummary } from "./types";
@@ -16,10 +17,40 @@ interface ObserverTableProps {
   wsManager: WsManager;
 }
 
+const COLUMNS: Column<ObserverSummary>[] = [
+  {
+    header: "Name",
+    cell: (obs) => (
+      <div className="flex items-center gap-2">
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${obs.status === "online" ? "bg-green" : "bg-text-dim/30"}`} />
+        <span className={`truncate ${obs.displayName ? "text-text-normal" : "text-text-dim italic"}`}>
+          {obs.displayName ?? formatHex(obs.id)}
+        </span>
+      </div>
+    ),
+  },
+  {
+    header: "Type",
+    className: "text-text-muted",
+    cell: (obs) => obs.observerType ?? "—",
+  },
+  {
+    header: "IATA",
+    className: "text-text-normal",
+    cell: (obs) => obs.iata,
+  },
+  {
+    header: "Status",
+    cell: (obs) => <Badge variant={obs.status === "online" ? "live" : "offline"}>{obs.status}</Badge>,
+  },
+];
+
 export function ObserverTable({ wsManager }: ObserverTableProps) {
   const region = useRegion();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [searchField, setSearchField] = useState("name");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [brokerFilter, setBrokerFilter] = useState("");
@@ -38,8 +69,8 @@ export function ObserverTable({ wsManager }: ObserverTableProps) {
   useTick();
 
   const queryKey = useMemo(
-    () => ["observers", region, statusFilter, typeFilter, brokerFilter],
-    [region, statusFilter, typeFilter, brokerFilter],
+    () => ["observers", region, statusFilter, typeFilter, brokerFilter, search, searchField],
+    [region, statusFilter, typeFilter, brokerFilter, search, searchField],
   );
 
   const { data: observers, isLoading } = useQuery({
@@ -50,6 +81,7 @@ export function ObserverTable({ wsManager }: ObserverTableProps) {
         status: statusFilter || undefined,
         type: typeFilter || undefined,
         broker: brokerFilter || undefined,
+        name: searchField === "name" ? search || undefined : undefined,
       }),
     staleTime: 30_000,
     placeholderData: keepPreviousData,
@@ -92,18 +124,14 @@ export function ObserverTable({ wsManager }: ObserverTableProps) {
 
   useWsObserverStatusHandler(wsManager, handleObserverStatus);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center flex-1 text-text-dim text-xs font-mono tracking-wider">
-        loading…
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-1 min-h-0">
       <div className="flex flex-col flex-1 min-w-0">
         <ObserverFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          searchField={searchField}
+          onSearchFieldChange={setSearchField}
           statusFilter={statusFilter}
           onStatusChange={setStatusFilter}
           typeFilter={typeFilter}
@@ -114,64 +142,15 @@ export function ObserverTable({ wsManager }: ObserverTableProps) {
           brokerOptions={brokerNames}
         />
 
-        <div className="flex-1 overflow-y-auto">
-          {observers && observers.length > 0 ? (
-            <table className="w-full text-xs font-mono">
-              <thead className="sticky top-0 bg-bg-surface z-10">
-                <tr className="text-text-muted text-[11px] uppercase tracking-wider border-b border-border">
-                  <th className="text-left px-4 py-2 font-medium">Name</th>
-                  <th className="text-left px-4 py-2 font-medium">Type</th>
-                  <th className="text-left px-4 py-2 font-medium">IATA</th>
-                  <th className="text-left px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {observers.map((obs) => {
-                  const isSelected = obs.id === selectedId;
-                  return (
-                    <tr
-                      key={obs.id}
-                      className={`border-b border-border/40 cursor-pointer transition-colors ${
-                        isSelected
-                          ? "bg-primary/10"
-                          : "hover:bg-bg-raised"
-                      }`}
-                      onClick={() => setSelectedId(isSelected ? null : obs.id)}
-                    >
-                      <td className="px-4 py-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              obs.status === "online" ? "bg-green" : "bg-text-dim/30"
-                            }`}
-                          />
-                          <span className={`truncate ${obs.displayName ? "text-text-normal" : "text-text-dim italic"}`}>
-                            {obs.displayName ?? formatHex(obs.id)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-text-muted">
-                        {obs.observerType ?? "—"}
-                      </td>
-                      <td className="px-4 py-2 text-text-normal">
-                        {obs.iata}
-                      </td>
-                      <td className="px-4 py-2">
-                        <Badge variant={obs.status === "online" ? "live" : "offline"}>
-                          {obs.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <div className="flex items-center justify-center h-32 text-text-muted text-xs font-mono">
-              No observers
-            </div>
-          )}
-        </div>
+        <DataTable
+          columns={COLUMNS}
+          rows={observers}
+          rowKey={(o) => o.id}
+          selectedKey={selectedId}
+          onSelect={setSelectedId}
+          isLoading={isLoading}
+          emptyLabel="No observers"
+        />
       </div>
 
       {selectedId && (

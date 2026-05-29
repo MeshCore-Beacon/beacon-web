@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import type { PacketDetail, Observation } from "../../types/api";
 import { RouteType } from "../../types/enums";
 import { HopBadge } from "../../components/HopBadge";
@@ -132,11 +132,33 @@ export const FIELD_COLORS: Record<FieldId, { hex: string; accent: string }> = {
   checksum: { hex: "text-warn", accent: "border-l-warn/50" },
 };
 
-export function DrawerSection({ title, children, first }: { title: string; children: React.ReactNode; first?: boolean }) {
+export function DrawerSection({ title, children, first, collapsible, defaultOpen = true }: { title: string; children: React.ReactNode; first?: boolean; collapsible?: boolean; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const titleClass = "text-xs font-mono font-medium text-text-bright uppercase tracking-wider";
+
+  if (!collapsible) {
+    return (
+      <div className={`px-3 py-2.5 ${first ? "" : "border-t border-border-subtle"}`}>
+        <div className={`${titleClass} mb-1.5`}>{title}</div>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className={`px-3 py-2.5 ${first ? "" : "border-t border-border-subtle"}`}>
-      <div className="text-xs font-mono font-medium text-text-bright uppercase tracking-wider mb-1.5">{title}</div>
-      {children}
+      <button
+        type="button"
+        className={`group flex items-center gap-1.5 w-full text-left cursor-pointer ${open ? "mb-1.5" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="text-text-muted group-hover:text-text-normal text-[11px] w-3.5 font-mono transition-colors" aria-hidden>
+          {open ? "▾" : "▸"}
+        </span>
+        <span className={titleClass}>{title}</span>
+      </button>
+      {open && children}
     </div>
   );
 }
@@ -310,7 +332,7 @@ export function ObservationDetail({ observation }: { observation: Observation })
   return (
     <div className="flex flex-col gap-1.5 font-mono text-[13px]">
       <div className="flex items-center gap-2">
-        <span className="text-text-normal font-semibold">{observation.observerName}</span>
+        <span className="text-text-normal font-semibold">{observation.observerName ?? observation.observerId.slice(0, 8)}</span>
         <span className="text-primary font-semibold text-[13px] bg-primary/6 px-1.5 py-px rounded-sm">
           {observation.iata}
         </span>
@@ -329,13 +351,10 @@ export function ObservationDetail({ observation }: { observation: Observation })
       {observation.radio && (
         <div className="flex items-center gap-1.5 text-[13px] text-text-muted">
           <span className="text-text-dim text-xs font-medium uppercase tracking-wider mr-0.5">Radio</span>
-          <span>{observation.radio.freqMhz} MHz</span>
-          <span className="text-[6px] text-border" aria-hidden>·</span>
-          <span>SF{observation.radio.spreadFactor}</span>
-          <span className="text-[6px] text-border" aria-hidden>·</span>
-          <span>{observation.radio.bandwidthKhz} kHz</span>
-          <span className="text-[6px] text-border" aria-hidden>·</span>
-          <span>CR 4/{observation.radio.codingRate}</span>
+          {observation.radio.freqMhz != null && <span>{observation.radio.freqMhz} MHz</span>}
+          {observation.radio.spreadFactor != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>SF{observation.radio.spreadFactor}</span></>}
+          {observation.radio.bandwidthKhz != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>{observation.radio.bandwidthKhz} kHz</span></>}
+          {observation.radio.codingRate != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>CR 4/{observation.radio.codingRate}</span></>}
         </div>
       )}
 

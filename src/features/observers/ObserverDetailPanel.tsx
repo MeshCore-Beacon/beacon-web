@@ -2,6 +2,7 @@ import type { Observer } from "./types";
 import { useQuery } from "@tanstack/react-query";
 import { getObserver } from "../../api/client";
 import { Badge } from "../../components/Badge";
+import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { formatUptime, formatBattery, timeAgo, timeAgoMs } from "../../lib/formatters";
 import type { BadgeVariant } from "../../components/badge-utils";
 
@@ -13,6 +14,13 @@ interface Stats {
   recv_errors?: number;
   errors?: number;
   internal_heap?: number;
+}
+
+// broker freshness badge: <5m = live, <30m = stale
+function brokerStatusVariant(lastPacketAt: number | null): BadgeVariant {
+  if (!lastPacketAt) return "offline";
+  const ageMs = Date.now() - lastPacketAt;
+  return ageMs < 5 * 60_000 ? "live" : ageMs < 30 * 60_000 ? "stale" : "offline";
 }
 
 // stats shape depends on the observer's firmware, so we just grab what we recognize
@@ -27,21 +35,6 @@ function formatAirtime(secs: number): string {
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   return `${h}h ${m}m`;
-}
-
-function Section({ title, children, first }: { title: string; children: React.ReactNode; first?: boolean }) {
-  return (
-    <div className={`px-3 py-2.5 ${first ? "" : "border-t border-border-subtle"}`}>
-      <div className="text-xs font-mono font-medium text-text-bright uppercase tracking-wider mb-1.5">{title}</div>
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <span><span className="text-text-dim">{label} </span><span className="text-text-normal">{value}</span></span>
-  );
 }
 
 function RadioSection({ observer, noiseFloor }: { observer: Observer; noiseFloor?: number | null }) {
@@ -81,29 +74,22 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
   const stats = observer ? getStats(observer.statusMetadata) : null;
 
   return (
-    <div className="shrink-0 w-[400px] border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
-        <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">Observer Detail</span>
-        <button
-          type="button"
-          className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
-          onClick={onClose}
-          aria-label="Close detail panel"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto min-h-0">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2.5 text-text-dim">
-            <span className="text-[13px] font-mono">Loading...</span>
-          </div>
-        ) : observer ? (
-          <>
-            <Section title="Summary" first>
+    <DetailPanel
+      title="Observer Detail"
+      onClose={onClose}
+      isLoading={isLoading}
+      notFound={!observer}
+      notFoundLabel="Observer not found"
+      notFoundIcon={
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-border">
+          <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.2" />
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+        </svg>
+      }
+    >
+      {observer && (
+        <>
+          <Section title="Summary" first>
               <div className="flex items-center gap-2 mb-2">
                 <span className="font-mono text-xs font-semibold text-primary tracking-wider">
                   {observer.displayName ?? observer.id.slice(0, 8)}
@@ -172,9 +158,7 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
               <Section title="Brokers">
                 <div className="flex flex-col gap-1.5">
                   {[...observer.brokers].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map((b) => {
-                    const ageMs = b.lastPacketAt ? Date.now() - b.lastPacketAt : Infinity;
-                    // <5m = live, <30m = stale (typical for HA plugins that report infrequently)
-                    const variant: BadgeVariant = ageMs < 5 * 60_000 ? "live" : ageMs < 30 * 60_000 ? "stale" : "offline";
+                    const variant = brokerStatusVariant(b.lastPacketAt);
                     return (
                       <div key={b.name} className="flex items-center gap-3">
                         <Badge variant={variant}>{b.name}</Badge>
@@ -196,17 +180,8 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
                 <Field label="Last" value={timeAgo(observer.lastSeen)} />
               </div>
             </Section>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full gap-2.5 text-text-dim">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-border">
-              <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.2" />
-              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-            </svg>
-            <span className="text-[13px] font-mono">Observer not found</span>
-          </div>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </DetailPanel>
   );
 }

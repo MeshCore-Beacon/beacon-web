@@ -29,9 +29,12 @@ function formatMessageTime(iso: string): string {
   });
 }
 
-function MessageRow({ msg, heardCount }: { msg: ChannelMessage; heardCount?: number }) {
+function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heardCount?: number; onAnalyze?: (hash: string) => void }) {
   return (
-    <div className="px-3 py-2">
+    <div
+      className={`px-3 py-2${onAnalyze ? " cursor-pointer hover:bg-bg-surface transition-colors" : ""}`}
+      onClick={onAnalyze ? () => onAnalyze(msg.packetHash) : undefined}
+    >
       <div className="flex items-baseline gap-2">
         <span className={`text-xs font-semibold font-mono ${senderColor(msg.senderName)}`}>
           {msg.senderName}
@@ -53,9 +56,10 @@ interface MessagePanelProps {
   heardCounts: Record<string, number>;
   iata?: string;
   region: string;
+  onAnalyze?: (packetHash: string) => void;
 }
 
-export function MessagePanel({ channel, heardCounts, iata, region }: MessagePanelProps) {
+export function MessagePanel({ channel, heardCounts, iata, region, onAnalyze }: MessagePanelProps) {
   const { data: messages, isLoading } = useQuery({
     queryKey: ["channel-messages", channel?.id, region],
     queryFn: () => getChannelMessages(channel!.id, { iata, limit: 50 }),
@@ -73,18 +77,24 @@ export function MessagePanel({ channel, heardCounts, iata, region }: MessagePane
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // reset scroll-tracking state when switching channels (adjust state during render, not in an effect)
+  const [prevChannelId, setPrevChannelId] = useState(channel?.id);
+  if (prevChannelId !== channel?.id) {
+    setPrevChannelId(channel?.id);
+    setUserScrolled(false);
+  }
+
+  // ref reset belongs in an effect (refs must not be written during render)
+  useEffect(() => {
+    prevCount.current = 0;
+  }, [channel?.id]);
+
   useEffect(() => {
     if (sorted.length > prevCount.current && !userScrolled) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
     prevCount.current = sorted.length;
   }, [sorted.length, userScrolled]);
-
-  // reset scroll tracking when switching channels
-  useEffect(() => {
-    prevCount.current = 0;
-    setUserScrolled(false);
-  }, [channel?.id]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -134,7 +144,7 @@ export function MessagePanel({ channel, heardCounts, iata, region }: MessagePane
         ) : messages && messages.length > 0 ? (
           <div className="py-2 flex flex-col divide-y divide-border/40">
             {sorted.map((msg) => (
-              <MessageRow key={msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} />
+              <MessageRow key={msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} onAnalyze={onAnalyze} />
             ))}
             <div ref={bottomRef} />
           </div>

@@ -44,9 +44,11 @@ export function PacketRow({ packet, expanded, detail, isFresh, onToggle, selecte
           {formatHex(packet.packetHash)}
         </span>
         <Badge variant={payloadTypeVariant(packet.payloadType)}>{packet.payloadTypeName}</Badge>
-        <span className="flex-1 text-text-bright text-xs whitespace-nowrap overflow-hidden text-ellipsis">
-          {packet.summary}
-        </span>
+        {packet.summary && (
+          <span className="flex-1 text-text-bright text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+            {packet.summary}
+          </span>
+        )}
         <span className="font-mono text-[11px] text-primary font-semibold whitespace-nowrap bg-primary/6 px-1.5 rounded-sm">
           ×{packet.observationCount}
         </span>
@@ -58,12 +60,16 @@ export function PacketRow({ packet, expanded, detail, isFresh, onToggle, selecte
         </span>
         <span className="text-[6px] text-border" aria-hidden>·</span>
         <span>{formatTimestamp(packet.lastHeardAt)}</span>
-        <span className="text-[6px] text-border" aria-hidden>·</span>
-        <span className="text-text-normal">{packet.latestObserver.displayName}</span>
-        <span className="text-[6px] text-border" aria-hidden>·</span>
-        <span className="font-mono font-bold text-primary text-[11px] tracking-wider">
-          {packet.latestObserver.iata}
-        </span>
+        {packet.latestObserver && (
+          <>
+            <span className="text-[6px] text-border" aria-hidden>·</span>
+            <span className="text-text-normal">{packet.latestObserver.displayName ?? packet.latestObserver.id.slice(0, 8)}</span>
+            <span className="text-[6px] text-border" aria-hidden>·</span>
+            <span className="font-mono font-bold text-primary text-[11px] tracking-wider">
+              {packet.latestObserver.iata}
+            </span>
+          </>
+        )}
       </div>
 
       {expanded && detail && (

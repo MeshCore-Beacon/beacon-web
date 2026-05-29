@@ -4,12 +4,13 @@ import type { PathConfidence } from "./enums";
 
 export interface CursorPage<T> {
   items: T[];
-  nextCursor: string | null;
+  nextCursor: number | null;
+  hasMore: boolean;
 }
 
 export interface LatestObserver {
   id: string;
-  displayName: string;
+  displayName?: string;
   iata: string;
 }
 
@@ -24,66 +25,60 @@ export interface PacketSummary {
   firstHeardAt: number;
   lastHeardAt: number;
   observationCount: number;
-  latestObserver: LatestObserver;
-  summary: string;
+  latestObserver?: LatestObserver;
+  summary?: string;
 }
 
 export interface ResolvedHop {
   confidence: PathConfidence;
   node?: {
     id: string;
-    name: string;
+    name?: string;
     publicKey: string;
-    latitude: number | null;
-    longitude: number | null;
+    latitude?: number;
+    longitude?: number;
   };
-  candidates?: Array<{
-    id: string;
-    name: string;
-    publicKey: string;
-  }>;
-  idBytes?: string;
 }
 
 export interface Observation {
   id: number;
   observerId: string;
-  observerName: string;
+  observerName?: string;
   iata: string;
   heardAt: number;
   pathLengthByte: number;
   hashSize: number;
   hopCount: number;
-  pathBytes: string;
-  rawPacket: string;
-  rssi: number | null;
-  snr: number | null;
-  propagationTimeMs: number | null;
-  radio: {
-    freqMhz: number;
-    spreadFactor: number;
-    bandwidthKhz: number;
-    codingRate: number;
-  } | null;
+  pathBytes?: string;
+  rssi?: number;
+  snr?: number;
+  propagationTimeMs?: number;
+  radio?: {
+    freqMhz?: number;
+    spreadFactor?: number;
+    bandwidthKhz?: number;
+    codingRate?: number;
+  };
   sourceBroker: string;
   resolvedPath: ResolvedHop[];
 }
 
 export interface PacketDetail {
   packetHash: string;
-  headerByte: string;
   payloadType: number;
+  payloadTypeName: string;
   payloadVersion: number;
   routeType: number;
-  transportCodes: { regionCode: number; subRegionCode: number } | null;
-  originPubkey: string | null;
-  parsedPayload: Record<string, unknown> | string | null;
+  routeTypeName: string;
+  transportCodes?: string;
+  originPubkey?: string;
+  parsedPayload?: Record<string, unknown> | string;
   rawPayload: string;
   decrypted: boolean;
-  channelHash: string | null;
-  summary: string;
+  channelHash?: string;
   firstHeardAt: number;
   lastHeardAt: number;
+  observationCount: number;
   observations: Observation[];
 }
 
@@ -91,9 +86,9 @@ export interface PacketDetail {
 
 export interface IataCode {
   iata: string;
-  displayName: string | null;
-  approxLat: number | null;
-  approxLng: number | null;
+  displayName?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export interface BrokerStatus {

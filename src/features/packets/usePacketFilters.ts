@@ -127,7 +127,7 @@ export function matchesFilters(
     const known = observersByHash?.get(packet.packetHash);
     const match = known
       ? filters.observers.some((id) => known.has(id))
-      : filters.observers.includes(packet.latestObserver.id);
+      : packet.latestObserver ? filters.observers.includes(packet.latestObserver.id) : false;
     if (!match) return false;
   }
   if (filters.search && filters.searchField === "hash") {

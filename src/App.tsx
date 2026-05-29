@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { RegionProvider, useRegion } from "./hooks/useRegion";
 import { ThemeProvider } from "./hooks/useTheme";
 import { AppShell } from "./components/AppShell";
 import { PacketList } from "./features/packets/PacketList";
+import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { NodeTable } from "./features/nodes/NodeTable";
 import { ObserverTable } from "./features/observers/ObserverTable";
 import { ChannelList } from "./features/channels/ChannelList";
 import { StatsOverview } from "./features/stats/StatsOverview";
 import { MapView } from "./features/map/MapView";
+import { getPacketDetail } from "./api/client";
 import { WsManager } from "./api/ws-manager";
 import { WS_URL } from "./lib/constants";
 
@@ -32,7 +34,7 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
   const region = useRegion();
 
   useEffect(() => {
-    mgr.updateSubscription({ iatas: region === "*" ? undefined : [region], events: ["packetObservation", "channelMessage", "observerStatus"] });
+    mgr.updateSubscription({ iatas: region === "*" ? undefined : [region], events: ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"] });
   }, [mgr, region]);
 
   return null;
@@ -40,10 +42,43 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 
 // tab state and region init
 
+const DRAWER_STORAGE_KEY = "tower-analyzer-open";
+
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
   const initialRegion = searchParams.get("region") ?? localStorage.getItem("tower-region") ?? "*";
+
+  const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
+  const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(() => {
+    const stored = localStorage.getItem(DRAWER_STORAGE_KEY);
+    return stored === null ? true : stored === "true";
+  });
+
+  const { data: analyzerDetail } = useQuery({
+    queryKey: ["packet-detail", analyzerHash],
+    queryFn: () => getPacketDetail(analyzerHash!),
+    enabled: !!analyzerHash,
+    staleTime: Infinity,
+  });
+
+  const handleAnalyze = useCallback((hash: string | null) => {
+    setAnalyzerHash(hash);
+    setSelectedObservationId(null);
+    if (hash) {
+      setDrawerOpen(true);
+      localStorage.setItem(DRAWER_STORAGE_KEY, "true");
+    }
+  }, []);
+
+  const handleToggleDrawer = useCallback(() => {
+    setDrawerOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem(DRAWER_STORAGE_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -55,16 +90,16 @@ function AppInner() {
   };
 
   useEffect(() => {
-    wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation", "channelMessage", "observerStatus"] });
+    wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"] });
     return () => wsManager.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const tabContent: Record<string, React.ReactNode> = {
-    Packets: <PacketList wsManager={wsManager} />,
-    Nodes: <NodeTable />,
+    Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} selectedObservationId={selectedObservationId} onSelectObservation={setSelectedObservationId} />,
+    Nodes: <NodeTable wsManager={wsManager} />,
     Observers: <ObserverTable wsManager={wsManager} />,
-    Channels: <ChannelList wsManager={wsManager} />,
+    Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Stats: <StatsOverview />,
     Map: <MapView />,
   };
@@ -73,7 +108,18 @@ function AppInner() {
     <RegionProvider defaultRegion={initialRegion}>
       <RegionWatcher wsManager={wsManager} />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
-        {tabContent[activeTab]}
+        <div className="flex flex-1 min-h-0">
+          {tabContent[activeTab]}
+          {analyzerHash && (activeTab === "Packets" || activeTab === "Channels") && (
+            <PacketAnalyzerDrawer
+              detail={analyzerDetail}
+              selectedObservationId={selectedObservationId}
+              onSelectObservation={setSelectedObservationId}
+              open={drawerOpen}
+              onToggle={handleToggleDrawer}
+            />
+          )}
+        </div>
       </AppShell>
     </RegionProvider>
   );

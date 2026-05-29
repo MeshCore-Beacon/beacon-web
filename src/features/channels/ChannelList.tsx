@@ -10,9 +10,10 @@ import type { WsManager } from "../../api/ws-manager";
 
 interface ChannelListProps {
   wsManager: WsManager;
+  onAnalyze: (hash: string | null) => void;
 }
 
-export function ChannelList({ wsManager }: ChannelListProps) {
+export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const region = useRegion();
   const iata = region === "*" ? undefined : region;
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -108,7 +109,7 @@ export function ChannelList({ wsManager }: ChannelListProps) {
         selectedId={selectedId}
         onSelect={handleSelect}
       />
-      <MessagePanel channel={selectedChannel} heardCounts={heardCounts} iata={iata} region={region} />
+      <MessagePanel channel={selectedChannel} heardCounts={heardCounts} iata={iata} region={region} onAnalyze={onAnalyze} />
     </div>
   );
 }

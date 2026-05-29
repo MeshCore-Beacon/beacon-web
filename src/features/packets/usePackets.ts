@@ -59,11 +59,13 @@ class LivePacketStore {
   }
 
   pushOrUpdate(summary: PacketSummary): void {
-    const observers = this.observersByHash.get(summary.packetHash);
-    if (observers) {
-      observers.add(summary.latestObserver.id);
-    } else {
-      this.observersByHash.set(summary.packetHash, new Set([summary.latestObserver.id]));
+    if (summary.latestObserver) {
+      const observers = this.observersByHash.get(summary.packetHash);
+      if (observers) {
+        observers.add(summary.latestObserver.id);
+      } else {
+        this.observersByHash.set(summary.packetHash, new Set([summary.latestObserver.id]));
+      }
     }
 
     const existing = this.hashIndex.get(summary.packetHash);
@@ -141,13 +143,12 @@ export function usePackets() {
         routeTypeName: ROUTE_TYPE_NAMES[data.packet.routeType as RouteTypeValue] ?? "Unknown",
         firstHeardAt: data.observation.heardAt,
         lastHeardAt: data.observation.heardAt,
-        observationCount: data.packet.totalObservationCount,
+        observationCount: 0,
         latestObserver: {
           id: data.observation.observerId,
           displayName: data.observation.observerName,
           iata: data.observation.iata,
         },
-        summary: data.packet.summary,
       };
 
       store.pushOrUpdate(summary);
@@ -173,8 +174,8 @@ export function usePackets() {
   } = useInfiniteQuery({
     queryKey: ["packets", region],
     queryFn: ({ pageParam }) => getPackets(region, { cursor: pageParam }),
-    getNextPageParam: (last) => last.nextCursor,
-    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    initialPageParam: undefined as number | undefined,
     staleTime: Infinity,
     maxPages: MAX_INFINITE_PAGES,
   });
@@ -187,8 +188,8 @@ export function usePackets() {
   const observerOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of allPackets) {
-      if (!map.has(p.latestObserver.id)) {
-        map.set(p.latestObserver.id, p.latestObserver.displayName);
+      if (p.latestObserver && !map.has(p.latestObserver.id)) {
+        map.set(p.latestObserver.id, p.latestObserver.displayName ?? p.latestObserver.id.slice(0, 8));
       }
     }
     return Array.from(map.entries())

@@ -17,7 +17,7 @@ export function ObservationCard({ observation: obs, selected, onClick }: { obser
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
-        <span className="text-text-bright font-semibold">{obs.observerName}</span>
+        <span className="text-text-bright font-semibold">{obs.observerName ?? obs.observerId.slice(0, 8)}</span>
         <span className="font-mono text-primary font-semibold text-[11px] bg-primary/6 px-1.5 py-px rounded-sm">
           {obs.iata}
         </span>

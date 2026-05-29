@@ -18,18 +18,18 @@ export const PayloadType = {
 export type PayloadTypeValue = (typeof PayloadType)[keyof typeof PayloadType];
 
 export const PAYLOAD_TYPE_NAMES: Record<PayloadTypeValue, string> = {
-  [PayloadType.REQUEST]: "Request",
-  [PayloadType.RESPONSE]: "Response",
-  [PayloadType.TEXT]: "Text",
-  [PayloadType.ACK]: "Ack",
-  [PayloadType.ADVERT]: "Advert",
-  [PayloadType.GROUP_TEXT]: "Group",
-  [PayloadType.GROUP_DATA]: "GroupData",
-  [PayloadType.ANON_REQ]: "AnonReq",
-  [PayloadType.PATH]: "Path",
-  [PayloadType.TRACE]: "Trace",
-  [PayloadType.MULTI_PART]: "MultiPart",
-  [PayloadType.CUSTOM]: "Custom",
+  [PayloadType.REQUEST]: "REQ",
+  [PayloadType.RESPONSE]: "TXT_MSG",
+  [PayloadType.TEXT]: "SENSOR_DATA",
+  [PayloadType.ACK]: "ACK",
+  [PayloadType.ADVERT]: "ADVERT",
+  [PayloadType.GROUP_TEXT]: "GRP_TXT",
+  [PayloadType.GROUP_DATA]: "GRP_DATA",
+  [PayloadType.ANON_REQ]: "ANON_REQ",
+  [PayloadType.PATH]: "PATH",
+  [PayloadType.TRACE]: "TRACE",
+  [PayloadType.MULTI_PART]: "MULTI_PART",
+  [PayloadType.CUSTOM]: "CUSTOM",
 };
 
 // routing modes (header bits 1-0) and path confidence
@@ -44,10 +44,10 @@ export const RouteType = {
 export type RouteTypeValue = (typeof RouteType)[keyof typeof RouteType];
 
 export const ROUTE_TYPE_NAMES: Record<RouteTypeValue, string> = {
-  [RouteType.TRANSPORT_FLOOD]: "Flood Transport",
-  [RouteType.FLOOD]: "Flood",
-  [RouteType.DIRECT]: "Direct",
-  [RouteType.TRANSPORT_DIRECT]: "Direct Transport",
+  [RouteType.TRANSPORT_FLOOD]: "TRANSPORT_FLOOD",
+  [RouteType.FLOOD]: "FLOOD",
+  [RouteType.DIRECT]: "DIRECT",
+  [RouteType.TRANSPORT_DIRECT]: "TRANSPORT_DIRECT",
 };
 
-export type PathConfidence = "high" | "ambiguous" | "none";
+export type PathConfidence = "high" | "low" | "unknown";

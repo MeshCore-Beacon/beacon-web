@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { WsManager } from "../api/ws-manager";
-import type { WsPacketObservation, WsLagged, WsChannelMessage, WsObserverStatus } from "../types/ws";
+import type { WsPacketObservation, WsLagged, WsChannelMessage, WsObserverStatus, WsNodeUpdate } from "../types/ws";
 
 export function useWsPacketHandler(
   manager: WsManager,
@@ -35,5 +35,14 @@ export function useWsObserverStatusHandler(
 ): void {
   useEffect(() => {
     return manager.onObserverStatus(handler);
+  }, [manager, handler]);
+}
+
+export function useWsNodeUpdateHandler(
+  manager: WsManager,
+  handler: (data: WsNodeUpdate["data"]) => void,
+): void {
+  useEffect(() => {
+    return manager.onNodeUpdate(handler);
   }, [manager, handler]);
 }

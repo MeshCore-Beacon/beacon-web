@@ -1,11 +1,17 @@
 import { MultiSelectDropdown } from "./MultiSelectDropdown";
-import { SearchBar } from "./SearchBar";
+import { SearchBar, type SearchFieldOption } from "./SearchBar";
 import type { SearchField } from "../features/packets/types";
 
 interface FilterOption {
   value: string;
   label: string;
 }
+
+const PACKET_SEARCH_FIELDS: SearchFieldOption[] = [
+  { value: "hash", label: "Hash" },
+  { value: "path", label: "Path", disabled: true },
+  { value: "payload", label: "Payload", disabled: true },
+];
 
 interface FilterBarProps {
   typeOptions: FilterOption[];
@@ -53,8 +59,9 @@ export function FilterBar({
       <SearchBar
         value={search}
         onChange={onSearchChange}
+        fields={PACKET_SEARCH_FIELDS}
         field={searchField}
-        onFieldChange={onSearchFieldChange}
+        onFieldChange={(f) => onSearchFieldChange(f as SearchField)}
       />
 
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>

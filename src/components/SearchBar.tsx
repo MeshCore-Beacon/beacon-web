@@ -1,25 +1,23 @@
 import { useState, useRef, useEffect } from "react";
 import { Dropdown } from "./Dropdown";
-import type { SearchField } from "../features/packets/types";
+
+export interface SearchFieldOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
 
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
-  field: SearchField;
-  onFieldChange: (field: SearchField) => void;
+  fields: SearchFieldOption[];
+  field: string;
+  onFieldChange: (field: string) => void;
 }
-
-// search field selector config
-
-const FIELDS: { value: SearchField; label: string; disabled: boolean }[] = [
-  { value: "hash", label: "Hash", disabled: false },
-  { value: "path", label: "Path", disabled: true },
-  { value: "payload", label: "Payload", disabled: true },
-];
 
 // debounced search input with field dropdown
 
-export function SearchBar({ value, onChange, field, onFieldChange }: SearchBarProps) {
+export function SearchBar({ value, onChange, fields, field, onFieldChange }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
   const [prevValue, setPrevValue] = useState(value);
   if (prevValue !== value) {
@@ -44,7 +42,7 @@ export function SearchBar({ value, onChange, field, onFieldChange }: SearchBarPr
   }
 
   // shouldn't happen but TS doesn't narrow after .find()
-  const currentField = FIELDS.find((f) => f.value === field) ?? { value: "hash" as const, label: "Hash", disabled: false };
+  const currentField = fields.find((f) => f.value === field) ?? fields[0];
 
   return (
     <div className="flex items-center flex-1 min-w-0">
@@ -57,12 +55,12 @@ export function SearchBar({ value, onChange, field, onFieldChange }: SearchBarPr
             className="flex items-center gap-1 text-[11px] font-mono px-2 py-1 rounded-l-sm border border-r-0 border-border bg-bg-surface text-text-muted hover:text-text-normal transition-colors cursor-pointer"
             onClick={toggle}
           >
-            {currentField.label}
+            {currentField?.label ?? ""}
             <span className="text-text-dim text-[9px]">▾</span>
           </button>
         )}
       >
-        {(close) => FIELDS.map((f) => (
+        {(close) => fields.map((f) => (
           <button
             key={f.value}
             type="button"
@@ -101,7 +99,7 @@ export function SearchBar({ value, onChange, field, onFieldChange }: SearchBarPr
           type="text"
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
-          placeholder={`Search by ${currentField.label.toLowerCase()}...`}
+          placeholder={`Search by ${(currentField?.label ?? "").toLowerCase()}...`}
           className="w-full text-[11px] font-mono bg-bg-surface border border-border rounded-r-sm pl-7 pr-7 py-1 text-text-bright placeholder:text-text-dim outline-none focus:border-primary-dim transition-colors"
         />
         {localValue && (
