@@ -59,21 +59,23 @@ export function getIatas(): Promise<IataCode[]> {
   return request("/iatas");
 }
 
-export function getChannels(params?: { iata?: string; limit?: number }): Promise<ChannelSummary[]> {
-  return request("/channels", {
+export async function getChannels(params?: { iata?: string; limit?: number }): Promise<ChannelSummary[]> {
+  const page = await request<{ items: ChannelSummary[] }>("/channels", {
     iata: params?.iata,
     limit: params?.limit,
   });
+  return page.items;
 }
 
-export function getChannelMessages(
+export async function getChannelMessages(
   channelId: number,
   params?: { iata?: string; limit?: number },
 ): Promise<ChannelMessage[]> {
-  return request(`/channels/${channelId}/messages`, {
+  const page = await request<{ items: ChannelMessage[] }>(`/channels/${channelId}/messages`, {
     iata: params?.iata,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
   });
+  return page.items;
 }
 
 export function getBrokers(): Promise<BrokerStatus[]> {
