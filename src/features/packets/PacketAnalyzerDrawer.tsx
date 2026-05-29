@@ -2,10 +2,11 @@ import { useState, useCallback } from "react";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValue, type RouteTypeValue } from "../../types/enums";
 import { Badge } from "../../components/Badge";
-import { payloadTypeVariant } from "../../components/badge-utils";
+import { VARIANT_CLASSES, payloadTypeVariant } from "../../components/badge-utils";
 import { formatHex, formatTimestamp } from "../../lib/formatters";
 import { computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
+import { ObservationCard } from "./ObservationCard";
 
 function decodePayloadHex(encoded: string): string | null {
   try {
@@ -33,20 +34,11 @@ function CopyLinkButton({ packetHash }: { packetHash: string }) {
   return (
     <button
       type="button"
-      className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+      className={`inline-flex items-center font-mono text-[11px] font-semibold px-2 py-0.5 rounded-sm border tracking-wider uppercase cursor-pointer transition-colors ${copied ? VARIANT_CLASSES.live : VARIANT_CLASSES.text}`}
       onClick={handleCopy}
       aria-label="Copy packet link"
     >
-      {copied ? (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M6.5 10.5L5.5 11.5C4.4 12.6 2.6 12.6 1.5 11.5V11.5C0.4 10.4 0.4 8.6 1.5 7.5L4.5 4.5C5.6 3.4 7.4 3.4 8.5 4.5V4.5C9.1 5.1 9.3 5.9 9.2 6.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          <path d="M9.5 5.5L10.5 4.5C11.6 3.4 13.4 3.4 14.5 4.5V4.5C15.6 5.6 15.6 7.4 14.5 8.5L11.5 11.5C10.4 12.6 8.6 12.6 7.5 11.5V11.5C6.9 10.9 6.7 10.1 6.8 9.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
-      )}
+      {copied ? "Copied" : "Copy Link"}
     </button>
   );
 }
@@ -56,24 +48,24 @@ interface PacketAnalyzerDrawerProps {
   selectedObservationId: number | null;
   open: boolean;
   onToggle: () => void;
+  onSelectObservation?: (id: number) => void;
 }
 
 // collapsible side panel showing packet structure and payload breakdown
 
-export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onToggle }: PacketAnalyzerDrawerProps) {
+export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onToggle, onSelectObservation }: PacketAnalyzerDrawerProps) {
   const selectedObs = detail?.observations.find((o) => o.id === selectedObservationId)
     ?? detail?.observations[0]
     ?? null;
 
-  const rawHex = selectedObs?.rawPacket ?? detail?.rawPayload ?? "";
-  const hasStructure = !!selectedObs?.rawPacket;
+  const rawHex = detail?.rawPayload ?? "";
   const totalBytes = rawHex.length / 2;
 
-  const fieldRanges = detail && hasStructure
+  const fieldRanges = detail
     ? computeFieldRanges(detail, selectedObs, totalBytes)
     : {};
 
-  const headerHex = hasStructure ? rawHex.slice(0, 2) : detail?.headerByte ?? "";
+  const headerHex = rawHex.slice(0, 2);
 
   if (!open) {
     return (
@@ -140,11 +132,6 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                   ×{detail.observations.length}
                 </span>
               </div>
-              {detail.summary && (
-                <div className="text-[13px] text-text-normal font-mono mb-1.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                  {detail.summary}
-                </div>
-              )}
               <div className="flex items-center gap-3 text-[13px] font-mono">
                 <span><span className="text-text-dim">First </span><span className="text-text-normal">{formatTimestamp(detail.firstHeardAt)}</span></span>
                 <span className="text-[6px] text-border" aria-hidden>·</span>
@@ -158,19 +145,25 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
               </DrawerSection>
             )}
 
+            {detail.observations.length > 1 && (
+              <DrawerSection title={`Observations (${detail.observations.length})`} collapsible defaultOpen={false}>
+                <div className="flex flex-col gap-1">
+                  {detail.observations.map((obs) => (
+                    <ObservationCard
+                      key={obs.id}
+                      observation={obs}
+                      selected={selectedObs?.id === obs.id}
+                      onClick={onSelectObservation ? () => onSelectObservation(obs.id) : undefined}
+                    />
+                  ))}
+                </div>
+              </DrawerSection>
+            )}
+
             {rawHex && (
               <DrawerSection title="Raw Packet">
                 <div className="bg-bg-base border border-border rounded p-2 max-h-40 overflow-y-auto">
-                  {hasStructure ? (
-                    <ColoredHexDump data={rawHex} ranges={fieldRanges} />
-                  ) : (
-                    <pre className="text-[13px] font-mono text-text-muted leading-relaxed overflow-x-auto whitespace-pre">
-                      {(rawHex.match(/.{1,2}/g) ?? []).reduce((acc, b, i) => {
-                        const sep = i > 0 && i % 16 === 0 ? "\n" : i > 0 ? " " : "";
-                        return acc + sep + b.toUpperCase();
-                      }, "")}
-                    </pre>
-                  )}
+                  <ColoredHexDump data={rawHex} ranges={fieldRanges} />
                 </div>
               </DrawerSection>
             )}
@@ -194,7 +187,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 {detail.transportCodes && (
                   <ColorAccentField field="transport">
                     <span className="text-text-dim">Transport </span>
-                    <span className="text-text-normal">{detail.transportCodes.regionCode} / {detail.transportCodes.subRegionCode}</span>
+                    <span className="text-text-normal">{detail.transportCodes}</span>
                   </ColorAccentField>
                 )}
 

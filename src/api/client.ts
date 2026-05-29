@@ -2,6 +2,7 @@ import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, BrokerStatus } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer } from "../features/observers/types";
+import type { NodeSummary, Node, NodeObservation } from "../features/nodes/types";
 
 // typed fetch wrapper with query params
 
@@ -41,7 +42,7 @@ async function request<T>(path: string, params?: Record<string, string | number 
 
 export function getPackets(
   iata: string,
-  params?: { cursor?: string; limit?: number; afterId?: number },
+  params?: { cursor?: number; limit?: number; afterId?: number },
 ): Promise<CursorPage<PacketSummary>> {
   return request("/packets", {
     iata: iata === "*" ? undefined : iata,
@@ -83,19 +84,55 @@ export function getBrokers(): Promise<BrokerStatus[]> {
 }
 
 export async function getObservers(
-  params?: { iata?: string; type?: string; broker?: string; status?: string },
+  params?: { iata?: string; type?: string; broker?: string; status?: string; name?: string },
 ): Promise<ObserverSummary[]> {
   const page = await request<{ items: ObserverSummary[] }>("/observers", {
     iata: params?.iata,
     type: params?.type,
     broker: params?.broker,
     status: params?.status,
+    name: params?.name,
   });
   return page.items;
 }
 
 export function getObserver(observerId: string): Promise<Observer> {
   return request(`/observers/${observerId}`);
+}
+
+export async function getNodes(
+  params?: {
+    iata?: string;
+    type?: string;
+    name?: string;
+    supportsMultibytePaths?: boolean;
+    supportsMultibyteTraces?: boolean;
+    limit?: number;
+  },
+): Promise<NodeSummary[]> {
+  const page = await request<{ items: NodeSummary[] }>("/nodes", {
+    iata: params?.iata,
+    typeName: params?.type,
+    name: params?.name,
+    supportsMultibytePaths: params?.supportsMultibytePaths ? "true" : undefined,
+    supportsMultibyteTraces: params?.supportsMultibyteTraces ? "true" : undefined,
+    limit: params?.limit,
+  });
+  return page.items;
+}
+
+export function getNode(nodeId: string): Promise<Node> {
+  return request(`/nodes/${nodeId}`);
+}
+
+export function getNodeObservations(
+  nodeId: string,
+  params?: { cursor?: number; limit?: number },
+): Promise<CursorPage<NodeObservation>> {
+  return request(`/nodes/${nodeId}/observations`, {
+    cursor: params?.cursor,
+    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+  });
 }
 
 export { ApiError };

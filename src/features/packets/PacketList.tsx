@@ -5,7 +5,6 @@ import { usePackets } from "./usePackets";
 import { usePacketFilters, matchesFilters } from "./usePacketFilters";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
 import { PacketVirtualList } from "./PacketVirtualList";
-import { PacketAnalyzerDrawer } from "./PacketAnalyzerDrawer";
 import { FilterBar } from "../../components/FilterBar";
 import { getPacketDetail } from "../../api/client";
 import { PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES } from "../../types/enums";
@@ -23,11 +22,16 @@ const ROUTE_OPTIONS = Object.entries(ROUTE_TYPE_NAMES).map(([value, label]) => (
   label,
 }));
 
-const DRAWER_STORAGE_KEY = "tower-analyzer-open";
+interface PacketListProps {
+  wsManager: WsManager;
+  onAnalyze: (hash: string | null) => void;
+  selectedObservationId: number | null;
+  onSelectObservation: (id: number | null) => void;
+}
 
-// main packet view: filters, banner, virtual list, analyzer
+// main packet view: filters, banner, virtual list
 
-export function PacketList({ wsManager }: { wsManager: WsManager }) {
+export function PacketList({ wsManager, onAnalyze, selectedObservationId, onSelectObservation }: PacketListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   const {
@@ -54,16 +58,9 @@ export function PacketList({ wsManager }: { wsManager: WsManager }) {
   const scrollToTopRef = useRef<(() => void) | null>(null);
 
   const [expandedHash, setExpandedHash] = useState<string | null>(() => searchParams.get("hash"));
-  const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(() => {
-    const stored = localStorage.getItem(DRAWER_STORAGE_KEY);
-    return stored === null ? true : stored === "true";
-  });
-
-  const expandedPacket = packets.find((p) => p.packetHash === expandedHash);
 
   const { data: expandedDetail } = useQuery({
-    queryKey: ["packet-detail", expandedHash, expandedPacket?.observationCount],
+    queryKey: ["packet-detail", expandedHash],
     queryFn: () => getPacketDetail(expandedHash!),
     enabled: !!expandedHash,
     staleTime: Infinity,
@@ -73,7 +70,7 @@ export function PacketList({ wsManager }: { wsManager: WsManager }) {
   const handleToggleExpand = useCallback((hash: string) => {
     setExpandedHash((prev) => {
       const next = prev === hash ? null : hash;
-      setSelectedObservationId(null);
+      onAnalyze(next);
       setSearchParams((p) => {
         const n = new URLSearchParams(p);
         if (next) n.set("hash", next); else n.delete("hash");
@@ -81,15 +78,7 @@ export function PacketList({ wsManager }: { wsManager: WsManager }) {
       }, { replace: true });
       return next;
     });
-  }, [setSearchParams]);
-
-  const handleToggleDrawer = useCallback(() => {
-    setDrawerOpen((prev) => {
-      const next = !prev;
-      localStorage.setItem(DRAWER_STORAGE_KEY, String(next));
-      return next;
-    });
-  }, []);
+  }, [setSearchParams, onAnalyze]);
 
   useWsPacketHandler(wsManager, handlePacketObservation);
   useWsLaggedHandler(wsManager, handleLagged);
@@ -157,16 +146,9 @@ export function PacketList({ wsManager }: { wsManager: WsManager }) {
           expandedDetail={expandedDetail}
           onToggleExpand={handleToggleExpand}
           selectedObservationId={selectedObservationId}
-          onSelectObservation={setSelectedObservationId}
+          onSelectObservation={onSelectObservation}
         />
       </div>
-
-      <PacketAnalyzerDrawer
-        detail={expandedDetail}
-        selectedObservationId={selectedObservationId}
-        open={drawerOpen}
-        onToggle={handleToggleDrawer}
-      />
     </div>
   );
 }

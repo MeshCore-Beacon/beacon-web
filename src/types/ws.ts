@@ -1,4 +1,3 @@
-import type { Observation } from "./api";
 import type { ChannelMessage } from "../features/channels/types";
 
 // individual server-sent message shapes
@@ -40,10 +39,16 @@ export interface WsPacketObservation {
       payloadTypeName: string;
       routeType: number;
       isFirstObservation: boolean;
-      totalObservationCount: number;
-      summary: string;
     };
-    observation: Observation;
+    observation: {
+      observerId: string;
+      observerName: string;
+      iata: string;
+      heardAt: number;
+      rssi: number;
+      snr: number;
+      sourceBroker: string;
+    };
   };
 }
 
@@ -69,13 +74,11 @@ export interface WsNodeUpdate {
   event: "nodeUpdate";
   data: {
     nodeId: string;
-    publicKey: string;
-    name: string | null;
-    supportsMultibytePaths: boolean;
-    supportsMultibyteTraces: boolean;
-    minFirmwareVersion: string | null;
-    iatasHeardIn: string[];
-    reason: "advertRefresh" | "capabilityUpgraded" | "newIataHeard";
+    name: string;
+    nodeType: number;
+    iata: string;
+    lat?: number;
+    lng?: number;
   };
 }
 
@@ -121,7 +124,7 @@ export interface SubscriptionFilter {
   iatas?: string[];
   regionIds?: string[];
   payloadTypes?: number[];
-  routeTypes?: string[];
+  routeTypes?: number[];
   channelHashes?: string[];
   observerIds?: string[];
   events?: string[];
