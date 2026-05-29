@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "./scripts/devserver.sh start",
+    "stop": "./scripts/devserver.sh stop",
+    "restart": "./scripts/devserver.sh restart",
+    "dev:status": "./scripts/devserver.sh status",
+    "dev:stop-all": "./scripts/devserver.sh stop-all"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.11",
