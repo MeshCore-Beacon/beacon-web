@@ -82,15 +82,16 @@ export function getBrokers(): Promise<BrokerStatus[]> {
   return request("/brokers");
 }
 
-export function getObservers(
+export async function getObservers(
   params?: { iata?: string; type?: string; broker?: string; status?: string },
 ): Promise<ObserverSummary[]> {
-  return request("/observers", {
+  const page = await request<{ items: ObserverSummary[] }>("/observers", {
     iata: params?.iata,
     type: params?.type,
     broker: params?.broker,
     status: params?.status,
   });
+  return page.items;
 }
 
 export function getObserver(observerId: string): Promise<Observer> {
