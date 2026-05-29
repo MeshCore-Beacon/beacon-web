@@ -149,7 +149,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
               </DrawerSection>
             )}
 
-            {detail.observations.length > 1 && (
+            {detail.observations.length >= 1 && (
               <DrawerSection title={`Observations (${detail.observations.length})`} collapsible defaultOpen={false}>
                 <div className="flex flex-col gap-1">
                   {detail.observations.map((obs) => (

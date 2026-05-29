@@ -96,7 +96,7 @@ function AppInner() {
   }, []);
 
   const tabContent: Record<string, React.ReactNode> = {
-    Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} selectedObservationId={selectedObservationId} onSelectObservation={setSelectedObservationId} />,
+    Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Nodes: <NodeTable wsManager={wsManager} />,
     Observers: <ObserverTable wsManager={wsManager} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
