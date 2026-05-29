@@ -26,4 +26,5 @@ export interface ChannelMessage {
   senderName: string;
   content: string;
   sentAt: string;
+  observationCount?: number;
 }

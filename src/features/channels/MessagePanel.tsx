@@ -30,6 +30,8 @@ function formatMessageTime(iso: string): string {
 }
 
 function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heardCount?: number; onAnalyze?: (hash: string) => void }) {
+  // REST carries the server-side total; the live WS counter augments it during the session
+  const reach = Math.max(msg.observationCount ?? 0, heardCount ?? 0);
   return (
     <div
       className={`px-3 py-2${onAnalyze ? " cursor-pointer hover:bg-bg-surface transition-colors" : ""}`}
@@ -40,13 +42,9 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
           {msg.senderName}
         </span>
         <span className="text-[11px] text-text-dim">{formatMessageTime(msg.sentAt)}</span>
+        {reach > 0 && <Badge variant="text">×{reach}</Badge>}
       </div>
       <div className="text-text-normal text-xs mt-0.5">{msg.content}</div>
-      {heardCount != null && heardCount > 1 && (
-        <div className="text-[11px] text-text-dim mt-0.5 font-mono">
-          heard {heardCount}×
-        </div>
-      )}
     </div>
   );
 }
