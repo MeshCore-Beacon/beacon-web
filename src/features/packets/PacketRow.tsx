@@ -49,7 +49,11 @@ export function PacketRow({ packet, expanded, detail, isFresh, onToggle, selecte
             {packet.summary}
           </span>
         )}
-        <span className="font-mono text-[11px] text-primary font-semibold whitespace-nowrap bg-primary/6 px-1.5 rounded-sm">
+        <span
+          className="font-mono text-[11px] text-primary font-semibold whitespace-nowrap bg-primary/6 px-1.5 rounded-sm"
+          title={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}
+          aria-label={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}
+        >
           ×{packet.observationCount}
         </span>
       </div>

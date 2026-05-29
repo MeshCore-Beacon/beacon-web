@@ -143,7 +143,7 @@ export function usePackets() {
         routeTypeName: ROUTE_TYPE_NAMES[data.packet.routeType as RouteTypeValue] ?? "Unknown",
         firstHeardAt: data.observation.heardAt,
         lastHeardAt: data.observation.heardAt,
-        observationCount: 0,
+        observationCount: data.packet.observationCount,
         latestObserver: {
           id: data.observation.observerId,
           displayName: data.observation.observerName,

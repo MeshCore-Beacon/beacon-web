@@ -128,7 +128,11 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 <Badge variant={payloadTypeVariant(detail.payloadType)}>
                   {PAYLOAD_TYPE_NAMES[detail.payloadType as PayloadTypeValue] ?? "Unknown"}
                 </Badge>
-                <span className="ml-auto font-mono text-[13px] text-primary font-semibold bg-primary/6 px-1.5 rounded-sm">
+                <span
+                  className="ml-auto font-mono text-[13px] text-primary font-semibold bg-primary/6 px-1.5 rounded-sm"
+                  title={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                  aria-label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                >
                   ×{detail.observations.length}
                 </span>
               </div>
