@@ -31,6 +31,19 @@ const COLUMNS: Column<NodeSummary>[] = [
     cell: (node) => <Badge variant="default">{node.nodeTypeName}</Badge>,
   },
   {
+    header: "IATAs",
+    cell: (node) =>
+      node.iatas && node.iatas.length > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {node.iatas.map((code) => (
+            <Badge key={code} variant="default">{code}</Badge>
+          ))}
+        </div>
+      ) : (
+        <span className="text-text-dim">—</span>
+      ),
+  },
+  {
     header: "Location",
     className: "text-text-muted",
     cell: (node) =>

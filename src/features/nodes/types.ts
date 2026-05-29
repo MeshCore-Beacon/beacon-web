@@ -6,6 +6,7 @@ export interface NodeSummary {
   name: string | null;
   lat: number | null;
   lng: number | null;
+  iatas: string[];
 }
 
 export interface Node extends NodeSummary {
