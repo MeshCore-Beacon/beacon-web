@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useLayoutEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { PacketSummary, PacketDetail } from "../../types/api";
+import type { PacketSummary } from "../../types/api";
 import { PacketRow } from "./PacketRow";
 import { LIVE_BUFFER_CAP, SCROLL_TOP_THRESHOLD_PX, SCROLL_BOTTOM_THRESHOLD_PX } from "../../lib/constants";
 
@@ -12,10 +12,7 @@ interface PacketVirtualListProps {
   onScrollAwayFromTop: (isAway: boolean) => void;
   scrollToTopRef?: React.MutableRefObject<(() => void) | null>;
   expandedHash: string | null;
-  expandedDetail?: PacketDetail;
   onToggleExpand: (hash: string) => void;
-  selectedObservationId: number | null;
-  onSelectObservation: (id: number) => void;
 }
 
 // virtualized scroll list with fresh-item highlighting and infinite load
@@ -28,10 +25,7 @@ export function PacketVirtualList({
   onScrollAwayFromTop,
   scrollToTopRef,
   expandedHash,
-  expandedDetail,
   onToggleExpand,
-  selectedObservationId,
-  onSelectObservation,
 }: PacketVirtualListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const knownHashes = useRef<Set<string>>(new Set());
@@ -177,11 +171,8 @@ export function PacketVirtualList({
                 <PacketRow
                   packet={packet}
                   expanded={expandedHash === packet.packetHash}
-                  detail={expandedHash === packet.packetHash ? expandedDetail : undefined}
                   isFresh={freshHashes.has(packet.packetHash)}
                   onToggle={() => onToggleExpand(packet.packetHash)}
-                  selectedObservationId={expandedHash === packet.packetHash ? selectedObservationId : null}
-                  onSelectObservation={onSelectObservation}
                 />
               </div>
             </div>

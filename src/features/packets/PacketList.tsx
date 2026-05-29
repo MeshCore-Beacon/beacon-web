@@ -1,12 +1,10 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { usePackets } from "./usePackets";
 import { usePacketFilters, matchesFilters } from "./usePacketFilters";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
 import { PacketVirtualList } from "./PacketVirtualList";
 import { FilterBar } from "../../components/FilterBar";
-import { getPacketDetail } from "../../api/client";
 import { PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES } from "../../types/enums";
 import type { WsManager } from "../../api/ws-manager";
 
@@ -25,13 +23,11 @@ const ROUTE_OPTIONS = Object.entries(ROUTE_TYPE_NAMES).map(([value, label]) => (
 interface PacketListProps {
   wsManager: WsManager;
   onAnalyze: (hash: string | null) => void;
-  selectedObservationId: number | null;
-  onSelectObservation: (id: number | null) => void;
 }
 
 // main packet view: filters, banner, virtual list
 
-export function PacketList({ wsManager, onAnalyze, selectedObservationId, onSelectObservation }: PacketListProps) {
+export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   const {
@@ -59,26 +55,16 @@ export function PacketList({ wsManager, onAnalyze, selectedObservationId, onSele
 
   const [expandedHash, setExpandedHash] = useState<string | null>(() => searchParams.get("hash"));
 
-  const { data: expandedDetail } = useQuery({
-    queryKey: ["packet-detail", expandedHash],
-    queryFn: () => getPacketDetail(expandedHash!),
-    enabled: !!expandedHash,
-    staleTime: Infinity,
-    placeholderData: keepPreviousData,
-  });
-
   const handleToggleExpand = useCallback((hash: string) => {
-    setExpandedHash((prev) => {
-      const next = prev === hash ? null : hash;
-      onAnalyze(next);
-      setSearchParams((p) => {
-        const n = new URLSearchParams(p);
-        if (next) n.set("hash", next); else n.delete("hash");
-        return n;
-      }, { replace: true });
-      return next;
-    });
-  }, [setSearchParams, onAnalyze]);
+    const next = expandedHash === hash ? null : hash;
+    setExpandedHash(next);
+    onAnalyze(next);
+    setSearchParams((p) => {
+      const n = new URLSearchParams(p);
+      if (next) n.set("hash", next); else n.delete("hash");
+      return n;
+    }, { replace: true });
+  }, [expandedHash, setSearchParams, onAnalyze]);
 
   useWsPacketHandler(wsManager, handlePacketObservation);
   useWsLaggedHandler(wsManager, handleLagged);
@@ -143,10 +129,7 @@ export function PacketList({ wsManager, onAnalyze, selectedObservationId, onSele
           onScrollAwayFromTop={handleScrolledAway}
           scrollToTopRef={scrollToTopRef}
           expandedHash={expandedHash}
-          expandedDetail={expandedDetail}
           onToggleExpand={handleToggleExpand}
-          selectedObservationId={selectedObservationId}
-          onSelectObservation={onSelectObservation}
         />
       </div>
     </div>
