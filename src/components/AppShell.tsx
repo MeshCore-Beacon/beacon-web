@@ -5,6 +5,7 @@ import { useRegion, useSetRegion } from "../hooks/useRegion";
 import { useWsStatus } from "../hooks/useWsStatus";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
+import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import type { WsManager } from "../api/ws-manager";
 
@@ -92,7 +93,7 @@ function RegionSelector() {
             }`}
             onClick={() => {
               setRegion("*");
-              localStorage.setItem("tower-region", "*");
+              localStorage.setItem("beacon-region", "*");
               close();
             }}
           >
@@ -110,7 +111,7 @@ function RegionSelector() {
               }`}
               onClick={() => {
                 setRegion(i.iata);
-                localStorage.setItem("tower-region", i.iata);
+                localStorage.setItem("beacon-region", i.iata);
                 close();
               }}
             >
@@ -125,7 +126,7 @@ function RegionSelector() {
           className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono text-text-bright bg-primary/10"
           onClick={() => {
             setRegion("*");
-            localStorage.setItem("tower-region", "*");
+            localStorage.setItem("beacon-region", "*");
             close();
           }}
         >
@@ -199,9 +200,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
   return (
     <div className="flex flex-col h-dvh">
       <header className="flex items-center justify-between px-4 h-[42px] bg-bg-surface border-b border-border shrink-0">
-        <span className="font-mono font-bold text-sm text-primary tracking-wider uppercase">
-          TOWER <span className="text-text-dim font-normal tracking-normal normal-case">v0.1</span>
-        </span>
+        <BeaconWordmark iconSize={22} textClassName="text-sm" />
         <div className="flex items-center gap-3">
           <RegionSelector />
           <ThemePicker />
@@ -233,7 +232,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
       </main>
 
       <footer className="flex items-center px-4 py-1.5 bg-bg-surface border-t border-border font-mono text-[11px] text-text-dim shrink-0">
-        <span>MeshCore Tower v0.1</span>
+        <span>BEACON v0.1</span>
       </footer>
     </div>
   );

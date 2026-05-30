@@ -49,6 +49,42 @@
   animation: packet-pulse 1s ease-out forwards;
 }
 
+/* RF beacon: each ring rests at its natural opacity and, as the wave passes,
+   brightens and swells before easing back — staggered outward so the signal
+   radiates from the core. The resting state (0%/100%) matches the static logo,
+   so the loop starts and repeats seamlessly with no pop. */
+@keyframes beacon-core-ping {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  16%      { transform: scale(1.25); opacity: 1; }
+  45%      { transform: scale(0.95); opacity: 0.85; }
+}
+
+@keyframes beacon-ring-ping {
+  0%, 100% { opacity: var(--ring-base); transform: scale(1); }
+  30%      { opacity: 1;                transform: scale(1.06); }
+  60%      { opacity: var(--ring-base); transform: scale(1); }
+}
+
+.beacon-core-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: beacon-core-ping 1.8s ease-in-out infinite both;
+}
+
+.beacon-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: beacon-ring-ping 1.8s ease-in-out infinite both;
+}
+.beacon-ring-1 { --ring-base: 0.95; animation-delay: 0.08s; }
+.beacon-ring-2 { --ring-base: 0.6;  animation-delay: 0.30s; }
+.beacon-ring-3 { --ring-base: 0.3;  animation-delay: 0.52s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .beacon-core-pulse,
+  .beacon-ring { animation: none; }
+}
+
 .writing-vertical {
   writing-mode: vertical-rl;
   text-orientation: mixed;

@@ -4,7 +4,7 @@ import { type Theme, DEFAULT_THEME_ID, loadThemes, applyTheme } from "../lib/the
 
 // loads themes from JSON, persists selection, applies CSS vars
 
-const STORAGE_KEY = "tower-theme";
+const STORAGE_KEY = "beacon-theme";
 
 interface ThemeCtx {
   themeId: string;

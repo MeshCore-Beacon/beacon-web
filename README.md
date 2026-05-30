@@ -1,4 +1,4 @@
-# MeshCore Tower Web
+# BEACON Web
 
 Real-time LoRa mesh packet analyzer. Desktop-first, dark-mode-primary, dense information display for radio hobbyists.
 
@@ -9,13 +9,13 @@ Built with React 19, TypeScript, Tailwind CSS 4, TanStack Query, and TanStack Vi
 ### 1. Copy the `docker/` folder to your server
 
 ```bash
-scp -r docker/ user@your-server:/opt/docker/tower-web
+scp -r docker/ user@your-server:/opt/docker/beacon-web
 ```
 
 ### 2. Create a `.env` file
 
 ```bash
-cd /opt/docker/tower-web
+cd /opt/docker/beacon-web
 cat > .env << 'EOF'
 DOMAIN=dev.meshcore.ca
 VITE_API_BASE=https://dev.meshcore.ca/api/v1
