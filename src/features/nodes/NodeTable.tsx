@@ -78,6 +78,7 @@ export function NodeTable({ wsManager }: NodeTableProps) {
         supportsMultibyteTraces: capabilityFilter === "traces" || undefined,
       }),
     staleTime: 30_000,
+    refetchInterval: 30_000,
     placeholderData: keepPreviousData,
   });
 
@@ -87,7 +88,9 @@ export function NodeTable({ wsManager }: NodeTableProps) {
         if (!old) return old;
         const idx = old.findIndex((n) => n.id === data.nodeId);
         if (idx === -1) {
-          queryClient.invalidateQueries({ queryKey: ["nodes"] });
+          // Not a node we're showing (filtered out, or past the page). Live
+          // updates only patch rows already on screen — new nodes get picked up
+          // by the periodic refetch, not by hammering /nodes on every off-list update.
           return old;
         }
         const updated = [...old];
