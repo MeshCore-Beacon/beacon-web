@@ -24,6 +24,7 @@ export class WsManager {
   private subscriptionId: string | null = null;
   private status: WsStatus = "disconnected";
   private reconnectAttempt = 0;
+  private intentionalClose = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private msgCounter = 0;
@@ -111,6 +112,8 @@ export class WsManager {
   }
 
   disconnect(): void {
+    this.intentionalClose = true;
+    this.reconnectAttempt = 0;
     this.clearTimers();
     this.ws?.close();
     this.ws = null;
@@ -120,6 +123,7 @@ export class WsManager {
   // exponential backoff w/ jitter to avoid thundering herd on reconnect
 
   private doConnect(): void {
+    this.intentionalClose = false;
     this.clearTimers();
     this.setStatus("connecting");
 
@@ -142,7 +146,7 @@ export class WsManager {
 
     this.ws.onclose = (e: CloseEvent) => {
       this.clearTimers();
-      if (e.code === 1000) {
+      if (this.intentionalClose || e.code === 1000) {
         this.setStatus("disconnected");
         return;
       }

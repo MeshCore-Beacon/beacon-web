@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
 
 export function Dropdown({ renderTrigger, align = "right", width = "w-48", children }: {
@@ -12,6 +12,15 @@ export function Dropdown({ renderTrigger, align = "right", width = "w-48", child
   const close = useCallback(() => setOpen(false), []);
   const toggle = useCallback(() => setOpen((v) => !v), []);
   useClickOutside(ref, open, close);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, close]);
 
   return (
     <div ref={ref} className="relative">
