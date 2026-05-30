@@ -15,8 +15,12 @@ export function SplashScreen() {
   // Synchronous gate: decided before first paint so StrictMode's double-mount
   // (and any same-session reload) never re-shows it.
   const [render, setRender] = useState(() => {
-    if (typeof sessionStorage === "undefined") return false;
-    return sessionStorage.getItem(SPLASH_KEY) !== "1";
+    try {
+      if (typeof sessionStorage === "undefined") return false;
+      return sessionStorage.getItem(SPLASH_KEY) !== "1";
+    } catch {
+      return false;
+    }
   });
   const [fading, setFading] = useState(false);
 
