@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { RegionProvider, useRegion } from "./hooks/useRegion";
@@ -11,10 +11,14 @@ import { NodeTable } from "./features/nodes/NodeTable";
 import { ObserverTable } from "./features/observers/ObserverTable";
 import { ChannelList } from "./features/channels/ChannelList";
 import { StatsOverview } from "./features/stats/StatsOverview";
-import { MapView } from "./features/map/MapView";
+import { EmptyState } from "./components/EmptyState";
 import { getPacketDetail } from "./api/client";
 import { WsManager } from "./api/ws-manager";
 import { WS_URL } from "./lib/constants";
+
+// Map is the only heavy tab (maplibre-gl ~1MB min); lazy-load so its chunk is fetched on first
+// open. The .then() keeps MapView a named export while satisfying React.lazy's default contract.
+const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ default: m.MapView })));
 
 // global singletons
 
@@ -111,7 +115,9 @@ function AppInner() {
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="flex flex-1 min-h-0">
           <div key={activeTab} className="flex flex-1 min-h-0 fade-in">
-            {tabContent[activeTab]}
+            <Suspense fallback={<EmptyState title="Map" subtitle="Loading…" />}>
+              {tabContent[activeTab]}
+            </Suspense>
           </div>
           {analyzerHash && (activeTab === "Packets" || activeTab === "Channels") && (
             <PacketAnalyzerDrawer
