@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useWsChannelMessageHandler } from "../../hooks/useWsHandlers";
+import { SkeletonRows } from "../../components/SkeletonRows";
 import { ChannelSidebar } from "./ChannelSidebar";
 import { MessagePanel } from "./MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "./types";
@@ -96,8 +97,10 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center flex-1 text-text-dim text-xs font-mono">
-        loading channels…
+      <div className="flex flex-1 min-h-0">
+        <div className="w-64 border-r border-border shrink-0">
+          <SkeletonRows rows={8} />
+        </div>
       </div>
     );
   }

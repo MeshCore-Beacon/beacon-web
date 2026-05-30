@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { EmptyState } from "./EmptyState";
+import { SkeletonRows } from "./SkeletonRows";
 
 export interface Column<T> {
   header: string;
@@ -21,8 +23,8 @@ interface DataTableProps<T> {
 export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center flex-1 text-text-dim text-xs font-mono tracking-wider">
-        loading…
+      <div className="flex-1 overflow-y-auto">
+        <SkeletonRows />
       </div>
     );
   }
@@ -45,8 +47,10 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
               return (
                 <tr
                   key={key}
-                  className={`border-b border-border/40 cursor-pointer transition-colors ${
-                    isSelected ? "bg-primary/10" : "hover:bg-bg-raised"
+                  className={`border-b border-border/40 border-l-2 cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-primary/10 border-l-primary"
+                      : "border-l-transparent hover:bg-primary/5 hover:border-l-primary/50"
                   }`}
                   onClick={() => onSelect(isSelected ? null : key)}
                 >
@@ -59,9 +63,7 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
           </tbody>
         </table>
       ) : (
-        <div className="flex items-center justify-center h-32 text-text-muted text-xs font-mono">
-          {emptyLabel}
-        </div>
+        <EmptyState title={emptyLabel} />
       )}
     </div>
   );

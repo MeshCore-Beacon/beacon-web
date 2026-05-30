@@ -110,7 +110,9 @@ function AppInner() {
       <RegionWatcher wsManager={wsManager} />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="flex flex-1 min-h-0">
-          {tabContent[activeTab]}
+          <div key={activeTab} className="flex flex-1 min-h-0 fade-in">
+            {tabContent[activeTab]}
+          </div>
           {analyzerHash && (activeTab === "Packets" || activeTab === "Channels") && (
             <PacketAnalyzerDrawer
               detail={analyzerDetail}
