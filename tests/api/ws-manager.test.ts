@@ -184,6 +184,28 @@ describe("WsManager", () => {
     expect(handler.mock.calls[0]![0].droppedCount).toBe(47);
   });
 
+  it("refreshes the last-event timestamp on lagged and pong messages", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 123, connectionId: "abc" });
+
+    const baseline = mgr.getLastEventTimestamp();
+
+    // a lag notice is still server traffic and should reset the stale timer
+    vi.advanceTimersByTime(5000);
+    ws.simulateMessage({ v: 1, type: "lagged", droppedCount: 1, since: 0, lastObservationId: 0 });
+    const afterLagged = mgr.getLastEventTimestamp();
+    expect(afterLagged).toBeGreaterThan(baseline);
+
+    // so should a heartbeat pong
+    vi.advanceTimersByTime(5000);
+    ws.simulateMessage({ v: 1, type: "pong", id: "p-1" });
+    expect(mgr.getLastEventTimestamp()).toBeGreaterThan(afterLagged);
+  });
+
   it("dispatches channelMessage events to handlers", () => {
     const mgr = new WsManager("ws://test/ws");
     const handler = vi.fn();

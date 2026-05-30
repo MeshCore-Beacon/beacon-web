@@ -167,6 +167,8 @@ export class WsManager {
         break;
 
       case "pong":
+        // a pong proves the link is alive, so it counts as recent activity
+        this.lastEventTimestamp = Date.now();
         break;
 
       case "event":
@@ -191,6 +193,8 @@ export class WsManager {
         break;
 
       case "lagged":
+        // a lag notice is still server traffic, so it counts as recent activity
+        this.lastEventTimestamp = Date.now();
         for (const handler of this.laggedHandlers) {
           handler(msg);
         }
