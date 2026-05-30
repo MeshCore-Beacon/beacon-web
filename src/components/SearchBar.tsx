@@ -20,12 +20,22 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, fields, field, onFieldChange }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
   const [prevValue, setPrevValue] = useState(value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // When the parent resets `value` (e.g. the Clear button), adopt it for display.
   if (prevValue !== value) {
     setPrevValue(value);
     setLocalValue(value);
   }
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cancel any pending debounce when the parent value changes, so a stale timer
+  // can't fire afterwards and revert the reset.
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+  }, [value]);
 
   useEffect(() => {
     return () => {
@@ -41,7 +51,7 @@ export function SearchBar({ value, onChange, fields, field, onFieldChange }: Sea
     }, 300);
   }
 
-  // shouldn't happen but TS doesn't narrow after .find()
+  // fall back to the first field if the current selection is unknown
   const currentField = fields.find((f) => f.value === field) ?? fields[0];
 
   return (

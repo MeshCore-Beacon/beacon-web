@@ -5,7 +5,7 @@ export function formatHex(hex: string): string {
 }
 
 export function formatTimestamp(epochMs: number): string {
-  // 12h because most users are US-based, might want to make this a setting
+  // force a 12h clock for now; could become a per-user setting later
   return new Date(epochMs).toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",

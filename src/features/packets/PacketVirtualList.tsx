@@ -33,15 +33,25 @@ export function PacketVirtualList({
   const freshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAtTopRef = useRef(true);
   const prevCountRef = useRef(packets.length);
+  const prevFirstKeyRef = useRef<string | undefined>(packets[0]?.packetHash);
   const savedScrollHeightRef = useRef(0);
   const shouldCompensateRef = useRef(false);
 
-  useLayoutEffect(() => {
-    if (packets.length > prevCountRef.current && !isAtTopRef.current) {
-      savedScrollHeightRef.current = parentRef.current?.scrollHeight ?? 0;
-      shouldCompensateRef.current = true;
-    }
-  }, [packets.length]);
+  // Anchor scroll position when live packets are PREPENDED while the user is scrolled away from
+  // the top. The pre-commit scroll height must be read here in the render body (parentRef still
+  // points at the old DOM); a post-commit effect is too late — the virtualizer's spacer has
+  // already grown, collapsing the delta to ~0 so nothing offsets the new rows. A changed first
+  // key distinguishes a real top-prepend from history pages appended at the bottom by
+  // fetchNextPage (those grow the count too but must NOT shift the view).
+  if (
+    packets.length > prevCountRef.current &&
+    packets[0]?.packetHash !== prevFirstKeyRef.current &&
+    !isAtTopRef.current &&
+    parentRef.current
+  ) {
+    savedScrollHeightRef.current = parentRef.current.scrollHeight;
+    shouldCompensateRef.current = true;
+  }
 
   const virtualizer = useVirtualizer({
     count: packets.length,
@@ -103,8 +113,10 @@ export function PacketVirtualList({
     };
   }, [packets]);
 
+  // After commit, before paint: offset scrollTop by the height the prepended rows added so the
+  // view stays anchored on the same packet. Keyed on the array (not just length) so bookkeeping
+  // stays current even when the live buffer is at its cap and the count holds steady.
   useLayoutEffect(() => {
-    prevCountRef.current = packets.length;
     if (shouldCompensateRef.current) {
       shouldCompensateRef.current = false;
       const el = parentRef.current;
@@ -113,7 +125,9 @@ export function PacketVirtualList({
         if (delta > 0) el.scrollTop += delta;
       }
     }
-  }, [packets.length]);
+    prevCountRef.current = packets.length;
+    prevFirstKeyRef.current = packets[0]?.packetHash;
+  }, [packets]);
 
   const handleScroll = useCallback(() => {
     const el = parentRef.current;
