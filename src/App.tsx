@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { RegionProvider, useRegion } from "./hooks/useRegion";
 import { ThemeProvider } from "./hooks/useTheme";
 import { AppShell } from "./components/AppShell";
+import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { NodeTable } from "./features/nodes/NodeTable";
@@ -42,12 +43,12 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 
 // tab state and region init
 
-const DRAWER_STORAGE_KEY = "tower-analyzer-open";
+const DRAWER_STORAGE_KEY = "beacon-analyzer-open";
 
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
-  const initialRegion = searchParams.get("region") ?? localStorage.getItem("tower-region") ?? "*";
+  const initialRegion = searchParams.get("region") ?? localStorage.getItem("beacon-region") ?? "*";
 
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
@@ -130,6 +131,7 @@ export function App() {
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
+          <SplashScreen />
           <AppInner />
         </ThemeProvider>
       </QueryClientProvider>

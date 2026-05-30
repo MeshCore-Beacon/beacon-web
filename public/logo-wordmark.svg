@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 100" width="340" height="100" fill="none">
+  <!-- beacon icon -->
+  <polygon points="90,50 70,84.64 30,84.64 10,50 30,15.36 70,15.36" fill="none" stroke="#d61f86" stroke-width="4.5" stroke-linejoin="round" opacity="0.3"/>
+  <polygon points="78,50 64,74.25 36,74.25 22,50 36,25.75 64,25.75" fill="none" stroke="#d61f86" stroke-width="4.5" stroke-linejoin="round" opacity="0.6"/>
+  <polygon points="66,50 58,63.86 42,63.86 34,50 42,36.14 58,36.14" fill="none" stroke="#d61f86" stroke-width="4.5" stroke-linejoin="round" opacity="0.95"/>
+  <circle cx="50" cy="50" r="6.5" fill="#d61f86"/>
+  <!-- wordmark -->
+  <text x="112" y="64" font-family="'Chakra Petch', sans-serif" font-weight="500" font-size="44" letter-spacing="6" fill="#d61f86">BEACON</text>
+</svg>
