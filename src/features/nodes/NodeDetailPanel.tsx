@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getNode, getNodeObservations } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
-import { formatHex, formatTimeOnly, formatSnr, snrLevel, timeAgoMs, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatHex, formatTimeOnly, formatSnr, snrLevel, timeAgoMs, microToDeg, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import type { NodeObservation } from "./types";
 
 function NodeObservationRow({ obs }: { obs: NodeObservation }) {
@@ -90,8 +90,8 @@ export function NodeDetailPanel({ nodeId, onClose }: NodeDetailPanelProps) {
             {(hasLocation || node.locationSource) && (
               <Section title="Location">
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[13px]">
-                  {node.lat != null && <Field label="Lat" value={node.lat.toFixed(5)} />}
-                  {node.lng != null && <Field label="Lng" value={node.lng.toFixed(5)} />}
+                  {node.lat != null && <Field label="Lat" value={microToDeg(node.lat).toFixed(5)} />}
+                  {node.lng != null && <Field label="Lng" value={microToDeg(node.lng).toFixed(5)} />}
                   {node.locationSource && <Field label="Source" value={node.locationSource} />}
                 </div>
               </Section>

@@ -98,3 +98,32 @@
 .fade-in {
   animation: fade-in 150ms ease-out;
 }
+
+/* MapLibre controls ship light chrome; re-skin to the app's dark tokens when the active basemap
+   is dark (data-dark set on the map container in MapView). Glyphs are baked-in dark SVGs, so they
+   are inverted rather than recolored. Light basemaps (Liberty/Light) keep the default chrome. */
+[data-dark="true"] .maplibregl-ctrl-group {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+[data-dark="true"] .maplibregl-ctrl-group button + button {
+  border-top-color: var(--color-border);
+}
+[data-dark="true"] .maplibregl-ctrl-group button:hover {
+  background: color-mix(in srgb, var(--color-text-normal) 10%, transparent);
+}
+[data-dark="true"] .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.6);
+}
+[data-dark="true"] .maplibregl-ctrl-scale {
+  background: color-mix(in srgb, var(--color-bg-raised) 78%, transparent);
+  border-color: var(--color-border);
+  color: var(--color-text-normal);
+}
+[data-dark="true"] .maplibregl-ctrl-attrib {
+  background: color-mix(in srgb, var(--color-bg-raised) 78%, transparent);
+}
+[data-dark="true"] .maplibregl-ctrl-attrib a {
+  color: var(--color-text-muted);
+}
