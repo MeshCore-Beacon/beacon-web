@@ -17,4 +17,7 @@ services:
     environment:
       - VITE_API_BASE=${VITE_API_BASE:?VITE_API_BASE environment variable is required}
       - VITE_WS_URL=${VITE_WS_URL:?VITE_WS_URL environment variable is required}
+      # Optional "All" map view; unset = world overview
+      - VITE_MAP_CENTER=${VITE_MAP_CENTER:-}
+      - VITE_MAP_ZOOM=${VITE_MAP_ZOOM:-}
     restart: unless-stopped
