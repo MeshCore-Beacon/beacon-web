@@ -46,6 +46,32 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
   return null;
 }
 
+// Mirror the active region into the URL (?iata=) so the address bar is always shareable — on a
+// dropdown change and on load (including a region restored from localStorage, which users wouldn't
+// otherwise know was shareable). "*" (All) clears it; any legacy ?region is folded into ?iata. The
+// guard skips redundant writes (and any setSearchParams feedback loop); replace keeps it out of history.
+function RegionUrlSync() {
+  const region = useRegion();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const desired = region === "*" ? null : region;
+    if (searchParams.get("iata") === desired && !searchParams.has("region")) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (desired === null) next.delete("iata");
+        else next.set("iata", desired);
+        next.delete("region");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [region, searchParams, setSearchParams]);
+
+  return null;
+}
+
 // Drop the shared node selection when the region changes, so the detail panel doesn't keep showing a
 // node that's no longer in the re-queried map/table. Lives inside RegionProvider so it can read useRegion.
 function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
@@ -70,7 +96,14 @@ const DRAWER_STORAGE_KEY = "beacon-analyzer-open";
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
-  const initialRegion = searchParams.get("region") ?? localStorage.getItem("beacon-region") ?? "*";
+  // ?iata is the canonical, shareable param; ?region is honored as a legacy fallback. || (not ??)
+  // so an empty ?iata= falls through instead of sticking as "". URL codes are upper-cased to match
+  // the dropdown's IATA codes (so a shared/typed ?iata=yyz still resolves).
+  const initialRegion =
+    searchParams.get("iata")?.toUpperCase() ||
+    searchParams.get("region")?.toUpperCase() ||
+    localStorage.getItem("beacon-region") ||
+    "*";
 
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
@@ -133,6 +166,7 @@ function AppInner() {
   return (
     <RegionProvider defaultRegion={initialRegion}>
       <RegionWatcher wsManager={wsManager} />
+      <RegionUrlSync />
       <SelectionResetOnRegion onRegionChange={clearSelection} />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="flex flex-1 min-h-0">
