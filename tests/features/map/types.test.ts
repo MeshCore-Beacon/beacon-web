@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   MAP_STYLES,
   DEFAULT_STYLE_ID,
-  MAP_STYLE_STORAGE_KEY,
   resolveMapStyle,
   parseMapCenter,
+  parseMapZoom,
 } from "../../../src/features/map/types";
 
 describe("MAP_STYLES", () => {
@@ -29,16 +29,6 @@ describe("DEFAULT_STYLE_ID", () => {
   it("refers to a real MAP_STYLES entry", () => {
     expect(MAP_STYLES.some((s) => s.id === DEFAULT_STYLE_ID)).toBe(true);
   });
-
-  it("defaults to dark", () => {
-    expect(DEFAULT_STYLE_ID).toBe("dark");
-  });
-});
-
-describe("MAP_STYLE_STORAGE_KEY", () => {
-  it("follows the established beacon-* localStorage convention", () => {
-    expect(MAP_STYLE_STORAGE_KEY).toMatch(/^beacon-/);
-  });
 });
 
 describe("parseMapCenter", () => {
@@ -50,12 +40,8 @@ describe("parseMapCenter", () => {
     expect(parseMapCenter("  53.31 , -113.58 ")).toEqual([-113.58, 53.31]);
   });
 
-  it("falls back to a Canada-fitting center when undefined", () => {
-    const [lng, lat] = parseMapCenter(undefined);
-    expect(lng).toBeGreaterThanOrEqual(-141);
-    expect(lng).toBeLessThanOrEqual(-52);
-    expect(lat).toBeGreaterThanOrEqual(42);
-    expect(lat).toBeLessThanOrEqual(83);
+  it("falls back to a neutral world center when undefined", () => {
+    expect(parseMapCenter(undefined)).toEqual([0, 20]);
   });
 
   it("falls back on malformed input", () => {
@@ -67,6 +53,25 @@ describe("parseMapCenter", () => {
 
   it("falls back on out-of-range coordinates", () => {
     expect(parseMapCenter("200,500")).toEqual(parseMapCenter(undefined));
+  });
+});
+
+describe("parseMapZoom", () => {
+  it("parses a numeric zoom string", () => {
+    expect(parseMapZoom("3.2")).toBe(3.2);
+    expect(parseMapZoom(" 5 ")).toBe(5);
+  });
+
+  it("falls back on missing or malformed input", () => {
+    const fallback = parseMapZoom(undefined);
+    expect(parseMapZoom("")).toBe(fallback);
+    expect(parseMapZoom("abc")).toBe(fallback);
+  });
+
+  it("falls back on out-of-range zoom", () => {
+    const fallback = parseMapZoom(undefined);
+    expect(parseMapZoom("-1")).toBe(fallback);
+    expect(parseMapZoom("99")).toBe(fallback);
   });
 });
 

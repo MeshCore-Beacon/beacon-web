@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { RegionProvider, useRegion } from "./hooks/useRegion";
@@ -8,6 +8,7 @@ import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { NodeTable } from "./features/nodes/NodeTable";
+import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
 import { ObserverTable } from "./features/observers/ObserverTable";
 import { ChannelList } from "./features/channels/ChannelList";
 import { StatsOverview } from "./features/stats/StatsOverview";
@@ -16,8 +17,8 @@ import { getPacketDetail } from "./api/client";
 import { WsManager } from "./api/ws-manager";
 import { WS_URL } from "./lib/constants";
 
-// Map is the only heavy tab (maplibre-gl ~1MB min); lazy-load so its chunk is fetched on first
-// open. The .then() keeps MapView a named export while satisfying React.lazy's default contract.
+// Map is the only heavy tab (maplibre-gl is ~1MB), so lazy-load it — its chunk is fetched the
+// first time someone opens the Map tab instead of bloating the initial bundle.
 const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ default: m.MapView })));
 
 // global singletons
@@ -45,6 +46,23 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
   return null;
 }
 
+// Drop the shared node selection when the region changes, so the detail panel doesn't keep showing a
+// node that's no longer in the re-queried map/table. Lives inside RegionProvider so it can read useRegion.
+function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
+  const region = useRegion();
+  const first = useRef(true);
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false; // skip the initial mount; only react to a real change
+      return;
+    }
+    onRegionChange();
+  }, [region, onRegionChange]);
+
+  return null;
+}
+
 // tab state and region init
 
 const DRAWER_STORAGE_KEY = "beacon-analyzer-open";
@@ -56,6 +74,7 @@ function AppInner() {
 
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(() => {
     const stored = localStorage.getItem(DRAWER_STORAGE_KEY);
     return stored === null ? true : stored === "true";
@@ -94,6 +113,8 @@ function AppInner() {
     });
   };
 
+  const clearSelection = useCallback(() => setSelectedNodeId(null), []);
+
   useEffect(() => {
     wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"] });
     return () => wsManager.disconnect();
@@ -102,20 +123,21 @@ function AppInner() {
 
   const tabContent: Record<string, React.ReactNode> = {
     Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
-    Nodes: <NodeTable wsManager={wsManager} />,
+    Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
     Observers: <ObserverTable wsManager={wsManager} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Stats: <StatsOverview />,
-    Map: <MapView />,
+    Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
   };
 
   return (
     <RegionProvider defaultRegion={initialRegion}>
       <RegionWatcher wsManager={wsManager} />
+      <SelectionResetOnRegion onRegionChange={clearSelection} />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="flex flex-1 min-h-0">
           <div key={activeTab} className="flex flex-1 min-h-0 fade-in">
-            <Suspense fallback={<EmptyState title="Map" subtitle="Loading…" />}>
+            <Suspense fallback={<EmptyState title={activeTab} subtitle="Loading…" />}>
               {tabContent[activeTab]}
             </Suspense>
           </div>
@@ -127,6 +149,9 @@ function AppInner() {
               open={drawerOpen}
               onToggle={handleToggleDrawer}
             />
+          )}
+          {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
+            <NodeDetailPanel nodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />
           )}
         </div>
       </AppShell>

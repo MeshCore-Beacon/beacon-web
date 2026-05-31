@@ -78,6 +78,7 @@ export interface WsNodeUpdate {
     name: string;
     nodeType: number;
     iata: string;
+    // integer microdegrees, same as REST /nodes — the server sends one value to both (microToDeg scales it)
     lat?: number;
     lng?: number;
   };

@@ -4,17 +4,20 @@ import { getNodes } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useTick } from "../../hooks/useTick";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
-import { formatHex } from "../../lib/formatters";
+import { formatHex, microToDeg } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
 import { DataTable, type Column } from "../../components/DataTable";
 import { NodeFilterBar, type CapabilityFilter } from "./NodeFilterBar";
-import { NodeDetailPanel } from "./NodeDetailPanel";
+import { patchNodeSummary } from "./node-updates";
 import type { NodeSummary } from "./types";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 
 interface NodeTableProps {
   wsManager: WsManager;
+  // shared with the Map tab (lifted to AppInner) so the detail panel persists across tab switches
+  selectedNodeId: string | null;
+  onSelectNode: (id: string | null) => void;
 }
 
 const COLUMNS: Column<NodeSummary>[] = [
@@ -47,14 +50,15 @@ const COLUMNS: Column<NodeSummary>[] = [
     header: "Location",
     className: "text-text-muted",
     cell: (node) =>
-      node.lat != null && node.lng != null ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}` : "—",
+      node.lat != null && node.lng != null
+        ? `${microToDeg(node.lat).toFixed(2)}, ${microToDeg(node.lng).toFixed(2)}`
+        : "—",
   },
 ];
 
-export function NodeTable({ wsManager }: NodeTableProps) {
+export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
   const region = useRegion();
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("");
   const [capabilityFilter, setCapabilityFilter] = useState<CapabilityFilter>("");
   const [search, setSearch] = useState("");
@@ -84,30 +88,12 @@ export function NodeTable({ wsManager }: NodeTableProps) {
 
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
-      queryClient.setQueryData<NodeSummary[]>(queryKey, (old) => {
-        if (!old) return old;
-        const idx = old.findIndex((n) => n.id === data.nodeId);
-        if (idx === -1) {
-          // Not a node we're showing (filtered out, or past the page). Live
-          // updates only patch rows already on screen — new nodes get picked up
-          // by the periodic refetch, not by hammering /nodes on every off-list update.
-          return old;
-        }
-        const updated = [...old];
-        const prev = updated[idx]!;
-        updated[idx] = {
-          ...prev,
-          name: data.name || prev.name,
-          lat: data.lat ?? prev.lat,
-          lng: data.lng ?? prev.lng,
-        };
-        return updated;
-      });
-      if (selectedId === data.nodeId) {
+      queryClient.setQueryData<NodeSummary[]>(queryKey, (old) => patchNodeSummary(old, data));
+      if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
     },
-    [queryClient, queryKey, selectedId],
+    [queryClient, queryKey, selectedNodeId],
   );
 
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
@@ -130,19 +116,12 @@ export function NodeTable({ wsManager }: NodeTableProps) {
           columns={COLUMNS}
           rows={nodes}
           rowKey={(n) => n.id}
-          selectedKey={selectedId}
-          onSelect={setSelectedId}
+          selectedKey={selectedNodeId}
+          onSelect={onSelectNode}
           isLoading={isLoading}
           emptyLabel="No nodes"
         />
       </div>
-
-      {selectedId && (
-        <NodeDetailPanel
-          nodeId={selectedId}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
     </div>
   );
 }
