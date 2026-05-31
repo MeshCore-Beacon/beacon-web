@@ -6,7 +6,29 @@ import {
   formatSnr,
   snrLevel,
   formatPropagation,
+  microToDeg,
 } from "../../src/lib/formatters";
+
+describe("microToDeg", () => {
+  it("scales integer microdegrees to decimal degrees", () => {
+    expect(microToDeg(45141660)).toBeCloseTo(45.14166, 5);
+    expect(microToDeg(-76049320)).toBeCloseTo(-76.04932, 5);
+  });
+
+  it("passes through non-integer decimal degrees untouched", () => {
+    expect(microToDeg(45.14)).toBe(45.14);
+    expect(microToDeg(-76.05)).toBe(-76.05);
+    expect(microToDeg(0)).toBe(0);
+  });
+
+  it("scales small/near-zero integer microdegrees instead of mistaking them for degrees", () => {
+    // regression: a coordinate within ~0.00018° of the equator/prime meridian (e.g. +0.00015° -> the
+    // integer 150 microdegrees) must scale to decimal, not pass through as an impossible 150°
+    expect(microToDeg(150)).toBeCloseTo(0.00015, 6);
+    expect(microToDeg(180)).toBeCloseTo(0.00018, 6);
+    expect(microToDeg(-150)).toBeCloseTo(-0.00015, 6);
+  });
+});
 
 describe("formatHex", () => {
   it("truncates to 8 chars uppercase", () => {

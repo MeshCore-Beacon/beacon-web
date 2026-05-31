@@ -1,13 +1,6 @@
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { SelectDropdown } from "../../components/SelectDropdown";
-
-// server node types (node_type int -> typeName); value is the `typeName` query param
-const TYPE_OPTIONS = [
-  { value: "companion", label: "Companion" },
-  { value: "repeater", label: "Repeater" },
-  { value: "room_server", label: "Room" },
-  { value: "sensor", label: "Sensor" },
-];
+import { NODE_TYPE_OPTIONS } from "../../lib/node-types";
 
 const CAPABILITY_OPTIONS = [
   { value: "paths", label: "Multibyte Paths" },
@@ -57,7 +50,7 @@ export function NodeFilterBar({
 
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>
 
-      <SelectDropdown label="Type" options={TYPE_OPTIONS} value={typeFilter} onChange={onTypeChange} />
+      <SelectDropdown label="Type" options={NODE_TYPE_OPTIONS} value={typeFilter} onChange={onTypeChange} />
       <SelectDropdown
         label="Capabilities"
         options={CAPABILITY_OPTIONS}

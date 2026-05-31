@@ -62,6 +62,12 @@ export function formatBattery(volts: number): string {
   return `${volts.toFixed(2)}V`;
 }
 
+// /nodes sends lat/lng as integer microdegrees (45141660 = 45.141660); scale those to decimal.
+// Values that are already decimal pass through untouched — the integer check tells them apart.
+export function microToDeg(v: number): number {
+  return Number.isInteger(v) ? v / 1e6 : v;
+}
+
 // clamp negative values from clock skew
 export function timeAgoMs(epochMs: number): string {
   const seconds = Math.max(0, Math.floor((Date.now() - epochMs) / 1000));
