@@ -301,16 +301,15 @@ function GroupTextPayload({ payload }: PayloadProps) {
                 <span className="text-text-normal font-semibold">{String(decrypted.sender)}</span>
               </div>
             )}
-            {decrypted.message != null && (
+            {decrypted.content != null && (
               <div>
                 <span className="text-text-dim">Message </span>
-                <span className="text-text-bright break-all">{String(decrypted.message)}</span>
+                <span className="text-text-bright break-all">{String(decrypted.content)}</span>
               </div>
             )}
-            <div className="flex gap-x-4 text-text-dim">
-              {decrypted.timestamp != null && <span>{formatUnixTs(decrypted.timestamp as number)}</span>}
-              {decrypted.flags != null && <span>Flags {String(decrypted.flags)}</span>}
-            </div>
+            {decrypted.sentAt != null && (
+              <div className="text-text-dim">{formatTimestamp(decrypted.sentAt as number)}</div>
+            )}
           </div>
         </div>
       ) : (

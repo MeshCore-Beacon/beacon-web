@@ -143,6 +143,7 @@ export function usePackets() {
         firstHeardAt: data.observation.heardAt,
         lastHeardAt: data.observation.heardAt,
         observationCount: data.packet.observationCount,
+        scope: data.packet.scope,
         latestObserver: {
           id: data.observation.observerId,
           displayName: data.observation.observerName,
