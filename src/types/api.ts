@@ -98,6 +98,8 @@ export interface PacketDetail {
   lastHeardAt: number;
   firstToLastMs: number; // ms between first and last hearing — the packet's overall propagation time
   observationCount: number;
+  // trace packets only: the resolved intended route from the trace's path hashes (one hop per hash)
+  resolvedRoute?: ResolvedHop[];
   observations: Observation[];
 }
 

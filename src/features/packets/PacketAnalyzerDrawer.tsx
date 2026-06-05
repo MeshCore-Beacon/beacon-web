@@ -263,7 +263,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
             {detail.parsedPayload && typeof detail.parsedPayload === "object" && Object.keys(detail.parsedPayload).length > 0 && (
               <DrawerSection title="Payload Breakdown">
                 <div className="font-mono text-[13px]">
-                  <PayloadBreakdown payload={detail.parsedPayload} />
+                  <PayloadBreakdown payload={detail.parsedPayload} resolvedRoute={detail.resolvedRoute} onViewNode={onViewNode} />
                 </div>
               </DrawerSection>
             )}

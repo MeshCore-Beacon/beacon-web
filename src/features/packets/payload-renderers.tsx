@@ -3,6 +3,8 @@ import { Badge } from "../../components/Badge";
 import { formatSnr, snrLevel, formatTimestamp, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { ColorAccentField, AdvertFlagsBitBreakdown, PathLengthBitBreakdown, FIELD_COLORS } from "./packet-structure";
 import type { FieldId } from "./packet-structure";
+import { ResolvedHopBlock } from "./PathData";
+import type { ResolvedHop } from "../../types/api";
 
 // shared layout primitives for payload fields
 
@@ -201,7 +203,10 @@ function AdvertPayload({ payload }: PayloadProps) {
   );
 }
 
-function TracePayload({ payload }: PayloadProps) {
+function TracePayload({ payload, resolvedRoute, onViewNode }: PayloadProps & {
+  resolvedRoute?: ResolvedHop[];
+  onViewNode?: (nodeId: string) => void;
+}) {
   const traceTag = payload.traceTag as string | undefined;
   const authCode = payload.authCode as number | undefined;
   const flags = payload.flags as number | undefined;
@@ -241,12 +246,26 @@ function TracePayload({ payload }: PayloadProps) {
               const snr = snrValues?.[i];
               const level = snr != null ? snrLevel(snr) : null;
               const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
+              // When the packet detail resolved this trace's route, overlay it onto each hash block:
+              // tint by match confidence and reveal the resolved node(s) on hover. Falls back to the
+              // plain hash badge when there's no resolution (e.g. live/WS view).
+              const resolved = resolvedRoute?.[i];
               return (
                 <span key={i} className="contents">
                   {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
                   <span className="inline-flex flex-col items-center gap-0.5">
-                    <HexBadge value={hash} />
-                    {snr != null && <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>}
+                    {resolvedRoute ? (
+                      <ResolvedHopBlock hop={resolved} label={hash.toUpperCase()} onViewNode={onViewNode} />
+                    ) : (
+                      <HexBadge value={hash} />
+                    )}
+                    {/* keep a sub-line on every hop (SNR, or a "-" placeholder when there's no reading)
+                        so the hash badges across the row stay aligned */}
+                    {snr != null ? (
+                      <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>
+                    ) : (
+                      <span className="text-[11px] text-text-dim" aria-hidden>-</span>
+                    )}
                   </span>
                 </span>
               );
@@ -650,10 +669,14 @@ function AnonReqPayload({ payload }: PayloadProps) {
 
 // routes payload.type to the right renderer
 
-export function PayloadBreakdown({ payload }: { payload: Record<string, unknown> }) {
+export function PayloadBreakdown({ payload, resolvedRoute, onViewNode }: {
+  payload: Record<string, unknown>;
+  resolvedRoute?: ResolvedHop[]; // trace packets only — packet-level, not part of parsedPayload
+  onViewNode?: (nodeId: string) => void;
+}) {
   switch (payload.type) {
     case "ADVERT": return <AdvertPayload payload={payload} />;
-    case "TRACE": return <TracePayload payload={payload} />;
+    case "TRACE": return <TracePayload payload={payload} resolvedRoute={resolvedRoute} onViewNode={onViewNode} />;
     case "GROUP_TEXT": return <GroupTextPayload payload={payload} />;
     case "TEXT_MESSAGE": return <TextPayload payload={payload} />;
     case "REQUEST": return <RequestPayload payload={payload} />;
