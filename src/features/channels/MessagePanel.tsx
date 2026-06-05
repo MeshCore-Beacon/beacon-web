@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState, useCallback } from "react";
+import { useMemo, useRef, useLayoutEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getChannelMessages } from "../../api/client";
 import { Badge } from "../../components/Badge";
@@ -71,9 +71,10 @@ export function MessagePanel({ channel, heardCounts, iata, region, onAnalyze }: 
   );
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const prevCount = useRef(0);
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // remember which channel we've anchored, and how many messages we'd scrolled past
+  const scrollAnchor = useRef<{ channelId?: number; count: number }>({ count: 0 });
 
   // reset scroll-tracking state when switching channels (adjust state during render, not in an effect)
   const [prevChannelId, setPrevChannelId] = useState(channel?.id);
@@ -82,17 +83,25 @@ export function MessagePanel({ channel, heardCounts, iata, region, onAnalyze }: 
     setUserScrolled(false);
   }
 
-  // ref reset belongs in an effect (refs must not be written during render)
-  useEffect(() => {
-    prevCount.current = 0;
-  }, [channel?.id]);
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    const anchor = scrollAnchor.current;
 
-  useEffect(() => {
-    if (sorted.length > prevCount.current && !userScrolled) {
+    if (anchor.channelId !== channel?.id) {
+      // first batch for this channel — wait for the fetch, then jump to the bottom (no animation)
+      if (isLoading) return;
+      anchor.channelId = channel?.id;
+      anchor.count = sorted.length;
+      if (el) el.scrollTop = el.scrollHeight;
+      return;
+    }
+
+    if (sorted.length > anchor.count && !userScrolled) {
+      // a live message landed mid-session — glide down to it
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-    prevCount.current = sorted.length;
-  }, [sorted.length, userScrolled]);
+    anchor.count = sorted.length;
+  }, [sorted.length, channel?.id, isLoading, userScrolled]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;

@@ -82,3 +82,15 @@ export function timeAgoMs(epochMs: number): string {
 export function timeAgo(iso: string): string {
   return timeAgoMs(new Date(iso).getTime());
 }
+
+// Node/observer summaries carry radio as a compact "freq,bw,sf" string (e.g. "915.0,250,11").
+// Formats freq/SF/bandwidth like the observer panel ("915 MHz · SF11 · 250 kHz"); the compact
+// string carries no coding rate, so there's no "CR 4/x" segment.
+export function formatRadio(radio: string | null | undefined): string | null {
+  if (!radio) return null;
+  const [freq, bw, sf] = radio.split(",");
+  if (!freq || !bw || !sf) return radio; // unexpected shape — show it raw rather than hide it
+  const f = Number(freq), b = Number(bw);
+  if (Number.isNaN(f) || Number.isNaN(b)) return radio; // non-numeric freq/bw — show raw, not "NaN MHz"
+  return `${f} MHz · SF${sf} · ${b} kHz`;
+}

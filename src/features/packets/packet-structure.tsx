@@ -1,13 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
 import { Fragment, useState } from "react";
 import type { PacketDetail, Observation } from "../../types/api";
-import { RouteType } from "../../types/enums";
-import { HopBadge } from "../../components/HopBadge";
+import { RouteType, PayloadType } from "../../types/enums";
 import { formatTimeOnly, formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 
 // maps packet bytes to named field ranges for hex coloring
 
-export type FieldId = "header" | "transport" | "pathLength" | "pathData" | "payload" | "channelHash" | "cipherMac" | "ciphertext" | "publicKey" | "signature" | "advertTimestamp" | "flags" | "location" | "advertName" | "destinationHash" | "sourceHash" | "senderPublicKey" | "checksum";
+export type FieldId = "header" | "transport" | "pathLength" | "pathData" | "payload" | "channelHash" | "cipherMac" | "ciphertext" | "publicKey" | "signature" | "advertTimestamp" | "flags" | "location" | "advertName" | "destinationHash" | "sourceHash" | "senderPublicKey" | "checksum" | "traceTag" | "authCode" | "tracePath";
 
 export interface ByteRange {
   start: number;
@@ -15,13 +14,17 @@ export interface ByteRange {
 }
 
 // Reconstruct the full on-air frame for one observer:
-//   rawHeader + pathLengthByte + pathBytes + rawPayload
+//   header.raw + pathLength.raw + pathBytes + rawPayload
 // Header/payload are packet-scope (observer-independent); the path is per-observer.
 export function buildObservationFrame(detail: PacketDetail, obs: Observation | null): string {
-  const header = detail.rawHeader ?? "";
+  // Header and path-length are each one on-air byte that computeFieldRanges always reserves, so force
+  // every value to a full 2-char byte: pad a stray nibble, and coerce a missing/empty value to "00"
+  // rather than dropping a byte and shifting every field after it out of alignment.
+  const pad = (b?: string) => (!b ? "00" : b.length === 1 ? "0" + b : b);
+  const header = pad(detail.header.raw);
   const payload = detail.rawPayload ?? "";
   if (!obs) return header + payload;
-  const pathLen = obs.pathLengthByte.toString(16).padStart(2, "0");
+  const pathLen = pad(obs.pathLength.raw);
   const path = obs.pathBytes ?? "";
   return header + pathLen + path + payload;
 }
@@ -37,8 +40,8 @@ export function computeFieldRanges(
   let offset = 1;
 
   const hasTransport =
-    detail.routeType === RouteType.TRANSPORT_FLOOD ||
-    detail.routeType === RouteType.TRANSPORT_DIRECT;
+    detail.header.routeType === RouteType.TRANSPORT_FLOOD ||
+    detail.header.routeType === RouteType.TRANSPORT_DIRECT;
   if (hasTransport) {
     ranges.transport = { start: offset, end: offset + 4 };
     offset += 4;
@@ -48,7 +51,7 @@ export function computeFieldRanges(
     ranges.pathLength = { start: offset, end: offset + 1 };
     offset += 1;
 
-    const pathByteCount = obs.hashSize * obs.hopCount;
+    const pathByteCount = obs.pathLength.hashSize * obs.pathLength.hopCount;
     if (pathByteCount > 0) {
       ranges.pathData = { start: offset, end: offset + pathByteCount };
     }
@@ -60,7 +63,9 @@ export function computeFieldRanges(
 
     const pp = detail.parsedPayload;
     if (pp && typeof pp === "object") {
-      if (pp.type === "ADVERT" && typeof pp.publicKey === "string") {
+      // ADVERT: gate on the header's numeric payload type — it's the authoritative source and
+      // doesn't depend on how parsedPayload happens to be shaped.
+      if (detail.header.payloadType === PayloadType.ADVERT && typeof pp.publicKey === "string") {
         let sub = offset;
         const pkLen = (pp.publicKey as string).length / 2;
         ranges.publicKey = { start: sub, end: sub + pkLen };
@@ -69,25 +74,74 @@ export function computeFieldRanges(
         ranges.advertTimestamp = { start: sub, end: sub + 4 };
         sub += 4;
 
-        if (typeof pp.signature === "string") {
-          const sigLen = (pp.signature as string).length / 2;
-          ranges.signature = { start: sub, end: sub + sigLen };
-          sub += sigLen;
-        }
+        // The signature is a fixed 64-byte Ed25519 value; use the parsed length when it's present
+        // and fall back to 64 as a safety net.
+        const sigLen = typeof pp.signature === "string" ? (pp.signature as string).length / 2 : 64;
+        ranges.signature = { start: sub, end: sub + sigLen };
+        sub += sigLen;
+
+        // Field ranges are raw-byte offsets, so read the flags byte straight from the frame rather
+        // than the parsed booleans (which live nested under appData.flags). Masks match
+        // AdvertFlagsBitBreakdown. A short/missing payload yields NaN, and `NaN & mask` is 0, so each
+        // flag falls to false on its own.
+        const flagsIdx = pkLen + 4 + sigLen;
+        const flags = parseInt((detail.rawPayload ?? "").slice(flagsIdx * 2, flagsIdx * 2 + 2), 16);
+        const hasLocation = (flags & 0x10) !== 0;
+        const hasFeature1 = (flags & 0x20) !== 0;
+        const hasFeature2 = (flags & 0x40) !== 0;
+        const hasName = (flags & 0x80) !== 0;
 
         if (sub < totalBytes) {
           ranges.flags = { start: sub, end: sub + 1 };
           sub += 1;
         }
 
-        if (pp.hasLocation && sub + 8 <= totalBytes) {
+        if (hasLocation && sub + 8 <= totalBytes) {
           ranges.location = { start: sub, end: sub + 8 };
           sub += 8;
         }
-        if (pp.hasFeature1) sub += 2;
-        if (pp.hasFeature2) sub += 2;
-        if (pp.hasName && sub < totalBytes) {
+        if (hasFeature1) sub += 2;
+        if (hasFeature2) sub += 2;
+        if (hasName && sub < totalBytes) {
           ranges.advertName = { start: sub, end: totalBytes };
+        }
+      } else if (detail.header.payloadType === PayloadType.ANON_REQ && typeof pp.ephemeralPubKey === "string") {
+        // Lean ANON_REQ shape: 1-byte destination hash, ephemeral pubkey, then the
+        // encrypted block (2-byte MAC + ciphertext). The 1B/2B sizes are MeshCore
+        // conventions, not derivable from the parsed payload.
+        let sub = offset;
+        if (sub < totalBytes) {
+          ranges.destinationHash = { start: sub, end: sub + 1 };
+          sub += 1;
+        }
+
+        const keyLen = (pp.ephemeralPubKey as string).length / 2;
+        ranges.senderPublicKey = { start: sub, end: sub + keyLen };
+        sub += keyLen;
+
+        if (sub + 2 <= totalBytes) {
+          ranges.cipherMac = { start: sub, end: sub + 2 };
+          sub += 2;
+        }
+        if (sub < totalBytes) {
+          ranges.ciphertext = { start: sub, end: totalBytes };
+        }
+      } else if (detail.header.payloadType === PayloadType.TRACE && typeof pp.traceTag === "string") {
+        // TRACE: traceTag(4) + authCode(4, uint32) + flags(1) + path hashes (1 byte each)
+        let sub = offset;
+        const tagLen = (pp.traceTag as string).length / 2;
+        ranges.traceTag = { start: sub, end: sub + tagLen };
+        sub += tagLen;
+
+        ranges.authCode = { start: sub, end: sub + 4 };
+        sub += 4;
+
+        if (sub < totalBytes) {
+          ranges.flags = { start: sub, end: sub + 1 };
+          sub += 1;
+        }
+        if (sub < totalBytes) {
+          ranges.tracePath = { start: sub, end: totalBytes };
         }
       } else {
         let hexFields: FieldId[];
@@ -127,7 +181,7 @@ export const FIELD_COLORS: Record<FieldId, { hex: string; accent: string }> = {
   header:      { hex: "text-secondary",    accent: "border-l-secondary/50" },
   transport:   { hex: "text-warn",         accent: "border-l-warn/50" },
   pathLength:  { hex: "text-primary",      accent: "border-l-primary/50" },
-  pathData:    { hex: "text-green",        accent: "border-l-green/50" },
+  pathData:    { hex: "text-secondary",    accent: "border-l-secondary/50" },
   payload:     { hex: "text-text-muted",   accent: "border-l-text-muted/50" },
   channelHash: { hex: "text-primary", accent: "border-l-primary/50" },
   cipherMac: { hex: "text-warn", accent: "border-l-warn/50" },
@@ -142,6 +196,9 @@ export const FIELD_COLORS: Record<FieldId, { hex: string; accent: string }> = {
   sourceHash: { hex: "text-secondary", accent: "border-l-secondary/50" },
   senderPublicKey: { hex: "text-green", accent: "border-l-green/50" },
   checksum: { hex: "text-warn", accent: "border-l-warn/50" },
+  traceTag: { hex: "text-primary", accent: "border-l-primary/50" },
+  authCode: { hex: "text-green", accent: "border-l-green/50" },
+  tracePath: { hex: "text-secondary", accent: "border-l-secondary/50" },
 };
 
 export function DrawerSection({ title, children, first, collapsible, defaultOpen = true }: { title: string; children: React.ReactNode; first?: boolean; collapsible?: boolean; defaultOpen?: boolean }) {
@@ -192,16 +249,14 @@ export function ColoredHexDump({
   }
 
   return (
-    <pre className="text-[13px] font-mono leading-relaxed overflow-x-auto whitespace-pre">
+    <pre className="text-[13px] font-mono leading-relaxed whitespace-pre-wrap">
       {bytes.map((byte, i) => {
         const field = byteFieldMap.get(i) ?? null;
         const colorClass = field ? FIELD_COLORS[field].hex : "text-text-muted";
-        const isLineStart = i % 16 === 0 && i > 0;
 
         return (
           <Fragment key={i}>
-            {isLineStart && "\n"}
-            {i % 16 !== 0 && " "}
+            {i > 0 && " "}
             <span className={colorClass}>{byte.toUpperCase()}</span>
           </Fragment>
         );
@@ -244,6 +299,7 @@ export function HeaderBitBreakdown({ headerHex }: { headerHex: string }) {
 }
 
 export function PathLengthBitBreakdown({ pathLengthByte }: { pathLengthByte: number }) {
+  if (Number.isNaN(pathLengthByte)) return null;
   const bits = formatBinary(pathLengthByte);
   const hashBits = bits.slice(0, 2);
   const hopBits = bits.slice(2, 8);
@@ -357,7 +413,7 @@ export function ObservationDetail({ observation }: { observation: Observation })
         <span><span className="text-text-dim">SNR </span><span className={sigClass}>{formatSnr(observation.snr)}</span></span>
         <span><span className="text-text-dim">RSSI </span><span className={sigClass}>{observation.rssi ?? "—"}</span></span>
         <span><span className="text-text-dim">Prop </span><span className="text-text-normal">{formatPropagation(observation.propagationTimeMs)}</span></span>
-        <span><span className="text-text-dim">Hops </span><span className="text-text-normal">{observation.hopCount}</span></span>
+        <span><span className="text-text-dim">Hops </span><span className="text-text-normal">{observation.pathLength.hopCount}</span></span>
       </div>
 
       {observation.radio && (
@@ -370,17 +426,6 @@ export function ObservationDetail({ observation }: { observation: Observation })
         </div>
       )}
 
-      {observation.resolvedPath.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1 text-[13px] pt-1 border-t border-border-subtle">
-          <span className="text-text-dim text-xs font-medium uppercase tracking-wider mr-1">Path</span>
-          {observation.resolvedPath.map((hop, i) => (
-            <span key={i} className="contents">
-              {i > 0 && <span className="text-text-dim text-xs" aria-hidden>→</span>}
-              <HopBadge hop={hop} />
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

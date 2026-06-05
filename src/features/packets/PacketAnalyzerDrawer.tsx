@@ -2,11 +2,13 @@ import { useState, useCallback } from "react";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValue, type RouteTypeValue } from "../../types/enums";
 import { Badge } from "../../components/Badge";
+import { Tooltip } from "../../components/Tooltip";
 import { VARIANT_CLASSES, payloadTypeVariant } from "../../components/badge-utils";
-import { formatHex, formatTimestamp } from "../../lib/formatters";
+import { formatHex, formatTimestamp, formatPropagation } from "../../lib/formatters";
 import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
 import { ObservationCard } from "./ObservationCard";
+import { PathData } from "./PathData";
 
 function decodePayloadHex(encoded: string): string | null {
   try {
@@ -49,11 +51,15 @@ interface PacketAnalyzerDrawerProps {
   open: boolean;
   onToggle: () => void;
   onSelectObservation?: (id: number) => void;
+  onViewNode?: (nodeId: string) => void;
+  loading?: boolean;
+  // false when embedded in a modal overlay: the header chevron becomes a Close (×) instead of collapse.
+  collapsible?: boolean;
 }
 
 // collapsible side panel showing packet structure and payload breakdown
 
-export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onToggle, onSelectObservation }: PacketAnalyzerDrawerProps) {
+export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onToggle, onSelectObservation, onViewNode, loading, collapsible = true }: PacketAnalyzerDrawerProps) {
   const selectedObs = detail?.observations.find((o) => o.id === selectedObservationId)
     ?? detail?.observations[0]
     ?? null;
@@ -99,10 +105,16 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
             type="button"
             className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
             onClick={onToggle}
-            aria-label="Collapse analyzer"
+            aria-label={collapsible ? "Collapse analyzer" : "Close analyzer"}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d={collapsible ? "M6 4L10 8L6 12" : "M4 4L12 12M12 4L4 12"}
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>
@@ -116,7 +128,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
               <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth="1.2" />
               <line x1="8" y1="9" x2="8" y2="19" stroke="currentColor" strokeWidth="1.2" />
             </svg>
-            <span className="text-[13px] font-mono">Select a packet to analyze</span>
+            <span className="text-[13px] font-mono">{loading ? "Loading…" : "Select a packet to analyze"}</span>
           </div>
         ) : (
           <>
@@ -125,21 +137,27 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 <span className="font-mono text-xs font-semibold text-primary tracking-wider">
                   {formatHex(detail.packetHash)}
                 </span>
-                <Badge variant={payloadTypeVariant(detail.payloadType)}>
-                  {PAYLOAD_TYPE_NAMES[detail.payloadType as PayloadTypeValue] ?? "Unknown"}
+                <Badge variant={payloadTypeVariant(detail.header.payloadType)}>
+                  {PAYLOAD_TYPE_NAMES[detail.header.payloadType as PayloadTypeValue] ?? "Unknown"}
                 </Badge>
-                <span
-                  className="ml-auto font-mono text-[13px] text-primary font-semibold bg-primary/6 px-1.5 rounded-sm"
-                  title={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
-                  aria-label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                <Tooltip
+                  label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                  className="ml-auto"
                 >
-                  ×{detail.observations.length}
-                </span>
+                  <span
+                    className="font-mono text-[13px] text-primary font-semibold bg-primary/6 px-1.5 rounded-sm"
+                    aria-label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                  >
+                    ×{detail.observations.length}
+                  </span>
+                </Tooltip>
               </div>
               <div className="flex items-center gap-3 text-[13px] font-mono">
                 <span><span className="text-text-dim">First </span><span className="text-text-normal">{formatTimestamp(detail.firstHeardAt)}</span></span>
                 <span className="text-[6px] text-border" aria-hidden>·</span>
                 <span><span className="text-text-dim">Last </span><span className="text-text-normal">{formatTimestamp(detail.lastHeardAt)}</span></span>
+                <span className="text-[6px] text-border" aria-hidden>·</span>
+                <span><span className="text-text-dim">Propagation </span><span className="text-text-normal">{formatPropagation(detail.firstToLastMs)}</span></span>
               </div>
             </DrawerSection>
 
@@ -158,6 +176,8 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                       observation={obs}
                       selected={selectedObs?.id === obs.id}
                       onClick={onSelectObservation ? () => onSelectObservation(obs.id) : undefined}
+                      onViewNode={onViewNode}
+                      isTrace={detail.header.payloadType === PayloadType.TRACE}
                     />
                   ))}
                 </div>
@@ -178,9 +198,9 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 <ColorAccentField field="header">
                   <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Header Byte</div>
                   <div className="flex gap-x-4">
-                    <span><span className="text-text-dim">Ver </span><span className="text-text-normal">{detail.payloadVersion}</span></span>
-                    <span><span className="text-text-dim">Type </span><span className="text-text-normal">{PAYLOAD_TYPE_NAMES[detail.payloadType as PayloadTypeValue] ?? "?"} ({detail.payloadType})</span></span>
-                    <span><span className="text-text-dim">Route </span><span className="text-text-normal">{ROUTE_TYPE_NAMES[detail.routeType as RouteTypeValue] ?? "?"} ({detail.routeType})</span></span>
+                    <span><span className="text-text-dim">Ver </span><span className="text-text-normal">{detail.header.payloadVersion}</span></span>
+                    <span><span className="text-text-dim">Type </span><span className="text-text-normal">{PAYLOAD_TYPE_NAMES[detail.header.payloadType as PayloadTypeValue] ?? "?"} ({detail.header.payloadType})</span></span>
+                    <span><span className="text-text-dim">Route </span><span className="text-text-normal">{ROUTE_TYPE_NAMES[detail.header.routeType as RouteTypeValue] ?? "?"} ({detail.header.routeType})</span></span>
                   </div>
                   {headerHex && (
                     <HeaderBitBreakdown headerHex={headerHex} />
@@ -191,7 +211,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 {detail.transportCodes && (
                   <ColorAccentField field="transport">
                     <span className="text-text-dim">Transport </span>
-                    <span className="text-text-normal">{detail.transportCodes}</span>
+                    <span className="text-text-normal">{detail.transportCodes.regionCode} / {detail.transportCodes.subRegionCode}</span>
                   </ColorAccentField>
                 )}
 
@@ -200,33 +220,33 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                   <ColorAccentField field="pathLength">
                     <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path Length</div>
                     <div className="flex gap-x-4">
-                      <span><span className="text-text-dim">Hash Size </span><span className="text-text-normal">{selectedObs.hashSize}B</span></span>
-                      <span><span className="text-text-dim">Hops </span><span className="text-text-normal">{selectedObs.hopCount}</span></span>
+                      <span><span className="text-text-dim">Hash Size </span><span className="text-text-normal">{selectedObs.pathLength.hashSize}B</span></span>
+                      <span><span className="text-text-dim">Hops </span><span className="text-text-normal">{selectedObs.pathLength.hopCount}</span></span>
                     </div>
-                    <PathLengthBitBreakdown pathLengthByte={selectedObs.pathLengthByte} />
+                    <PathLengthBitBreakdown pathLengthByte={parseInt(selectedObs.pathLength.raw, 16)} />
                   </ColorAccentField>
                 )}
 
-                {/* Path data */}
+                {/* Path data — for TRACE the path bytes are per-hop SNR samples, so show them raw */}
                 {selectedObs?.pathBytes && (
                   <ColorAccentField field="pathData">
-                    <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path Data</div>
-                    <div className="flex flex-wrap items-center gap-1 text-[13px]">
-                      {(() => {
-                        const chars = selectedObs.hashSize * 2;
-                        const hops = selectedObs.pathBytes.match(new RegExp(`.{1,${chars}}`, "g")) ?? [];
-                        return hops.map((hop, i) => (
-                          <span key={i} className="contents">
-                            {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
-                            <span className="px-1.5 py-px rounded-sm bg-primary/6 text-primary font-semibold">{hop.toUpperCase()}</span>
-                          </span>
-                        ));
-                      })()}
-                    </div>
+                    {detail.header.payloadType === PayloadType.TRACE ? (
+                      <>
+                        <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path SNR Data</div>
+                        <div className="font-mono text-[13px] text-text-normal break-all">
+                          {selectedObs.pathBytes.toUpperCase()}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path Data</div>
+                        <PathData pathBytes={selectedObs.pathBytes} hashSize={selectedObs.pathLength.hashSize} resolvedPath={selectedObs.resolvedPath} onViewNode={onViewNode} />
+                      </>
+                    )}
                   </ColorAccentField>
                 )}
 
-                {detail.originPubkey && detail.payloadType !== PayloadType.ADVERT && (
+                {detail.originPubkey && detail.header.payloadType !== PayloadType.ADVERT && (
                   <ColorAccentField field="payload">
                     <span className="text-text-dim text-xs font-medium uppercase tracking-wider">Origin Pubkey</span>
                     <div className="text-text-normal break-all text-[13px]">{detail.originPubkey}</div>
@@ -249,9 +269,9 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
               return (
                 <DrawerSection title="Payload Data">
                   <div className="bg-bg-base border border-border rounded p-2 max-h-40 overflow-y-auto">
-                    <pre className="text-[13px] font-mono text-text-muted leading-relaxed overflow-x-auto whitespace-pre">
+                    <pre className="text-[13px] font-mono text-text-muted leading-relaxed whitespace-pre-wrap">
                       {(hex.match(/.{1,2}/g) ?? []).reduce((acc, b, i) => {
-                        const sep = i > 0 && i % 16 === 0 ? "\n" : i > 0 ? " " : "";
+                        const sep = i > 0 ? " " : "";
                         return acc + sep + b.toUpperCase();
                       }, "")}
                     </pre>

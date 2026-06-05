@@ -1,3 +1,8 @@
+export interface NodeIATA {
+  iata: string;
+  lastHeard: number; // unix ms
+}
+
 export interface NodeSummary {
   id: string;
   publicKey: string;
@@ -6,10 +11,12 @@ export interface NodeSummary {
   name: string | null;
   lat: number | null;
   lng: number | null;
-  iatas: string[];
-  // Role flag (a node that watches traffic for uplink); not populated by the API yet. When set, the
-  // map gives the node its observer-pip marker variant.
+  radio?: string; // compact "freq,bw,sf" string, e.g. "915.0,250,11"; absent when unknown
+  iatas: NodeIATA[];
+  // Set when this node also runs as an observer (watches traffic for uplink). isObserver drives the
+  // map's observer-pip marker variant; observerId, when present, links to that observer's detail.
   isObserver?: boolean;
+  observerId?: string;
 }
 
 export interface Node extends NodeSummary {

@@ -2,13 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { getNode, getNodeObservations } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
-import { formatHex, formatTimeOnly, formatSnr, snrLevel, timeAgoMs, microToDeg, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatHex, formatTimeOnly, formatSnr, snrLevel, timeAgoMs, microToDeg, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import type { NodeObservation } from "./types";
 
-function NodeObservationRow({ obs }: { obs: NodeObservation }) {
+function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: () => void }) {
   const level = snrLevel(obs.snr);
   return (
-    <div className="bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary">
+    <div
+      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
         <Badge variant="default">{obs.payloadTypeName}</Badge>
         <span className="font-mono text-primary font-semibold text-[11px] bg-primary/6 px-1.5 py-px rounded-sm">
@@ -43,9 +46,11 @@ function NodeObservationRow({ obs }: { obs: NodeObservation }) {
 interface NodeDetailPanelProps {
   nodeId: string;
   onClose: () => void;
+  onViewObserver: (observerId: string) => void;
+  onAnalyzePacket?: (hash: string) => void;
 }
 
-export function NodeDetailPanel({ nodeId, onClose }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onAnalyzePacket }: NodeDetailPanelProps) {
   const { data: node, isLoading } = useQuery({
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
@@ -85,6 +90,15 @@ export function NodeDetailPanel({ nodeId, onClose }: NodeDetailPanelProps) {
               <div className="font-mono text-[13px] text-text-muted truncate" title={node.publicKey}>
                 {node.publicKey}
               </div>
+              {node.observerId && (
+                <button
+                  type="button"
+                  onClick={() => onViewObserver(node.observerId!)}
+                  className="mt-2 block font-mono text-[11px] text-primary hover:underline"
+                >
+                  View observer →
+                </button>
+              )}
             </Section>
 
             {(hasLocation || node.locationSource) && (
@@ -102,6 +116,7 @@ export function NodeDetailPanel({ nodeId, onClose }: NodeDetailPanelProps) {
                 {node.minFirmwareVersion && <Field label="Min firmware" value={node.minFirmwareVersion} />}
                 <Field label="Multibyte paths" value={node.supportsMultibytePaths ? "yes" : "no"} />
                 <Field label="Multibyte traces" value={node.supportsMultibyteTraces ? "yes" : "no"} />
+                {node.radio && <Field label="Radio" value={formatRadio(node.radio) ?? "—"} />}
               </div>
             </Section>
 
@@ -117,7 +132,11 @@ export function NodeDetailPanel({ nodeId, onClose }: NodeDetailPanelProps) {
               {observations && observations.items.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {observations.items.map((obs) => (
-                    <NodeObservationRow key={obs.id} obs={obs} />
+                    <NodeObservationRow
+                      key={obs.id}
+                      obs={obs}
+                      onClick={onAnalyzePacket ? () => onAnalyzePacket(obs.packetHash) : undefined}
+                    />
                   ))}
                 </div>
               ) : (

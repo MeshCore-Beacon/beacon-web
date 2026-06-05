@@ -29,15 +29,23 @@ export interface PacketSummary {
   summary?: string;
 }
 
+export interface ResolvedNode {
+  id: string; // uuid
+  name?: string;
+  publicKey: string; // hex-encoded prefix
+  latitude?: number; // decimal degrees (resolved DB value, not the 1e7 advert encoding)
+  longitude?: number;
+}
+
 export interface ResolvedHop {
   confidence: PathConfidence;
-  node?: {
-    id: string;
-    name?: string;
-    publicKey: string;
-    latitude?: number;
-    longitude?: number;
-  };
+  nodes: ResolvedNode[]; // empty when confidence is "none"
+}
+
+export interface PathLength {
+  raw: string; // path-length byte as hex (e.g. "1e")
+  hashSize: number; // bytes per hop hash
+  hopCount: number;
 }
 
 export interface Observation {
@@ -46,9 +54,7 @@ export interface Observation {
   observerName?: string;
   iata: string;
   heardAt: number;
-  pathLengthByte: number;
-  hashSize: number;
-  hopCount: number;
+  pathLength: PathLength;
   pathBytes?: string;
   rssi?: number;
   snr?: number;
@@ -63,22 +69,32 @@ export interface Observation {
   resolvedPath: ResolvedHop[];
 }
 
-export interface PacketDetail {
-  packetHash: string;
+export interface PacketHeader {
+  raw: string; // header byte as hex (e.g. "11")
+  routeType: number;
+  routeTypeName: string;
   payloadType: number;
   payloadTypeName: string;
   payloadVersion: number;
-  routeType: number;
-  routeTypeName: string;
-  transportCodes?: string;
+}
+
+export interface TransportCodes {
+  regionCode: number;
+  subRegionCode: number;
+}
+
+export interface PacketDetail {
+  packetHash: string;
+  header: PacketHeader;
+  transportCodes?: TransportCodes;
   originPubkey?: string;
   parsedPayload?: Record<string, unknown> | string;
-  rawHeader: string;
   rawPayload: string;
   decrypted: boolean;
   channelHash?: string;
   firstHeardAt: number;
   lastHeardAt: number;
+  firstToLastMs: number; // ms between first and last hearing — the packet's overall propagation time
   observationCount: number;
   observations: Observation[];
 }
