@@ -1,5 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode, BrokerStatus } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation } from "../features/nodes/types";
@@ -40,12 +40,17 @@ async function request<T>(path: string, params?: Record<string, string | number 
 
 // endpoint functions
 
+// The region filter travels as the comma-separated `iatas` param; undefined/empty means all regions.
+function iatasParam(iatas?: string[]): string | undefined {
+  return iatas && iatas.length > 0 ? iatas.join(",") : undefined;
+}
+
 export function getPackets(
-  iata: string,
+  iatas: string[] | undefined,
   params?: { cursor?: number; limit?: number; afterId?: number },
 ): Promise<CursorPage<PacketSummary>> {
   return request("/packets", {
-    iata: iata === "*" ? undefined : iata,
+    iatas: iatasParam(iatas),
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     afterId: params?.afterId,
@@ -60,9 +65,17 @@ export function getIatas(): Promise<IataCode[]> {
   return request("/iatas");
 }
 
-export async function getChannels(params?: { iata?: string; limit?: number }): Promise<ChannelSummary[]> {
+export function getRegions(): Promise<RegionSummary[]> {
+  return request("/regions");
+}
+
+export function getRegion(regionId: number): Promise<Region> {
+  return request(`/regions/${regionId}`);
+}
+
+export async function getChannels(params?: { iatas?: string[]; limit?: number }): Promise<ChannelSummary[]> {
   const page = await request<{ items: ChannelSummary[] }>("/channels", {
-    iata: params?.iata,
+    iatas: iatasParam(params?.iatas),
     limit: params?.limit,
   });
   return page.items;
@@ -70,10 +83,10 @@ export async function getChannels(params?: { iata?: string; limit?: number }): P
 
 export async function getChannelMessages(
   channelId: number,
-  params?: { iata?: string; limit?: number },
+  params?: { iatas?: string[]; limit?: number },
 ): Promise<ChannelMessage[]> {
   const page = await request<{ items: ChannelMessage[] }>(`/channels/${channelId}/messages`, {
-    iata: params?.iata,
+    iatas: iatasParam(params?.iatas),
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
   });
   return page.items;
@@ -84,10 +97,10 @@ export function getBrokers(): Promise<BrokerStatus[]> {
 }
 
 export async function getObservers(
-  params?: { iata?: string; type?: string; broker?: string; status?: string; name?: string },
+  params?: { iatas?: string[]; type?: string; broker?: string; status?: string; name?: string },
 ): Promise<ObserverSummary[]> {
   const page = await request<{ items: ObserverSummary[] }>("/observers", {
-    iata: params?.iata,
+    iatas: iatasParam(params?.iatas),
     type: params?.type,
     broker: params?.broker,
     status: params?.status,
@@ -102,7 +115,7 @@ export function getObserver(observerId: string): Promise<Observer> {
 
 export async function getNodes(
   params?: {
-    iata?: string;
+    iatas?: string[];
     type?: string;
     name?: string;
     supportsMultibytePaths?: "true" | "false";
@@ -111,7 +124,7 @@ export async function getNodes(
   },
 ): Promise<NodeSummary[]> {
   const page = await request<{ items: NodeSummary[] }>("/nodes", {
-    iata: params?.iata,
+    iatas: iatasParam(params?.iatas),
     typeName: params?.type,
     name: params?.name,
     supportsMultibytePaths: params?.supportsMultibytePaths,

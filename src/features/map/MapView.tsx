@@ -12,7 +12,7 @@ import {
   resolveMapStyle,
 } from "./types";
 import { EmptyState } from "../../components/EmptyState";
-import { useRegion } from "../../hooks/useRegion";
+import { useRegion, useRegionSelection, useRegions } from "../../hooks/useRegion";
 import { useTheme } from "../../hooks/useTheme";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { getIatas, getNodes } from "../../api/client";
@@ -49,7 +49,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const [typeFilter, setTypeFilter] = useState(""); // "" = All
   const [clustered, setClustered] = useState(true);
 
-  const region = useRegion();
+  const { iatas: selectedIatas, regionKey } = useRegion();
+  const { selection } = useRegionSelection();
+  const { bySlug } = useRegions();
   const queryClient = useQueryClient();
   // marker/cluster icons are canvas-drawn from the active --palette-* vars, so useMapNodes has to
   // re-register them whenever the palette changes: on a theme switch, and once on load when the async
@@ -59,10 +61,10 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const { data: iatas } = useQuery({ queryKey: ["iatas"], queryFn: getIatas, staleTime: 60_000 });
 
   // nodes for the selected region (its own key, independent of the Nodes-table filters/page cap)
-  const nodesKey = useMemo(() => ["map-nodes", region], [region]);
+  const nodesKey = useMemo(() => ["map-nodes", regionKey], [regionKey]);
   const { data: nodes } = useQuery({
     queryKey: nodesKey,
-    queryFn: () => getNodes({ iata: region === "*" ? undefined : region, limit: MAP_NODES_LIMIT }),
+    queryFn: () => getNodes({ iatas: selectedIatas, limit: MAP_NODES_LIMIT }),
     staleTime: 30_000,
     refetchInterval: 30_000,
   });
@@ -85,12 +87,19 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const baseFc = useMemo(() => nodesToFeatureCollection(nodes ?? []), [nodes]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
 
-  // focus the map on the selected region when the API provides its coordinates ("*" = all regions)
+  // focus the map when the selection narrows to one place: a single region uses its configured center,
+  // a single IATA centers on that airport. A multi-selection (or all regions) leaves the view as-is.
   const focus = useMemo<[number, number] | null>(() => {
-    if (region === "*") return null;
-    const match = iatas?.find((i) => i.iata === region);
-    return match && match.lat != null && match.lon != null ? [match.lon, match.lat] : null;
-  }, [region, iatas]);
+    if (selection.regions.length === 1 && selection.iatas.length === 0) {
+      const r = bySlug.get(selection.regions[0]!);
+      if (r?.centerLat != null && r?.centerLng != null) return [r.centerLng, r.centerLat];
+    }
+    if (selection.iatas.length === 1 && selection.regions.length === 0) {
+      const match = iatas?.find((i) => i.iata === selection.iatas[0]);
+      if (match && match.lat != null && match.lon != null) return [match.lon, match.lat];
+    }
+    return null;
+  }, [selection, bySlug, iatas]);
 
   const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, focus, handleStyleError);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome

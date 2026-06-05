@@ -108,6 +108,22 @@ export interface IataCode {
   lon?: number;
 }
 
+// A region groups IATAs under a URL-safe slug. The list endpoint returns summaries; the detail
+// endpoint adds the member IATAs and map-focus hints.
+export interface RegionSummary {
+  id: number;
+  slug: string; // e.g. "western-canada"
+  name: string;
+}
+
+export interface Region extends RegionSummary {
+  description?: string;
+  centerLat?: number;
+  centerLng?: number;
+  zoomLevel?: number;
+  iatas: string[]; // member IATA codes
+}
+
 export interface BrokerStatus {
   name: string;
   connected: boolean;
