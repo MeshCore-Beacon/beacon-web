@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PayloadBreakdown } from "../../../src/features/packets/payload-renderers";
+import { formatTimestamp } from "../../../src/lib/formatters";
 import type { ResolvedHop } from "../../../src/types/api";
 
 const tracePayload = {
@@ -42,5 +43,32 @@ describe("PayloadBreakdown — trace resolvedRoute overlay", () => {
     const payload = { type: "TRACE", flags: 0, pathHashes: ["ab", "cd", "ef"], snrValues: [-5, -8] };
     render(<PayloadBreakdown payload={payload} resolvedRoute={resolvedRoute} />);
     expect(screen.getByText("-")).toBeInTheDocument();
+  });
+});
+
+describe("PayloadBreakdown — GROUP_TEXT decrypted channel message", () => {
+  // Backend GetPacket enrichment nests decrypted:{sender,content,sentAt} (sentAt is epoch ms).
+  // See tower-server db/packets.go + internal/ingest/side_effects.go.
+  // chosen so the ms reading (5:43 p.m.) and the wrong seconds reading (1:13 p.m.) differ
+  const sentAt = 1_700_001_800_000; // epoch ms
+  const payload = {
+    type: "GROUP_TEXT",
+    channelHash: "ab",
+    cipherMac: "00112233",
+    ciphertext: "deadbeef",
+    decrypted: { sender: "Alice", content: "hello mesh", sentAt },
+  };
+
+  it("renders the decrypted sender and message body from content", () => {
+    render(<PayloadBreakdown payload={payload} />);
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("hello mesh")).toBeInTheDocument();
+  });
+
+  it("formats sentAt as epoch milliseconds, not seconds", () => {
+    render(<PayloadBreakdown payload={payload} />);
+    expect(screen.getByText(formatTimestamp(sentAt))).toBeInTheDocument();
+    // the seconds interpretation (×1000) would be a far-future date — must not appear
+    expect(screen.queryByText(formatTimestamp(sentAt * 1000))).not.toBeInTheDocument();
   });
 });
