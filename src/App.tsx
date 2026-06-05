@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
-import { RegionProvider, useRegion } from "./hooks/useRegion";
+import { RegionProvider, useRegion, useRegionSelection } from "./hooks/useRegion";
+import {
+  ALL_REGIONS,
+  isAllRegions,
+  parseSelection,
+  selectionToParams,
+  resolveIatas,
+  deserializeSelection,
+  type RegionSelection,
+} from "./hooks/region-selection";
 import { ThemeProvider } from "./hooks/useTheme";
 import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
@@ -36,40 +45,48 @@ const queryClient = new QueryClient({
 
 const wsManager = new WsManager(WS_URL);
 
+const WS_EVENTS = ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"];
+
+// Compute the initial region selection on first load: URL params win (shareable links), then the
+// persisted selection, then the pre-multi-select single-IATA key (migrated), else all regions.
+function computeInitialSelection(params: URLSearchParams): RegionSelection {
+  const fromUrl = parseSelection(params);
+  if (!isAllRegions(fromUrl)) return fromUrl;
+  const stored = deserializeSelection(localStorage.getItem("beacon-region-selection"));
+  if (!isAllRegions(stored)) return stored;
+  const legacy = localStorage.getItem("beacon-region");
+  if (legacy && legacy !== "*") return { regions: [], iatas: [legacy.toUpperCase()] };
+  return ALL_REGIONS;
+}
+
 // null-render component -- easiest way to sync region changes into the WS manager
 
 function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
-  const region = useRegion();
+  const { iatas, regionKey } = useRegion();
 
   useEffect(() => {
-    mgr.updateSubscription({ iatas: region === "*" ? undefined : [region], events: ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"] });
-  }, [mgr, region]);
+    mgr.updateSubscription({ iatas, events: WS_EVENTS });
+    // regionKey is the stable identity of the resolved iatas
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mgr, regionKey]);
 
   return null;
 }
 
-// Mirror the active region into the URL (?iata=) so the address bar is always shareable — on a
-// dropdown change and on load (including a region restored from localStorage, which users wouldn't
-// otherwise know was shareable). "*" (All) clears it; any legacy ?region is folded into ?iata. The
-// guard skips redundant writes (and any setSearchParams feedback loop); replace keeps it out of history.
+// Mirror the active selection into the URL (?regions= / ?iata=) so the address bar is always shareable
+// — on a dropdown change and on load (including a selection restored from localStorage, which users
+// wouldn't otherwise know was shareable). All-regions clears both params; any legacy ?region is folded
+// in. The guard skips redundant writes (and any setSearchParams feedback loop); replace keeps it out of
+// history.
 function RegionUrlSync() {
-  const region = useRegion();
+  const { selection } = useRegionSelection();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    const desired = region === "*" ? null : region;
-    if (searchParams.get("iata") === desired && !searchParams.has("region")) return;
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (desired === null) next.delete("iata");
-        else next.set("iata", desired);
-        next.delete("region");
-        return next;
-      },
-      { replace: true },
-    );
-  }, [region, searchParams, setSearchParams]);
+    const next = selectionToParams(selection, searchParams);
+    if (next.toString() === searchParams.toString()) return;
+    setSearchParams(next, { replace: true });
+  }, [selection, searchParams, setSearchParams]);
 
   return null;
 }
@@ -77,7 +94,7 @@ function RegionUrlSync() {
 // Drop the shared node selection when the region changes, so the detail panel doesn't keep showing a
 // node that's no longer in the re-queried map/table. Lives inside RegionProvider so it can read useRegion.
 function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
-  const region = useRegion();
+  const { regionKey } = useRegion();
   const first = useRef(true);
 
   useEffect(() => {
@@ -86,7 +103,7 @@ function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void
       return;
     }
     onRegionChange();
-  }, [region, onRegionChange]);
+  }, [regionKey, onRegionChange]);
 
   return null;
 }
@@ -98,14 +115,8 @@ const DRAWER_STORAGE_KEY = "beacon-analyzer-open";
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
-  // ?iata is the canonical, shareable param; ?region is honored as a legacy fallback. || (not ??)
-  // so an empty ?iata= falls through instead of sticking as "". URL codes are upper-cased to match
-  // the dropdown's IATA codes (so a shared/typed ?iata=yyz still resolves).
-  const initialRegion =
-    searchParams.get("iata")?.toUpperCase() ||
-    searchParams.get("region")?.toUpperCase() ||
-    localStorage.getItem("beacon-region") ||
-    "*";
+  // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
+  const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
@@ -171,7 +182,9 @@ function AppInner() {
   }, []);
 
   useEffect(() => {
-    wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"] });
+    // Region slugs can't be expanded yet (region details load async) — connect with the directly
+    // selected IATAs; RegionWatcher narrows the subscription once useRegion resolves the slugs.
+    wsManager.connect({ iatas: resolveIatas(initialSelection, new Map()), events: WS_EVENTS });
     return () => wsManager.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -186,7 +199,7 @@ function AppInner() {
   };
 
   return (
-    <RegionProvider defaultRegion={initialRegion}>
+    <RegionProvider defaultSelection={initialSelection}>
       <RegionWatcher wsManager={wsManager} />
       <RegionUrlSync />
       <SelectionResetOnRegion onRegionChange={clearSelection} />

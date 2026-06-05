@@ -52,15 +52,15 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
 interface MessagePanelProps {
   channel: ChannelSummary | null;
   heardCounts: Record<string, number>;
-  iata?: string;
-  region: string;
+  iatas?: string[];
+  regionKey: string;
   onAnalyze?: (packetHash: string) => void;
 }
 
-export function MessagePanel({ channel, heardCounts, iata, region, onAnalyze }: MessagePanelProps) {
+export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze }: MessagePanelProps) {
   const { data: messages, isLoading } = useQuery({
-    queryKey: ["channel-messages", channel?.id, region],
-    queryFn: () => getChannelMessages(channel!.id, { iata, limit: 50 }),
+    queryKey: ["channel-messages", channel?.id, regionKey],
+    queryFn: () => getChannelMessages(channel!.id, { iatas, limit: 50 }),
     enabled: channel !== null,
     staleTime: 30_000,
   });

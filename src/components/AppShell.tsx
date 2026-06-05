@@ -1,7 +1,8 @@
 import { type ReactNode, useState, useEffect } from "react";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useQuery } from "@tanstack/react-query";
-import { useRegion, useSetRegion } from "../hooks/useRegion";
+import { useRegionSelection, useRegions } from "../hooks/useRegion";
+import { ALL_REGIONS, isAllRegions, type RegionSelection } from "../hooks/region-selection";
 import { useWsStatus } from "../hooks/useWsStatus";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
@@ -52,9 +53,39 @@ function LiveBadge({ wsManager }: { wsManager: WsManager }) {
   );
 }
 
+// checkbox indicator, matching MultiSelectDropdown's style
+function CheckBox({ checked }: { checked: boolean }) {
+  return (
+    <span className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${
+      checked ? "border-primary bg-primary/20" : "border-border"
+    }`}>
+      {checked && (
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-primary" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+// Compact header summary of the active selection, e.g. "ALL", "YVR, YYJ", "2 regions", "1 region · 3 IATA".
+function regionSummaryLabel(selection: RegionSelection): string {
+  if (isAllRegions(selection)) return "ALL";
+  const parts: string[] = [];
+  if (selection.regions.length > 0) {
+    parts.push(`${selection.regions.length} region${selection.regions.length > 1 ? "s" : ""}`);
+  }
+  if (selection.iatas.length > 0) {
+    parts.push(selection.iatas.length <= 2 ? selection.iatas.join(", ") : `${selection.iatas.length} IATA`);
+  }
+  return parts.join(" · ");
+}
+
+// Grouped multi-select: regions (each expands to its member IATAs) on top, then individual IATAs.
+// Toggling keeps the dropdown open so several can be picked; "All Regions" clears the selection.
 function RegionSelector() {
-  const region = useRegion();
-  const setRegion = useSetRegion();
+  const { selection, setSelection } = useRegionSelection();
+  const { regions } = useRegions();
 
   const { data: iatas } = useQuery({
     queryKey: ["iatas"],
@@ -62,11 +93,25 @@ function RegionSelector() {
     staleTime: 60_000,
   });
 
-  const current = iatas?.find((i) => i.iata === region);
+  const toggleRegion = (slug: string) => {
+    const has = selection.regions.includes(slug);
+    setSelection({
+      ...selection,
+      regions: has ? selection.regions.filter((s) => s !== slug) : [...selection.regions, slug],
+    });
+  };
+
+  const toggleIata = (code: string) => {
+    const has = selection.iatas.includes(code);
+    setSelection({
+      ...selection,
+      iatas: has ? selection.iatas.filter((c) => c !== code) : [...selection.iatas, code],
+    });
+  };
 
   return (
     <Dropdown
-      width="w-56"
+      width="w-60"
       renderTrigger={({ toggle }) => (
         <button
           type="button"
@@ -74,65 +119,71 @@ function RegionSelector() {
           onClick={toggle}
         >
           <span className="text-text-muted font-normal text-[11px]">REGION</span>
-          {region === "*" ? "ALL" : region}
-          {region !== "*" && current?.displayName && (
-            <span className="text-text-dim font-normal text-[11px]">{current.displayName}</span>
-          )}
+          {regionSummaryLabel(selection)}
           <span className="text-text-dim text-[11px]">▾</span>
         </button>
       )}
     >
-      {(close) => iatas ? (
+      {() => (
         <>
           <button
             type="button"
             className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-              region === "*"
+              isAllRegions(selection)
                 ? "text-text-bright bg-primary/10"
                 : "text-text-muted hover:text-text-normal hover:bg-white/3"
             }`}
-            onClick={() => {
-              setRegion("*");
-              localStorage.setItem("beacon-region", "*");
-              close();
-            }}
+            onClick={() => setSelection(ALL_REGIONS)}
           >
             <span className="font-semibold text-primary w-8">ALL</span>
             <span className="text-text-dim">All Regions</span>
           </button>
-          {iatas.map((i) => (
-            <button
-              key={i.iata}
-              type="button"
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-                i.iata === region
-                  ? "text-text-bright bg-primary/10"
-                  : "text-text-muted hover:text-text-normal hover:bg-white/3"
-              }`}
-              onClick={() => {
-                setRegion(i.iata);
-                localStorage.setItem("beacon-region", i.iata);
-                close();
-              }}
-            >
-              <span className="font-semibold text-primary w-8">{i.iata}</span>
-              <span className="text-text-dim">{i.displayName || i.iata}</span>
-            </button>
-          ))}
+
+          {regions.length > 0 && (
+            <>
+              <div className="px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim">Regions</div>
+              {regions.map((r) => {
+                const checked = selection.regions.includes(r.slug);
+                return (
+                  <button
+                    key={r.slug}
+                    type="button"
+                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
+                      checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                    }`}
+                    onClick={() => toggleRegion(r.slug)}
+                  >
+                    <CheckBox checked={checked} />
+                    <span className="truncate">{r.name}</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          <div className="px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim border-t border-border-subtle mt-1">IATA</div>
+          {iatas ? (
+            iatas.map((i) => {
+              const checked = selection.iatas.includes(i.iata);
+              return (
+                <button
+                  key={i.iata}
+                  type="button"
+                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
+                    checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                  }`}
+                  onClick={() => toggleIata(i.iata)}
+                >
+                  <CheckBox checked={checked} />
+                  <span className="font-semibold text-primary w-8">{i.iata}</span>
+                  <span className="text-text-dim truncate">{i.displayName || i.iata}</span>
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-3 py-1.5 text-[11px] font-mono text-text-dim">Loading…</div>
+          )}
         </>
-      ) : (
-        <button
-          type="button"
-          className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono text-text-bright bg-primary/10"
-          onClick={() => {
-            setRegion("*");
-            localStorage.setItem("beacon-region", "*");
-            close();
-          }}
-        >
-          <span className="font-semibold text-primary w-8">ALL</span>
-          <span className="text-text-dim">All Regions</span>
-        </button>
       )}
     </Dropdown>
   );

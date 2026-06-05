@@ -15,20 +15,19 @@ interface ChannelListProps {
 }
 
 export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
-  const region = useRegion();
-  const iata = region === "*" ? undefined : region;
+  const { iatas, regionKey } = useRegion();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [heardCounts, setHeardCounts] = useState<Record<string, number>>({});
   const queryClient = useQueryClient();
 
-  const prevRegion = useRef(region);
+  const prevRegion = useRef(regionKey);
   useEffect(() => {
-    if (prevRegion.current !== region) {
-      prevRegion.current = region;
+    if (prevRegion.current !== regionKey) {
+      prevRegion.current = regionKey;
       setSelectedId(null);
       setHeardCounts({});
     }
-  }, [region]);
+  }, [regionKey]);
 
   const handleSelect = useCallback((id: number) => {
     setSelectedId(id);
@@ -36,8 +35,8 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   }, []);
 
   const { data: channels, isLoading } = useQuery({
-    queryKey: ["channels", region],
-    queryFn: () => getChannels({ iata }),
+    queryKey: ["channels", regionKey],
+    queryFn: () => getChannels({ iatas }),
     staleTime: 60_000,
   });
 
@@ -60,11 +59,11 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const handleChannelMessage = useCallback(
     (data: ChannelMessage) => {
       // bump lastSeen in the channel list, or refetch if it's a channel we haven't seen
-      queryClient.setQueryData<ChannelSummary[]>(["channels", region], (old) => {
+      queryClient.setQueryData<ChannelSummary[]>(["channels", regionKey], (old) => {
         if (!old) return old;
         const idx = old.findIndex((ch) => ch.channelHash === data.channelHash);
         if (idx === -1) {
-          queryClient.invalidateQueries({ queryKey: ["channels", region] });
+          queryClient.invalidateQueries({ queryKey: ["channels", regionKey] });
           return old;
         }
         const updated = [...old];
@@ -73,7 +72,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       });
 
       // use cache directly to avoid stale closure over selectedChannel
-      const cached = queryClient.getQueryData<ChannelSummary[]>(["channels", region]);
+      const cached = queryClient.getQueryData<ChannelSummary[]>(["channels", regionKey]);
       const selected = cached?.find((ch) => ch.id === selectedId);
       if (selected && data.channelHash === selected.channelHash) {
         // track how many observers heard this packet (same content, multiple paths)
@@ -82,7 +81,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
           [data.packetHash]: (prev[data.packetHash] ?? 0) + 1,
         }));
         queryClient.setQueryData<ChannelMessage[]>(
-          ["channel-messages", selectedId, region],
+          ["channel-messages", selectedId, regionKey],
           (old) => {
             if (old?.some((msg) => msg.packetHash === data.packetHash)) return old;
             return old ? [...old, data] : [data];
@@ -90,7 +89,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         );
       }
     },
-    [queryClient, selectedId, region],
+    [queryClient, selectedId, regionKey],
   );
 
   useWsChannelMessageHandler(wsManager, handleChannelMessage);
@@ -112,7 +111,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         selectedId={selectedId}
         onSelect={handleSelect}
       />
-      <MessagePanel channel={selectedChannel} heardCounts={heardCounts} iata={iata} region={region} onAnalyze={onAnalyze} />
+      <MessagePanel channel={selectedChannel} heardCounts={heardCounts} iatas={iatas} regionKey={regionKey} onAnalyze={onAnalyze} />
     </div>
   );
 }
