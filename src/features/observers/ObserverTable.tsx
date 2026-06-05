@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { getObservers, getBrokers } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
+import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
 import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
 import { formatHex, formatRadio } from "../../lib/formatters";
@@ -65,6 +66,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver 
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [brokerFilter, setBrokerFilter] = useState("");
+  const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
 
   const { data: brokers } = useQuery({
     queryKey: ["brokers"],
@@ -106,6 +108,14 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver 
     }
     return [...types].sort();
   }, [observers]);
+
+  // scope options are the configured scopes; the filter itself is applied client-side on obs.scopes
+  const scopeOptions = useScopes();
+
+  const displayObservers = useMemo(
+    () => (scopeFilter ? (observers ?? []).filter((o) => o.scopes?.includes(scopeFilter)) : observers),
+    [observers, scopeFilter],
+  );
 
   const handleObserverStatus = useCallback(
     (data: WsObserverStatus["data"]) => {
@@ -151,11 +161,14 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver 
           brokerFilter={brokerFilter}
           onBrokerChange={setBrokerFilter}
           brokerOptions={brokerNames}
+          scopeFilter={scopeFilter}
+          onScopeChange={setScopeFilter}
+          scopeOptions={scopeOptions}
         />
 
         <DataTable
           columns={COLUMNS}
-          rows={observers}
+          rows={displayObservers}
           rowKey={(o) => o.id}
           selectedKey={selectedObserverId}
           onSelect={onSelectObserver}

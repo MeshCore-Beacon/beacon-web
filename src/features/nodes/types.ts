@@ -12,6 +12,7 @@ export interface NodeSummary {
   lat: number | null;
   lng: number | null;
   radio?: string; // compact "freq,bw,sf" string, e.g. "915.0,250,11"; absent when unknown
+  defaultScope?: string; // most recently matched transport scope name, e.g. "#bc"
   iatas: NodeIATA[];
   // Set when this node also runs as an observer (watches traffic for uplink). isObserver drives the
   // map's observer-pip marker variant; observerId, when present, links to that observer's detail.

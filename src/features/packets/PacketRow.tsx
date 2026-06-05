@@ -60,6 +60,14 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
         <span className="font-mono text-[11px] text-text-muted uppercase tracking-wider bg-text-muted/8 px-1.5 py-px rounded-sm">
           {packet.routeTypeName || "Unknown"}
         </span>
+        {packet.scope && (
+          <>
+            <span className="text-[6px] text-border" aria-hidden>·</span>
+            <span className="font-mono text-[11px] text-secondary tracking-wide bg-secondary/8 px-1.5 py-px rounded-sm">
+              {packet.scope}
+            </span>
+          </>
+        )}
         <span className="text-[6px] text-border" aria-hidden>·</span>
         <span>{formatTimestamp(packet.lastHeardAt)}</span>
         {packet.latestObserver && (

@@ -117,6 +117,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onAnalyzePack
                 <Field label="Multibyte paths" value={node.supportsMultibytePaths ? "yes" : "no"} />
                 <Field label="Multibyte traces" value={node.supportsMultibyteTraces ? "yes" : "no"} />
                 {node.radio && <Field label="Radio" value={formatRadio(node.radio) ?? "—"} />}
+                {node.defaultScope && <Field label="Scope" value={node.defaultScope} />}
               </div>
             </Section>
 

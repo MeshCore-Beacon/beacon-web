@@ -140,6 +140,11 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 <Badge variant={payloadTypeVariant(detail.header.payloadType)}>
                   {PAYLOAD_TYPE_NAMES[detail.header.payloadType as PayloadTypeValue] ?? "Unknown"}
                 </Badge>
+                {detail.scope && (
+                  <span className="font-mono text-[11px] text-secondary tracking-wide bg-secondary/8 px-1.5 py-px rounded-sm">
+                    {detail.scope}
+                  </span>
+                )}
                 <Tooltip
                   label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
                   className="ml-auto"

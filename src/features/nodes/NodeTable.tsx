@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { getNodes } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
+import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { formatHex, microToDeg, timeAgoMs, formatRadio } from "../../lib/formatters";
@@ -81,6 +82,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [typeFilter, setTypeFilter] = useState("");
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
+  const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
 
@@ -105,6 +107,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     refetchInterval: 30_000,
     placeholderData: keepPreviousData,
   });
+
+  // scope options are the configured scopes; the filter itself is applied client-side on defaultScope
+  const scopeOptions = useScopes();
+
+  const displayNodes = useMemo(
+    () => (scopeFilter ? (nodes ?? []).filter((n) => n.defaultScope === scopeFilter) : nodes),
+    [nodes, scopeFilter],
+  );
 
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
@@ -132,11 +142,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           onPathsChange={setPathsFilter}
           tracesFilter={tracesFilter}
           onTracesChange={setTracesFilter}
+          scopeFilter={scopeFilter}
+          onScopeChange={setScopeFilter}
+          scopeOptions={scopeOptions}
         />
 
         <DataTable
           columns={COLUMNS}
-          rows={nodes}
+          rows={displayNodes}
           rowKey={(n) => n.id}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}

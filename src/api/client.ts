@@ -1,5 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, ScopeStats } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation } from "../features/nodes/types";
@@ -94,6 +94,10 @@ export async function getChannelMessages(
 
 export function getBrokers(): Promise<BrokerStatus[]> {
   return request("/brokers");
+}
+
+export function getScopeStats(): Promise<ScopeStats[]> {
+  return request("/stats/scopes");
 }
 
 export async function getObservers(

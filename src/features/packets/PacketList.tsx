@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePackets } from "./usePackets";
 import { usePacketFilters, matchesFilters } from "./usePacketFilters";
+import { useScopes } from "../../hooks/useScopes";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
 import { PacketVirtualList } from "./PacketVirtualList";
 import { FilterBar } from "../../components/FilterBar";
@@ -30,6 +31,8 @@ interface PacketListProps {
 export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
+  const scopeNames = useScopes();
+  const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
   const {
     allPackets,
     observerOptions,
@@ -91,12 +94,15 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
           typeOptions={TYPE_OPTIONS}
           routeOptions={ROUTE_OPTIONS}
           observerOptions={observerOptions}
+          scopeOptions={scopeOptions}
           activeTypes={filters.payloadTypes.map(String)}
           activeRoutes={filters.routeTypes.map(String)}
           activeObservers={filters.observers}
+          activeScopes={filters.scopes}
           onTypesChange={(v) => setFilter("payloadTypes", v.map(Number))}
           onRoutesChange={(v) => setFilter("routeTypes", v.map(Number))}
           onObserversChange={(v) => setFilter("observers", v)}
+          onScopesChange={(v) => setFilter("scopes", v)}
           search={filters.search}
           onSearchChange={setSearch}
           searchField={filters.searchField}
