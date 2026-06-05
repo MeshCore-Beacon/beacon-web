@@ -23,6 +23,9 @@ interface ObserverFilterBarProps {
   brokerFilter: string;
   onBrokerChange: (b: string) => void;
   brokerOptions: string[];
+  scopeFilter: string;
+  onScopeChange: (s: string) => void;
+  scopeOptions: string[];
 }
 
 export function ObserverFilterBar({
@@ -38,6 +41,9 @@ export function ObserverFilterBar({
   brokerFilter,
   onBrokerChange,
   brokerOptions,
+  scopeFilter,
+  onScopeChange,
+  scopeOptions,
 }: ObserverFilterBarProps) {
   return (
     <div
@@ -72,6 +78,15 @@ export function ObserverFilterBar({
           options={brokerOptions.map((b) => ({ value: b, label: b }))}
           value={brokerFilter}
           onChange={onBrokerChange}
+        />
+      )}
+
+      {scopeOptions.length > 0 && (
+        <SelectDropdown
+          label="Scope"
+          options={scopeOptions.map((s) => ({ value: s, label: s }))}
+          value={scopeFilter}
+          onChange={onScopeChange}
         />
       )}
     </div>

@@ -26,6 +26,7 @@ export interface PacketSummary {
   lastHeardAt: number;
   observationCount: number;
   latestObserver?: LatestObserver;
+  scope?: string; // matched transport scope name, e.g. "#bc"
   summary?: string;
 }
 
@@ -87,6 +88,7 @@ export interface PacketDetail {
   packetHash: string;
   header: PacketHeader;
   transportCodes?: TransportCodes;
+  scope?: string; // matched transport scope name, e.g. "#bc"
   originPubkey?: string;
   parsedPayload?: Record<string, unknown> | string;
   rawPayload: string;
@@ -127,4 +129,13 @@ export interface Region extends RegionSummary {
 export interface BrokerStatus {
   name: string;
   connected: boolean;
+}
+
+// per-transport-scope aggregate counts from /stats/scopes; also the source of the configured scope
+// names used to populate the scope filters
+export interface ScopeStats {
+  name: string; // normalized scope name, e.g. "#bc"
+  packetCount: number;
+  observerCount: number;
+  nodeCount: number;
 }

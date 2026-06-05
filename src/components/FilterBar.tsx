@@ -17,12 +17,15 @@ interface FilterBarProps {
   typeOptions: FilterOption[];
   routeOptions: FilterOption[];
   observerOptions: FilterOption[];
+  scopeOptions: FilterOption[];
   activeTypes: string[];
   activeRoutes: string[];
   activeObservers: string[];
+  activeScopes: string[];
   onTypesChange: (values: string[]) => void;
   onRoutesChange: (values: string[]) => void;
   onObserversChange: (values: string[]) => void;
+  onScopesChange: (values: string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
   searchField: SearchField;
@@ -36,19 +39,27 @@ export function FilterBar({
   typeOptions,
   routeOptions,
   observerOptions,
+  scopeOptions,
   activeTypes,
   activeRoutes,
   activeObservers,
+  activeScopes,
   onTypesChange,
   onRoutesChange,
   onObserversChange,
+  onScopesChange,
   search,
   onSearchChange,
   searchField,
   onSearchFieldChange,
   onClear,
 }: FilterBarProps) {
-  const hasFilters = activeTypes.length > 0 || activeRoutes.length > 0 || activeObservers.length > 0 || search.length > 0;
+  const hasFilters =
+    activeTypes.length > 0 ||
+    activeRoutes.length > 0 ||
+    activeObservers.length > 0 ||
+    activeScopes.length > 0 ||
+    search.length > 0;
 
   return (
     <div
@@ -88,6 +99,15 @@ export function FilterBar({
         searchable
         align="right"
       />
+      {scopeOptions.length > 0 && (
+        <MultiSelectDropdown
+          label="Scope"
+          options={scopeOptions}
+          selected={activeScopes}
+          onChange={onScopesChange}
+          align="right"
+        />
+      )}
 
       {hasFilters && (
         <button

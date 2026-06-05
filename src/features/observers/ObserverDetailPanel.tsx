@@ -104,11 +104,16 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
               <div className="flex items-center gap-3 font-mono text-[13px]">
                 <Field label="Observations" value={observer.observationCount.toLocaleString()} />
               </div>
-              <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 {observer.observerType && <Badge variant="default">{observer.observerType}</Badge>}
                 <span className="text-[13px] text-primary font-semibold font-mono bg-primary/6 px-1.5 py-px rounded-sm">
                   {observer.iata}
                 </span>
+                {observer.scopes?.map((s) => (
+                  <span key={s} className="font-mono text-[13px] text-secondary bg-secondary/8 px-1.5 py-px rounded-sm">
+                    {s}
+                  </span>
+                ))}
               </div>
             </Section>
 

@@ -31,6 +31,7 @@ export function usePacketFilters() {
       payloadTypes: parseIntArray(searchParams.get("types")) as PayloadTypeValue[],
       routeTypes: parseIntArray(searchParams.get("routes")) as RouteTypeValue[],
       observers: parseStringArray(searchParams.get("obs")),
+      scopes: parseStringArray(searchParams.get("scope")),
       search: searchParams.get("q") ?? "",
       searchField: parseSearchField(searchParams.get("sf")),
     }),
@@ -38,11 +39,12 @@ export function usePacketFilters() {
   );
 
   const setFilter = useCallback(
-    (key: "payloadTypes" | "routeTypes" | "observers", values: (number | string)[]) => {
+    (key: "payloadTypes" | "routeTypes" | "observers" | "scopes", values: (number | string)[]) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          const paramKey = key === "payloadTypes" ? "types" : key === "routeTypes" ? "routes" : "obs";
+          const paramKey =
+            key === "payloadTypes" ? "types" : key === "routeTypes" ? "routes" : key === "observers" ? "obs" : "scope";
           if (values.length === 0) {
             next.delete(paramKey);
           } else {
@@ -99,6 +101,7 @@ export function usePacketFilters() {
         next.delete("types");
         next.delete("routes");
         next.delete("obs");
+        next.delete("scope");
         next.delete("q");
         next.delete("sf");
         return next;
@@ -129,6 +132,9 @@ export function matchesFilters(
       ? filters.observers.some((id) => known.has(id))
       : packet.latestObserver ? filters.observers.includes(packet.latestObserver.id) : false;
     if (!match) return false;
+  }
+  if (filters.scopes.length > 0 && (!packet.scope || !filters.scopes.includes(packet.scope))) {
+    return false;
   }
   if (filters.search && filters.searchField === "hash") {
     const q = filters.search.toLowerCase();

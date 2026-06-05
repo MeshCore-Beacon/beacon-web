@@ -5,6 +5,7 @@ export interface ObserverSummary {
   iata: string;
   status: "online" | "offline";
   radio?: string; // compact "freq,bw,sf" string, e.g. "915.0,250,11"; absent when unknown
+  scopes?: string[]; // transport scopes this observer forwards, e.g. ["#bc", "#west"]
 }
 
 export interface Observer extends ObserverSummary {

@@ -25,6 +25,9 @@ interface NodeFilterBarProps {
   onPathsChange: (v: MultibyteFilter) => void;
   tracesFilter: MultibyteFilter;
   onTracesChange: (v: MultibyteFilter) => void;
+  scopeFilter: string;
+  onScopeChange: (s: string) => void;
+  scopeOptions: string[];
 }
 
 export function NodeFilterBar({
@@ -38,6 +41,9 @@ export function NodeFilterBar({
   onPathsChange,
   tracesFilter,
   onTracesChange,
+  scopeFilter,
+  onScopeChange,
+  scopeOptions,
 }: NodeFilterBarProps) {
   return (
     <div
@@ -70,6 +76,15 @@ export function NodeFilterBar({
         value={tracesFilter}
         onChange={(v) => onTracesChange(v as MultibyteFilter)}
       />
+      {scopeOptions.length > 0 && (
+        <SelectDropdown
+          label="Scope"
+          options={scopeOptions.map((s) => ({ value: s, label: s }))}
+          allLabel="Any"
+          value={scopeFilter}
+          onChange={onScopeChange}
+        />
+      )}
     </div>
   );
 }
