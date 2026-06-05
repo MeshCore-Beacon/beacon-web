@@ -76,7 +76,7 @@ const COLUMNS: Column<NodeSummary>[] = [
 ];
 
 export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
-  const region = useRegion();
+  const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("");
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
@@ -87,15 +87,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   useTick();
 
   const queryKey = useMemo(
-    () => ["nodes", region, typeFilter, pathsFilter, tracesFilter, search, searchField],
-    [region, typeFilter, pathsFilter, tracesFilter, search, searchField],
+    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, search, searchField],
+    [regionKey, typeFilter, pathsFilter, tracesFilter, search, searchField],
   );
 
   const { data: nodes, isLoading } = useQuery({
     queryKey,
     queryFn: () =>
       getNodes({
-        iata: region === "*" ? undefined : region,
+        iatas,
         type: typeFilter || undefined,
         name: searchField === "name" ? search || undefined : undefined,
         supportsMultibytePaths: pathsFilter || undefined,

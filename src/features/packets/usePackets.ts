@@ -115,14 +115,14 @@ class LivePacketStore {
 // combines live WS stream with paginated history
 
 export function usePackets() {
-  const region = useRegion();
+  const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [store] = useState(() => new LivePacketStore());
   const [laggedCount, setLaggedCount] = useState(0);
 
-  const [prevRegion, setPrevRegion] = useState(region);
-  if (prevRegion !== region) {
-    setPrevRegion(region);
+  const [prevRegionKey, setPrevRegionKey] = useState(regionKey);
+  if (prevRegionKey !== regionKey) {
+    setPrevRegionKey(regionKey);
     store.reset();
     setLaggedCount(0);
   }
@@ -158,9 +158,9 @@ export function usePackets() {
   const handleLagged = useCallback(
     (data: WsLagged) => {
       setLaggedCount((prev) => prev + data.droppedCount);
-      queryClient.invalidateQueries({ queryKey: ["packets", region] });
+      queryClient.invalidateQueries({ queryKey: ["packets", regionKey] });
     },
-    [queryClient, region],
+    [queryClient, regionKey],
   );
 
   const dismissLagged = useCallback(() => setLaggedCount(0), []);
@@ -171,9 +171,9 @@ export function usePackets() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["packets", region],
+    queryKey: ["packets", regionKey],
     queryFn: ({ pageParam }) =>
-      getPackets(region, {
+      getPackets(iatas, {
         cursor: pageParam,
         // first load grabs a bigger batch so the list isn't sparse; scroll pages stay default-sized
         limit: pageParam === undefined ? INITIAL_PACKET_PAGE_SIZE : undefined,

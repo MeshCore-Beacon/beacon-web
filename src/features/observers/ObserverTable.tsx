@@ -58,7 +58,7 @@ const COLUMNS: Column<ObserverSummary>[] = [
 ];
 
 export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver }: ObserverTableProps) {
-  const region = useRegion();
+  const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
@@ -80,15 +80,15 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver 
   useTick();
 
   const queryKey = useMemo(
-    () => ["observers", region, statusFilter, typeFilter, brokerFilter, search, searchField],
-    [region, statusFilter, typeFilter, brokerFilter, search, searchField],
+    () => ["observers", regionKey, statusFilter, typeFilter, brokerFilter, search, searchField],
+    [regionKey, statusFilter, typeFilter, brokerFilter, search, searchField],
   );
 
   const { data: observers, isLoading } = useQuery({
     queryKey,
     queryFn: () =>
       getObservers({
-        iata: region === "*" ? undefined : region,
+        iatas,
         status: statusFilter || undefined,
         type: typeFilter || undefined,
         broker: brokerFilter || undefined,
