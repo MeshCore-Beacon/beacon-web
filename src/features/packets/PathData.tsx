@@ -110,6 +110,38 @@ function HopPopover({ hop, onViewNode, children }: {
   );
 }
 
+// One path-hash block: tinted by its hop's resolution confidence and wrapped in the resolved-node
+// popover. A single resolved node makes the block itself clickable (opens that node directly);
+// ambiguous candidates are clickable in the popover; "none" just shows the tinted hash. Shared by
+// PathData and the trace payload so both resolve hops identically.
+export function ResolvedHopBlock({ hop, label, onViewNode }: {
+  hop: ResolvedHop | undefined;
+  label: string;
+  onViewNode?: (nodeId: string) => void;
+}) {
+  const confidence: PathConfidence = hop?.confidence ?? "none";
+  const blockClass = `px-1.5 py-px rounded-sm font-semibold ${HOP_BLOCK_CLASSES[confidence]}`;
+  const single = hop && hop.nodes.length === 1 && onViewNode ? hop.nodes[0] : undefined;
+  return (
+    <HopPopover hop={hop} onViewNode={onViewNode}>
+      {single ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewNode?.(single.id);
+          }}
+          className={`${blockClass} cursor-pointer hover:brightness-125`}
+        >
+          {label}
+        </button>
+      ) : (
+        <span className={blockClass}>{label}</span>
+      )}
+    </HopPopover>
+  );
+}
+
 // Raw path-hash blocks, each tinted by its hop's resolution confidence and showing the resolved
 // node(s) on hover. resolvedPath[i] lines up with the i-th hash (the backend appends one hop per
 // hash in order), so a missing/short entry falls back to "none". When onViewNode is provided, a
@@ -130,35 +162,12 @@ export function PathData({ pathBytes, hashSize, resolvedPath, size = "md", onVie
 
   return (
     <div className={`flex flex-wrap items-center gap-1 font-mono ${textClass}`}>
-      {hops.map((hop, i) => {
-        const resolved = resolvedPath[i];
-        const confidence: PathConfidence = resolved?.confidence ?? "none";
-        const nodes = resolved?.nodes ?? [];
-        const blockClass = `px-1.5 py-px rounded-sm font-semibold ${HOP_BLOCK_CLASSES[confidence]}`;
-        // single resolved node → click the block directly; ambiguous is disambiguated via the popover
-        const single = nodes.length === 1 && onViewNode ? nodes[0] : undefined;
-        return (
-          <span key={i} className="contents">
-            {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
-            <HopPopover hop={resolved} onViewNode={onViewNode}>
-              {single ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewNode?.(single.id);
-                  }}
-                  className={`${blockClass} cursor-pointer hover:brightness-125`}
-                >
-                  {hop.toUpperCase()}
-                </button>
-              ) : (
-                <span className={blockClass}>{hop.toUpperCase()}</span>
-              )}
-            </HopPopover>
-          </span>
-        );
-      })}
+      {hops.map((hop, i) => (
+        <span key={i} className="contents">
+          {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
+          <ResolvedHopBlock hop={resolvedPath[i]} label={hop.toUpperCase()} onViewNode={onViewNode} />
+        </span>
+      ))}
     </div>
   );
 }
