@@ -4,7 +4,7 @@ import { getObservers, getBrokers } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useTick } from "../../hooks/useTick";
 import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
-import { formatHex } from "../../lib/formatters";
+import { formatHex, formatRadio } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
 import { DataTable, type Column } from "../../components/DataTable";
 import { ObserverFilterBar } from "./ObserverFilterBar";
@@ -15,11 +15,14 @@ import type { WsObserverStatus } from "../../types/ws";
 
 interface ObserverTableProps {
   wsManager: WsManager;
+  selectedObserverId: string | null;
+  onSelectObserver: (id: string | null) => void;
 }
 
 const COLUMNS: Column<ObserverSummary>[] = [
   {
     header: "Name",
+    sortValue: (obs) => obs.displayName ?? formatHex(obs.id),
     cell: (obs) => (
       <div className="flex items-center gap-2">
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${obs.status === "online" ? "bg-green" : "bg-text-dim/30"}`} />
@@ -32,23 +35,31 @@ const COLUMNS: Column<ObserverSummary>[] = [
   {
     header: "Type",
     className: "text-text-muted",
+    sortValue: (obs) => obs.observerType ?? null,
     cell: (obs) => obs.observerType ?? "—",
+  },
+  {
+    header: "Radio",
+    className: "text-text-muted",
+    sortValue: (obs) => formatRadio(obs.radio) ?? null,
+    cell: (obs) => formatRadio(obs.radio) ?? "—",
   },
   {
     header: "IATA",
     className: "text-text-normal",
+    sortValue: (obs) => obs.iata,
     cell: (obs) => obs.iata,
   },
   {
     header: "Status",
+    sortValue: (obs) => obs.status,
     cell: (obs) => <Badge variant={obs.status === "online" ? "live" : "offline"}>{obs.status}</Badge>,
   },
 ];
 
-export function ObserverTable({ wsManager }: ObserverTableProps) {
+export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver }: ObserverTableProps) {
   const region = useRegion();
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [statusFilter, setStatusFilter] = useState("");
@@ -115,11 +126,11 @@ export function ObserverTable({ wsManager }: ObserverTableProps) {
         return updated;
       });
       // refresh detail panel if it's showing this observer
-      if (selectedId === data.observerId) {
+      if (selectedObserverId === data.observerId) {
         queryClient.invalidateQueries({ queryKey: ["observer", data.observerId] });
       }
     },
-    [queryClient, queryKey, selectedId],
+    [queryClient, queryKey, selectedObserverId],
   );
 
   useWsObserverStatusHandler(wsManager, handleObserverStatus);
@@ -146,17 +157,18 @@ export function ObserverTable({ wsManager }: ObserverTableProps) {
           columns={COLUMNS}
           rows={observers}
           rowKey={(o) => o.id}
-          selectedKey={selectedId}
-          onSelect={setSelectedId}
+          selectedKey={selectedObserverId}
+          onSelect={onSelectObserver}
           isLoading={isLoading}
           emptyLabel="No observers"
+          defaultSort={{ header: "Name" }}
         />
       </div>
 
-      {selectedId && (
+      {selectedObserverId && (
         <ObserverDetailPanel
-          observerId={selectedId}
-          onClose={() => setSelectedId(null)}
+          observerId={selectedObserverId}
+          onClose={() => onSelectObserver(null)}
         />
       )}
     </div>

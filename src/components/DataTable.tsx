@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { EmptyState } from "./EmptyState";
 import { SkeletonRows } from "./SkeletonRows";
 
@@ -6,7 +6,10 @@ export interface Column<T> {
   header: string;
   cell: (row: T) => ReactNode;
   className?: string; // extra classes applied to the <td>
+  sortValue?: (row: T) => string | number | null | undefined; // column is sortable when present
 }
+
+type SortDirection = "asc" | "desc";
 
 interface DataTableProps<T> {
   columns: Column<T>[];
@@ -16,11 +19,42 @@ interface DataTableProps<T> {
   onSelect: (key: string | null) => void;
   isLoading?: boolean;
   emptyLabel: string;
+  defaultSort?: { header: string; direction?: SortDirection };
 }
 
 // selectable, sticky-header list table shared by the entity tabs (observers, nodes, …)
 
-export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort }: DataTableProps<T>) {
+  const [sort, setSort] = useState<{ header: string; direction: SortDirection }>(() => ({
+    header: defaultSort?.header ?? "",
+    direction: defaultSort?.direction ?? "asc",
+  }));
+
+  function toggleSort(header: string) {
+    setSort((prev) =>
+      prev.header === header
+        ? { header, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { header, direction: "asc" },
+    );
+  }
+
+  const sortedRows = useMemo(() => {
+    if (!rows) return rows;
+    const col = columns.find((c) => c.header === sort.header && c.sortValue);
+    if (!col?.sortValue) return rows;
+    const getValue = col.sortValue;
+    const dir = sort.direction === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = getValue(a);
+      const bv = getValue(b);
+      const aEmpty = av == null || av === "";
+      const bEmpty = bv == null || bv === "";
+      if (aEmpty || bEmpty) return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1; // empties sink to the bottom
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), undefined, { numeric: true }) * dir;
+    });
+  }, [rows, columns, sort]);
+
   if (isLoading) {
     return (
       <div className="flex-1 overflow-y-auto">
@@ -31,17 +65,34 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {rows && rows.length > 0 ? (
+      {sortedRows && sortedRows.length > 0 ? (
         <table className="w-full text-xs font-mono">
           <thead className="sticky top-0 bg-bg-surface z-10">
             <tr className="text-text-muted text-[11px] uppercase tracking-wider border-b border-border">
-              {columns.map((col) => (
-                <th key={col.header} className="text-left px-4 py-2 font-medium">{col.header}</th>
-              ))}
+              {columns.map((col) => {
+                if (!col.sortValue) {
+                  return <th key={col.header} className="text-left px-4 py-2 font-medium">{col.header}</th>;
+                }
+                const active = sort.header === col.header;
+                return (
+                  <th key={col.header} className="text-left px-4 py-2 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(col.header)}
+                      className="flex items-center gap-1 cursor-pointer hover:text-text-normal transition-colors"
+                    >
+                      {col.header}
+                      <span className={active ? "text-text-normal" : "text-text-dim/40"}>
+                        {active ? (sort.direction === "asc" ? "▲" : "▼") : "▲"}
+                      </span>
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {sortedRows.map((row) => {
               const key = rowKey(row);
               const isSelected = key === selectedKey;
               return (

@@ -128,15 +128,16 @@ function formatUnixTs(unix: number): string {
 
 function AdvertPayload({ payload }: PayloadProps) {
   const p = payload;
-  const name = p.name as string | null | undefined;
   const publicKey = p.publicKey as string | undefined;
   const signature = p.signature as string | undefined;
-  const signatureValid = p.signatureValid as boolean | undefined;
   const timestamp = p.timestamp as number | undefined;
-  const latitude = p.latitude as number | null | undefined;
-  const longitude = p.longitude as number | null | undefined;
-  const hasLocation = p.hasLocation as boolean | undefined;
-  const flagsByte = p.flags as number | undefined;
+  const appData = (p.appData ?? {}) as Record<string, unknown>;
+  const flags = (appData.flags ?? {}) as Record<string, unknown>;
+  const flagsByte = typeof flags.raw === "string" ? parseInt(flags.raw, 16) : undefined;
+  const latitude = appData.latitude as number | null | undefined;
+  const longitude = appData.longitude as number | null | undefined;
+  const hasLocation = flags.hasLocation as boolean | undefined;
+  const name = appData.name as string | null | undefined;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -161,34 +162,29 @@ function AdvertPayload({ payload }: PayloadProps) {
           <span className="text-text-dim">Signature </span>
           <span className="text-text-normal">{signature.slice(0, 16).toUpperCase()}…</span>
           <span className="text-text-dim"> ({signature.length / 2}B)</span>
-          {signatureValid != null && (
-            <>
-              {" "}
-              <FlagChip label={signatureValid ? "Valid" : "Invalid"} active={signatureValid} variant={signatureValid ? "green" : "danger"} />
-            </>
-          )}
         </ColorAccentField>
       )}
 
       <ColorAccentField field="flags">
-        <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Flags Byte</div>
+        <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">App Flags</div>
         <div className="flex gap-x-4">
-          <span><span className="text-text-dim">Role </span><span className="text-text-normal">{String(p.deviceRoleName ?? "?")}</span></span>
-          <span><span className="text-text-dim">Loc </span><BooleanValue value={!!p.hasLocation} /></span>
-          <span><span className="text-text-dim">F1 </span><BooleanValue value={!!p.hasFeature1} /></span>
-          <span><span className="text-text-dim">F2 </span><BooleanValue value={!!p.hasFeature2} /></span>
-          <span><span className="text-text-dim">Name </span><BooleanValue value={!!p.hasName} /></span>
+          <span><span className="text-text-dim">Role </span><span className="text-text-normal">{String(flags.deviceRoleName ?? "?")}</span></span>
+          <span><span className="text-text-dim">Loc </span><BooleanValue value={!!flags.hasLocation} /></span>
+          <span><span className="text-text-dim">F1 </span><BooleanValue value={!!flags.hasFeature1} /></span>
+          <span><span className="text-text-dim">F2 </span><BooleanValue value={!!flags.hasFeature2} /></span>
+          <span><span className="text-text-dim">Name </span><BooleanValue value={!!flags.hasName} /></span>
         </div>
-        {flagsByte != null && <AdvertFlagsBitBreakdown flagsByte={flagsByte} />}
+        {flagsByte != null && !Number.isNaN(flagsByte) && <AdvertFlagsBitBreakdown flagsByte={flagsByte} />}
       </ColorAccentField>
 
+      {/* Coordinates render as raw decimal degrees by design — intentionally not D°M' / N·S·E·W formatted. */}
       {hasLocation && (latitude != null || longitude != null) && (
         <ColorAccentField field="location">
           <span className="text-text-dim">Location </span>
           <span className="text-text-normal">
-            {latitude != null ? `${Math.abs(latitude).toFixed(4)}° ${latitude >= 0 ? "N" : "S"}` : "—"}
+            {latitude != null ? latitude.toFixed(5) : "—"}
             {", "}
-            {longitude != null ? `${Math.abs(longitude).toFixed(4)}° ${longitude >= 0 ? "E" : "W"}` : "—"}
+            {longitude != null ? longitude.toFixed(5) : "—"}
           </span>
           <span className="text-text-dim"> (8B LE)</span>
         </ColorAccentField>
@@ -208,47 +204,55 @@ function AdvertPayload({ payload }: PayloadProps) {
 function TracePayload({ payload }: PayloadProps) {
   const traceTag = payload.traceTag as string | undefined;
   const authCode = payload.authCode as number | undefined;
+  const flags = payload.flags as number | undefined;
   const pathHashes = payload.pathHashes as string[] | undefined;
-  const snrValues = payload.snrValues as number[] | null | undefined;
+  const snrValues = payload.snrValues as number[] | undefined;
 
   return (
     <div className="flex flex-col gap-2.5">
-      <div className="flex items-center gap-3">
-        {traceTag && (
-          <div>
-            <span className="text-text-dim">Tag </span>
-            <HexBadge value={traceTag} />
-          </div>
-        )}
-        {authCode != null && (
-          <FieldRow label="Auth">
-            <span className="text-text-normal">0x{authCode.toString(16).toUpperCase()}</span>
-          </FieldRow>
-        )}
-      </div>
+      {traceTag && (
+        <ColorAccentField field="traceTag">
+          <span className="text-text-dim">Trace Tag </span>
+          <span className="text-text-normal">{traceTag.toUpperCase()}</span>
+          <span className="text-text-dim"> ({traceTag.length / 2}B)</span>
+        </ColorAccentField>
+      )}
+
+      {authCode != null && (
+        <ColorAccentField field="authCode">
+          <span className="text-text-dim">Auth Code </span>
+          <span className="text-text-normal">0x{authCode.toString(16).toUpperCase()}</span>
+          <span className="text-text-dim"> (4B)</span>
+        </ColorAccentField>
+      )}
+
+      {flags != null && (
+        <ColorAccentField field="flags">
+          <span className="text-text-dim">Flags </span>
+          <span className="text-text-normal">0x{flags.toString(16).toUpperCase().padStart(2, "0")}</span>
+        </ColorAccentField>
+      )}
 
       {pathHashes && pathHashes.length > 0 && (
-        <div>
-          <SectionLabel>Trace Path</SectionLabel>
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
+        <ColorAccentField field="tracePath">
+          <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Trace Path</div>
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
             {pathHashes.map((hash, i) => {
-              const snr = snrValues?.[i] ?? null;
-              const level = snrLevel(snr);
+              const snr = snrValues?.[i];
+              const level = snr != null ? snrLevel(snr) : null;
               const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
               return (
                 <span key={i} className="contents">
-                  {i > 0 && <span className="text-text-dim text-xs" aria-hidden>→</span>}
+                  {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
                   <span className="inline-flex flex-col items-center gap-0.5">
                     <HexBadge value={hash} />
-                    {snr != null && (
-                      <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>
-                    )}
+                    {snr != null && <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>}
                   </span>
                 </span>
               );
             })}
           </div>
-        </div>
+        </ColorAccentField>
       )}
     </div>
   );
@@ -348,34 +352,6 @@ function ResponsePayload({ payload }: PayloadProps) {
           )}
           {d.content != null && (
             <div className="text-text-bright break-all">{String(d.content)}</div>
-          )}
-        </div>
-      )}
-    </EncryptedEnvelope>
-  );
-}
-
-function AnonRequestPayload({ payload }: PayloadProps) {
-  const senderPublicKey = payload.senderPublicKey as string | undefined;
-  return (
-    <EncryptedEnvelope
-      payload={payload}
-      headerSlot={senderPublicKey && <TruncatedHex label="Sender Key" value={senderPublicKey} accentClass={FIELD_COLORS.senderPublicKey.accent} />}
-    >
-      {(d) => (
-        <div className="flex flex-col gap-1">
-          {d.timestamp != null && (
-            <FieldRow label="Time">
-              <span className="text-text-normal">{formatUnixTs(d.timestamp as number)}</span>
-            </FieldRow>
-          )}
-          {d.syncTimestamp != null && (
-            <FieldRow label="Sync Since">
-              <span className="text-text-normal">{formatUnixTs(d.syncTimestamp as number)}</span>
-            </FieldRow>
-          )}
-          {d.password != null && (
-            <FieldRow label="Password"><span className="text-text-normal">{String(d.password)}</span></FieldRow>
           )}
         </div>
       )}
@@ -542,7 +518,8 @@ function ControlPayload({ payload }: PayloadProps) {
 }
 
 function RawPayload({ payload }: PayloadProps) {
-  const raw = payload.raw as string | undefined;
+  // RAW packets carry the bytes under `data`; older shapes used `raw`.
+  const raw = (payload.raw ?? payload.data) as string | undefined;
   if (!raw) return null;
   return <TruncatedHex label="Raw" value={raw} maxChars={32} />;
 }
@@ -653,6 +630,24 @@ function GenericPayload({ payload }: PayloadProps) {
   );
 }
 
+function AnonReqPayload({ payload }: PayloadProps) {
+  const destination = payload.destination as number | undefined;
+  const ephemeralPubKey = payload.ephemeralPubKey as string | undefined;
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {destination != null && (
+        <FieldRow label="Dest Hash">
+          <span className="text-text-normal">0x{destination.toString(16).toUpperCase().padStart(2, "0")}</span>
+        </FieldRow>
+      )}
+      {ephemeralPubKey && (
+        <TruncatedHex label="Ephemeral Key" value={ephemeralPubKey} accentClass={FIELD_COLORS.senderPublicKey.accent} />
+      )}
+    </div>
+  );
+}
+
 // routes payload.type to the right renderer
 
 export function PayloadBreakdown({ payload }: { payload: Record<string, unknown> }) {
@@ -663,13 +658,14 @@ export function PayloadBreakdown({ payload }: { payload: Record<string, unknown>
     case "TEXT_MESSAGE": return <TextPayload payload={payload} />;
     case "REQUEST": return <RequestPayload payload={payload} />;
     case "RESPONSE": return <ResponsePayload payload={payload} />;
-    case "ANON_REQUEST": return <AnonRequestPayload payload={payload} />;
+    case "ANON_REQUEST": return <AnonReqPayload payload={payload} />;
     case "ACK": return <AckPayload payload={payload} />;
     case "PATH": return <PathPayload payload={payload} />;
     case "CONTROL": return <ControlPayload payload={payload} />;
-    case "GROUP_DATA":
-    case "MULTI_PART":
-    case "CUSTOM": return <RawPayload payload={payload} />;
+    case "GROUP_DATA": return <GroupTextPayload payload={payload} />;
+    case "RAW": return <RawPayload payload={payload} />;
+    // MULTIPART carries structured remaining/wrappedType/wrappedPayload fields, which the
+    // generic key/value renderer shows verbatim.
     default: return <GenericPayload payload={payload} />;
   }
 }

@@ -1,10 +1,10 @@
 import type { Observation } from "../../types/api";
 import { formatTimeOnly, formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
-import { HopBadge } from "../../components/HopBadge";
+import { PathData } from "./PathData";
 
 // single observation with signal stats and resolved path
 
-export function ObservationCard({ observation: obs, selected, onClick }: { observation: Observation; selected?: boolean; onClick?: () => void }) {
+export function ObservationCard({ observation: obs, selected, onClick, onViewNode, isTrace }: { observation: Observation; selected?: boolean; onClick?: () => void; onViewNode?: (nodeId: string) => void; isTrace?: boolean }) {
   const level = snrLevel(obs.snr);
 
   return (
@@ -45,19 +45,24 @@ export function ObservationCard({ observation: obs, selected, onClick }: { obser
         </div>
         <div className="flex flex-col">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">Hops</span>
-          <span className="font-medium text-text-normal">{obs.hopCount}</span>
+          <span className="font-medium text-text-normal">{obs.pathLength.hopCount}</span>
         </div>
       </div>
 
-      {obs.resolvedPath.length > 0 && (
+      {obs.pathBytes && (
         <div className="flex items-center gap-1 mt-2 font-mono text-[11px] pt-1.5 border-t border-border-subtle">
-          <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">Path</span>
-          {obs.resolvedPath.map((hop, i) => (
-            <span key={i} className="contents">
-              {i > 0 && <span className="text-text-dim text-xs" aria-hidden>→</span>}
-              <HopBadge hop={hop} />
-            </span>
-          ))}
+          {isTrace ? (
+            // TRACE path bytes are per-hop SNR samples, not hop hashes — show them raw, never as a resolvable path.
+            <>
+              <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">Path SNR</span>
+              <span className="text-text-normal break-all">{obs.pathBytes.toUpperCase()}</span>
+            </>
+          ) : (
+            <>
+              <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">Path</span>
+              <PathData pathBytes={obs.pathBytes} hashSize={obs.pathLength.hashSize} resolvedPath={obs.resolvedPath} size="sm" onViewNode={onViewNode} />
+            </>
+          )}
         </div>
       )}
     </div>

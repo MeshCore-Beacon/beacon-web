@@ -12,6 +12,7 @@ export const PayloadType = {
   PATH: 0x08,
   TRACE: 0x09,
   MULTI_PART: 0x0a,
+  CONTROL: 0x0b,
   CUSTOM: 0x0f,
 } as const;
 
@@ -19,8 +20,8 @@ export type PayloadTypeValue = (typeof PayloadType)[keyof typeof PayloadType];
 
 export const PAYLOAD_TYPE_NAMES: Record<PayloadTypeValue, string> = {
   [PayloadType.REQUEST]: "REQ",
-  [PayloadType.RESPONSE]: "TXT_MSG",
-  [PayloadType.TEXT]: "SENSOR_DATA",
+  [PayloadType.RESPONSE]: "RESPONSE",
+  [PayloadType.TEXT]: "TXT_MSG",
   [PayloadType.ACK]: "ACK",
   [PayloadType.ADVERT]: "ADVERT",
   [PayloadType.GROUP_TEXT]: "GRP_TXT",
@@ -29,6 +30,7 @@ export const PAYLOAD_TYPE_NAMES: Record<PayloadTypeValue, string> = {
   [PayloadType.PATH]: "PATH",
   [PayloadType.TRACE]: "TRACE",
   [PayloadType.MULTI_PART]: "MULTI_PART",
+  [PayloadType.CONTROL]: "CONTROL",
   [PayloadType.CUSTOM]: "CUSTOM",
 };
 
@@ -50,4 +52,4 @@ export const ROUTE_TYPE_NAMES: Record<RouteTypeValue, string> = {
   [RouteType.TRANSPORT_DIRECT]: "TRANSPORT_DIRECT",
 };
 
-export type PathConfidence = "high" | "low" | "unknown";
+export type PathConfidence = "high" | "ambiguous" | "none";

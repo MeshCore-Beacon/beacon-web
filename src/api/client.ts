@@ -105,8 +105,8 @@ export async function getNodes(
     iata?: string;
     type?: string;
     name?: string;
-    supportsMultibytePaths?: boolean;
-    supportsMultibyteTraces?: boolean;
+    supportsMultibytePaths?: "true" | "false";
+    supportsMultibyteTraces?: "true" | "false";
     limit?: number;
   },
 ): Promise<NodeSummary[]> {
@@ -114,8 +114,8 @@ export async function getNodes(
     iata: params?.iata,
     typeName: params?.type,
     name: params?.name,
-    supportsMultibytePaths: params?.supportsMultibytePaths ? "true" : undefined,
-    supportsMultibyteTraces: params?.supportsMultibyteTraces ? "true" : undefined,
+    supportsMultibytePaths: params?.supportsMultibytePaths,
+    supportsMultibyteTraces: params?.supportsMultibyteTraces,
     limit: params?.limit,
   });
   return page.items;

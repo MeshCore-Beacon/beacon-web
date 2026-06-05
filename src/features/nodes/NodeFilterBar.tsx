@@ -2,16 +2,17 @@ import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { SelectDropdown } from "../../components/SelectDropdown";
 import { NODE_TYPE_OPTIONS } from "../../lib/node-types";
 
-const CAPABILITY_OPTIONS = [
-  { value: "paths", label: "Multibyte Paths" },
-  { value: "traces", label: "Multibyte Traces" },
+const MULTIBYTE_OPTIONS = [
+  { value: "true", label: "Yes" },
+  { value: "false", label: "No" },
 ];
 
 const SEARCH_FIELDS: SearchFieldOption[] = [
   { value: "name", label: "Name" },
 ];
 
-export type CapabilityFilter = "" | "paths" | "traces";
+// "" means no filter (Any)
+export type MultibyteFilter = "" | "true" | "false";
 
 interface NodeFilterBarProps {
   search: string;
@@ -20,8 +21,10 @@ interface NodeFilterBarProps {
   onSearchFieldChange: (f: string) => void;
   typeFilter: string;
   onTypeChange: (t: string) => void;
-  capabilityFilter: CapabilityFilter;
-  onCapabilityChange: (c: CapabilityFilter) => void;
+  pathsFilter: MultibyteFilter;
+  onPathsChange: (v: MultibyteFilter) => void;
+  tracesFilter: MultibyteFilter;
+  onTracesChange: (v: MultibyteFilter) => void;
 }
 
 export function NodeFilterBar({
@@ -31,8 +34,10 @@ export function NodeFilterBar({
   onSearchFieldChange,
   typeFilter,
   onTypeChange,
-  capabilityFilter,
-  onCapabilityChange,
+  pathsFilter,
+  onPathsChange,
+  tracesFilter,
+  onTracesChange,
 }: NodeFilterBarProps) {
   return (
     <div
@@ -52,10 +57,18 @@ export function NodeFilterBar({
 
       <SelectDropdown label="Type" options={NODE_TYPE_OPTIONS} value={typeFilter} onChange={onTypeChange} />
       <SelectDropdown
-        label="Capabilities"
-        options={CAPABILITY_OPTIONS}
-        value={capabilityFilter}
-        onChange={(v) => onCapabilityChange(v as CapabilityFilter)}
+        label="Multibyte paths"
+        options={MULTIBYTE_OPTIONS}
+        allLabel="Any"
+        value={pathsFilter}
+        onChange={(v) => onPathsChange(v as MultibyteFilter)}
+      />
+      <SelectDropdown
+        label="Multibyte traces"
+        options={MULTIBYTE_OPTIONS}
+        allLabel="Any"
+        value={tracesFilter}
+        onChange={(v) => onTracesChange(v as MultibyteFilter)}
       />
     </div>
   );

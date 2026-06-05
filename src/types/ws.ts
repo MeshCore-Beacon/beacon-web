@@ -38,6 +38,7 @@ export interface WsPacketObservation {
       payloadType: number;
       payloadTypeName: string;
       routeType: number;
+      routeTypeName: string;
       isFirstObservation: boolean;
       observationCount: number;
     };

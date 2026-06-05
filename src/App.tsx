@@ -7,8 +7,10 @@ import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
+import { PacketAnalyzerOverlay } from "./features/packets/PacketAnalyzerOverlay";
 import { NodeTable } from "./features/nodes/NodeTable";
 import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
+import { NodeDetailOverlay } from "./features/nodes/NodeDetailOverlay";
 import { ObserverTable } from "./features/observers/ObserverTable";
 import { ChannelList } from "./features/channels/ChannelList";
 import { StatsOverview } from "./features/stats/StatsOverview";
@@ -108,15 +110,28 @@ function AppInner() {
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // lifted (like selectedNodeId) so a node's "View observer" link can select it before the tab mounts
+  const [selectedObserverId, setSelectedObserverId] = useState<string | null>(null);
+  // node detail shown as a modal over the packet analyzer (e.g. clicking a resolved path hop)
+  const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
+  // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
+  const [overlayPacketHash, setOverlayPacketHash] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(() => {
     const stored = localStorage.getItem(DRAWER_STORAGE_KEY);
     return stored === null ? true : stored === "true";
   });
 
-  const { data: analyzerDetail } = useQuery({
+  const { data: analyzerDetail, isLoading: analyzerLoading } = useQuery({
     queryKey: ["packet-detail", analyzerHash],
     queryFn: () => getPacketDetail(analyzerHash!),
     enabled: !!analyzerHash,
+    staleTime: Infinity,
+  });
+
+  const { data: overlayPacketDetail, isLoading: overlayPacketLoading } = useQuery({
+    queryKey: ["packet-detail", overlayPacketHash],
+    queryFn: () => getPacketDetail(overlayPacketHash!),
+    enabled: !!overlayPacketHash,
     staleTime: Infinity,
   });
 
@@ -139,6 +154,8 @@ function AppInner() {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    setOverlayNodeId(null);
+    setOverlayPacketHash(null);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
@@ -146,7 +163,12 @@ function AppInner() {
     });
   };
 
-  const clearSelection = useCallback(() => setSelectedNodeId(null), []);
+  const clearSelection = useCallback(() => {
+    setSelectedNodeId(null);
+    setOverlayNodeId(null);
+    setOverlayPacketHash(null);
+    setSelectedObserverId(null);
+  }, []);
 
   useEffect(() => {
     wsManager.connect({ iatas: initialRegion === "*" ? undefined : [initialRegion], events: ["packetObservation", "channelMessage", "observerStatus", "nodeUpdate"] });
@@ -157,7 +179,7 @@ function AppInner() {
   const tabContent: Record<string, React.ReactNode> = {
     Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverTable wsManager={wsManager} />,
+    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={setSelectedObserverId} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Stats: <StatsOverview />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
@@ -169,7 +191,7 @@ function AppInner() {
       <RegionUrlSync />
       <SelectionResetOnRegion onRegionChange={clearSelection} />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
-        <div className="flex flex-1 min-h-0">
+        <div className="relative flex flex-1 min-h-0">
           <div key={activeTab} className="flex flex-1 min-h-0 fade-in">
             <Suspense fallback={<EmptyState title={activeTab} subtitle="Loading…" />}>
               {tabContent[activeTab]}
@@ -178,14 +200,45 @@ function AppInner() {
           {analyzerHash && (activeTab === "Packets" || activeTab === "Channels") && (
             <PacketAnalyzerDrawer
               detail={analyzerDetail}
+              loading={analyzerLoading}
               selectedObservationId={selectedObservationId}
               onSelectObservation={setSelectedObservationId}
               open={drawerOpen}
               onToggle={handleToggleDrawer}
+              onViewNode={setOverlayNodeId}
             />
           )}
           {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
-            <NodeDetailPanel nodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />
+            <NodeDetailPanel
+              nodeId={selectedNodeId}
+              onClose={() => setSelectedNodeId(null)}
+              onViewObserver={(observerId) => {
+                setSelectedObserverId(observerId);
+                handleTabChange("Observers");
+              }}
+              onAnalyzePacket={setOverlayPacketHash}
+            />
+          )}
+          {overlayNodeId && (
+            <NodeDetailOverlay
+              nodeId={overlayNodeId}
+              onClose={() => setOverlayNodeId(null)}
+              onViewObserver={(observerId) => {
+                setSelectedObserverId(observerId);
+                handleTabChange("Observers");
+              }}
+            />
+          )}
+          {overlayPacketHash && (
+            <PacketAnalyzerOverlay
+              detail={overlayPacketDetail}
+              loading={overlayPacketLoading}
+              onClose={() => setOverlayPacketHash(null)}
+              onViewObserver={(observerId) => {
+                setSelectedObserverId(observerId);
+                handleTabChange("Observers");
+              }}
+            />
           )}
         </div>
       </AppShell>

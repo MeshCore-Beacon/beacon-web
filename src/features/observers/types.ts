@@ -4,6 +4,7 @@ export interface ObserverSummary {
   observerType?: string;
   iata: string;
   status: "online" | "offline";
+  radio?: string; // compact "freq,bw,sf" string, e.g. "915.0,250,11"; absent when unknown
 }
 
 export interface Observer extends ObserverSummary {

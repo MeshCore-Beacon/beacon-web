@@ -1,7 +1,9 @@
 import { formatHex, formatTimestamp } from "../../lib/formatters";
 import type { PacketSummary } from "../../types/api";
 import { Badge } from "../../components/Badge";
+import { Tooltip } from "../../components/Tooltip";
 import { payloadTypeVariant } from "../../components/badge-utils";
+import { PAYLOAD_TYPE_NAMES, type PayloadTypeValue } from "../../types/enums";
 
 interface PacketRowProps {
   packet: PacketSummary;
@@ -36,19 +38,22 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
         <span className="font-mono text-xs font-semibold text-primary tracking-wider">
           {formatHex(packet.packetHash)}
         </span>
-        <Badge variant={payloadTypeVariant(packet.payloadType)}>{packet.payloadTypeName}</Badge>
+        <Badge variant={payloadTypeVariant(packet.payloadType)}>
+          {PAYLOAD_TYPE_NAMES[packet.payloadType as PayloadTypeValue] ?? packet.payloadTypeName}
+        </Badge>
         {packet.summary && (
           <span className="flex-1 text-text-bright text-xs whitespace-nowrap overflow-hidden text-ellipsis">
             {packet.summary}
           </span>
         )}
-        <span
-          className="font-mono text-[11px] text-primary font-semibold whitespace-nowrap bg-primary/6 px-1.5 rounded-sm"
-          title={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}
-          aria-label={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}
-        >
-          ×{packet.observationCount}
-        </span>
+        <Tooltip label={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}>
+          <span
+            className="font-mono text-[11px] text-primary font-semibold whitespace-nowrap bg-primary/6 px-1.5 rounded-sm"
+            aria-label={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}
+          >
+            ×{packet.observationCount}
+          </span>
+        </Tooltip>
       </div>
 
       <div className="flex items-center gap-2 mt-1 text-[11px] text-text-dim">
