@@ -1,20 +1,26 @@
 import { useState, useCallback, useMemo } from "react";
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { getNodes } from "../../api/client";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { getNodesPage } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
+import { useInfinitePages } from "../../hooks/useInfinitePages";
+import { patchInfinitePages } from "../../lib/infinite-pages";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { formatHex, microToDeg, timeAgoMs, formatRadio } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { ObserverIcon } from "../../components/ObserverIcon";
 import { DataTable, type Column } from "../../components/DataTable";
+import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { patchNodeSummary } from "./node-updates";
 import type { NodeSummary } from "./types";
+import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
+
+const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
 
 interface NodeTableProps {
   wsManager: WsManager;
@@ -93,32 +99,35 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     [regionKey, typeFilter, pathsFilter, tracesFilter, search, searchField],
   );
 
-  const { data: nodes, isLoading } = useQuery({
+  // page the region's nodes 50 at a time (filters stay server-side, in the query key); rows stream
+  // in as each batch lands. Loads once per filter set — WS updates keep them live, no 30s refetch.
+  const { items: nodes, loadedCount, isPaging, isError, isLoading } = useInfinitePages<NodeSummary>({
     queryKey,
-    queryFn: () =>
-      getNodes({
-        iatas,
+    queryFn: (cursor) =>
+      getNodesPage(iatas, {
+        cursor,
         type: typeFilter || undefined,
         name: searchField === "name" ? search || undefined : undefined,
         supportsMultibytePaths: pathsFilter || undefined,
         supportsMultibyteTraces: tracesFilter || undefined,
       }),
-    staleTime: 30_000,
-    refetchInterval: 30_000,
-    placeholderData: keepPreviousData,
+    getId: nodeId,
+    keepPrevious: true,
   });
 
   // scope options are the configured scopes; the filter itself is applied client-side on defaultScope
   const scopeOptions = useScopes();
 
   const displayNodes = useMemo(
-    () => (scopeFilter ? (nodes ?? []).filter((n) => n.defaultScope === scopeFilter) : nodes),
+    () => (scopeFilter ? nodes.filter((n) => n.defaultScope === scopeFilter) : nodes),
     [nodes, scopeFilter],
   );
 
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
-      queryClient.setQueryData<NodeSummary[]>(queryKey, (old) => patchNodeSummary(old, data));
+      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey, (old) =>
+        patchInfinitePages(old, (items) => patchNodeSummary(items, data) ?? items),
+      );
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
@@ -130,7 +139,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   return (
     <div className="flex flex-1 min-h-0">
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="relative flex flex-col flex-1 min-w-0">
         <NodeFilterBar
           search={search}
           onSearchChange={setSearch}
@@ -157,6 +166,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           emptyLabel="No nodes"
           defaultSort={{ header: "Name" }}
         />
+        <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>
     </div>
   );

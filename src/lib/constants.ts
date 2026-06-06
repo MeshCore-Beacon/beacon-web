@@ -4,7 +4,6 @@ export const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8080/ws";
 export const LIVE_BUFFER_CAP = 500;
 export const MAX_INFINITE_PAGES = 20;
 export const DEFAULT_PAGE_SIZE = 50;
-export const INITIAL_PACKET_PAGE_SIZE = 100;
 
 export const SCROLL_TOP_THRESHOLD_PX = 100;
 export const SCROLL_BOTTOM_THRESHOLD_PX = 500;

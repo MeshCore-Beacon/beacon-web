@@ -100,54 +100,47 @@ export function getScopeStats(): Promise<ScopeStats[]> {
   return request("/stats/scopes");
 }
 
-export async function getObservers(
-  params?: { iatas?: string[]; type?: string; broker?: string; status?: string; name?: string },
-): Promise<ObserverSummary[]> {
-  const page = await request<{ items: ObserverSummary[] }>("/observers", {
-    iatas: iatasParam(params?.iatas),
-    type: params?.type,
-    broker: params?.broker,
-    status: params?.status,
-    name: params?.name,
-  });
-  return page.items;
-}
-
 export function getObserver(observerId: string): Promise<Observer> {
   return request(`/observers/${observerId}`);
 }
 
-export async function getNodes(
+// Paginated /nodes: returns the full cursor page so the caller can chain pages (cursor = the last
+// node's lastSeen). Used by the map (iatas only) and the Nodes table (with its server-side filters).
+export function getNodesPage(
+  iatas: string[] | undefined,
   params?: {
-    iatas?: string[];
+    cursor?: number;
+    limit?: number;
     type?: string;
     name?: string;
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
-    limit?: number;
   },
-): Promise<NodeSummary[]> {
-  const page = await request<{ items: NodeSummary[] }>("/nodes", {
-    iatas: iatasParam(params?.iatas),
-    typeName: params?.type,
-    name: params?.name,
-    supportsMultibytePaths: params?.supportsMultibytePaths,
-    supportsMultibyteTraces: params?.supportsMultibyteTraces,
-    limit: params?.limit,
-  });
-  return page.items;
-}
-
-// Paginated variant of /nodes for the map: returns the full cursor page so the caller can chain
-// pages (cursor = the last node's lastSeen). getNodes above stays the one-shot list NodeTable uses.
-export function getNodesPage(
-  iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number },
 ): Promise<CursorPage<NodeSummary>> {
   return request("/nodes", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+    typeName: params?.type,
+    name: params?.name,
+    supportsMultibytePaths: params?.supportsMultibytePaths,
+    supportsMultibyteTraces: params?.supportsMultibyteTraces,
+  });
+}
+
+// Paginated /observers, mirroring getNodesPage; used by the Observers table.
+export function getObserversPage(
+  iatas: string[] | undefined,
+  params?: { cursor?: number; limit?: number; type?: string; broker?: string; status?: string; name?: string },
+): Promise<CursorPage<ObserverSummary>> {
+  return request("/observers", {
+    iatas: iatasParam(iatas),
+    cursor: params?.cursor,
+    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+    type: params?.type,
+    broker: params?.broker,
+    status: params?.status,
+    name: params?.name,
   });
 }
 

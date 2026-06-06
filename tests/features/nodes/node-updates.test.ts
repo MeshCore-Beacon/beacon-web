@@ -51,4 +51,17 @@ describe("patchNodeSummary", () => {
     expect(out[0]!.lat).toBe(10);
     expect(out[0]!.lng).toBe(20);
   });
+
+  it("returns the same list ref when the update changes nothing (no needless repaint)", () => {
+    const list = [node({ id: "a", name: "Keep", lat: 10, lng: 20 })];
+    // re-advert with identical name + omitted coords: every field resolves back to the prev value
+    const out = patchNodeSummary(list, update({ nodeId: "a", name: "Keep", lat: undefined, lng: undefined }));
+    expect(out).toBe(list);
+  });
+
+  it("returns the same list ref when an empty name resolves to the unchanged previous name", () => {
+    const list = [node({ id: "a", name: "Keep", lat: 10, lng: 20 })];
+    const out = patchNodeSummary(list, update({ nodeId: "a", name: "", lat: 10, lng: 20 }));
+    expect(out).toBe(list);
+  });
 });

@@ -8,11 +8,13 @@ import { nodesToFeatureCollection, filterByNodeType } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle } from "./types";
 import { EmptyState } from "../../components/EmptyState";
+import { LoadingPill } from "../../components/LoadingPill";
 import { useRegion, useRegionSelection, useRegions } from "../../hooks/useRegion";
 import { useTheme } from "../../hooks/useTheme";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { getIatas } from "../../api/client";
 import { patchNodeSummary } from "../nodes/node-updates";
+import { patchInfinitePages } from "../../lib/infinite-pages";
 import type { WsManager } from "../../api/ws-manager";
 import type { NodeSummary } from "../nodes/types";
 import type { CursorPage } from "../../types/api";
@@ -62,22 +64,14 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const nodesKey = useMemo(() => ["map-nodes", regionKey], [regionKey]);
   const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey);
 
-  // patch the live update into the paged node cache (reusing the shared helper per page); the memo +
-  // setData reflect it. The cache is InfiniteData now, not a flat list. Keep page/object references
-  // when nothing changed so an update for a node we don't hold doesn't trigger a full map repaint.
+  // patch the live update into the paged node cache (shared helper preserves refs when nothing
+  // changed, so an update for a node we don't hold doesn't trigger a full map repaint); the memo +
+  // setData reflect it.
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
-      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(nodesKey, (old) => {
-        if (!old) return old;
-        let changed = false;
-        const pages = old.pages.map((p) => {
-          const items = patchNodeSummary(p.items, data) ?? p.items;
-          if (items === p.items) return p; // unchanged page keeps its reference
-          changed = true;
-          return { ...p, items };
-        });
-        return changed ? { ...old, pages } : old;
-      });
+      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(nodesKey, (old) =>
+        patchInfinitePages(old, (items) => patchNodeSummary(items, data) ?? items),
+      );
       // mirror NodeTable: refresh the shared detail panel when the open node changes live
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
@@ -125,25 +119,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         clustered={clustered}
         onClusteredChange={setClustered}
       />
-      {isPaging ? (
-        // streams in 50 at a time; the count climbs as pages land, then the pill disappears
-        <div
-          role="status"
-          className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-2.5 py-1 bg-bg-surface border border-border-subtle rounded-md font-mono text-[11px] text-text-muted shadow-lg"
-        >
-          <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
-          Loading nodes… ({loadedCount})
-        </div>
-      ) : nodesError ? (
-        // a page fetch failed: surface it instead of a silently-empty (or partial) map
-        <div
-          role="status"
-          className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-2.5 py-1 bg-bg-surface border border-border-subtle rounded-md font-mono text-[11px] text-danger shadow-lg"
-        >
-          <span className="size-1.5 rounded-full bg-danger" aria-hidden />
-          {loadedCount > 0 ? `Some nodes failed to load (${loadedCount} shown)` : "Failed to load nodes"}
-        </div>
-      ) : null}
+      {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
+      <LoadingPill loading={isPaging} error={nodesError} count={loadedCount} noun="nodes" />
       {error && (
         // z-20 so the failure overlay covers the settings card (z-10) instead of it floating on top
         <div className="absolute inset-0 z-20 bg-bg-base">

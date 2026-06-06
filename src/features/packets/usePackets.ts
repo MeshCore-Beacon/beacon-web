@@ -4,7 +4,7 @@ import { getPackets } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
 import type { PacketSummary } from "../../types/api";
-import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES, INITIAL_PACKET_PAGE_SIZE } from "../../lib/constants";
+import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
 
 // merge and deduplicate live + paginated packets
 
@@ -173,12 +173,8 @@ export function usePackets() {
     isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: ["packets", regionKey],
-    queryFn: ({ pageParam }) =>
-      getPackets(iatas, {
-        cursor: pageParam,
-        // first load grabs a bigger batch so the list isn't sparse; scroll pages stay default-sized
-        limit: pageParam === undefined ? INITIAL_PACKET_PAGE_SIZE : undefined,
-      }),
+    // first load and every scroll page are the default 50; getPackets fills in the limit
+    queryFn: ({ pageParam }) => getPackets(iatas, { cursor: pageParam }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     initialPageParam: undefined as number | undefined,
     staleTime: Infinity,

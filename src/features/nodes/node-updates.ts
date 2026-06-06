@@ -11,15 +11,16 @@ export function patchNodeSummary(
   if (!list) return list;
   const idx = list.findIndex((n) => n.id === data.nodeId);
   if (idx === -1) return list;
-  const updated = [...list];
-  const prev = updated[idx]!;
+  const prev = list[idx]!;
   // only name/coords move in practice; nodeType/iatas are near-static, so we drop data.nodeType here
-  // and let the 30s refetch carry a rare type change rather than keep a numeric-type lookup in sync
-  updated[idx] = {
-    ...prev,
-    name: data.name || prev.name,
-    lat: data.lat ?? prev.lat,
-    lng: data.lng ?? prev.lng,
-  };
+  // and let a reload carry a rare type change rather than keep a numeric-type lookup in sync
+  const name = data.name || prev.name;
+  const lat = data.lat ?? prev.lat;
+  const lng = data.lng ?? prev.lng;
+  // a re-advert that re-sends the same values must keep the SAME ref so patchInfinitePages no-ops
+  // (otherwise an unchanged node would trigger a full map FeatureCollection rebuild + setData)
+  if (name === prev.name && lat === prev.lat && lng === prev.lng) return list;
+  const updated = [...list];
+  updated[idx] = { ...prev, name, lat, lng };
   return updated;
 }
