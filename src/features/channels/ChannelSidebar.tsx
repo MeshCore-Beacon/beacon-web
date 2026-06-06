@@ -1,5 +1,5 @@
 import { Badge } from "../../components/Badge";
-import { timeAgo } from "../../lib/formatters";
+import { timeAgoMs } from "../../lib/formatters";
 import { useTick } from "../../hooks/useTick";
 import { channelDisplayName } from "./types";
 import type { ChannelSummary } from "./types";
@@ -35,7 +35,7 @@ export function ChannelSidebar({ channels, selectedId, onSelect }: ChannelSideba
                 <span className={`font-mono text-xs truncate ${isSelected ? "text-text-bright" : "text-text-normal"}`}>
                   {channelDisplayName(ch)}
                 </span>
-                <span className="text-[11px] text-text-dim ml-2 shrink-0">{timeAgo(ch.lastSeen)}</span>
+                <span className="text-[11px] text-text-dim ml-2 shrink-0">{timeAgoMs(ch.lastSeen)}</span>
               </div>
               <div className="flex gap-1 mt-1">
                 {ch.keyKnown ? (

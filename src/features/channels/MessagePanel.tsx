@@ -20,8 +20,8 @@ function senderColor(name: string): string {
   return SENDER_COLORS[Math.abs(h) % SENDER_COLORS.length] ?? "text-primary";
 }
 
-function formatMessageTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, {
+function formatMessageTime(epochMs: number): string {
+  return new Date(epochMs).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -66,7 +66,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
   });
 
   const sorted = useMemo(
-    () => [...(messages ?? [])].sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()),
+    () => [...(messages ?? [])].sort((a, b) => a.sentAt - b.sentAt),
     [messages],
   );
 

@@ -49,7 +49,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         if (aPub !== bPub) return bPub - aPub;
         if (a.name && !b.name) return -1;
         if (!a.name && b.name) return 1;
-        return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
+        return b.lastSeen - a.lastSeen;
       }),
     [channels],
   );

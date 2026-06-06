@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getNodesPage, getObserversPage } from "../../src/api/client";
+import { getNodesPage, getObserversPage, getScopes } from "../../src/api/client";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
 
@@ -71,6 +71,19 @@ describe("getNodesPage", () => {
     expect(url).toContain("supportsMultibytePaths=true");
     expect(url).toContain("supportsMultibyteTraces=false");
     expect(url).not.toContain("type="); // server param is typeName, not type
+  });
+});
+
+describe("getScopes", () => {
+  it("hits /scopes with no params and returns the scope-name array", async () => {
+    const getUrl = mockFetchOnce(["#bc", "#west"]);
+
+    const scopes = await getScopes();
+
+    const url = getUrl();
+    expect(url).toContain("/scopes");
+    expect(url).not.toContain("?"); // no query params on the authoritative list
+    expect(scopes).toEqual(["#bc", "#west"]);
   });
 });
 

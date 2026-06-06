@@ -1,5 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, ScopeStats } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation } from "../features/nodes/types";
@@ -96,8 +96,10 @@ export function getBrokers(): Promise<BrokerStatus[]> {
   return request("/brokers");
 }
 
-export function getScopeStats(): Promise<ScopeStats[]> {
-  return request("/stats/scopes");
+// The authoritative list of configured transport scope names (e.g. "#bc", "#west"), used to populate
+// the scope filter dropdowns. The no-param /scopes endpoint returns the names directly.
+export function getScopes(): Promise<string[]> {
+  return request("/scopes");
 }
 
 export function getObserver(observerId: string): Promise<Observer> {

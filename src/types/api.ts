@@ -132,12 +132,3 @@ export interface BrokerStatus {
   name: string;
   connected: boolean;
 }
-
-// per-transport-scope aggregate counts from /stats/scopes; also the source of the configured scope
-// names used to populate the scope filters
-export interface ScopeStats {
-  name: string; // normalized scope name, e.g. "#bc"
-  packetCount: number;
-  observerCount: number;
-  nodeCount: number;
-}

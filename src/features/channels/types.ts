@@ -2,7 +2,7 @@ export interface ChannelSummary {
   id: number;
   name: string | null;
   channelHash: string;
-  lastSeen: string;
+  lastSeen: number; // epoch ms, time of most recent message
   isHashtag: boolean;
   keyKnown: boolean;
 }
@@ -25,6 +25,6 @@ export interface ChannelMessage {
   channelHash: string;
   senderName: string;
   content: string;
-  sentAt: string;
+  sentAt: number; // epoch ms, from the sender's embedded timestamp
   observationCount?: number;
 }
