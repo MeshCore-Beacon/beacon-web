@@ -88,8 +88,6 @@ export const NODES_SELECTED_LAYER_ID = "nodes-selected"; // circle ring under th
 // NODES_SELECTED_LAYER_ID can't reach it). Fed by its own geojson source, pointed at the leaf.
 export const NODES_SELECTED_LEAF_LAYER_ID = "nodes-selected-leaf";
 
-// /nodes caps at 50 unless a limit is sent; request the selected region's full set for the map.
-export const MAP_NODES_LIMIT = 5000;
 export const CLUSTER_RADIUS = 50; // px
 // Keep clustering alive across the whole reachable zoom range (default max is 22). maplibre drops
 // clustering above clusterMaxZoom, which would leave co-located nodes as stacked, un-spiderfy-able

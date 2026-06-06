@@ -1,24 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapLibre } from "./useMapLibre";
 import { useMapNodes } from "./useMapNodes";
+import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
-import {
-  MAP_STYLE_STORAGE_KEY,
-  DEFAULT_STYLE_ID,
-  MAP_NODES_LIMIT,
-  resolveMapStyle,
-} from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle } from "./types";
 import { EmptyState } from "../../components/EmptyState";
 import { useRegion, useRegionSelection, useRegions } from "../../hooks/useRegion";
 import { useTheme } from "../../hooks/useTheme";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
-import { getIatas, getNodes } from "../../api/client";
+import { getIatas } from "../../api/client";
 import { patchNodeSummary } from "../nodes/node-updates";
 import type { WsManager } from "../../api/ws-manager";
 import type { NodeSummary } from "../nodes/types";
+import type { CursorPage } from "../../types/api";
 import type { WsNodeUpdate } from "../../types/ws";
 
 interface MapViewProps {
@@ -60,19 +57,27 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const themeKey = themes.length ? themeId : "";
   const { data: iatas } = useQuery({ queryKey: ["iatas"], queryFn: getIatas, staleTime: 60_000 });
 
-  // nodes for the selected region (its own key, independent of the Nodes-table filters/page cap)
+  // nodes for the selected region (its own key, independent of the Nodes-table filters/page cap).
+  // Pages in 50 at a time so the map fills batch by batch; nodesKey matches the hook's query key.
   const nodesKey = useMemo(() => ["map-nodes", regionKey], [regionKey]);
-  const { data: nodes } = useQuery({
-    queryKey: nodesKey,
-    queryFn: () => getNodes({ iatas: selectedIatas, limit: MAP_NODES_LIMIT }),
-    staleTime: 30_000,
-    refetchInterval: 30_000,
-  });
+  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey);
 
-  // patch the live update into the cached node (shared helper with NodeTable); the memo + setData reflect it
+  // patch the live update into the paged node cache (reusing the shared helper per page); the memo +
+  // setData reflect it. The cache is InfiniteData now, not a flat list. Keep page/object references
+  // when nothing changed so an update for a node we don't hold doesn't trigger a full map repaint.
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
-      queryClient.setQueryData<NodeSummary[]>(nodesKey, (old) => patchNodeSummary(old, data));
+      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(nodesKey, (old) => {
+        if (!old) return old;
+        let changed = false;
+        const pages = old.pages.map((p) => {
+          const items = patchNodeSummary(p.items, data) ?? p.items;
+          if (items === p.items) return p; // unchanged page keeps its reference
+          changed = true;
+          return { ...p, items };
+        });
+        return changed ? { ...old, pages } : old;
+      });
       // mirror NodeTable: refresh the shared detail panel when the open node changes live
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
@@ -84,7 +89,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // split memos: rebuild the FeatureCollection only when nodes change; a type-filter change just
   // re-filters the already-built collection instead of re-running the full transform over all nodes
-  const baseFc = useMemo(() => nodesToFeatureCollection(nodes ?? []), [nodes]);
+  const baseFc = useMemo(() => nodesToFeatureCollection(nodes), [nodes]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
 
   // focus the map when the selection narrows to one place: a single region uses its configured center,
@@ -120,6 +125,25 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         clustered={clustered}
         onClusteredChange={setClustered}
       />
+      {isPaging ? (
+        // streams in 50 at a time; the count climbs as pages land, then the pill disappears
+        <div
+          role="status"
+          className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-2.5 py-1 bg-bg-surface border border-border-subtle rounded-md font-mono text-[11px] text-text-muted shadow-lg"
+        >
+          <span className="size-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+          Loading nodes… ({loadedCount})
+        </div>
+      ) : nodesError ? (
+        // a page fetch failed: surface it instead of a silently-empty (or partial) map
+        <div
+          role="status"
+          className="absolute bottom-3 left-3 z-10 flex items-center gap-2 px-2.5 py-1 bg-bg-surface border border-border-subtle rounded-md font-mono text-[11px] text-danger shadow-lg"
+        >
+          <span className="size-1.5 rounded-full bg-danger" aria-hidden />
+          {loadedCount > 0 ? `Some nodes failed to load (${loadedCount} shown)` : "Failed to load nodes"}
+        </div>
+      ) : null}
       {error && (
         // z-20 so the failure overlay covers the settings card (z-10) instead of it floating on top
         <div className="absolute inset-0 z-20 bg-bg-base">
