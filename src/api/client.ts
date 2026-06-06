@@ -138,6 +138,19 @@ export async function getNodes(
   return page.items;
 }
 
+// Paginated variant of /nodes for the map: returns the full cursor page so the caller can chain
+// pages (cursor = the last node's lastSeen). getNodes above stays the one-shot list NodeTable uses.
+export function getNodesPage(
+  iatas: string[] | undefined,
+  params?: { cursor?: number; limit?: number },
+): Promise<CursorPage<NodeSummary>> {
+  return request("/nodes", {
+    iatas: iatasParam(iatas),
+    cursor: params?.cursor,
+    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+  });
+}
+
 export function getNode(nodeId: string): Promise<Node> {
   return request(`/nodes/${nodeId}`);
 }
