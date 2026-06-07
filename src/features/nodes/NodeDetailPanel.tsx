@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getNode, getNodeObservations } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
-import { formatHex, formatTimeOnly, formatSnr, snrLevel, timeAgoMs, microToDeg, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { IataChip } from "../../components/IataChip";
+import { formatHex, formatSnr, snrLevel, microToDeg, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { Timestamp } from "../../components/Timestamp";
 import type { NodeObservation } from "./types";
 
 function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: () => void }) {
@@ -14,12 +16,8 @@ function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: 
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
         <Badge variant="default">{obs.payloadTypeName}</Badge>
-        <span className="font-mono text-primary font-semibold text-[11px] bg-primary/6 px-1.5 py-px rounded-sm">
-          {obs.iata}
-        </span>
-        <span className="text-text-dim ml-auto font-mono text-[11px]">
-          {formatTimeOnly(obs.heardAt)}
-        </span>
+        <IataChip>{obs.iata}</IataChip>
+        <Timestamp value={obs.heardAt} className="text-text-dim ml-auto font-mono text-[11px]" />
       </div>
       <div className="flex gap-5 font-mono text-xs">
         <div className="flex flex-col">
@@ -123,9 +121,9 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onAnalyzePack
 
             <Section title="Timestamps">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[13px]">
-                <Field label="First" value={timeAgoMs(node.firstSeen)} />
-                <Field label="Last" value={timeAgoMs(node.lastSeen)} />
-                {node.lastAdvertAt != null && <Field label="Advert" value={timeAgoMs(node.lastAdvertAt)} />}
+                <Field label="First" value={<Timestamp value={node.firstSeen} />} />
+                <Field label="Last" value={<Timestamp value={node.lastSeen} />} />
+                {node.lastAdvertAt != null && <Field label="Advert" value={<Timestamp value={node.lastAdvertAt} />} />}
               </div>
             </Section>
 

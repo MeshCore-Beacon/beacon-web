@@ -21,9 +21,9 @@ export interface Observer extends ObserverSummary {
   batteryLevel?: number;
   uptimeSeconds?: number;
   statusMetadata?: Record<string, unknown>;
-  lastStatusAt?: string;
-  firstSeen: string;
-  lastSeen: string;
+  lastStatusAt?: number; // epoch ms
+  firstSeen: number; // epoch ms
+  lastSeen: number; // epoch ms
   observationCount: number;
   brokers: ObserverBroker[];
 }

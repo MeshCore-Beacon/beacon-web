@@ -110,7 +110,7 @@ export function SearchBar({ value, onChange, fields, field, onFieldChange }: Sea
           value={localValue}
           onChange={(e) => handleChange(e.target.value)}
           placeholder={`Search by ${(currentField?.label ?? "").toLowerCase()}...`}
-          className="w-full text-[11px] font-mono bg-bg-surface border border-border rounded-r-sm pl-7 pr-7 py-1 text-text-bright placeholder:text-text-dim outline-none focus:border-primary-dim transition-colors"
+          className="w-full text-[11px] font-mono bg-bg-surface border border-border rounded-r-sm pl-7 pr-7 py-1 text-text-bright placeholder:text-text-dim transition-colors"
         />
         {localValue && (
           <button

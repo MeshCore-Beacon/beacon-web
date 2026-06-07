@@ -22,12 +22,12 @@ export interface NodeSummary {
 
 export interface Node extends NodeSummary {
   locationSource: string | null;
-  lastAdvertAt: number | null;
+  lastAdvertAt: number | null; // epoch ms
   supportsMultibytePaths: boolean;
   supportsMultibyteTraces: boolean;
   minFirmwareVersion: string | null;
-  firstSeen: number;
-  lastSeen: number;
+  firstSeen: number; // epoch ms
+  lastSeen: number; // epoch ms
   metadata: Record<string, unknown> | null;
 }
 
@@ -37,7 +37,7 @@ export interface NodeObservation {
   payloadType: number;
   payloadTypeName: string;
   iata: string;
-  heardAt: number;
+  heardAt: number; // epoch ms
   rssi?: number;
   snr?: number;
   hopCount?: number;

@@ -20,11 +20,16 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   emptyLabel: string;
   defaultSort?: { header: string; direction?: SortDirection };
+  // called when the scroll position nears the bottom, for on-demand paging (omit = no infinite scroll)
+  onEndReached?: () => void;
 }
+
+// fire onEndReached once the viewport is within this many px of the list's end
+const END_REACHED_THRESHOLD_PX = 200;
 
 // selectable, sticky-header list table shared by the entity tabs (observers, nodes, …)
 
-export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort, onEndReached }: DataTableProps<T>) {
   const [sort, setSort] = useState<{ header: string; direction: SortDirection }>(() => ({
     header: defaultSort?.header ?? "",
     direction: defaultSort?.direction ?? "asc",
@@ -55,6 +60,12 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     });
   }, [rows, columns, sort]);
 
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (!onEndReached) return;
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < END_REACHED_THRESHOLD_PX) onEndReached();
+  }
+
   if (isLoading) {
     return (
       <div className="flex-1 overflow-y-auto">
@@ -64,7 +75,7 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto" onScroll={handleScroll}>
       {sortedRows && sortedRows.length > 0 ? (
         <table className="w-full text-xs font-mono">
           <thead className="sticky top-0 bg-bg-surface z-10">

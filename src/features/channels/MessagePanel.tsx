@@ -1,7 +1,8 @@
 import { useMemo, useRef, useLayoutEffect, useState, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getChannelMessages } from "../../api/client";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { getChannelMessagesPage } from "../../api/client";
 import { Badge } from "../../components/Badge";
+import { Timestamp } from "../../components/Timestamp";
 import { channelDisplayName } from "./types";
 import type { ChannelSummary, ChannelMessage } from "./types";
 
@@ -20,15 +21,6 @@ function senderColor(name: string): string {
   return SENDER_COLORS[Math.abs(h) % SENDER_COLORS.length] ?? "text-primary";
 }
 
-function formatMessageTime(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-}
-
 function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heardCount?: number; onAnalyze?: (hash: string) => void }) {
   // REST carries the server-side total; the live WS counter augments it during the session
   const reach = Math.max(msg.observationCount ?? 0, heardCount ?? 0);
@@ -41,7 +33,7 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
         <span className={`text-xs font-semibold font-mono ${senderColor(msg.senderName)}`}>
           {msg.senderName}
         </span>
-        <span className="text-[11px] text-text-dim">{formatMessageTime(msg.sentAt)}</span>
+        <Timestamp value={msg.sentAt} className="text-[11px] text-text-dim" />
         {reach > 0 && <Badge variant="text">×{reach}</Badge>}
       </div>
       <div className="text-text-normal text-xs mt-0.5">{msg.content}</div>
@@ -58,12 +50,18 @@ interface MessagePanelProps {
 }
 
 export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze }: MessagePanelProps) {
-  const { data: messages, isLoading } = useQuery({
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["channel-messages", channel?.id, regionKey],
-    queryFn: () => getChannelMessages(channel!.id, { iatas, limit: 50 }),
+    queryFn: ({ pageParam }) => getChannelMessagesPage(channel!.id, { iatas, cursor: pageParam, limit: 50 }),
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    initialPageParam: undefined as number | undefined,
     enabled: channel !== null,
     staleTime: 30_000,
   });
+
+  // pages come back newest-first per batch; the ascending sort below restores chat order, so the
+  // flatten order doesn't matter
+  const messages = useMemo(() => data?.pages.flatMap((p) => p.items), [data]);
 
   const sorted = useMemo(
     () => [...(messages ?? [])].sort((a, b) => a.sentAt - b.sentAt),
@@ -75,6 +73,12 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // remember which channel we've anchored, and how many messages we'd scrolled past
   const scrollAnchor = useRef<{ channelId?: number; count: number }>({ count: 0 });
+  // a load-older fetch is in flight; remember the pre-prepend scroll metrics so we can hold position
+  const prepend = useRef<{ pending: boolean; prevHeight: number; prevTop: number }>({
+    pending: false,
+    prevHeight: 0,
+    prevTop: 0,
+  });
 
   // reset scroll-tracking state when switching channels (adjust state during render, not in an effect)
   const [prevChannelId, setPrevChannelId] = useState(channel?.id);
@@ -92,7 +96,18 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
       if (isLoading) return;
       anchor.channelId = channel?.id;
       anchor.count = sorted.length;
+      prepend.current = { pending: false, prevHeight: 0, prevTop: 0 };
       if (el) el.scrollTop = el.scrollHeight;
+      return;
+    }
+
+    if (prepend.current.pending) {
+      // an older page just prepended — restore the prior view by re-adding the height it introduced,
+      // so the message the user was reading stays put instead of jumping (overflow-anchor is off, so
+      // this math is the only thing moving the scroll)
+      prepend.current.pending = false;
+      if (el) el.scrollTop = prepend.current.prevTop + (el.scrollHeight - prepend.current.prevHeight);
+      anchor.count = sorted.length;
       return;
     }
 
@@ -108,7 +123,12 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     setUserScrolled(!atBottom);
-  }, []);
+    // near the top: pull the next, older page and remember the metrics so we can hold position
+    if (el.scrollTop < 40 && hasNextPage && !isFetchingNextPage) {
+      prepend.current = { pending: true, prevHeight: el.scrollHeight, prevTop: el.scrollTop };
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (!channel) {
     return (
@@ -143,13 +163,20 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto" ref={scrollContainerRef} onScroll={handleScroll}>
+      <div
+        className="flex-1 overflow-y-auto [overflow-anchor:none]"
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+      >
         {isLoading ? (
           <div className="flex items-center justify-center h-32 text-text-muted text-xs font-mono">
             Loading...
           </div>
         ) : messages && messages.length > 0 ? (
           <div className="py-2 flex flex-col divide-y divide-border/40">
+            {isFetchingNextPage && (
+              <div className="py-1.5 text-center text-text-muted text-[11px] font-mono">Loading older…</div>
+            )}
             {sorted.map((msg) => (
               <MessageRow key={msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} onAnalyze={onAnalyze} />
             ))}

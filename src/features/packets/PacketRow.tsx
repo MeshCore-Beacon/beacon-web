@@ -1,8 +1,10 @@
-import { formatHex, formatTimestamp } from "../../lib/formatters";
+import { formatHex } from "../../lib/formatters";
+import { Timestamp } from "../../components/Timestamp";
 import type { PacketSummary } from "../../types/api";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { payloadTypeVariant } from "../../components/badge-utils";
+import { ScopeTag } from "../../components/ScopeTag";
 import { PAYLOAD_TYPE_NAMES, type PayloadTypeValue } from "../../types/enums";
 
 interface PacketRowProps {
@@ -63,13 +65,11 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
         {packet.scope && (
           <>
             <span className="text-[6px] text-border" aria-hidden>·</span>
-            <span className="font-mono text-[11px] text-secondary tracking-wide bg-secondary/8 px-1.5 py-px rounded-sm">
-              {packet.scope}
-            </span>
+            <ScopeTag>{packet.scope}</ScopeTag>
           </>
         )}
         <span className="text-[6px] text-border" aria-hidden>·</span>
-        <span>{formatTimestamp(packet.lastHeardAt)}</span>
+        <Timestamp value={packet.lastHeardAt} />
         {packet.latestObserver && (
           <>
             <span className="text-[6px] text-border" aria-hidden>·</span>

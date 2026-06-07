@@ -1,5 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, TraceTagSummary, TraceDetail } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation } from "../features/nodes/types";
@@ -81,15 +81,20 @@ export async function getChannels(params?: { iatas?: string[]; limit?: number })
   return page.items;
 }
 
-export async function getChannelMessages(
+// Channel messages come back as { items } ordered id DESC, so the last row is the page's oldest
+// (smallest) id — the cursor for the next, older batch (the backend pages by id < cursor). Wrapped into
+// a CursorPage so MessagePanel can load older history on demand via useInfiniteQuery.
+export async function getChannelMessagesPage(
   channelId: number,
-  params?: { iatas?: string[]; limit?: number },
-): Promise<ChannelMessage[]> {
+  params?: { iatas?: string[]; cursor?: number; limit?: number },
+): Promise<CursorPage<ChannelMessage>> {
+  const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
   const page = await request<{ items: ChannelMessage[] }>(`/channels/${channelId}/messages`, {
     iatas: iatasParam(params?.iatas),
-    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+    cursor: params?.cursor,
+    limit,
   });
-  return page.items;
+  return toCursorPage(page.items, limit, (m) => m.id);
 }
 
 export function getBrokers(): Promise<BrokerStatus[]> {
@@ -100,6 +105,56 @@ export function getBrokers(): Promise<BrokerStatus[]> {
 // the scope filter dropdowns. The no-param /scopes endpoint returns the names directly.
 export function getScopes(): Promise<string[]> {
   return request("/scopes");
+}
+
+// Wrap a bare-array endpoint into a CursorPage so it can drive the cursor-paginated hooks. A page that
+// fills the limit may have more behind it; the next cursor is the last (boundary) row's sort key.
+function toCursorPage<T>(items: T[], limit: number, cursorOf: (last: T) => number): CursorPage<T> {
+  const hasMore = items.length === limit;
+  return { items, nextCursor: hasMore ? cursorOf(items[items.length - 1]!) : null, hasMore };
+}
+
+// Known routes. /routes returns a bare array ordered last_seen DESC; its cursor pages by last_seen (ms),
+// so the last row carries the page's smallest last_seen — the cursor for the next (older) batch. We wrap
+// it into a CursorPage here so RouteTable can stream pages via useInfinitePages. `iata` is a single code
+// ("" = all), unlike the comma-separated `iatas` used elsewhere.
+export async function getKnownRoutesPage(
+  params?: { iata?: string; hopCount?: number; cursor?: number; limit?: number },
+): Promise<CursorPage<KnownRoute>> {
+  const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
+  const items = await request<KnownRoute[]>("/routes", {
+    iata: params?.iata,
+    hopCount: params?.hopCount,
+    cursor: params?.cursor,
+    limit,
+  });
+  return toCursorPage(items, limit, (r) => r.lastSeen);
+}
+
+// Search known routes for a path between two node hash prefixes within a single IATA. All three params
+// are required by the server.
+export function searchKnownRoutes(iata: string, from: string, to: string): Promise<KnownRoute[]> {
+  return request("/routes/search", { iata, from, to });
+}
+
+// Trace tags. /traces returns a bare array of per-tag summaries (ordered newest-heard first, cursor is
+// the last item's lastHeardAt); /traces/{tag} returns the tag's packets with resolved routes.
+export function getTraces(
+  iatas: string[] | undefined,
+  params?: { scope?: string; since?: number; until?: number; cursor?: number; limit?: number },
+): Promise<TraceTagSummary[]> {
+  return request("/traces", {
+    iatas: iatasParam(iatas),
+    scope: params?.scope,
+    since: params?.since,
+    until: params?.until,
+    cursor: params?.cursor,
+    limit: params?.limit,
+  });
+}
+
+export function getTraceDetail(tag: string): Promise<TraceDetail> {
+  return request(`/traces/${tag}`);
 }
 
 export function getObserver(observerId: string): Promise<Observer> {

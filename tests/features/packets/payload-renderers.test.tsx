@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PayloadBreakdown } from "../../../src/features/packets/payload-renderers";
-import { formatTimestamp } from "../../../src/lib/formatters";
+import { formatAbsolute, timeAgoMs } from "../../../src/lib/formatters";
 import type { ResolvedHop } from "../../../src/types/api";
 
 const tracePayload = {
@@ -67,8 +67,10 @@ describe("PayloadBreakdown — GROUP_TEXT decrypted channel message", () => {
 
   it("formats sentAt as epoch milliseconds, not seconds", () => {
     render(<PayloadBreakdown payload={payload} />);
-    expect(screen.getByText(formatTimestamp(sentAt))).toBeInTheDocument();
-    // the seconds interpretation (×1000) would be a far-future date — must not appear
-    expect(screen.queryByText(formatTimestamp(sentAt * 1000))).not.toBeInTheDocument();
+    // <Timestamp> shows a relative label; hovering reveals the absolute time in the tooltip
+    fireEvent.mouseEnter(screen.getByText(`${timeAgoMs(sentAt)} ago`));
+    expect(screen.getByRole("tooltip").textContent).toBe(formatAbsolute(sentAt));
+    // the seconds interpretation (×1000) would be a far-future date
+    expect(screen.getByRole("tooltip").textContent).not.toBe(formatAbsolute(sentAt * 1000));
   });
 });

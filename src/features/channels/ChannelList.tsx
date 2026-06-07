@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useWsChannelMessageHandler } from "../../hooks/useWsHandlers";
@@ -7,6 +7,7 @@ import { SkeletonRows } from "../../components/SkeletonRows";
 import { ChannelSidebar } from "./ChannelSidebar";
 import { MessagePanel } from "./MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "./types";
+import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 
 interface ChannelListProps {
@@ -80,11 +81,15 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
           ...prev,
           [data.packetHash]: (prev[data.packetHash] ?? 0) + 1,
         }));
-        queryClient.setQueryData<ChannelMessage[]>(
+        // MessagePanel reads this key as a paginated InfiniteData; append the live message to the
+        // newest page (re-sorted by sentAt there, so the exact page doesn't matter)
+        queryClient.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(
           ["channel-messages", selectedId, regionKey],
           (old) => {
-            if (old?.some((msg) => msg.packetHash === data.packetHash)) return old;
-            return old ? [...old, data] : [data];
+            if (!old) return old;
+            if (old.pages.some((p) => p.items.some((msg) => msg.packetHash === data.packetHash))) return old;
+            const pages = old.pages.map((p, i) => (i === 0 ? { ...p, items: [...p.items, data] } : p));
+            return { ...old, pages };
           },
         );
       }

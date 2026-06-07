@@ -10,7 +10,7 @@ import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import type { WsManager } from "../api/ws-manager";
 
-const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Stats"] as const;
+const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Stats"] as const;
 
 // header widgets: WS status, region picker, theme picker
 
@@ -135,7 +135,9 @@ function RegionSelector() {
             }`}
             onClick={() => setSelection(ALL_REGIONS)}
           >
-            <span className="font-semibold text-primary w-8">ALL</span>
+            {/* spacer matching the checkbox column so ALL/code/name align with the rows below */}
+            <span className="w-3 shrink-0" aria-hidden="true" />
+            <span className="font-semibold text-primary w-8 shrink-0">ALL</span>
             <span className="text-text-dim">All Regions</span>
           </button>
 
@@ -175,7 +177,7 @@ function RegionSelector() {
                   onClick={() => toggleIata(i.iata)}
                 >
                   <CheckBox checked={checked} />
-                  <span className="font-semibold text-primary w-8">{i.iata}</span>
+                  <span className="font-semibold text-primary w-8 shrink-0">{i.iata}</span>
                   <span className="text-text-dim truncate">{i.displayName || i.iata}</span>
                 </button>
               );

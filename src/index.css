@@ -37,6 +37,13 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
   }
+
+  /* one consistent keyboard-focus indicator for every interactive element. Inset so it isn't clipped
+     by scroll/overflow containers (table rows, panels) and matches the prior ring-inset look. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -1px;
+  }
 }
 
 /* animations and utilities */

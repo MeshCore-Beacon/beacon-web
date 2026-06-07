@@ -41,6 +41,8 @@ export interface ResolvedNode {
 export interface ResolvedHop {
   confidence: PathConfidence;
   nodes: ResolvedNode[]; // empty when confidence is "none"
+  hashBytes?: string; // hex per-hop path-hash prefix. Not yet sent on trace hops (only RouteHop carries
+  // it); reserved for when the backend populates it — unresolved trace hops fall back to #position labels.
 }
 
 export interface PathLength {
@@ -131,4 +133,46 @@ export interface Region extends RegionSummary {
 export interface BrokerStatus {
   name: string;
   connected: boolean;
+}
+
+// known routes — fully resolved multi-hop paths discovered at ingest, where every hop matched a node
+// at high confidence. One RouteHop per hash, in order.
+export interface RouteHop {
+  nodeId: string; // uuid of the resolved node
+  hashBytes: string; // hex-encoded path-hash prefix for this hop
+  node?: ResolvedNode; // node detail when the server populates it (currently omitted)
+}
+
+export interface KnownRoute {
+  id: number;
+  iata: string;
+  hopCount: number;
+  hops: RouteHop[];
+  firstSeen: number; // epoch ms
+  lastSeen: number; // epoch ms
+}
+
+// trace tags — a trace series groups the packets that share a 4-byte trace tag. The list endpoint
+// returns per-tag summaries; the detail endpoint returns the tag's packets with their resolved routes.
+export interface TraceTagSummary {
+  traceTag: string; // hex-encoded 4-byte tag
+  firstHeardAt: number; // epoch ms
+  lastHeardAt: number; // epoch ms
+  packetCount: number;
+  iataCount: number; // distinct IATAs the tag was heard in
+}
+
+export interface TracePacket {
+  packetHash: string;
+  routeType: number;
+  routeTypeName: string;
+  scope?: string; // matched transport scope name, when any
+  firstHeardAt: number; // epoch ms
+  lastHeardAt: number; // epoch ms
+  resolvedRoute: ResolvedHop[]; // one hop per trace path hash; nodes empty when unresolved
+}
+
+export interface TraceDetail {
+  traceTag: string;
+  packets: TracePacket[];
 }

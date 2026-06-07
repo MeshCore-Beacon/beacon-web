@@ -4,7 +4,9 @@ import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValu
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { VARIANT_CLASSES, payloadTypeVariant } from "../../components/badge-utils";
-import { formatHex, formatTimestamp, formatPropagation } from "../../lib/formatters";
+import { ScopeTag } from "../../components/ScopeTag";
+import { formatHex, formatPropagation } from "../../lib/formatters";
+import { Timestamp } from "../../components/Timestamp";
 import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
 import { ObservationCard } from "./ObservationCard";
@@ -140,11 +142,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 <Badge variant={payloadTypeVariant(detail.header.payloadType)}>
                   {PAYLOAD_TYPE_NAMES[detail.header.payloadType as PayloadTypeValue] ?? "Unknown"}
                 </Badge>
-                {detail.scope && (
-                  <span className="font-mono text-[11px] text-secondary tracking-wide bg-secondary/8 px-1.5 py-px rounded-sm">
-                    {detail.scope}
-                  </span>
-                )}
+                {detail.scope && <ScopeTag>{detail.scope}</ScopeTag>}
                 <Tooltip
                   label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
                   className="ml-auto"
@@ -158,9 +156,9 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
                 </Tooltip>
               </div>
               <div className="flex items-center gap-3 text-[13px] font-mono">
-                <span><span className="text-text-dim">First </span><span className="text-text-normal">{formatTimestamp(detail.firstHeardAt)}</span></span>
+                <span><span className="text-text-dim">First </span><Timestamp value={detail.firstHeardAt} className="text-text-normal" /></span>
                 <span className="text-[6px] text-border" aria-hidden>·</span>
-                <span><span className="text-text-dim">Last </span><span className="text-text-normal">{formatTimestamp(detail.lastHeardAt)}</span></span>
+                <span><span className="text-text-dim">Last </span><Timestamp value={detail.lastHeardAt} className="text-text-normal" /></span>
                 <span className="text-[6px] text-border" aria-hidden>·</span>
                 <span><span className="text-text-dim">Propagation </span><span className="text-text-normal">{formatPropagation(detail.firstToLastMs)}</span></span>
               </div>

@@ -4,22 +4,16 @@ export function formatHex(hex: string): string {
   return hex.slice(0, 8).toUpperCase();
 }
 
-export function formatTimestamp(epochMs: number): string {
-  // force a 12h clock for now; could become a per-user setting later
-  return new Date(epochMs).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-export function formatTimeOnly(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+// The single absolute timestamp format used across the app: local YYYY-MM-DD HH:MM:SS (24h). Pass
+// { ms: true } to append .mmm where sub-second ordering matters (e.g. trace packets heard ms apart).
+// Rendered via the <Timestamp> component (relative text, this on hover) — see components/Timestamp.tsx.
+export function formatAbsolute(epochMs: number, opts?: { ms?: boolean }): string {
+  const d = new Date(epochMs);
+  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
+  const base =
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return opts?.ms ? `${base}.${pad(d.getMilliseconds(), 3)}` : base;
 }
 
 // signal quality and radio metric formatting
@@ -77,10 +71,6 @@ export function timeAgoMs(epochMs: number): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h`;
   return `${Math.floor(hours / 24)}d`;
-}
-
-export function timeAgo(iso: string): string {
-  return timeAgoMs(new Date(iso).getTime());
 }
 
 // Node/observer summaries carry radio as a compact "freq,bw,sf" string (e.g. "915.0,250,11").

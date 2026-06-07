@@ -12,11 +12,12 @@ interface SelectDropdownProps {
   onChange: (value: string) => void;
   align?: "left" | "right";
   allLabel?: string;
+  hideAll?: boolean; // omit the "all" entry for required fields where "" isn't a valid choice
 }
 
 // single-select dropdown styled to match the packets MultiSelectDropdown trigger
 
-export function SelectDropdown({ label, options, value, onChange, align = "right", allLabel = "All" }: SelectDropdownProps) {
+export function SelectDropdown({ label, options, value, onChange, align = "right", allLabel = "All", hideAll = false }: SelectDropdownProps) {
   const active = value !== "";
   const selectedLabel = options.find((o) => o.value === value)?.label ?? value;
 
@@ -43,17 +44,19 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
     >
       {(close) => (
         <div role="listbox">
-          <button
-            type="button"
-            role="option"
-            aria-selected={!active}
-            className={`w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
-              !active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
-            }`}
-            onClick={() => { onChange(""); close(); }}
-          >
-            {allLabel}
-          </button>
+          {!hideAll && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={!active}
+              className={`w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
+                !active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+              }`}
+              onClick={() => { onChange(""); close(); }}
+            >
+              {allLabel}
+            </button>
+          )}
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -71,6 +74,9 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
               </button>
             );
           })}
+          {hideAll && options.length === 0 && (
+            <div className="px-2.5 py-1 text-xs font-mono text-text-dim">No options</div>
+          )}
         </div>
       )}
     </Dropdown>

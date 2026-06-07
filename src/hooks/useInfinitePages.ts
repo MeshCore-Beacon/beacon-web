@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useInfiniteQuery, keepPreviousData, type QueryKey } from "@tanstack/react-query";
 import type { CursorPage } from "../types/api";
 
@@ -10,13 +10,17 @@ interface UseInfinitePagesOptions<T> {
   getId: (item: T) => string;
   // keep the prior key's rows on screen while a new key (e.g. a filter change) loads its first page
   keepPrevious?: boolean;
+  // auto-chain every page eagerly (default). false = load only the first page; the caller pulls the
+  // rest via loadMore() (e.g. on scroll) so a large dataset isn't fetched all at once.
+  auto?: boolean;
 }
 
-// Auto-chain a cursor-paginated endpoint page by page as each settles, so the caller's list fills
-// incrementally instead of waiting for one big response. Loads once per key (staleTime Infinity, no
-// maxPages); dedupes by id because a non-unique cursor can repeat a row across a page boundary.
-// Shared by the map and the entity tables.
-export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious }: UseInfinitePagesOptions<T>) {
+// Page through a cursor-paginated endpoint. By default it auto-chains page by page as each settles so
+// the caller's list fills incrementally instead of waiting for one big response; pass auto:false to
+// load only the first page and pull the rest on demand via loadMore(). Loads once per key (staleTime
+// Infinity, no maxPages); dedupes by id because a non-unique cursor can repeat a row across a page
+// boundary. Shared by the map and the entity tables.
+export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious, auto = true }: UseInfinitePagesOptions<T>) {
   const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
@@ -27,12 +31,18 @@ export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious }: 
       placeholderData: keepPrevious ? keepPreviousData : undefined,
     });
 
-  // Chain to the next page once the current settles — this streams rows in batch by batch. Bail on a
-  // page error: a failed fetchNextPage adds no page, so hasNextPage stays true while
-  // isFetchingNextPage drops to false; without the guard the effect would retry the failure forever.
-  useEffect(() => {
+  // Fetch the next page only when it's safe to: there's more, nothing in flight, and the last attempt
+  // didn't fail. The error guard matters because a failed fetchNextPage adds no page, so hasNextPage
+  // stays true while isFetchingNextPage drops to false — without it we'd retry the failure forever.
+  const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+
+  // In auto mode, chain to the next page once the current settles — this streams rows batch by batch.
+  // In on-demand mode the caller drives loadMore() instead.
+  useEffect(() => {
+    if (auto) loadMore();
+  }, [auto, loadMore]);
 
   const items = useMemo<T[]>(() => {
     const seen = new Set<string>();
@@ -48,10 +58,13 @@ export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious }: 
   return {
     items,
     loadedCount: items.length,
-    // drop the loading state on error so the pill hides instead of hanging on (hasNextPage stays
-    // true after a failed page); callers surface isError separately.
-    isPaging: (isFetching || hasNextPage) && !errored,
+    // drop the loading state on error so the pill hides instead of hanging on (hasNextPage stays true
+    // after a failed page); callers surface isError separately. In auto mode hasNextPage counts as
+    // "still paging" (more is coming); in on-demand mode only an in-flight fetch does.
+    isPaging: (isFetching || (auto && hasNextPage)) && !errored,
     isError: errored,
     isLoading,
+    hasMore: hasNextPage && !errored,
+    loadMore,
   };
 }

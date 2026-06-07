@@ -3,8 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { getObserver } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
-import { formatUptime, formatBattery, timeAgo, timeAgoMs } from "../../lib/formatters";
+import { formatUptime, formatBattery } from "../../lib/formatters";
+import { Timestamp } from "../../components/Timestamp";
 import type { BadgeVariant } from "../../components/badge-utils";
+import { IataChip } from "../../components/IataChip";
+import { ScopeTag } from "../../components/ScopeTag";
 
 interface Stats {
   noise_floor?: number;
@@ -106,13 +109,9 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 {observer.observerType && <Badge variant="default">{observer.observerType}</Badge>}
-                <span className="text-[13px] text-primary font-semibold font-mono bg-primary/6 px-1.5 py-px rounded-sm">
-                  {observer.iata}
-                </span>
+                <IataChip>{observer.iata}</IataChip>
                 {observer.scopes?.map((s) => (
-                  <span key={s} className="font-mono text-[13px] text-secondary bg-secondary/8 px-1.5 py-px rounded-sm">
-                    {s}
-                  </span>
+                  <ScopeTag key={s}>{s}</ScopeTag>
                 ))}
               </div>
             </Section>
@@ -139,7 +138,7 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
               </div>
               {observer.lastStatusAt && (
                 <div className="font-mono text-[13px] mt-1">
-                  <Field label="Last status" value={timeAgo(observer.lastStatusAt)} />
+                  <Field label="Last status" value={<Timestamp value={observer.lastStatusAt} />} />
                 </div>
               )}
             </Section>
@@ -168,8 +167,8 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
                       <div key={b.name} className="flex items-center gap-3">
                         <Badge variant={variant}>{b.name}</Badge>
                         <div className="flex items-center gap-3 font-mono text-[13px]">
-                          <Field label="Seen" value={timeAgoMs(b.lastSeenAt)} />
-                          <Field label="Packet" value={b.lastPacketAt ? timeAgoMs(b.lastPacketAt) : "—"} />
+                          <Field label="Seen" value={<Timestamp value={b.lastSeenAt} />} />
+                          <Field label="Packet" value={b.lastPacketAt ? <Timestamp value={b.lastPacketAt} /> : "—"} />
                         </div>
                       </div>
                     );
@@ -180,9 +179,9 @@ export function ObserverDetailPanel({ observerId, onClose }: ObserverDetailPanel
 
             <Section title="Timestamps">
               <div className="flex items-center gap-3 font-mono text-[13px]">
-                <Field label="First" value={timeAgo(observer.firstSeen)} />
+                <Field label="First" value={<Timestamp value={observer.firstSeen} />} />
                 <span className="text-[6px] text-border" aria-hidden>·</span>
-                <Field label="Last" value={timeAgo(observer.lastSeen)} />
+                <Field label="Last" value={<Timestamp value={observer.lastSeen} />} />
               </div>
             </Section>
         </>

@@ -21,6 +21,8 @@ import { NodeTable } from "./features/nodes/NodeTable";
 import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
 import { NodeDetailOverlay } from "./features/nodes/NodeDetailOverlay";
 import { ObserverTable } from "./features/observers/ObserverTable";
+import { RouteTable } from "./features/routes/RouteTable";
+import { TraceList } from "./features/traces/TraceList";
 import { ChannelList } from "./features/channels/ChannelList";
 import { StatsOverview } from "./features/stats/StatsOverview";
 import { EmptyState } from "./components/EmptyState";
@@ -193,6 +195,10 @@ function AppInner() {
     Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
     Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={setSelectedObserverId} />,
+    Routes: <RouteTable />,
+    // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
+    // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
+    Traces: <TraceList onAnalyze={setOverlayPacketHash} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Stats: <StatsOverview />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,

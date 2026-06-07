@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   formatHex,
-  formatTimestamp,
-  formatTimeOnly,
+  formatAbsolute,
+  timeAgoMs,
   formatSnr,
   snrLevel,
   formatPropagation,
@@ -40,17 +40,30 @@ describe("formatHex", () => {
   });
 });
 
-describe("formatTimestamp", () => {
-  it("formats epoch ms to locale time string", () => {
-    const result = formatTimestamp(1747665456000);
-    expect(result).toMatch(/\d{1,2}:\d{2}\s?(a\.?m\.?|p\.?m\.?)/i);
+describe("formatAbsolute", () => {
+  it("formats epoch ms as YYYY-MM-DD HH:MM:SS (no ms by default)", () => {
+    const result = formatAbsolute(1717689045123);
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+  });
+
+  it("appends .mmm when ms is requested, preserving the millisecond component", () => {
+    const result = formatAbsolute(1717689045123, { ms: true });
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/);
+    expect(result.endsWith(".123")).toBe(true); // ms component is timezone-independent
   });
 });
 
-describe("formatTimeOnly", () => {
-  it("formats epoch ms to HH:MM:SS", () => {
-    const result = formatTimeOnly(1747665456000);
-    expect(result).toMatch(/\d{2}:\d{2}:\d{2}/);
+describe("timeAgoMs", () => {
+  it("renders sub-minute as seconds and minutes/hours/days above that", () => {
+    const now = Date.now();
+    expect(timeAgoMs(now - 5_000)).toBe("5s");
+    expect(timeAgoMs(now - 5 * 60_000)).toBe("5m");
+    expect(timeAgoMs(now - 3 * 3_600_000)).toBe("3h");
+    expect(timeAgoMs(now - 2 * 86_400_000)).toBe("2d");
+  });
+
+  it("clamps future timestamps (clock skew) to 0s", () => {
+    expect(timeAgoMs(Date.now() + 60_000)).toBe("0s");
   });
 });
 

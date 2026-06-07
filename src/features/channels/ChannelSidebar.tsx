@@ -1,6 +1,5 @@
 import { Badge } from "../../components/Badge";
-import { timeAgoMs } from "../../lib/formatters";
-import { useTick } from "../../hooks/useTick";
+import { Timestamp } from "../../components/Timestamp";
 import { channelDisplayName } from "./types";
 import type { ChannelSummary } from "./types";
 
@@ -11,8 +10,6 @@ interface ChannelSidebarProps {
 }
 
 export function ChannelSidebar({ channels, selectedId, onSelect }: ChannelSidebarProps) {
-  useTick();
-
   return (
     <div className="w-60 min-w-60 border-r border-border bg-bg-surface overflow-y-auto">
       <div className="text-text-muted text-[11px] uppercase tracking-wider px-3 pt-3 pb-2 font-mono">
@@ -35,7 +32,7 @@ export function ChannelSidebar({ channels, selectedId, onSelect }: ChannelSideba
                 <span className={`font-mono text-xs truncate ${isSelected ? "text-text-bright" : "text-text-normal"}`}>
                   {channelDisplayName(ch)}
                 </span>
-                <span className="text-[11px] text-text-dim ml-2 shrink-0">{timeAgoMs(ch.lastSeen)}</span>
+                <Timestamp value={ch.lastSeen} className="text-[11px] text-text-dim ml-2 shrink-0" />
               </div>
               <div className="flex gap-1 mt-1">
                 {ch.keyKnown ? (

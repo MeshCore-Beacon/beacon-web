@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "../../components/Badge";
-import { formatSnr, snrLevel, formatTimestamp, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { Timestamp } from "../../components/Timestamp";
 import { ColorAccentField, AdvertFlagsBitBreakdown, PathLengthBitBreakdown, FIELD_COLORS } from "./packet-structure";
 import type { FieldId } from "./packet-structure";
 import { ResolvedHopBlock } from "./PathData";
@@ -122,10 +123,6 @@ function EncryptedEnvelope({ payload, headerSlot, children }: {
   );
 }
 
-function formatUnixTs(unix: number): string {
-  return formatTimestamp(unix * 1000);
-}
-
 // per-payload-type renderers
 
 function AdvertPayload({ payload }: PayloadProps) {
@@ -154,7 +151,7 @@ function AdvertPayload({ payload }: PayloadProps) {
       {timestamp != null && (
         <ColorAccentField field="advertTimestamp">
           <span className="text-text-dim">Timestamp </span>
-          <span className="text-text-normal">{formatUnixTs(timestamp)}</span>
+          <Timestamp value={timestamp * 1000} className="text-text-normal" />
           <span className="text-text-dim"> (4B LE)</span>
         </ColorAccentField>
       )}
@@ -308,7 +305,7 @@ function GroupTextPayload({ payload }: PayloadProps) {
               </div>
             )}
             {decrypted.sentAt != null && (
-              <div className="text-text-dim">{formatTimestamp(decrypted.sentAt as number)}</div>
+              <div className="text-text-dim"><Timestamp value={decrypted.sentAt as number} /></div>
             )}
           </div>
         </div>
@@ -328,7 +325,7 @@ function TextPayload({ payload }: PayloadProps) {
             <div className="text-text-bright break-all">{String(d.message)}</div>
           )}
           <div className="flex gap-x-4 text-text-dim">
-            {d.timestamp != null && <span>{formatUnixTs(d.timestamp as number)}</span>}
+            {d.timestamp != null && <Timestamp value={(d.timestamp as number) * 1000} />}
             {d.attempt != null && <span>Attempt {String(d.attempt)}</span>}
             {d.flags != null && <span>Flags {String(d.flags)}</span>}
           </div>
@@ -351,7 +348,7 @@ function RequestPayload({ payload }: PayloadProps) {
           )}
           {d.timestamp != null && (
             <FieldRow label="Time">
-              <span className="text-text-normal">{formatUnixTs(d.timestamp as number)}</span>
+              <Timestamp value={(d.timestamp as number) * 1000} className="text-text-normal" />
             </FieldRow>
           )}
         </div>
@@ -477,7 +474,7 @@ function DiscoverReqFields({ payload }: PayloadProps) {
       )}
       {since != null && (
         <FieldRow label="Since">
-          <span className="text-text-normal">{formatUnixTs(since)}</span>
+          <Timestamp value={since * 1000} className="text-text-normal" />
         </FieldRow>
       )}
       {prefixOnly != null && (
@@ -632,7 +629,7 @@ function GenericPayload({ payload }: PayloadProps) {
           return (
             <div key={key}>
               <span className="text-text-dim">{humanizeKey(key)} </span>
-              <span className="text-text-normal">{formatUnixTs(value)}</span>
+              <Timestamp value={value * 1000} className="text-text-normal" />
             </div>
           );
         }

@@ -2,7 +2,9 @@
 import { Fragment, useState } from "react";
 import type { PacketDetail, Observation } from "../../types/api";
 import { RouteType, PayloadType } from "../../types/enums";
-import { formatTimeOnly, formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { Timestamp } from "../../components/Timestamp";
+import { IataChip } from "../../components/IataChip";
 
 // maps packet bytes to named field ranges for hex coloring
 
@@ -401,12 +403,8 @@ export function ObservationDetail({ observation }: { observation: Observation })
     <div className="flex flex-col gap-1.5 font-mono text-[13px]">
       <div className="flex items-center gap-2">
         <span className="text-text-normal font-semibold">{observation.observerName ?? observation.observerId.slice(0, 8)}</span>
-        <span className="text-primary font-semibold text-[13px] bg-primary/6 px-1.5 py-px rounded-sm">
-          {observation.iata}
-        </span>
-        <span className="text-text-dim ml-auto text-[13px]">
-          {formatTimeOnly(observation.heardAt)}
-        </span>
+        <IataChip>{observation.iata}</IataChip>
+        <Timestamp value={observation.heardAt} className="text-text-dim ml-auto text-[13px]" />
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[13px]">

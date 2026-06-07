@@ -3,7 +3,6 @@ import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-que
 import { getObserversPage, getBrokers } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useScopes } from "../../hooks/useScopes";
-import { useTick } from "../../hooks/useTick";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
 import { patchInfinitePages } from "../../lib/infinite-pages";
 import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
@@ -85,8 +84,6 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver 
     () => brokers?.map((b) => b.name) ?? [],
     [brokers],
   );
-
-  useTick();
 
   const queryKey = useMemo(
     () => ["observers", regionKey, statusFilter, typeFilter, brokerFilter, search, searchField],

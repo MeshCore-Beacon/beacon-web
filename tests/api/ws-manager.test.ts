@@ -222,7 +222,7 @@ describe("WsManager", () => {
       channelHash: "f3",
       senderName: "TestNode",
       content: "hello mesh",
-      sentAt: "2026-05-26T14:00:00Z",
+      sentAt: 1779804000000, // epoch ms (2026-05-26T14:00:00Z)
     };
 
     ws.simulateMessage({ v: 1, type: "event", event: "channelMessage", data: msgData });
@@ -243,7 +243,7 @@ describe("WsManager", () => {
       v: 1,
       type: "event",
       event: "channelMessage",
-      data: { id: 1, packetHash: "x", channelHash: "f3", senderName: "N", content: "hi", sentAt: "2026-05-26T14:00:00Z" },
+      data: { id: 1, packetHash: "x", channelHash: "f3", senderName: "N", content: "hi", sentAt: 1779804000000 },
     });
 
     expect(handler).not.toHaveBeenCalled();

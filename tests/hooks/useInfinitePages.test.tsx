@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useInfinitePages } from "../../src/hooks/useInfinitePages";
@@ -67,6 +67,31 @@ describe("useInfinitePages", () => {
     expect(queryFn).toHaveBeenCalledTimes(2); // page 1 + one failed page 2, no retry loop
     expect(result.current.isPaging).toBe(false);
     expect(result.current.items.map(rowId)).toEqual(["a"]); // page 1 still shows
+  });
+
+  it("with auto:false, loads only the first page until loadMore is called", async () => {
+    const queryFn = vi.fn();
+    queryFn
+      .mockResolvedValueOnce({ items: [row("a"), row("b")], nextCursor: 2, hasMore: true })
+      .mockResolvedValueOnce({ items: [row("c")], nextCursor: null, hasMore: false });
+
+    const { result } = renderHook(
+      () => useInfinitePages({ queryKey: ["t", "ondemand"], queryFn, getId: rowId, auto: false }),
+      { wrapper: wrapper() },
+    );
+
+    // first page lands, but the hook does NOT chain to page 2 on its own
+    await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
+    expect(queryFn).toHaveBeenCalledTimes(1);
+    expect(result.current.hasMore).toBe(true);
+    expect(result.current.isPaging).toBe(false); // idle, not "loading forever" despite hasMore
+
+    act(() => result.current.loadMore());
+
+    await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]));
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    expect(queryFn).toHaveBeenNthCalledWith(2, 2); // loadMore used page 1's nextCursor
+    expect(result.current.hasMore).toBe(false);
   });
 
   it("keeps previous items (no skeleton) while a new key loads when keepPrevious is set", async () => {
