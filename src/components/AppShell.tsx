@@ -6,6 +6,7 @@ import { ALL_REGIONS, isAllRegions, type RegionSelection } from "../hooks/region
 import { useWsStatus } from "../hooks/useWsStatus";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
+import { BottomNav } from "./BottomNav";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import type { WsManager } from "../api/ws-manager";
@@ -252,16 +253,16 @@ interface AppShellProps {
 export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShellProps) {
   return (
     <div className="flex flex-col h-dvh">
-      <header className="flex items-center justify-between px-4 h-[42px] bg-bg-surface border-b border-border shrink-0">
+      <header className="flex items-center justify-between gap-2 px-3 md:px-4 h-[42px] bg-bg-surface border-b border-border shrink-0">
         <BeaconWordmark iconSize={22} textClassName="text-sm" />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 md:gap-3 min-w-0">
           <RegionSelector />
           <ThemePicker />
           <LiveBadge wsManager={wsManager} />
         </div>
       </header>
 
-      <nav className="flex bg-bg-surface border-b border-border px-4 shrink-0" role="tablist">
+      <nav className="hidden md:flex bg-bg-surface border-b border-border px-4 shrink-0" role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab}
@@ -284,9 +285,11 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
 
-      <footer className="flex items-center px-4 py-1.5 bg-bg-surface border-t border-border font-mono text-[11px] text-text-dim shrink-0">
+      <footer className="hidden md:flex items-center px-4 py-1.5 bg-bg-surface border-t border-border font-mono text-[11px] text-text-dim shrink-0">
         <span>BEACON v0.1</span>
       </footer>
+
+      <BottomNav activeTab={activeTab} onTabChange={onTabChange} />
     </div>
   );
 }

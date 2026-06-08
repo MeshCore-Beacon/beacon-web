@@ -12,6 +12,7 @@ import {
   type RegionSelection,
 } from "./hooks/region-selection";
 import { ThemeProvider } from "./hooks/useTheme";
+import { useIsMobile } from "./hooks/useMediaQuery";
 import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
@@ -112,10 +113,9 @@ function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void
 
 // tab state and region init
 
-const DRAWER_STORAGE_KEY = "beacon-analyzer-open";
-
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
@@ -129,10 +129,6 @@ function AppInner() {
   const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
   const [overlayPacketHash, setOverlayPacketHash] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(() => {
-    const stored = localStorage.getItem(DRAWER_STORAGE_KEY);
-    return stored === null ? true : stored === "true";
-  });
 
   const { data: analyzerDetail, isLoading: analyzerLoading } = useQuery({
     queryKey: ["packet-detail", analyzerHash],
@@ -151,24 +147,20 @@ function AppInner() {
   const handleAnalyze = useCallback((hash: string | null) => {
     setAnalyzerHash(hash);
     setSelectedObservationId(null);
-    if (hash) {
-      setDrawerOpen(true);
-      localStorage.setItem(DRAWER_STORAGE_KEY, "true");
-    }
-  }, []);
-
-  const handleToggleDrawer = useCallback(() => {
-    setDrawerOpen((prev) => {
-      const next = !prev;
-      localStorage.setItem(DRAWER_STORAGE_KEY, String(next));
-      return next;
-    });
   }, []);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     setOverlayNodeId(null);
     setOverlayPacketHash(null);
+    // On mobile a detail panel fills the screen, so leaving its tab must close it; desktop side
+    // panels persist across tabs. Cross-nav (onViewObserver) re-sets its selection after this.
+    if (isMobile) {
+      setAnalyzerHash(null);
+      setSelectedObservationId(null);
+      setSelectedNodeId(null);
+      setSelectedObserverId(null);
+    }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
@@ -222,8 +214,7 @@ function AppInner() {
               loading={analyzerLoading}
               selectedObservationId={selectedObservationId}
               onSelectObservation={setSelectedObservationId}
-              open={drawerOpen}
-              onToggle={handleToggleDrawer}
+              onClose={() => handleAnalyze(null)}
               onViewNode={setOverlayNodeId}
             />
           )}
@@ -232,8 +223,8 @@ function AppInner() {
               nodeId={selectedNodeId}
               onClose={() => setSelectedNodeId(null)}
               onViewObserver={(observerId) => {
-                setSelectedObserverId(observerId);
                 handleTabChange("Observers");
+                setSelectedObserverId(observerId);
               }}
               onAnalyzePacket={setOverlayPacketHash}
             />
@@ -243,8 +234,8 @@ function AppInner() {
               nodeId={overlayNodeId}
               onClose={() => setOverlayNodeId(null)}
               onViewObserver={(observerId) => {
-                setSelectedObserverId(observerId);
                 handleTabChange("Observers");
+                setSelectedObserverId(observerId);
               }}
             />
           )}
@@ -254,8 +245,8 @@ function AppInner() {
               loading={overlayPacketLoading}
               onClose={() => setOverlayPacketHash(null)}
               onViewObserver={(observerId) => {
-                setSelectedObserverId(observerId);
                 handleTabChange("Observers");
+                setSelectedObserverId(observerId);
               }}
             />
           )}

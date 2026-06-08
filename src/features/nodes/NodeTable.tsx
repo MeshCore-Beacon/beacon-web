@@ -82,6 +82,43 @@ const COLUMNS: Column<NodeSummary>[] = [
   },
 ];
 
+function renderNodeCard(node: NodeSummary) {
+  const location =
+    node.lat != null && node.lng != null
+      ? `${microToDeg(node.lat).toFixed(2)}, ${microToDeg(node.lng).toFixed(2)}`
+      : null;
+  return (
+    <div className="flex flex-col gap-1.5 font-mono text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className={`flex-1 min-w-0 truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
+          {node.name ?? formatHex(node.id)}
+        </span>
+        <span className="shrink-0">
+          <Badge variant="default">
+            {node.isObserver && (
+              <Tooltip label="Observer" className="mr-1"><ObserverIcon /></Tooltip>
+            )}
+            {node.nodeTypeName}
+          </Badge>
+        </span>
+      </div>
+      <div className="flex items-center gap-2 text-text-muted">
+        <span>{formatRadio(node.radio) ?? "—"}</span>
+        {location && <span>· {location}</span>}
+      </div>
+      {node.iatas && node.iatas.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {node.iatas.map((entry) => (
+            <Tooltip key={entry.iata} label={`last heard ${timeAgoMs(entry.lastHeard)} ago`}>
+              <Badge variant="default">{entry.iata}</Badge>
+            </Tooltip>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
@@ -165,6 +202,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           isLoading={isLoading}
           emptyLabel="No nodes"
           defaultSort={{ header: "Name" }}
+          renderCard={renderNodeCard}
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>

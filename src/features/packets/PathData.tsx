@@ -1,5 +1,6 @@
-import { useRef, useState, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useHasHover } from "../../hooks/useMediaQuery";
 import type { ResolvedHop, ResolvedNode } from "../../types/api";
 import type { PathConfidence } from "../../types/enums";
 
@@ -14,14 +15,13 @@ function nodeLabel(node: ResolvedNode): string {
   return node.name ?? node.publicKey.slice(0, 8);
 }
 
-// Popover anchored above a path block. Opens on hover and stays open while the mouse is over the
-// block OR the popover (a short close delay bridges the gap), so resolved nodes can be clicked.
-// Portals to <body> so the drawer's overflow never clips it.
+// Portals to <body> so the drawer's overflow doesn't clip it; a close delay bridges the mouse gap.
 function HopPopover({ hop, onViewNode, children }: {
   hop: ResolvedHop | undefined;
   onViewNode?: (nodeId: string) => void;
   children: ReactNode;
 }) {
+  const hasHover = useHasHover();
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -42,6 +42,11 @@ function HopPopover({ hop, onViewNode, children }: {
   function scheduleClose() {
     closeTimer.current = window.setTimeout(() => setAnchor(null), 120);
   }
+  // touch: tap toggles; stopPropagation so a hop tap doesn't also select the Route row/card it's in
+  function toggle(e: ReactMouseEvent) {
+    e.stopPropagation();
+    setAnchor((a) => (a ? null : ref.current?.getBoundingClientRect() ?? null));
+  }
 
   // A fixed-position popover would drift away from its hash block on scroll/resize, so close it.
   useEffect(() => {
@@ -60,6 +65,17 @@ function HopPopover({ hop, onViewNode, children }: {
     if (closeTimer.current != null) clearTimeout(closeTimer.current);
   }, []);
 
+  // touch: a tap outside the block and its popover dismisses it
+  useEffect(() => {
+    if (!anchor || hasHover) return;
+    function onDown(e: PointerEvent) {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !tipRef.current?.contains(t)) setAnchor(null);
+    }
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [anchor, hasHover]);
+
   // Center above the block, then clamp on-screen and flip below if it would clip the top edge.
   useLayoutEffect(() => {
     if (!anchor || !tipRef.current) return;
@@ -71,7 +87,13 @@ function HopPopover({ hop, onViewNode, children }: {
   }, [anchor]);
 
   return (
-    <span ref={ref} onMouseEnter={open} onMouseLeave={scheduleClose} className="inline-flex">
+    <span
+      ref={ref}
+      onMouseEnter={hasHover ? open : undefined}
+      onMouseLeave={hasHover ? scheduleClose : undefined}
+      onClick={hasHover ? undefined : toggle}
+      className="inline-flex"
+    >
       {children}
       {anchor &&
         createPortal(
@@ -79,8 +101,8 @@ function HopPopover({ hop, onViewNode, children }: {
             ref={tipRef}
             role="tooltip"
             style={{ left: pos.left, top: pos.top }}
-            onMouseEnter={clickable ? open : undefined}
-            onMouseLeave={clickable ? scheduleClose : undefined}
+            onMouseEnter={hasHover && clickable ? open : undefined}
+            onMouseLeave={hasHover && clickable ? scheduleClose : undefined}
             className={`fixed z-50 flex flex-col gap-0.5 whitespace-nowrap rounded border border-border bg-bg-raised px-2 py-1 font-mono text-[11px] text-text-normal shadow-lg ${clickable ? "" : "pointer-events-none"}`}
           >
             {nodes.length === 0 ? (
@@ -110,18 +132,17 @@ function HopPopover({ hop, onViewNode, children }: {
   );
 }
 
-// One path-hash block: tinted by its hop's resolution confidence and wrapped in the resolved-node
-// popover. A single resolved node makes the block itself clickable (opens that node directly);
-// ambiguous candidates are clickable in the popover; "none" just shows the tinted hash. Shared by
-// PathData and the trace payload so both resolve hops identically.
+// One hash block + its hop popover. Shared by PathData and the trace payload so both resolve identically.
 export function ResolvedHopBlock({ hop, label, onViewNode }: {
   hop: ResolvedHop | undefined;
   label: string;
   onViewNode?: (nodeId: string) => void;
 }) {
+  const hasHover = useHasHover();
   const confidence: PathConfidence = hop?.confidence ?? "none";
   const blockClass = `px-1.5 py-px rounded-sm font-semibold ${HOP_BLOCK_CLASSES[confidence]}`;
-  const single = hop && hop.nodes.length === 1 && onViewNode ? hop.nodes[0] : undefined;
+  // mouse-only shortcut: a lone resolved match makes the block jump straight to the node (touch taps open the popover)
+  const single = hasHover && hop && hop.nodes.length === 1 && onViewNode ? hop.nodes[0] : undefined;
   return (
     <HopPopover hop={hop} onViewNode={onViewNode}>
       {single ? (
@@ -142,10 +163,7 @@ export function ResolvedHopBlock({ hop, label, onViewNode }: {
   );
 }
 
-// Raw path-hash blocks, each tinted by its hop's resolution confidence and showing the resolved
-// node(s) on hover. resolvedPath[i] lines up with the i-th hash (the backend appends one hop per
-// hash in order), so a missing/short entry falls back to "none". When onViewNode is provided, a
-// single-match block opens that node directly and ambiguous candidates are clickable in the popover.
+// resolvedPath[i] lines up with the i-th hash (backend appends one hop per hash, in order).
 export function PathData({ pathBytes, hashSize, resolvedPath, size = "md", onViewNode }: {
   pathBytes: string;
   hashSize: number;
@@ -154,9 +172,7 @@ export function PathData({ pathBytes, hashSize, resolvedPath, size = "md", onVie
   onViewNode?: (nodeId: string) => void;
 }) {
   const chars = hashSize * 2;
-  // A 0-byte hash size would make the splitter `.{1,0}`, which the RegExp constructor rejects.
-  // There's nothing to lay out without a hash size anyway, so bail.
-  if (chars <= 0) return null;
+  if (chars <= 0) return null; // splitter would be an invalid `.{1,0}` RegExp, and there's nothing to show anyway
   const hops = pathBytes.match(new RegExp(`.{1,${chars}}`, "g")) ?? [];
   const textClass = size === "sm" ? "text-[11px]" : "text-[13px]";
 

@@ -13,11 +13,12 @@ interface MultiSelectDropdownProps {
   onChange: (selected: string[]) => void;
   searchable?: boolean;
   align?: "left" | "right";
+  fullWidth?: boolean; // stretch + inline panel for the mobile filter sheet
 }
 
 // checkbox dropdown with optional search filter
 
-export function MultiSelectDropdown({ label, options, selected, onChange, searchable, align = "left" }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({ label, options, selected, onChange, searchable, align = "left", fullWidth = false }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -52,10 +53,12 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   const count = selected.length;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className={`relative ${fullWidth ? "w-full" : ""}`}>
       <button
         type="button"
         className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-sm border font-mono cursor-pointer transition-all ${
+          fullWidth ? "w-full justify-between" : ""
+        } ${
           count > 0
             ? "border-primary-dim bg-primary/6 text-primary"
             : "border-border bg-bg-surface text-text-muted hover:border-text-dim hover:text-text-normal"
@@ -73,11 +76,15 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
         <span className={`text-[9px] px-1 rounded-sm min-w-[1ch] text-center ${count > 0 ? "bg-primary/15" : "invisible"}`}>
           {count || 0}
         </span>
-        <span className="text-text-dim text-[9px]">▾</span>
+        <span className="text-text-dim text-[9px]">{fullWidth && open ? "▴" : "▾"}</span>
       </button>
 
       {open && (
-        <div className={`absolute top-full mt-1 w-52 bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1 ${align === "right" ? "right-0" : "left-0"}`}>
+        <div className={
+          fullWidth
+            ? "mt-1 w-full bg-bg-raised border border-border rounded-md py-1"
+            : `absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`
+        }>
           {showSearch && (
             <div className="px-2 pb-1">
               <input

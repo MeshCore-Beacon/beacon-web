@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { getChannelMessagesPage } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
+import { LoadingPill } from "../../components/LoadingPill";
 import { channelDisplayName } from "./types";
 import type { ChannelSummary, ChannelMessage } from "./types";
 
@@ -47,9 +48,11 @@ interface MessagePanelProps {
   iatas?: string[];
   regionKey: string;
   onAnalyze?: (packetHash: string) => void;
+  // mobile-only: renders a back button, since here the panel replaces the channel list
+  onBack?: () => void;
 }
 
-export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze }: MessagePanelProps) {
+export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze, onBack }: MessagePanelProps) {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["channel-messages", channel?.id, regionKey],
     queryFn: ({ pageParam }) => getChannelMessagesPage(channel!.id, { iatas, cursor: pageParam, limit: 50 }),
@@ -59,8 +62,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     staleTime: 30_000,
   });
 
-  // pages come back newest-first per batch; the ascending sort below restores chat order, so the
-  // flatten order doesn't matter
+  // flatten order is irrelevant — the ascending sort below restores chat order from newest-first pages
   const messages = useMemo(() => data?.pages.flatMap((p) => p.items), [data]);
 
   const sorted = useMemo(
@@ -71,16 +73,15 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
   const bottomRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  // remember which channel we've anchored, and how many messages we'd scrolled past
   const scrollAnchor = useRef<{ channelId?: number; count: number }>({ count: 0 });
-  // a load-older fetch is in flight; remember the pre-prepend scroll metrics so we can hold position
+  // pre-prepend scroll metrics, captured while a load-older fetch is in flight
   const prepend = useRef<{ pending: boolean; prevHeight: number; prevTop: number }>({
     pending: false,
     prevHeight: 0,
     prevTop: 0,
   });
 
-  // reset scroll-tracking state when switching channels (adjust state during render, not in an effect)
+  // reset scroll tracking on channel switch — adjust state during render, not in an effect
   const [prevChannelId, setPrevChannelId] = useState(channel?.id);
   if (prevChannelId !== channel?.id) {
     setPrevChannelId(channel?.id);
@@ -92,7 +93,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     const anchor = scrollAnchor.current;
 
     if (anchor.channelId !== channel?.id) {
-      // first batch for this channel — wait for the fetch, then jump to the bottom (no animation)
+      // first batch for this channel — jump to the bottom once it lands
       if (isLoading) return;
       anchor.channelId = channel?.id;
       anchor.count = sorted.length;
@@ -102,9 +103,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     }
 
     if (prepend.current.pending) {
-      // an older page just prepended — restore the prior view by re-adding the height it introduced,
-      // so the message the user was reading stays put instead of jumping (overflow-anchor is off, so
-      // this math is the only thing moving the scroll)
+      // older page prepended — re-add its height to hold the read position (overflow-anchor is off)
       prepend.current.pending = false;
       if (el) el.scrollTop = prepend.current.prevTop + (el.scrollHeight - prepend.current.prevHeight);
       anchor.count = sorted.length;
@@ -112,8 +111,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     }
 
     if (sorted.length > anchor.count && !userScrolled) {
-      // a live message landed mid-session — glide down to it
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" }); // live message arrived; follow it down
     }
     anchor.count = sorted.length;
   }, [sorted.length, channel?.id, isLoading, userScrolled]);
@@ -123,7 +121,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     setUserScrolled(!atBottom);
-    // near the top: pull the next, older page and remember the metrics so we can hold position
+    // near the top: pull the next older page, capturing metrics so the prepend can hold position
     if (el.scrollTop < 40 && hasNextPage && !isFetchingNextPage) {
       prepend.current = { pending: true, prevHeight: el.scrollHeight, prevTop: el.scrollTop };
       fetchNextPage();
@@ -139,13 +137,25 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-bg-base">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <div className="flex items-baseline gap-2">
-          <span className="text-text-bright text-sm font-mono">
+    <div className="relative flex-1 flex flex-col min-w-0 bg-bg-base">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
+        <div className="flex items-baseline gap-2 min-w-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to channels"
+              className="self-center flex items-center justify-center w-9 h-9 -ml-1.5 rounded text-text-muted hover:text-text-bright hover:bg-white/5 cursor-pointer transition-colors shrink-0"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+          <span className="text-text-bright text-sm font-mono truncate">
             {channelDisplayName(channel)}
           </span>
-          <span className="text-text-dim text-[11px] font-mono">hash: {channel.channelHash}</span>
+          <span className="text-text-dim text-[11px] font-mono truncate">hash: {channel.channelHash}</span>
         </div>
         <div className="flex gap-1">
           {channel.keyKnown ? (
@@ -174,9 +184,6 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
           </div>
         ) : messages && messages.length > 0 ? (
           <div className="py-2 flex flex-col divide-y divide-border/40">
-            {isFetchingNextPage && (
-              <div className="py-1.5 text-center text-text-muted text-[11px] font-mono">Loading older…</div>
-            )}
             {sorted.map((msg) => (
               <MessageRow key={msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} onAnalyze={onAnalyze} />
             ))}
@@ -188,6 +195,9 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
           </div>
         )}
       </div>
+
+      {/* floats over the panel (not the scroll area) so older-page fetches don't shift it */}
+      <LoadingPill loading={isFetchingNextPage} count={sorted.length} noun="messages" position="bottom-3 left-1/2 -translate-x-1/2" />
     </div>
   );
 }

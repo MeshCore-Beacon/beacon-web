@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { EmptyState } from "./EmptyState";
 import { SkeletonRows } from "./SkeletonRows";
+import { useIsMobile } from "../hooks/useMediaQuery";
 
 export interface Column<T> {
   header: string;
@@ -22,6 +23,9 @@ interface DataTableProps<T> {
   defaultSort?: { header: string; direction?: SortDirection };
   // called when the scroll position nears the bottom, for on-demand paging (omit = no infinite scroll)
   onEndReached?: () => void;
+  // when set, rows render as stacked cards below the md breakpoint instead of a table; sort UI lives
+  // in <thead>, so cards keep the defaultSort
+  renderCard?: (row: T) => ReactNode;
 }
 
 // fire onEndReached once the viewport is within this many px of the list's end
@@ -29,7 +33,8 @@ const END_REACHED_THRESHOLD_PX = 200;
 
 // selectable, sticky-header list table shared by the entity tabs (observers, nodes, …)
 
-export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort, onEndReached }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort, onEndReached, renderCard }: DataTableProps<T>) {
+  const asCards = useIsMobile() && !!renderCard;
   const [sort, setSort] = useState<{ header: string; direction: SortDirection }>(() => ({
     header: defaultSort?.header ?? "",
     direction: defaultSort?.direction ?? "asc",
@@ -74,8 +79,39 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     );
   }
 
+  if (asCards) {
+    return (
+      <div className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+        {sortedRows && sortedRows.length > 0 ? (
+          <div className="flex flex-col divide-y divide-border/40">
+            {sortedRows.map((row) => {
+              const key = rowKey(row);
+              const isSelected = key === selectedKey;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`w-full text-left px-3 py-2.5 border-l-2 cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-primary/10 border-l-primary"
+                      : "border-l-transparent hover:bg-primary/5 hover:border-l-primary/50"
+                  }`}
+                  onClick={() => onSelect(isSelected ? null : key)}
+                >
+                  {renderCard!(row)}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState title={emptyLabel} />
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto" onScroll={handleScroll}>
+    <div className="flex-1 overflow-y-auto overflow-x-auto" onScroll={handleScroll}>
       {sortedRows && sortedRows.length > 0 ? (
         <table className="w-full text-xs font-mono">
           <thead className="sticky top-0 bg-bg-surface z-10">

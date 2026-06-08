@@ -3,10 +3,9 @@ import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
 import { NODE_TYPE_FILTER_OPTIONS } from "./types";
 import { Section } from "../../components/DetailPanel";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 
-// Collapsible "Map Settings" card docked top-left. No click-outside dismiss (it stays open while
-// you pan); open/closed state persists.
-
+// Open/closed state persists across sessions; no click-outside dismiss, so it stays open while you pan.
 const OPEN_STORAGE_KEY = "beacon-map-settings-open";
 
 const TYPE_OPTIONS = [{ value: "", label: "All" }, ...NODE_TYPE_FILTER_OPTIONS];
@@ -32,7 +31,12 @@ export function MapSettingsPanel({
   clustered,
   onClusteredChange,
 }: MapSettingsPanelProps) {
-  const [open, setOpen] = useState(() => (localStorage.getItem(OPEN_STORAGE_KEY) ?? "true") === "true");
+  const isMobile = useIsMobile();
+  // collapsed by default on mobile (the card would cover the map); a saved preference still wins
+  const [open, setOpen] = useState(() => {
+    const stored = localStorage.getItem(OPEN_STORAGE_KEY);
+    return stored === null ? !isMobile : stored === "true";
+  });
 
   const toggle = () =>
     setOpen((v) => {
@@ -42,7 +46,7 @@ export function MapSettingsPanel({
     });
 
   return (
-    <div className="absolute top-3 left-3 z-10 w-60 bg-bg-raised border border-border rounded-md shadow-lg overflow-hidden font-mono">
+    <div className="absolute top-3 left-3 z-10 w-60 max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg overflow-hidden font-mono">
       <button
         type="button"
         onClick={toggle}

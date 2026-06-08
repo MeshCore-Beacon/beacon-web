@@ -13,11 +13,12 @@ interface SelectDropdownProps {
   align?: "left" | "right";
   allLabel?: string;
   hideAll?: boolean; // omit the "all" entry for required fields where "" isn't a valid choice
+  fullWidth?: boolean; // stretch + inline panel for the mobile filter sheet
 }
 
 // single-select dropdown styled to match the packets MultiSelectDropdown trigger
 
-export function SelectDropdown({ label, options, value, onChange, align = "right", allLabel = "All", hideAll = false }: SelectDropdownProps) {
+export function SelectDropdown({ label, options, value, onChange, align = "right", allLabel = "All", hideAll = false, fullWidth = false }: SelectDropdownProps) {
   const active = value !== "";
   const selectedLabel = options.find((o) => o.value === value)?.label ?? value;
 
@@ -25,10 +26,13 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
     <Dropdown
       align={align}
       width="w-52"
-      renderTrigger={({ toggle }) => (
+      fullWidth={fullWidth}
+      renderTrigger={({ open, toggle }) => (
         <button
           type="button"
           className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-sm border font-mono cursor-pointer transition-all ${
+            fullWidth ? "w-full justify-between" : ""
+          } ${
             active
               ? "border-primary-dim bg-primary/6 text-primary"
               : "border-border bg-bg-surface text-text-muted hover:border-text-dim hover:text-text-normal"
@@ -38,7 +42,7 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
         >
           {label}
           <span className={active ? "text-primary" : "text-text-dim"}>{active ? selectedLabel : allLabel}</span>
-          <span className="text-text-dim text-[9px]">▾</span>
+          <span className="text-text-dim text-[9px]">{fullWidth && open ? "▴" : "▾"}</span>
         </button>
       )}
     >

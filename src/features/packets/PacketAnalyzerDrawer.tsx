@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { CloseButton } from "../../components/CloseButton";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValue, type RouteTypeValue } from "../../types/enums";
 import { Badge } from "../../components/Badge";
@@ -50,18 +51,15 @@ function CopyLinkButton({ packetHash }: { packetHash: string }) {
 interface PacketAnalyzerDrawerProps {
   detail: PacketDetail | undefined;
   selectedObservationId: number | null;
-  open: boolean;
-  onToggle: () => void;
+  onClose: () => void;
   onSelectObservation?: (id: number) => void;
   onViewNode?: (nodeId: string) => void;
   loading?: boolean;
-  // false when embedded in a modal overlay: the header chevron becomes a Close (×) instead of collapse.
-  collapsible?: boolean;
 }
 
-// collapsible side panel showing packet structure and payload breakdown
+// side panel (full-screen on mobile) showing packet structure and payload breakdown
 
-export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onToggle, onSelectObservation, onViewNode, loading, collapsible = true }: PacketAnalyzerDrawerProps) {
+export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, loading }: PacketAnalyzerDrawerProps) {
   const selectedObs = detail?.observations.find((o) => o.id === selectedObservationId)
     ?? detail?.observations[0]
     ?? null;
@@ -75,50 +73,13 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, open, onTo
 
   const headerHex = rawHex.slice(0, 2);
 
-  if (!open) {
-    return (
-      <div className="shrink-0 w-8 border-l border-border bg-bg-surface flex flex-col items-center">
-        <button
-          type="button"
-          className="mt-2 text-text-dim hover:text-text-normal cursor-pointer transition-colors"
-          onClick={onToggle}
-          aria-label="Expand analyzer"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        {detail && (
-          <div className="mt-3 writing-vertical text-xs font-mono font-medium text-text-dim tracking-wider">
-            {formatHex(detail.packetHash)}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="shrink-0 w-[400px] border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden">
+    <div className="absolute inset-0 z-30 w-full md:static md:inset-auto md:z-auto md:shrink-0 md:w-[400px] md:border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">Packet Analyzer</span>
         <div className="flex items-center gap-1.5">
           {detail && <CopyLinkButton packetHash={detail.packetHash} />}
-          <button
-            type="button"
-            className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
-            onClick={onToggle}
-            aria-label={collapsible ? "Collapse analyzer" : "Close analyzer"}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path
-                d={collapsible ? "M6 4L10 8L6 12" : "M4 4L12 12M12 4L4 12"}
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+          <CloseButton onClose={onClose} label="Close analyzer" className="-mr-1" />
         </div>
       </div>
 

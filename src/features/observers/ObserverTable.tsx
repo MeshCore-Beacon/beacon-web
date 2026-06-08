@@ -64,6 +64,29 @@ const COLUMNS: Column<ObserverSummary>[] = [
   },
 ];
 
+function renderObserverCard(obs: ObserverSummary) {
+  return (
+    <div className="flex flex-col gap-1.5 font-mono text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-1 items-center gap-2 min-w-0">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${obs.status === "online" ? "bg-green" : "bg-text-dim/30"}`} />
+          <span className={`flex-1 min-w-0 truncate ${obs.displayName ? "text-text-normal" : "text-text-dim italic"}`}>
+            {obs.displayName ?? formatHex(obs.id)}
+          </span>
+        </div>
+        <span className="shrink-0">
+          <Badge variant={obs.status === "online" ? "live" : "offline"}>{obs.status}</Badge>
+        </span>
+      </div>
+      <div className="flex items-center gap-2 text-text-muted">
+        <span className="text-text-normal">{obs.iata}</span>
+        <span>· {obs.observerType ?? "—"}</span>
+        <span>· {formatRadio(obs.radio) ?? "—"}</span>
+      </div>
+    </div>
+  );
+}
+
 export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver }: ObserverTableProps) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
@@ -170,6 +193,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver 
           isLoading={isLoading}
           emptyLabel="No observers"
           defaultSort={{ header: "Name" }}
+          renderCard={renderObserverCard}
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="observers" position="bottom-3 right-3" />
       </div>

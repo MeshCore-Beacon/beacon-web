@@ -19,10 +19,8 @@ const inputClass =
 // stable id accessor for the paginator's dedup (module-level so the memo isn't rebuilt each render)
 const routeId = (r: KnownRoute) => String(r.id);
 
-// A known route's ordered hops as a hash chain, reusing the packet path renderer's hop block. Hops are
-// high-confidence by definition; the node popover lights up if/when the server populates hop.node.
-// Memoized: the route's identity is stable across the 10s ticks from the <Timestamp> cells, so the hop
-// chain (and its popovers) don't re-reconcile just to refresh the relative timestamps in other columns.
+// A route's hops as a hash chain (reusing the packet path renderer); hops are high-confidence by definition.
+// Memoized so the 10s <Timestamp> ticks in sibling columns don't re-reconcile the chain and its popovers.
 const RouteHopChain = memo(function RouteHopChain({ route }: { route: KnownRoute }) {
   return (
     <div className="flex flex-wrap items-center gap-1 font-mono text-[13px]">
@@ -67,6 +65,23 @@ const COLUMNS: Column<KnownRoute>[] = [
     cell: (r) => <Timestamp value={r.lastSeen} />,
   },
 ];
+
+function renderRouteCard(r: KnownRoute) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Badge variant="default">{r.iata}</Badge>
+        <span className="font-mono text-[11px] text-text-dim">{r.hopCount} hops</span>
+      </div>
+      <RouteHopChain route={r} />
+      <div className="flex items-center gap-2 font-mono text-[11px] text-text-muted">
+        <span>first <Timestamp value={r.firstSeen} /></span>
+        <span aria-hidden>·</span>
+        <span>last <Timestamp value={r.lastSeen} /></span>
+      </div>
+    </div>
+  );
+}
 
 export function RouteTable() {
   const { iatas, regionKey } = useRegion();
@@ -157,49 +172,54 @@ export function RouteTable() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0">
-        <span className="text-text-muted text-[11px] uppercase tracking-wider mr-1">Find path</span>
-        <input
-          className={`${inputClass} w-28`}
-          placeholder="from hash"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
-        <span className="text-text-dim text-xs" aria-hidden>→</span>
-        <input
-          className={`${inputClass} w-28`}
-          placeholder="to hash"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          onKeyDown={onKeyDown}
-        />
-        <SelectDropdown
-          label="in"
-          options={iataOptions}
-          value={searchIata}
-          onChange={setSearchIata}
-          align="left"
-          allLabel="IATA"
-          hideAll
-        />
-        <button
-          type="button"
-          onClick={submitSearch}
-          disabled={!canSearch}
-          className="text-[11px] font-mono px-2 py-1 rounded-sm border border-border bg-bg-surface text-text-normal hover:border-primary-dim disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-        >
-          Search
-        </button>
-        {search && (
+      {/* stacks into two rows on mobile (the inputs would otherwise wrap around the arrow); one row at md+ */}
+      <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-text-muted text-[11px] uppercase tracking-wider mr-1 shrink-0">Find path</span>
+          <input
+            className={`${inputClass} flex-1 min-w-0 md:flex-none md:w-28`}
+            placeholder="from hash"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            onKeyDown={onKeyDown}
+          />
+          <span className="text-text-dim text-xs shrink-0" aria-hidden>→</span>
+          <input
+            className={`${inputClass} flex-1 min-w-0 md:flex-none md:w-28`}
+            placeholder="to hash"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            onKeyDown={onKeyDown}
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <SelectDropdown
+            label="in"
+            options={iataOptions}
+            value={searchIata}
+            onChange={setSearchIata}
+            align="left"
+            allLabel="IATA"
+            hideAll
+          />
           <button
             type="button"
-            onClick={clearSearch}
-            className="text-[11px] font-mono px-2 py-1 rounded-sm text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+            onClick={submitSearch}
+            disabled={!canSearch}
+            className="text-[11px] font-mono px-2 py-1 rounded-sm border border-border bg-bg-surface text-text-normal hover:border-primary-dim disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
           >
-            Clear
+            Search
           </button>
-        )}
+          {search && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="text-[11px] font-mono px-2 py-1 rounded-sm text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -214,6 +234,7 @@ export function RouteTable() {
             emptyLabel={search ? "No matching routes" : "No routes"}
             defaultSort={{ header: "Last seen", direction: "desc" }}
             onEndReached={search ? undefined : loadMore}
+            renderCard={renderRouteCard}
           />
           {!search && (
             <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="routes" position="bottom-3 right-3" />

@@ -11,21 +11,18 @@ interface ChannelSidebarProps {
 
 export function ChannelSidebar({ channels, selectedId, onSelect }: ChannelSidebarProps) {
   return (
-    <div className="w-60 min-w-60 border-r border-border bg-bg-surface overflow-y-auto">
-      <div className="text-text-muted text-[11px] uppercase tracking-wider px-3 pt-3 pb-2 font-mono">
-        Channels
-      </div>
-      <div className="flex flex-col divide-y divide-border/40 px-1">
+    <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-col divide-y divide-border/40">
         {channels.map((ch) => {
           const isSelected = ch.id === selectedId;
           return (
             <button
               key={ch.id}
               onClick={() => onSelect(ch.id)}
-              className={`w-full text-left px-2 py-1.5 rounded transition-colors cursor-pointer ${
+              className={`w-full text-left px-3 py-2.5 border-l-2 transition-colors cursor-pointer ${
                 isSelected
-                  ? "bg-primary/10 border border-primary"
-                  : "border border-transparent hover:bg-bg-raised"
+                  ? "bg-primary/10 border-l-primary"
+                  : "border-l-transparent hover:bg-primary/5 hover:border-l-primary/50"
               }`}
             >
               <div className="flex items-center justify-between">

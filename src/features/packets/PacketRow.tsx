@@ -58,7 +58,7 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
         </Tooltip>
       </div>
 
-      <div className="flex items-center gap-2 mt-1 text-[11px] text-text-dim">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-text-dim">
         <span className="font-mono text-[11px] text-text-muted uppercase tracking-wider bg-text-muted/8 px-1.5 py-px rounded-sm">
           {packet.routeTypeName || "Unknown"}
         </span>

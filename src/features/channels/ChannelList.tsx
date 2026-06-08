@@ -2,10 +2,13 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useWsChannelMessageHandler } from "../../hooks/useWsHandlers";
 import { SkeletonRows } from "../../components/SkeletonRows";
 import { ChannelSidebar } from "./ChannelSidebar";
+import { ChannelFilterBar } from "./ChannelFilterBar";
 import { MessagePanel } from "./MessagePanel";
+import { filterChannels, type ChannelKeyFilter, type ChannelHashtagFilter } from "./channel-filters";
 import type { ChannelMessage, ChannelSummary } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
@@ -17,8 +20,13 @@ interface ChannelListProps {
 
 export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const { iatas, regionKey } = useRegion();
+  const isMobile = useIsMobile();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [heardCounts, setHeardCounts] = useState<Record<string, number>>({});
+  const [search, setSearch] = useState("");
+  const [searchField, setSearchField] = useState("name");
+  const [keyFilter, setKeyFilter] = useState<ChannelKeyFilter>("");
+  const [hashtagFilter, setHashtagFilter] = useState<ChannelHashtagFilter>("");
   const queryClient = useQueryClient();
 
   const prevRegion = useRef(regionKey);
@@ -27,6 +35,9 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       prevRegion.current = regionKey;
       setSelectedId(null);
       setHeardCounts({});
+      setSearch("");
+      setKeyFilter("");
+      setHashtagFilter("");
     }
   }, [regionKey]);
 
@@ -41,7 +52,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     staleTime: 60_000,
   });
 
-  // "Public" always first, then named channels, then unnamed by most recent
+  // "Public" pinned first, then named channels, then unnamed by most recent
   const sortedChannels = useMemo(
     () =>
       [...(channels ?? [])].sort((a, b) => {
@@ -55,11 +66,17 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     [channels],
   );
 
+  const filteredChannels = useMemo(
+    () => filterChannels(sortedChannels, { search, searchField, keyFilter, hashtagFilter }),
+    [sortedChannels, search, searchField, keyFilter, hashtagFilter],
+  );
+
+  // resolve against the full list so a selected channel keeps showing even when filtered out
   const selectedChannel = sortedChannels.find((ch) => ch.id === selectedId) ?? null;
 
   const handleChannelMessage = useCallback(
     (data: ChannelMessage) => {
-      // bump lastSeen in the channel list, or refetch if it's a channel we haven't seen
+      // bump lastSeen, or refetch the list if this is a channel we haven't seen yet
       queryClient.setQueryData<ChannelSummary[]>(["channels", regionKey], (old) => {
         if (!old) return old;
         const idx = old.findIndex((ch) => ch.channelHash === data.channelHash);
@@ -76,13 +93,12 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       const cached = queryClient.getQueryData<ChannelSummary[]>(["channels", regionKey]);
       const selected = cached?.find((ch) => ch.id === selectedId);
       if (selected && data.channelHash === selected.channelHash) {
-        // track how many observers heard this packet (same content, multiple paths)
+        // same message, multiple observer paths — count the reach
         setHeardCounts((prev) => ({
           ...prev,
           [data.packetHash]: (prev[data.packetHash] ?? 0) + 1,
         }));
-        // MessagePanel reads this key as a paginated InfiniteData; append the live message to the
-        // newest page (re-sorted by sentAt there, so the exact page doesn't matter)
+        // append to the newest InfiniteData page; MessagePanel re-sorts by sentAt, so the page is arbitrary
         queryClient.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(
           ["channel-messages", selectedId, regionKey],
           (old) => {
@@ -99,24 +115,48 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
 
   useWsChannelMessageHandler(wsManager, handleChannelMessage);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-1 min-h-0">
-        <div className="w-64 border-r border-border shrink-0">
-          <SkeletonRows rows={8} />
-        </div>
-      </div>
-    );
-  }
+  // mobile: opening a thread takes over the whole view, hiding the list and filter bar
+  const showList = !isMobile || selectedChannel === null;
 
   return (
-    <div className="flex flex-1 min-h-0">
-      <ChannelSidebar
-        channels={sortedChannels}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-      />
-      <MessagePanel channel={selectedChannel} heardCounts={heardCounts} iatas={iatas} regionKey={regionKey} onAnalyze={onAnalyze} />
+    <div className="flex flex-col flex-1 min-h-0">
+      {showList && (
+        <ChannelFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          searchField={searchField}
+          onSearchFieldChange={setSearchField}
+          keyFilter={keyFilter}
+          onKeyChange={setKeyFilter}
+          hashtagFilter={hashtagFilter}
+          onHashtagChange={setHashtagFilter}
+        />
+      )}
+      <div className="flex flex-1 min-h-0">
+        {showList && (
+          <div className="flex flex-col min-h-0 w-full md:w-56 md:min-w-56 border-r border-border bg-bg-surface">
+            {isLoading ? (
+              <SkeletonRows rows={8} />
+            ) : (
+              <ChannelSidebar
+                channels={filteredChannels}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+              />
+            )}
+          </div>
+        )}
+        {(!isMobile || selectedChannel !== null) && (
+          <MessagePanel
+            channel={selectedChannel}
+            heardCounts={heardCounts}
+            iatas={iatas}
+            regionKey={regionKey}
+            onAnalyze={onAnalyze}
+            onBack={isMobile ? () => setSelectedId(null) : undefined}
+          />
+        )}
+      </div>
     </div>
   );
 }

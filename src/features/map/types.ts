@@ -36,8 +36,10 @@ export const DEM_ATTRIBUTION =
 
 export const TERRAIN_EXAGGERATION = 1.5;
 
-// The "All" view is configured per deployment via .env (VITE_MAP_CENTER as decimal "lat,lon",
-// VITE_MAP_ZOOM). With neither set, fall back to a wide world overview.
+// The fallback/initial map view, configured per deployment via .env (VITE_MAP_CENTER as decimal
+// "lat,lon", VITE_MAP_ZOOM). Used before airports load and when a selection has no airport coords;
+// otherwise MapView fits bounds over the airports (see CLAUDE.md, map framing). With neither set,
+// fall back to a wide world overview.
 const FALLBACK_CENTER: [number, number] = [0, 20]; // [lng, lat] — neutral world view
 const FALLBACK_ZOOM = 1.5;
 
@@ -59,7 +61,7 @@ export function parseMapCenter(raw: string | undefined): [number, number] {
   return [lon, lat]; // env is "lat,lon" (decimal); maplibre wants [lng, lat]
 }
 
-// Starting zoom for the "All" view, clamped to the slippy-map range; falls back otherwise.
+// Zoom for the fallback/initial view, clamped to the slippy-map range; falls back otherwise.
 export function parseMapZoom(raw: string | undefined): number {
   if (!raw) return FALLBACK_ZOOM;
   const zoom = Number.parseFloat(raw.trim());
@@ -75,9 +77,9 @@ export const DEFAULT_PITCH = 0; // flat overview, no tilt
 export const DEFAULT_BEARING = 0;
 export const MAX_PITCH = 85;
 
-// Camera used when focusing a selected IATA region that has coordinates.
+// fitBounds caps zoom at IATA_ZOOM; a single-airport fit also gets IATA_PITCH (3D terrain tilt).
 export const IATA_ZOOM = 9;
-export const IATA_PITCH = 45; // engage the 3D terrain tilt at the focused location
+export const IATA_PITCH = 45;
 
 // --- Nodes data layer ---
 export const NODES_SOURCE_ID = "nodes";

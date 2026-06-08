@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CloseButton } from "./CloseButton";
 
 // shared scaffolding for the right-hand entity detail panels (observers, nodes, …)
 
@@ -29,19 +30,10 @@ interface DetailPanelProps {
 
 export function DetailPanel({ title, onClose, isLoading, notFound, notFoundIcon, notFoundLabel = "Not found", children }: DetailPanelProps) {
   return (
-    <div className="shrink-0 w-[400px] border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden">
+    <div className="absolute inset-0 z-30 w-full md:static md:inset-auto md:z-auto md:shrink-0 md:w-[400px] md:border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{title}</span>
-        <button
-          type="button"
-          className="text-text-dim hover:text-text-normal cursor-pointer transition-colors"
-          onClick={onClose}
-          aria-label="Close detail panel"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <CloseButton onClose={onClose} label="Close detail panel" className="-mr-1" />
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">

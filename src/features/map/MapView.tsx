@@ -9,7 +9,7 @@ import { MapSettingsPanel } from "./MapSettingsPanel";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle } from "./types";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
-import { useRegion, useRegionSelection, useRegions } from "../../hooks/useRegion";
+import { useRegion } from "../../hooks/useRegion";
 import { useTheme } from "../../hooks/useTheme";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { getIatas } from "../../api/client";
@@ -49,8 +49,6 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const [clustered, setClustered] = useState(true);
 
   const { iatas: selectedIatas, regionKey } = useRegion();
-  const { selection } = useRegionSelection();
-  const { bySlug } = useRegions();
   const queryClient = useQueryClient();
   // marker/cluster icons are canvas-drawn from the active --palette-* vars, so useMapNodes has to
   // re-register them whenever the palette changes: on a theme switch, and once on load when the async
@@ -86,21 +84,17 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const baseFc = useMemo(() => nodesToFeatureCollection(nodes), [nodes]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
 
-  // focus the map when the selection narrows to one place: a single region uses its configured center,
-  // a single IATA centers on that airport. A multi-selection (or all regions) leaves the view as-is.
-  const focus = useMemo<[number, number] | null>(() => {
-    if (selection.regions.length === 1 && selection.iatas.length === 0) {
-      const r = bySlug.get(selection.regions[0]!);
-      if (r?.centerLat != null && r?.centerLng != null) return [r.centerLng, r.centerLat];
-    }
-    if (selection.iatas.length === 1 && selection.regions.length === 0) {
-      const match = iatas?.find((i) => i.iata === selection.iatas[0]);
-      if (match && match.lat != null && match.lon != null) return [match.lon, match.lat];
-    }
-    return null;
-  }, [selection, bySlug, iatas]);
+  // IATA coords to frame: the selection's airports, or every airport for "All". Regions carry no
+  // bounds from the API, so their member IATAs stand in for the extent. See CLAUDE.md (map framing).
+  const fitPoints = useMemo<[number, number][] | null>(() => {
+    const withCoords = (iatas ?? []).filter((i) => i.lat != null && i.lon != null);
+    if (withCoords.length === 0) return null;
+    const scope = selectedIatas && selectedIatas.length > 0 ? new Set(selectedIatas) : null;
+    const chosen = scope ? withCoords.filter((i) => scope.has(i.iata)) : withCoords;
+    return chosen.length > 0 ? chosen.map((i) => [i.lon!, i.lat!]) : null;
+  }, [iatas, selectedIatas]);
 
-  const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, focus, handleStyleError);
+  const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, fitPoints, handleStyleError);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
   useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId);

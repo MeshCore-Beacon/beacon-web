@@ -15,10 +15,11 @@ import {
   resolveMapStyle,
 } from "./types";
 
-const focusKey = (focus: [number, number] | null) => (focus ? `${focus[0]},${focus[1]}` : null);
+// serialized fit target, so the fit effect can skip redundant re-fits
+const fitKey = (points: [number, number][] | null) =>
+  points && points.length ? points.map((p) => `${p[0]},${p[1]}`).join(";") : null;
 
-// Keeps the imperative MapLibre lifecycle out of MapView. mapRef + isReady are exposed for future
-// overlays that would attach to mapRef.current and re-attach on each style.load, like addTerrain.
+// Keeps the imperative MapLibre lifecycle out of MapView; exposes mapRef + isReady for overlays.
 
 const TERRAIN_SOURCE_ID = "terrain-dem";
 const HILLSHADE_SOURCE_ID = "hillshade-dem";
@@ -63,7 +64,8 @@ function addTerrain(map: MapLibreMap, isDark: boolean) {
 
 export function useMapLibre(
   styleId: string,
-  focus: [number, number] | null,
+  // lng/lat pairs to fitBounds over; null/empty falls back to the configured default view
+  fitPoints: [number, number][] | null,
   onStyleError?: (lastGoodStyleId: string) => void,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -74,8 +76,7 @@ export function useMapLibre(
   const hasLoadedRef = useRef(false); // a style has loaded at least once (distinguishes initial-load failure)
   const swapPendingRef = useRef(false); // a setStyle() basemap swap is in flight (awaiting style.load)
   const onStyleErrorRef = useRef(onStyleError);
-  const focusRef = useRef(focus); // initial focus, read once at map creation
-  const lastFocusKeyRef = useRef(focusKey(focus));
+  const lastFitKeyRef = useRef<string | null>(null); // last applied fit target; skips redundant re-fits
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -95,15 +96,13 @@ export function useMapLibre(
     const container = containerRef.current;
     if (!container) return;
 
-    // open centered on the selected region when it has coords (deep-link / pre-selected region lands
-    // focused); otherwise the configured default view.
-    const initialFocus = focusRef.current;
+    // open at the default view; the fit effect frames the selection once the style is ready
     const map = new maplibregl.Map({
       container,
       style: resolveMapStyle(styleIdRef.current).url,
-      center: initialFocus ?? DEFAULT_CENTER,
-      zoom: initialFocus ? IATA_ZOOM : DEFAULT_ZOOM,
-      pitch: initialFocus ? IATA_PITCH : DEFAULT_PITCH,
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      pitch: DEFAULT_PITCH,
       bearing: DEFAULT_BEARING,
       maxPitch: MAX_PITCH,
       attributionControl: false, // replaced below with a compact (always-collapsed) control
@@ -183,19 +182,32 @@ export function useMapLibre(
     map.setStyle(resolveMapStyle(styleId).url);
   }, [styleId]);
 
-  // Fly to the selected region's coords (close, tilted), or back to the default overview for "All"
-  // or a region with no coords. The key check skips the redundant initial render.
+  // Frame the selection: fitBounds over its IATA points, or the default overview when there's none.
+  // A single point gets the IATA_ZOOM terrain tilt; multiple get a flat overview. Waits for the
+  // style, and the key check skips redundant re-fits (incl. isReady toggling on basemap swaps).
   useEffect(() => {
     const map = mapRef.current;
-    const key = focusKey(focus);
-    if (!map || key === lastFocusKeyRef.current) return;
-    lastFocusKeyRef.current = key;
-    map.flyTo(
-      focus
-        ? { center: focus, zoom: IATA_ZOOM, pitch: IATA_PITCH, bearing: DEFAULT_BEARING }
-        : { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, pitch: DEFAULT_PITCH, bearing: DEFAULT_BEARING },
+    if (!map || !isReady) return;
+    const key = fitKey(fitPoints);
+    if (key === lastFitKeyRef.current) return;
+    lastFitKeyRef.current = key;
+
+    if (!fitPoints || fitPoints.length === 0) {
+      map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, pitch: DEFAULT_PITCH, bearing: DEFAULT_BEARING });
+      return;
+    }
+
+    const bounds = fitPoints.reduce(
+      (b, p) => b.extend(p),
+      new maplibregl.LngLatBounds(fitPoints[0], fitPoints[0]),
     );
-  }, [focus]);
+    map.fitBounds(bounds, {
+      padding: 48,
+      maxZoom: IATA_ZOOM,
+      pitch: fitPoints.length === 1 ? IATA_PITCH : DEFAULT_PITCH,
+      bearing: DEFAULT_BEARING,
+    });
+  }, [fitPoints, isReady]);
 
   return { containerRef, mapRef, isReady, error };
 }

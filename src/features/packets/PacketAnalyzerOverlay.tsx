@@ -4,13 +4,8 @@ import { PacketAnalyzerDrawer } from "./PacketAnalyzerDrawer";
 import { NodeDetailOverlay } from "../nodes/NodeDetailOverlay";
 import { ModalOverlay } from "../../components/ModalOverlay";
 
-// Packet analyzer shown as a modal over the node detail panel: clicking a node's observation row
-// pops the analyzer for that packet, dimming the rest, so a user can peek at the packet and close
-// back to the node. The mirror image of NodeDetailOverlay (node panel over the packet analyzer).
-//
-// One level deeper: clicking a resolved path node inside the analyzer floats a node detail on top
-// (node panel → packet analyzer → node detail). That bottom node panel gets no onAnalyzePacket, so
-// the chain stops there rather than recursing forever.
+// Packet analyzer floated over a node detail panel (mirror of NodeDetailOverlay). The node detail it
+// can stack on top gets no onAnalyzePacket, so the overlay chain stops there instead of recursing.
 export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver }: {
   detail: PacketDetail | undefined;
   loading?: boolean;
@@ -36,11 +31,9 @@ export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver
         <PacketAnalyzerDrawer
           detail={detail}
           loading={loading}
-          collapsible={false}
           selectedObservationId={selectedObservationId}
           onSelectObservation={setSelectedObservationId}
-          open={true}
-          onToggle={onClose}
+          onClose={onClose}
           onViewNode={setViewNodeId}
         />
       </ModalOverlay>

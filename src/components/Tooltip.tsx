@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useHasHover } from "../hooks/useMediaQuery";
 
-// Lightweight hover tooltip. Renders into <body> with fixed positioning so it's never clipped by a
-// scrolling/overflow parent (e.g. the data tables), and sits centered just above the target.
+// Portals to <body> with fixed positioning so overflow parents (the data tables) can't clip it.
+// Hover reveals with a mouse; on touch it toggles on tap and dismisses on an outside tap.
 export function Tooltip({ label, children, className = "" }: { label: ReactNode; children: ReactNode; className?: string }) {
+  const hasHover = useHasHover();
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -14,6 +16,12 @@ export function Tooltip({ label, children, className = "" }: { label: ReactNode;
     if (rect) setAnchor(rect);
   }
   const hide = () => setAnchor(null);
+
+  // touch: tap toggles; stopPropagation so a badge tap doesn't also hit the row/button it sits in
+  function toggle(e: ReactMouseEvent) {
+    e.stopPropagation();
+    setAnchor((a) => (a ? null : ref.current?.getBoundingClientRect() ?? null));
+  }
 
   // A fixed-position tip would detach from its target on scroll/resize, so close it rather than track.
   useEffect(() => {
@@ -26,6 +34,16 @@ export function Tooltip({ label, children, className = "" }: { label: ReactNode;
     };
   }, [anchor]);
 
+  // touch: a tap outside the trigger dismisses the tip
+  useEffect(() => {
+    if (!anchor || hasHover) return;
+    function onDown(e: PointerEvent) {
+      if (!ref.current?.contains(e.target as Node)) setAnchor(null);
+    }
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [anchor, hasHover]);
+
   // Center above the target, then clamp on-screen and flip below if it would clip the top edge.
   useLayoutEffect(() => {
     if (!anchor || !tipRef.current) return;
@@ -37,7 +55,13 @@ export function Tooltip({ label, children, className = "" }: { label: ReactNode;
   }, [anchor]);
 
   return (
-    <span ref={ref} onMouseEnter={show} onMouseLeave={hide} className={`inline-flex ${className}`}>
+    <span
+      ref={ref}
+      onMouseEnter={hasHover ? show : undefined}
+      onMouseLeave={hasHover ? hide : undefined}
+      onClick={hasHover ? undefined : toggle}
+      className={`inline-flex ${className}`}
+    >
       {children}
       {anchor &&
         createPortal(
