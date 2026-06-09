@@ -1,5 +1,9 @@
 # BEACON Web
 
+[![CodeQL](https://github.com/MeshCore-Beacon/beacon-web/actions/workflows/codeql.yml/badge.svg)](https://github.com/MeshCore-Beacon/beacon-web/actions/workflows/codeql.yml)
+[![CI](https://github.com/MeshCore-Beacon/beacon-web/actions/workflows/ci.yml/badge.svg)](https://github.com/MeshCore-Beacon/beacon-web/actions/workflows/ci.yml)
+[![Docker](https://github.com/MeshCore-Beacon/beacon-web/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/MeshCore-Beacon/beacon-web/actions/workflows/docker-publish.yml)
+
 Real-time LoRa mesh packet analyzer. Desktop-first, dark-mode-primary, dense information display for radio hobbyists.
 
 Built with React 19, TypeScript, Tailwind CSS 4, TanStack Query, and TanStack Virtual.
@@ -94,6 +98,14 @@ src/
 - **Client-side filtering**: Filters are not part of the query key. The cache holds all packets for the current region; filters are applied via `useMemo`. Toggling a filter is instant with no refetch.
 - **Reconnect with jitter**: Exponential backoff with +/-25% random jitter prevents thundering herd on server bounce.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributors are welcome — please
+also read the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security issue,
+see [SECURITY.md](SECURITY.md).
+
 ## License
 
-See repository root.
+Licensed under the GNU Affero General Public License v3.0 or later
+(AGPL-3.0-or-later). See [LICENSE](LICENSE) for the full text and
+[CONTRIBUTORS.md](CONTRIBUTORS.md) for acknowledgements.
