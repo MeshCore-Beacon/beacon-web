@@ -30,11 +30,11 @@ const mockGetRegions = vi.mocked(getRegions);
 
 const node = (id: string, name: string) => ({ id, name, publicKey: "deadbeef" });
 
-function renderTable() {
+function renderTable(selection = ALL_REGIONS) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <RegionProvider defaultSelection={ALL_REGIONS}>{children}</RegionProvider>
+      <RegionProvider defaultSelection={selection}>{children}</RegionProvider>
     </QueryClientProvider>
   );
   render(<RouteTable />, { wrapper });
@@ -101,6 +101,25 @@ describe("RouteTable search", () => {
     expect(mockSearchKnownRoutes).not.toHaveBeenCalled();
     expect(await screen.findByText("Src Node")).toBeInTheDocument();
     expect(screen.getByText("Dst Node")).toBeInTheDocument();
+  });
+
+  it("keeps paging for a multi-IATA region until its routes surface", async () => {
+    const foreign: KnownRoute = { id: 1, iata: "CCC", hopCount: 1, hops: [], firstSeen: 1, lastSeen: 5, observationCount: 9 };
+    const wanted: KnownRoute = { id: 2, iata: "AAA", hopCount: 2, hops: [], firstSeen: 1, lastSeen: 3, observationCount: 17 };
+    // first global page has nothing from the region; the region's route sits on page two
+    mockGetKnownRoutesPage.mockImplementation(({ cursor } = {}) =>
+      Promise.resolve(
+        cursor === undefined
+          ? { items: [foreign], nextCursor: 5, hasMore: true }
+          : { items: [wanted], nextCursor: null, hasMore: false },
+      ),
+    );
+
+    renderTable({ regions: [], iatas: ["AAA", "BBB"] });
+
+    // without fill-paging the table dead-ends on "No routes" — scroll can never fire on an empty list
+    expect(await screen.findByText("17")).toBeInTheDocument();
+    expect(mockGetKnownRoutesPage.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows a route's observation count in the list", async () => {

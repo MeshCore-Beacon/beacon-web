@@ -169,7 +169,7 @@ export function RouteTable() {
 
   // Page the route set on demand (50 at a time, cursor = last route's lastSeen ms) — the DataTable
   // pulls the next page via loadMore() as you scroll, instead of eagerly loading the whole set.
-  const { items: listRoutes, loadedCount, isPaging, isError, isLoading: listLoading, loadMore } =
+  const { items: listRoutes, loadedCount, isPaging, isError, isLoading: listLoading, loadMore, hasMore } =
     useInfinitePages<KnownRoute>({
       queryKey: ["routes", serverIata ?? ""],
       queryFn: (cursor) => getKnownRoutesPage({ iata: serverIata, cursor }),
@@ -222,6 +222,16 @@ export function RouteTable() {
     () => rows?.find((r) => String(r.id) === selectedKey),
     [rows, selectedKey],
   );
+
+  // A multi-IATA region filters globally-paged rows client-side, so the filtered list can be too
+  // short to ever trigger scroll paging — or empty, with the region's routes deeper in the cursor
+  // stream. Keep pulling pages until there's a screenful or the cap says the region is just sparse.
+  useEffect(() => {
+    if (search || serverIata || !iatas?.length) return;
+    if (!hasMore || isPaging) return;
+    if ((rows?.length ?? 0) >= 50 || loadedCount >= 1000) return;
+    loadMore();
+  }, [search, serverIata, iatas, hasMore, isPaging, rows, loadedCount, loadMore]);
 
   const canSearch = !!(from.trim() && to.trim() && searchIatas.length >= 1);
   // clear any selection when the visible list changes out from under it (search submit/clear)
