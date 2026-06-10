@@ -48,7 +48,7 @@ describe("PayloadBreakdown — trace resolvedRoute overlay", () => {
 
 describe("PayloadBreakdown — GROUP_TEXT decrypted channel message", () => {
   // Backend GetPacket enrichment nests decrypted:{sender,content,sentAt} (sentAt is epoch ms).
-  // See tower-server db/packets.go + internal/ingest/side_effects.go.
+  // See beacon-server db/packets.go + internal/ingest/side_effects.go.
   // chosen so the ms reading (5:43 p.m.) and the wrong seconds reading (1:13 p.m.) differ
   const sentAt = 1_700_001_800_000; // epoch ms
   const payload = {

@@ -149,7 +149,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
 
   // patch the live status into the paged cache (mirrors NodeTable). A brand-new observer not on any
   // loaded page isn't pulled in here — it surfaces on the next reload/region switch (see the
-  // tower-docs ticket about carrying the full summary in WS events for true live insertion).
+  // beacon-docs ticket about carrying the full summary in WS events for true live insertion).
   const handleObserverStatus = useCallback(
     (data: WsObserverStatus["data"]) => {
       queryClient.setQueryData<InfiniteData<CursorPage<ObserverSummary>>>(queryKey, (old) =>

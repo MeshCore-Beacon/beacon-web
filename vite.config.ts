@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
-  // set VITE_DEV_PROXY to point at a running tower-server instance
+  // set VITE_DEV_PROXY to point at a running beacon-server instance
   const proxyTarget = env.VITE_DEV_PROXY;
 
   return {

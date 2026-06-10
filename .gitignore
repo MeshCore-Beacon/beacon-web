@@ -6,7 +6,6 @@ dist/
 build/
 .next/
 .nuxt/
-scripts/
 
 # Dev server helper runtime files
 .scripts/

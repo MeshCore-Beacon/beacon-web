@@ -31,11 +31,11 @@ describe("nodesToFeatureCollection", () => {
 
   it("carries id/name/nodeTypeName/isObserver as feature properties", () => {
     const fc = nodesToFeatureCollection([
-      node({ id: "abc", name: "Tower A", nodeType: 2, nodeTypeName: "sensor" }),
+      node({ id: "abc", name: "Relay A", nodeType: 2, nodeTypeName: "sensor" }),
     ]);
     expect(fc.features[0]!.properties).toEqual({
       id: "abc",
-      name: "Tower A",
+      name: "Relay A",
       nodeTypeName: "sensor",
       isObserver: false,
     });

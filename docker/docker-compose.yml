@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
 
   beacon-web:
-    image: ghcr.io/meshcore-tower/beacon-web:latest
+    image: ghcr.io/meshcore-beacon/beacon-web:latest
     environment:
       - VITE_API_BASE=${VITE_API_BASE:?VITE_API_BASE environment variable is required}
       - VITE_WS_URL=${VITE_WS_URL:?VITE_WS_URL environment variable is required}

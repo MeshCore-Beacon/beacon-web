@@ -1,4 +1,4 @@
-// Response shapes for the /stats/* endpoints and observer telemetry. Verified against tower-server.
+// Response shapes for the /stats/* endpoints and observer telemetry. Verified against beacon-server.
 
 export interface StatsOverview {
   totalPackets: number;
