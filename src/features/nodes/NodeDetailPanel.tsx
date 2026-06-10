@@ -3,7 +3,7 @@ import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { IataChip } from "../../components/IataChip";
-import { formatHex, formatSnr, snrLevel, microToDeg, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatHex, formatSnr, snrLevel, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import type { NodeObservation, NodeNeighbor } from "./types";
 
@@ -130,8 +130,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             {(hasLocation || node.locationSource) && (
               <Section title="Location">
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[13px]">
-                  {node.lat != null && <Field label="Lat" value={microToDeg(node.lat).toFixed(5)} />}
-                  {node.lng != null && <Field label="Lng" value={microToDeg(node.lng).toFixed(5)} />}
+                  {node.lat != null && <Field label="Lat" value={node.lat.toFixed(5)} />}
+                  {node.lng != null && <Field label="Lng" value={node.lng.toFixed(5)} />}
                   {node.locationSource && <Field label="Source" value={node.locationSource} />}
                 </div>
               </Section>
@@ -159,8 +159,9 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               {neighbors && neighbors.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {neighbors.map((n) => (
+                    // the endpoint returns one row per (neighbor, iata), so the node id alone repeats
                     <NodeNeighborRow
-                      key={n.id}
+                      key={`${n.id}-${n.iata}`}
                       neighbor={n}
                       onClick={onViewNode ? () => onViewNode(n.id) : undefined}
                     />

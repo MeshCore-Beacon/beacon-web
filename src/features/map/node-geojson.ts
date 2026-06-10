@@ -1,6 +1,5 @@
 import type { Feature, FeatureCollection, Point } from "geojson";
 import type { NodeSummary } from "../nodes/types";
-import { microToDeg } from "../../lib/formatters";
 
 // Build the maplibre GeoJSON source from the nodes API response. Properties stay primitive because
 // clustering serializes them, and there's no maplibre import, so this stays unit-testable.
@@ -21,8 +20,8 @@ export function nodesToFeatureCollection(
     if (n.lat == null || n.lng == null) continue;
     features.push({
       type: "Feature",
-      // GeoJSON/maplibre order is [lng, lat]; scale the API's microdegrees to decimal (microToDeg)
-      geometry: { type: "Point", coordinates: [microToDeg(n.lng), microToDeg(n.lat)] },
+      // GeoJSON/maplibre order is [lng, lat]; the API sends decimal degrees as-is
+      geometry: { type: "Point", coordinates: [n.lng, n.lat] },
       properties: {
         id: n.id,
         name: n.name,

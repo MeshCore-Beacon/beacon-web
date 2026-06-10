@@ -85,7 +85,7 @@ export interface WsNodeUpdate {
     nodeType: number;
     nodeTypeName: string;
     iata: string;
-    // integer microdegrees, same as REST /nodes — the server sends one value to both (microToDeg scales it)
+    // decimal degrees, same as REST /nodes (api/nodes.go serializes *float64 degrees to both)
     lat?: number;
     lng?: number;
     isObserver: boolean;

@@ -29,6 +29,11 @@ describe("nodesToFeatureCollection", () => {
     expect(fc.features[0]!.geometry).toEqual({ type: "Point", coordinates: [-75.6, 45.3] });
   });
 
+  it("keeps whole-degree coordinates intact (the API sends decimal degrees, never microdegrees)", () => {
+    const fc = nodesToFeatureCollection([node({ lat: 51, lng: -114 })]);
+    expect(fc.features[0]!.geometry.coordinates).toEqual([-114, 51]);
+  });
+
   it("carries id/name/nodeTypeName/isObserver as feature properties", () => {
     const fc = nodesToFeatureCollection([
       node({ id: "abc", name: "Relay A", nodeType: 2, nodeTypeName: "sensor" }),
@@ -65,15 +70,7 @@ describe("nodesToFeatureCollection", () => {
     expect(fc.features[0]!.geometry.coordinates).toEqual([0, 0]);
   });
 
-  it("scales microdegree coordinates (the /nodes API format) to decimal degrees", () => {
-    // /nodes returns lat/lng as degrees * 1e6, e.g. 51.134498 -> 51134498 (Calgary)
-    const fc = nodesToFeatureCollection([node({ lat: 51134498, lng: -114234298 })]);
-    const [lng, lat] = fc.features[0]!.geometry.coordinates;
-    expect(lat).toBeCloseTo(51.134498, 5);
-    expect(lng).toBeCloseTo(-114.234298, 5);
-  });
-
-  it("leaves already-decimal coordinates untouched (future-proof if the API switches)", () => {
+  it("passes decimal coordinates through untouched (api/nodes.go sends *float64 degrees)", () => {
     const fc = nodesToFeatureCollection([node({ lat: 49.28, lng: -123.12 })]);
     expect(fc.features[0]!.geometry.coordinates).toEqual([-123.12, 49.28]);
   });

@@ -7,7 +7,7 @@ import { useTick } from "../../hooks/useTick";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
 import { patchInfinitePages } from "../../lib/infinite-pages";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
-import { formatHex, microToDeg, timeAgoMs, formatRadio } from "../../lib/formatters";
+import { formatHex, timeAgoMs, formatRadio } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { ObserverIcon } from "../../components/ObserverIcon";
@@ -77,7 +77,7 @@ const COLUMNS: Column<NodeSummary>[] = [
     className: "text-text-muted",
     cell: (node) =>
       node.lat != null && node.lng != null
-        ? `${microToDeg(node.lat).toFixed(2)}, ${microToDeg(node.lng).toFixed(2)}`
+        ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
         : "—",
   },
 ];
@@ -85,7 +85,7 @@ const COLUMNS: Column<NodeSummary>[] = [
 function renderNodeCard(node: NodeSummary) {
   const location =
     node.lat != null && node.lng != null
-      ? `${microToDeg(node.lat).toFixed(2)}, ${microToDeg(node.lng).toFixed(2)}`
+      ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
       : null;
   return (
     <div className="flex flex-col gap-1.5 font-mono text-xs">
