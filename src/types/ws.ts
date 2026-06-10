@@ -67,9 +67,9 @@ export interface WsObserverStatus {
     iata: string;
     online: boolean;
     radio?: string; // compact "freq,bw,sf" string
-    scopes: string[];
-    batteryMv: number | null;
-    uptimeSeconds: number | null;
+    scopes: string[] | null; // a nil slice marshals to null
+    batteryMv?: number; // omitempty — absent when unknown (0)
+    uptimeSeconds: number;
     lastStatusAt: number;
   };
 }
@@ -107,7 +107,7 @@ export interface WsLagged {
   type: "lagged";
   droppedCount: number;
   since: number;
-  lastObservationId: number;
+  lastObservationId?: number; // declared in the protocol but not sent today
 }
 
 export interface WsError {

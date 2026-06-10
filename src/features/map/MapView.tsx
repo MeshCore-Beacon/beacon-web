@@ -96,7 +96,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, fitPoints, handleStyleError);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
-  useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId);
+  useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, `${regionKey}:${typeFilter}`);
 
   return (
     <div className="relative flex flex-1 min-h-0">

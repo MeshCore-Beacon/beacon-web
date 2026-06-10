@@ -98,8 +98,12 @@ export function useMapNodes(
   clustered: boolean,
   onSelectNode: (id: string) => void,
   selectedNodeId: string | null,
+  // identity of the dataset (region + type filter); an open spiderfy fan closes when it changes,
+  // since its leaves were drawn from the previous dataset
+  resetKey = "",
 ) {
   const geojsonRef = useRef(geojson);
+  const spiderRef = useRef<Spiderfy | null>(null);
   const onSelectNodeRef = useRef(onSelectNode);
   const selectedNodeIdRef = useRef(selectedNodeId);
   const appliedClusteredRef = useRef(clustered);
@@ -338,6 +342,7 @@ export function useMapNodes(
       spiderLeavesLayout: SPIDER_LEAVES_LAYOUT,
     });
     spider.applyTo(NODES_CLUSTER_LAYER_ID);
+    spiderRef.current = spider;
     // @nazka/map-gl-js-spiderfy registers its cluster-click handler inside a one-shot map.once("idle").
     // With 3D terrain that idle often doesn't fire before this effect re-runs, so the handler never
     // attaches (clusters look unclickable) or attaches late as an orphan after cleanup. Run that
@@ -384,6 +389,7 @@ export function useMapNodes(
         map.off("mouseenter", layer, setPointer);
         map.off("mouseleave", layer, clearPointer);
       }
+      spiderRef.current = null;
       try {
         spider.unspiderfyAll();
       } catch {
@@ -392,4 +398,13 @@ export function useMapNodes(
     };
     // themeKey is a dep so spiderfy rebuilds and its legs + leaf icons pick up the new palette
   }, [mapRef, isReady, clustered, themeKey]);
+
+  // close any open fan when the dataset identity changes — its leaves no longer exist
+  useEffect(() => {
+    try {
+      spiderRef.current?.unspiderfyAll();
+    } catch {
+      /* map may already be removed */
+    }
+  }, [resetKey]);
 }

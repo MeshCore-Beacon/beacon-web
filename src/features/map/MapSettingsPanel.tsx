@@ -38,12 +38,15 @@ export function MapSettingsPanel({
     return stored === null ? !isMobile : stored === "true";
   });
 
-  const toggle = () =>
-    setOpen((v) => {
-      const next = !v;
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
       localStorage.setItem(OPEN_STORAGE_KEY, String(next));
-      return next;
-    });
+    } catch {
+      // private mode / quota — the toggle still works, just not persisted
+    }
+  };
 
   return (
     <div className="absolute top-3 left-3 z-10 w-60 max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg overflow-hidden font-mono">

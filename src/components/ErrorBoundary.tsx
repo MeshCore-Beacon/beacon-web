@@ -19,15 +19,18 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       if (this.props.fallback) return this.props.fallback;
+      // React.lazy caches a rejected import, so remounting can't recover a failed chunk load
+      // (e.g. a deploy swapped the hashed assets out from under us) — only a real reload can
+      const chunkFailure = /dynamically imported module|Loading chunk|error loading/i.test(this.state.error.message);
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-3 p-8 text-text-dim">
           <p className="text-sm font-mono">Something went wrong rendering this view.</p>
           <button
             type="button"
             className="text-xs font-mono underline cursor-pointer text-primary"
-            onClick={() => this.setState({ error: null })}
+            onClick={() => (chunkFailure ? window.location.reload() : this.setState({ error: null }))}
           >
-            try again
+            {chunkFailure ? "reload" : "try again"}
           </button>
         </div>
       );

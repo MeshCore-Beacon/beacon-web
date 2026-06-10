@@ -135,18 +135,20 @@ function AppInner() {
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
   const [overlayPacketHash, setOverlayPacketHash] = useState<string | null>(null);
 
+  // short staleTime: observations keep accruing, so reopening the analyzer should show them
+  // instead of a snapshot frozen at first open
   const { data: analyzerDetail, isLoading: analyzerLoading } = useQuery({
     queryKey: ["packet-detail", analyzerHash],
     queryFn: () => getPacketDetail(analyzerHash!),
     enabled: !!analyzerHash,
-    staleTime: Infinity,
+    staleTime: 30_000,
   });
 
   const { data: overlayPacketDetail, isLoading: overlayPacketLoading } = useQuery({
     queryKey: ["packet-detail", overlayPacketHash],
     queryFn: () => getPacketDetail(overlayPacketHash!),
     enabled: !!overlayPacketHash,
-    staleTime: Infinity,
+    staleTime: 30_000,
   });
 
   const handleAnalyze = useCallback((hash: string | null) => {
@@ -168,6 +170,12 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
+      // stats sub-state shouldn't haunt the URL on other tabs
+      if (tab !== "Stats") {
+        next.delete("statsTab");
+        next.delete("observerId");
+        next.delete("range");
+      }
       return next;
     });
   };

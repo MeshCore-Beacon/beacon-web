@@ -29,7 +29,12 @@ function ObserverList({
 }) {
   const { iatas, regionKey } = useRegion();
   const [query, setQuery] = useState("");
-  const q = query.trim();
+  // debounce so the server-side lookup fires once per pause, not once per keystroke
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setQ(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
   const searching = q.length > 0;
 
   // default: top observers by activity (with count + activity bar). Searching swaps to a server-side
@@ -63,7 +68,10 @@ function ObserverList({
       />
       <div className="flex flex-col gap-0.5">
         {loading && <div className="py-6 text-center font-mono text-[11px] text-text-dim">{searching ? "Searching…" : "Loading…"}</div>}
-        {!loading && rows.length === 0 && (
+        {searching && search.isError && (
+          <div className="py-6 text-center font-mono text-[11px] text-danger">Search failed</div>
+        )}
+        {!loading && !(searching && search.isError) && rows.length === 0 && (
           <div className="py-6 text-center font-mono text-[11px] text-text-dim">{searching ? "No matches" : "No observers"}</div>
         )}
         {rows.map((r) => {

@@ -176,7 +176,7 @@ export class WsManager {
         this.sendSubscribe();
         if (isReconnect) {
           // we were dark during the outage — synthesize a lag notice so live views heal the gap
-          const notice: WsLagged = { v: 1, type: "lagged", droppedCount: 0, since: this.lastEventTimestamp, lastObservationId: 0 };
+          const notice: WsLagged = { v: 1, type: "lagged", droppedCount: 0, since: this.lastEventTimestamp };
           for (const handler of this.laggedHandlers) {
             handler(notice);
           }
