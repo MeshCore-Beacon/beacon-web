@@ -190,7 +190,7 @@ function AppInner() {
     Routes: <RouteTable />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
-    Traces: <TraceList onAnalyze={setOverlayPacketHash} />,
+    Traces: <TraceList onAnalyze={setOverlayPacketHash} onViewNode={setOverlayNodeId} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Stats: <StatsOverview />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,

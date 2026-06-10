@@ -26,8 +26,8 @@ function tag(traceTag: string, packetCount = 1): TraceTagSummary {
 const detail: TraceDetail = {
   traceTag: "3f2a11c0",
   packets: [
-    { packetHash: "hash-aaa", routeType: 1, routeTypeName: "ROUTE_REQUEST", firstHeardAt: 1, lastHeardAt: 2, resolvedRoute: [] },
-    { packetHash: "hash-bbb", routeType: 1, routeTypeName: "ROUTE_REQUEST", firstHeardAt: 1, lastHeardAt: 2, resolvedRoute: [] },
+    { packetHash: "hash-aaa", routeType: 1, routeTypeName: "ROUTE_REQUEST", firstHeardAt: 1, lastHeardAt: 2, rawPath: [], resolvedRoute: [] },
+    { packetHash: "hash-bbb", routeType: 1, routeTypeName: "ROUTE_REQUEST", firstHeardAt: 1, lastHeardAt: 2, rawPath: [], resolvedRoute: [] },
   ],
 };
 
@@ -79,7 +79,7 @@ describe("TraceList", () => {
     mockGetTraceDetail.mockResolvedValue({
       traceTag: "3f2a11c0",
       packets: [
-        { packetHash: "hash-aaa", routeType: 1, routeTypeName: "ROUTE_REQUEST", firstHeardAt: 1717689045001, lastHeardAt: 1717689045123, resolvedRoute: [] },
+        { packetHash: "hash-aaa", routeType: 1, routeTypeName: "ROUTE_REQUEST", firstHeardAt: 1717689045001, lastHeardAt: 1717689045123, rawPath: [], resolvedRoute: [] },
       ],
     });
 
@@ -109,6 +109,42 @@ describe("TraceList", () => {
     fireEvent.click(rows[0]);
 
     expect(onAnalyze).toHaveBeenCalledWith("hash-aaa");
+  });
+
+  it("renders each hop's raw path-hash byte and surfaces resolved nodes in the popover", async () => {
+    mockGetTraces.mockResolvedValue([tag("3f2a11c0", 1)]);
+    mockGetTraceDetail.mockResolvedValue({
+      traceTag: "3f2a11c0",
+      packets: [
+        {
+          packetHash: "hash-aaa",
+          routeType: 1,
+          routeTypeName: "ROUTE_REQUEST",
+          firstHeardAt: 1,
+          lastHeardAt: 2,
+          rawPath: [{ hash: "a1", snr: -7.5 }, { hash: "b2" }],
+          resolvedRoute: [
+            { confidence: "high", nodes: [{ id: "n1", name: "GatewayX", publicKey: "deadbeef" }] },
+            { confidence: "none", nodes: [] },
+          ],
+        },
+      ],
+    });
+
+    renderTraces();
+    fireEvent.click(await screen.findByText("3F2A11C0"));
+
+    // raw bytes shown uppercase, like the packet path renderer
+    const hopA = await screen.findByText("A1");
+    expect(hopA).toBeInTheDocument();
+    expect(screen.getByText("B2")).toBeInTheDocument();
+
+    // per-hop SNR sits on a sub-line below the hash, like the TRACE payload view
+    expect(screen.getByText("-7.50 dB")).toBeInTheDocument();
+
+    // hovering a resolved hop reveals its candidate node
+    fireEvent.mouseEnter(hopA);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("GatewayX");
   });
 
   it("shows an empty state when there are no traces", async () => {

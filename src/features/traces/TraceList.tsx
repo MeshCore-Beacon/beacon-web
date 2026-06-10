@@ -14,6 +14,7 @@ const TRACE_LIST_LIMIT = 200;
 
 interface TraceListProps {
   onAnalyze: (hash: string | null) => void;
+  onViewNode?: (nodeId: string) => void;
 }
 
 // A trace tag as a selectable card, echoing PacketRow's look so the tab reads like the Packets tab.
@@ -48,7 +49,7 @@ function TraceTagCard({ tag, selected, onSelect }: {
   );
 }
 
-export function TraceList({ onAnalyze }: TraceListProps) {
+export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
   const { iatas, regionKey } = useRegion();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
@@ -81,7 +82,7 @@ export function TraceList({ onAnalyze }: TraceListProps) {
         )}
       </div>
       {selectedTag && (
-        <TraceDetailPanel tag={selectedTag} onClose={() => setSelectedTag(null)} onAnalyze={onAnalyze} />
+        <TraceDetailPanel tag={selectedTag} onClose={() => setSelectedTag(null)} onAnalyze={onAnalyze} onViewNode={onViewNode} />
       )}
     </div>
   );

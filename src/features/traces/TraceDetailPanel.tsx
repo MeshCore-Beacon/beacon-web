@@ -5,26 +5,36 @@ import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
 import { ResolvedHopBlock } from "../packets/PathData";
 import { ScopeTag } from "../../components/ScopeTag";
-import type { ResolvedHop, TracePacket } from "../../types/api";
+import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import type { RawHop, ResolvedHop, TracePacket } from "../../types/api";
 
-// A trace packet's resolved route, reusing the packet path renderer's hop block. Resolved hops are
-// labelled by node. The backend doesn't send per-hop hash bytes on trace routes yet (see hashBytes on
-// ResolvedHop), so unresolved hops currently fall back to their #position in the path.
-function TraceHopChain({ hops }: { hops: ResolvedHop[] }) {
-  if (hops.length === 0) return <span className="text-text-dim text-[11px] font-mono">no path</span>;
+// A trace packet's path, rendered exactly like the TRACE payload view: the raw path-hash byte as the
+// label, tinted by resolution confidence with candidate nodes in the popover, and the per-hop SNR on a
+// sub-line below it (a "-" placeholder keeps the row aligned). rawPath and resolvedRoute are
+// index-aligned (one entry per hash).
+function TraceHopChain({ rawPath, resolvedRoute, onViewNode }: {
+  rawPath: RawHop[];
+  resolvedRoute: ResolvedHop[];
+  onViewNode?: (nodeId: string) => void;
+}) {
+  if (rawPath.length === 0) return <span className="text-text-dim text-[11px] font-mono">no path</span>;
   return (
-    <div className="flex flex-wrap items-center gap-1 font-mono text-[13px]">
-      {hops.map((hop, i) => {
-        const node = hop.nodes[0];
-        const label = node
-          ? (node.name ?? node.publicKey.slice(0, 8))
-          : hop.hashBytes
-            ? hop.hashBytes.toUpperCase()
-            : `#${i + 1}`;
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 font-mono text-[13px]">
+      {rawPath.map((raw, i) => {
+        const snr = raw.snr;
+        const level = snr != null ? snrLevel(snr) : null;
+        const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
         return (
           <span key={i} className="contents">
             {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
-            <ResolvedHopBlock hop={hop} label={label} />
+            <span className="inline-flex flex-col items-center gap-0.5">
+              <ResolvedHopBlock hop={resolvedRoute[i]} label={raw.hash.toUpperCase()} onViewNode={onViewNode} showSnr={false} />
+              {snr != null ? (
+                <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>
+              ) : (
+                <span className="text-[11px] text-text-dim" aria-hidden>-</span>
+              )}
+            </span>
           </span>
         );
       })}
@@ -34,12 +44,25 @@ function TraceHopChain({ hops }: { hops: ResolvedHop[] }) {
 
 // One packet in the selected trace. Clicking it opens the shared packet analyzer (the same overlay the
 // other tabs use), so a trace packet drills into observations exactly like any packet elsewhere.
-function TracePacketRow({ pkt, onAnalyze }: { pkt: TracePacket; onAnalyze: (hash: string) => void }) {
+function TracePacketRow({ pkt, onAnalyze, onViewNode }: {
+  pkt: TracePacket;
+  onAnalyze: (hash: string) => void;
+  onViewNode?: (nodeId: string) => void;
+}) {
+  // A div, not a button: the hop popover nests clickable node buttons, so the row can't itself be a
+  // button. Mirrors TraceTagCard's role/tabIndex/onKeyDown; hop clicks stopPropagation so they don't analyze.
   return (
-    <button
-      type="button"
-      className="w-full text-left rounded-md border border-border bg-bg-base px-3 py-2 cursor-pointer hover:border-text-dim/30 hover:bg-bg-raised/50 transition-colors"
+    <div
+      role="button"
+      tabIndex={0}
+      className="rounded-md border border-border bg-bg-base px-3 py-2 cursor-pointer hover:border-text-dim/30 hover:bg-bg-raised/50 transition-colors"
       onClick={() => onAnalyze(pkt.packetHash)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onAnalyze(pkt.packetHash);
+        }
+      }}
     >
       <div className="flex items-center gap-2 text-[11px] text-text-dim">
         <Badge variant="default">{pkt.routeTypeName || "Unknown"}</Badge>
@@ -51,9 +74,9 @@ function TracePacketRow({ pkt, onAnalyze }: { pkt: TracePacket; onAnalyze: (hash
         <Field label="Last" value={<Timestamp value={pkt.lastHeardAt} ms />} />
       </div>
       <div className="mt-1.5">
-        <TraceHopChain hops={pkt.resolvedRoute} />
+        <TraceHopChain rawPath={pkt.rawPath} resolvedRoute={pkt.resolvedRoute} onViewNode={onViewNode} />
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -61,12 +84,13 @@ interface TraceDetailPanelProps {
   tag: string;
   onClose: () => void;
   onAnalyze: (hash: string) => void;
+  onViewNode?: (nodeId: string) => void;
 }
 
 // Right-hand detail panel for a selected trace tag, matching the other entity tabs. The trace's
 // packets stand in for the packet analyzer's "Observations": a "Packets" section listing each packet,
 // any of which opens the packet analyzer.
-export function TraceDetailPanel({ tag, onClose, onAnalyze }: TraceDetailPanelProps) {
+export function TraceDetailPanel({ tag, onClose, onAnalyze, onViewNode }: TraceDetailPanelProps) {
   const { data: detail, isLoading } = useQuery({
     queryKey: ["trace", tag],
     queryFn: () => getTraceDetail(tag),
@@ -85,7 +109,7 @@ export function TraceDetailPanel({ tag, onClose, onAnalyze }: TraceDetailPanelPr
               {packets.length} packet{packets.length === 1 ? "" : "s"}
             </span>
             {packets.map((pkt) => (
-              <TracePacketRow key={pkt.packetHash} pkt={pkt} onAnalyze={onAnalyze} />
+              <TracePacketRow key={pkt.packetHash} pkt={pkt} onAnalyze={onAnalyze} onViewNode={onViewNode} />
             ))}
           </div>
         ) : (

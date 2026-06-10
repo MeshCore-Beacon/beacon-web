@@ -1,4 +1,5 @@
 import type { ChannelMessage } from "../features/channels/types";
+import type { NodeIATA } from "../features/nodes/types";
 
 // individual server-sent message shapes
 
@@ -62,12 +63,14 @@ export interface WsObserverStatus {
   data: {
     observerId: string;
     displayName: string;
+    observerType?: string;
     iata: string;
     online: boolean;
+    radio?: string; // compact "freq,bw,sf" string
+    scopes: string[];
     batteryMv: number | null;
     uptimeSeconds: number | null;
     lastStatusAt: number;
-    fields: string[];
   };
 }
 
@@ -77,12 +80,18 @@ export interface WsNodeUpdate {
   event: "nodeUpdate";
   data: {
     nodeId: string;
+    publicKey: string;
     name: string;
     nodeType: number;
+    nodeTypeName: string;
     iata: string;
     // integer microdegrees, same as REST /nodes — the server sends one value to both (microToDeg scales it)
     lat?: number;
     lng?: number;
+    isObserver: boolean;
+    iatas: NodeIATA[];
+    defaultScope?: string;
+    radio?: string; // compact "freq,bw,sf" string
   };
 }
 
@@ -127,6 +136,7 @@ export type WsServerMessage =
 export interface SubscriptionFilter {
   iatas?: string[];
   regionIds?: string[];
+  regionSlugs?: string[];
   payloadTypes?: number[];
   routeTypes?: number[];
   channelHashes?: string[];

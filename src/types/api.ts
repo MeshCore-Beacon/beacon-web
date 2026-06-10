@@ -42,8 +42,7 @@ export interface ResolvedHop {
   confidence: PathConfidence;
   nodes: ResolvedNode[]; // empty when confidence is "none"
   snr?: number; // per-hop link SNR (dB) when the backend resolved it
-  hashBytes?: string; // hex per-hop path-hash prefix. Not sent on trace hops (only RouteHop carries it);
-  // unresolved trace hops fall back to #position labels.
+  hashBytes?: string; // hex per-hop path-hash prefix, carried by RouteHop; trace hops get theirs from rawPath instead
 }
 
 export interface PathLength {
@@ -183,6 +182,11 @@ export interface TraceTagSummary {
   iataCount: number; // distinct IATAs the tag was heard in
 }
 
+export interface RawHop {
+  hash: string; // hex per-hop path-hash prefix
+  snr?: number; // per-hop link SNR (dB) when known
+}
+
 export interface TracePacket {
   packetHash: string;
   routeType: number;
@@ -190,6 +194,7 @@ export interface TracePacket {
   scope?: string; // matched transport scope name, when any
   firstHeardAt: number; // epoch ms
   lastHeardAt: number; // epoch ms
+  rawPath: RawHop[]; // one hop per trace path hash, index-aligned with resolvedRoute
   resolvedRoute: ResolvedHop[]; // one hop per trace path hash; nodes empty when unresolved
 }
 

@@ -252,7 +252,7 @@ function TracePayload({ payload, resolvedRoute, onViewNode }: PayloadProps & {
                   {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
                   <span className="inline-flex flex-col items-center gap-0.5">
                     {resolvedRoute ? (
-                      <ResolvedHopBlock hop={resolved} label={hash.toUpperCase()} onViewNode={onViewNode} />
+                      <ResolvedHopBlock hop={resolved} label={hash.toUpperCase()} onViewNode={onViewNode} showSnr={false} />
                     ) : (
                       <HexBadge value={hash} />
                     )}

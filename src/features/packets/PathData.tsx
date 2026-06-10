@@ -17,9 +17,10 @@ function nodeLabel(node: ResolvedNode): string {
 }
 
 // Portals to <body> so the drawer's overflow doesn't clip it; a close delay bridges the mouse gap.
-function HopPopover({ hop, onViewNode, children }: {
+function HopPopover({ hop, onViewNode, showSnr = true, children }: {
   hop: ResolvedHop | undefined;
   onViewNode?: (nodeId: string) => void;
+  showSnr?: boolean;
   children: ReactNode;
 }) {
   const hasHover = useHasHover();
@@ -126,7 +127,7 @@ function HopPopover({ hop, onViewNode, children }: {
             ) : (
               nodes.map((node) => <span key={node.id}>{nodeLabel(node)}</span>)
             )}
-            {hop?.snr != null && (
+            {showSnr && hop?.snr != null && (
               <span className="text-text-dim">
                 SNR <span className={SIGNAL_LEVEL_CLASSES[snrLevel(hop.snr) ?? "bad"]}>{formatSnr(hop.snr)}</span>
               </span>
@@ -139,10 +140,11 @@ function HopPopover({ hop, onViewNode, children }: {
 }
 
 // One hash block + its hop popover. Shared by PathData and the trace payload so both resolve identically.
-export function ResolvedHopBlock({ hop, label, onViewNode }: {
+export function ResolvedHopBlock({ hop, label, onViewNode, showSnr = true }: {
   hop: ResolvedHop | undefined;
   label: string;
   onViewNode?: (nodeId: string) => void;
+  showSnr?: boolean;
 }) {
   const hasHover = useHasHover();
   const confidence: PathConfidence = hop?.confidence ?? "none";
@@ -150,7 +152,7 @@ export function ResolvedHopBlock({ hop, label, onViewNode }: {
   // mouse-only shortcut: a lone resolved match makes the block jump straight to the node (touch taps open the popover)
   const single = hasHover && hop && hop.nodes.length === 1 && onViewNode ? hop.nodes[0] : undefined;
   return (
-    <HopPopover hop={hop} onViewNode={onViewNode}>
+    <HopPopover hop={hop} onViewNode={onViewNode} showSnr={showSnr}>
       {single ? (
         <button
           type="button"
