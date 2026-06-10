@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
 import { formatBattery, formatCount, formatUptime } from "../../lib/formatters";
@@ -24,15 +24,32 @@ function ObserverList({
 }) {
   const { data, isLoading } = useTopObservers(range, 15);
   const max = useMemo(() => Math.max(1, ...(data ?? []).map((o) => o.observationCount)), [data]);
+  const [query, setQuery] = useState("");
+
+  const nameOf = (o: { displayName: string | null; observerId: string }) => o.displayName ?? o.observerId.slice(0, 8);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? (data ?? []).filter((o) => nameOf(o).toLowerCase().includes(q)) : (data ?? []);
+  }, [data, query]);
 
   return (
     <Card title="Observers" className="w-full">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search observers…"
+        className="mb-2 w-full rounded border border-border bg-bg-base px-2 py-1 font-mono text-[12px] text-text-normal placeholder:text-text-dim"
+      />
       <div className="flex flex-col gap-0.5">
         {isLoading && <div className="py-6 text-center font-mono text-[11px] text-text-dim">Loading…</div>}
         {!isLoading && (data ?? []).length === 0 && (
           <div className="py-6 text-center font-mono text-[11px] text-text-dim">No observers</div>
         )}
-        {(data ?? []).map((o) => {
+        {!isLoading && (data ?? []).length > 0 && filtered.length === 0 && (
+          <div className="py-6 text-center font-mono text-[11px] text-text-dim">No matches</div>
+        )}
+        {filtered.map((o) => {
           const active = o.observerId === selectedId;
           const name = o.displayName ?? o.observerId.slice(0, 8);
           return (

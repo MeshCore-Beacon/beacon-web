@@ -98,9 +98,10 @@ interface ObserverDetailPanelProps {
   observerId: string;
   onClose: () => void;
   onAnalyzePacket?: (hash: string) => void;
+  onViewStats?: (observerId: string) => void;
 }
 
-export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket }: ObserverDetailPanelProps) {
+export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onViewStats }: ObserverDetailPanelProps) {
   const { data: observer, isLoading } = useQuery({
     queryKey: ["observer", observerId],
     queryFn: () => getObserver(observerId),
@@ -153,6 +154,18 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket }: Ob
                   <ScopeTag key={s}>{s}</ScopeTag>
                 ))}
               </div>
+              {onViewStats && (
+                <button
+                  type="button"
+                  onClick={() => onViewStats(observer.id)}
+                  className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded border border-border bg-bg-base px-2.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal transition-colors cursor-pointer hover:border-primary hover:text-primary"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M4 20V4M4 20h16M8 16v-4M13 16V8M18 16v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Statistics
+                </button>
+              )}
             </Section>
 
             {(observer.radioFreqMhz || observer.radioSf || observer.radioBwKhz || observer.radioCr) && (

@@ -25,6 +25,7 @@ interface ObserverTableProps {
   selectedObserverId: string | null;
   onSelectObserver: (id: string | null) => void;
   onAnalyzePacket?: (hash: string) => void;
+  onViewStats?: (observerId: string) => void;
 }
 
 const COLUMNS: Column<ObserverSummary>[] = [
@@ -88,7 +89,7 @@ function renderObserverCard(obs: ObserverSummary) {
   );
 }
 
-export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver, onAnalyzePacket }: ObserverTableProps) {
+export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver, onAnalyzePacket, onViewStats }: ObserverTableProps) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -204,6 +205,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
           observerId={selectedObserverId}
           onClose={() => onSelectObserver(null)}
           onAnalyzePacket={onAnalyzePacket}
+          onViewStats={onViewStats}
         />
       )}
     </div>

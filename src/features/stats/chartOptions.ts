@@ -146,9 +146,10 @@ export function donutOption(
       pageTextStyle: { color: c.textMuted, fontFamily: MONO, fontSize: 9 },
       inactiveColor: c.textDim,
     },
+    // centered on the donut hole (matches series center x=27%); textAlign/VerticalAlign anchor on the point
     graphic: [
-      { type: "text", left: "24%", top: "42%", style: { text: centerValue, fill: c.textBright, font: `700 21px ${MONO}` } },
-      { type: "text", left: "24%", top: "56%", style: { text: centerLabel, fill: c.textMuted, font: `9px ${MONO}` } },
+      { type: "text", left: "27%", top: "47%", style: { text: centerValue, fill: c.textBright, font: `700 21px ${MONO}`, textAlign: "center", textVerticalAlign: "middle" } },
+      { type: "text", left: "27%", top: "59%", style: { text: centerLabel, fill: c.textMuted, font: `9px ${MONO}`, textAlign: "center", textVerticalAlign: "middle" } },
     ],
     series: [
       {

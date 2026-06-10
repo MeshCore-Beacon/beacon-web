@@ -177,6 +177,23 @@ function AppInner() {
     setSelectedObserverId(null);
   }, []);
 
+  // Jump from an observer's detail panel to its telemetry on the Stats tab (Stats → Observer, preselected).
+  const handleViewObserverStats = useCallback(
+    (id: string) => {
+      setOverlayNodeId(null);
+      setOverlayPacketHash(null);
+      setActiveTab("Stats");
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", "Stats");
+        next.set("statsTab", "observer");
+        next.set("observerId", id);
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
   useEffect(() => {
     // Region slugs can't be expanded yet (region details load async) — connect with the directly
     // selected IATAs; RegionWatcher narrows the subscription once useRegion resolves the slugs.
@@ -188,7 +205,7 @@ function AppInner() {
   const tabContent: Record<string, React.ReactNode> = {
     Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={setSelectedObserverId} onAnalyzePacket={setOverlayPacketHash} />,
+    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={setSelectedObserverId} onAnalyzePacket={setOverlayPacketHash} onViewStats={handleViewObserverStats} />,
     Routes: <RouteTable />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
