@@ -22,6 +22,8 @@ export class WsManager {
   private url: string;
   private filter: SubscriptionFilter | null = null;
   private subscriptionId: string | null = null;
+  private lastSubscribeId: string | null = null;
+  private everConnected = false;
   private status: WsStatus = "disconnected";
   private reconnectAttempt = 0;
   private intentionalClose = false;
@@ -115,8 +117,9 @@ export class WsManager {
     this.intentionalClose = true;
     this.reconnectAttempt = 0;
     this.clearTimers();
-    this.ws?.close();
-    this.ws = null;
+    this.teardownSocket();
+    this.subscriptionId = null;
+    this.lastSubscribeId = null;
     this.setStatus("disconnected");
   }
 
@@ -125,6 +128,10 @@ export class WsManager {
   private doConnect(): void {
     this.intentionalClose = false;
     this.clearTimers();
+    // a previous socket must not keep firing handlers (StrictMode remounts, forced reconnects)
+    this.teardownSocket();
+    this.subscriptionId = null; // subscription ids are per-connection
+    this.lastSubscribeId = null;
     this.setStatus("connecting");
 
     this.ws = new WebSocket(this.url);
@@ -144,12 +151,13 @@ export class WsManager {
       this.handleMessage(msg);
     };
 
-    this.ws.onclose = (e: CloseEvent) => {
+    this.ws.onclose = () => {
       this.clearTimers();
-      if (this.intentionalClose || e.code === 1000) {
+      if (this.intentionalClose) {
         this.setStatus("disconnected");
         return;
       }
+      // any unexpected close — including a server-sent 1000 — gets a reconnect
       this.scheduleReconnect();
     };
 
@@ -160,14 +168,29 @@ export class WsManager {
 
   private handleMessage(msg: WsServerMessage): void {
     switch (msg.type) {
-      case "hello":
+      case "hello": {
+        const isReconnect = this.everConnected;
+        this.everConnected = true;
         this.setStatus("connected");
         this.startPing();
         this.sendSubscribe();
+        if (isReconnect) {
+          // we were dark during the outage — synthesize a lag notice so live views heal the gap
+          const notice: WsLagged = { v: 1, type: "lagged", droppedCount: 0, since: this.lastEventTimestamp, lastObservationId: 0 };
+          for (const handler of this.laggedHandlers) {
+            handler(notice);
+          }
+        }
         break;
+      }
 
       case "subscribed":
-        this.subscriptionId = msg.subscriptionId;
+        if (msg.id === this.lastSubscribeId) {
+          this.subscriptionId = msg.subscriptionId;
+        } else {
+          // ack for a subscribe we've since replaced — drop the server-side sub it created
+          this.send({ v: 1, type: "unsubscribe", id: `unsub-${this.nextId()}`, subscriptionId: msg.subscriptionId });
+        }
         break;
 
       case "pong":
@@ -211,18 +234,34 @@ export class WsManager {
 
   private sendSubscribe(): void {
     if (!this.filter) return;
+    const id = `sub-${this.nextId()}`;
+    this.lastSubscribeId = id;
     this.send({
       v: 1,
       type: "subscribe",
-      id: `sub-${this.nextId()}`,
+      id,
       scope: this.filter,
     });
   }
 
   private startPing(): void {
+    if (this.pingTimer) clearInterval(this.pingTimer); // a second hello must not double the interval
     this.pingTimer = setInterval(() => {
+      if (Date.now() - this.lastEventTimestamp > WS_PING_INTERVAL_MS * 2 + 5_000) {
+        // pongs stopped coming back — the link is half-open, rebuild it
+        this.forceReconnect();
+        return;
+      }
       this.send({ v: 1, type: "ping", id: `p-${this.nextId()}` });
     }, WS_PING_INTERVAL_MS);
+  }
+
+  private forceReconnect(): void {
+    this.clearTimers();
+    this.teardownSocket();
+    this.subscriptionId = null;
+    this.lastSubscribeId = null;
+    this.scheduleReconnect();
   }
 
   private scheduleReconnect(): void {
@@ -255,6 +294,18 @@ export class WsManager {
     for (const handler of this.statusHandlers) {
       handler(status);
     }
+  }
+
+  private teardownSocket(): void {
+    const ws = this.ws;
+    if (!ws) return;
+    ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null;
+    try {
+      ws.close();
+    } catch {
+      // already closed
+    }
+    this.ws = null;
   }
 
   private clearTimers(): void {

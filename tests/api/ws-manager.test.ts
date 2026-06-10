@@ -229,6 +229,114 @@ describe("WsManager", () => {
     expect(handler).toHaveBeenCalledWith(msgData);
   });
 
+  it("unsubscribes a superseded subscription when its late ack arrives", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: undefined }); // "all"
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    // region resolves before the first subscribe is acked — the real-world firehose repro
+    mgr.updateSubscription({ iatas: ["YOW"] });
+
+    const sent = () => ws.sent.map((s) => JSON.parse(s));
+    const [firstSub, secondSub] = sent().filter((m) => m.type === "subscribe");
+    expect(firstSub).toBeTruthy();
+    expect(secondSub.scope.iatas).toEqual(["YOW"]);
+
+    // late ack for the superseded "all" subscribe must be unsubscribed immediately
+    ws.simulateMessage({ v: 1, type: "subscribed", id: firstSub.id, subscriptionId: "s-all" });
+    const unsubs = sent().filter((m) => m.type === "unsubscribe");
+    expect(unsubs).toHaveLength(1);
+    expect(unsubs[0].subscriptionId).toBe("s-all");
+
+    // the current subscribe's ack is kept, and a later update unsubscribes it
+    ws.simulateMessage({ v: 1, type: "subscribed", id: secondSub.id, subscriptionId: "s-yow" });
+    mgr.updateSubscription({ iatas: ["YYZ"] });
+    const unsubs2 = sent().filter((m) => m.type === "unsubscribe");
+    expect(unsubs2).toHaveLength(2);
+    expect(unsubs2[1].subscriptionId).toBe("s-yow");
+  });
+
+  it("ignores close events from a torn-down socket (no reconnect treadmill)", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws1 = MockWebSocket.instances[0]!;
+
+    mgr.disconnect();
+    mgr.connect({ iatas: ["YOW"] }); // StrictMode-style connect/disconnect/connect
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    // a late close from the dead socket must not spawn a parallel reconnect loop
+    ws1.simulateClose(1006);
+    vi.advanceTimersByTime(60_000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+  });
+
+  it("does not double the ping interval on a second hello", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 2, connectionId: "c1" });
+
+    ws.sent = [];
+    vi.advanceTimersByTime(30_000);
+    expect(ws.sent.map((s) => JSON.parse(s)).filter((m) => m.type === "ping")).toHaveLength(1);
+  });
+
+  it("forces a reconnect when pongs stop coming (half-open link)", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+
+    // pings go out but nothing ever comes back
+    vi.advanceTimersByTime(120_000);
+    expect(MockWebSocket.instances.length).toBeGreaterThan(1);
+  });
+
+  it("clears the stale subscriptionId across reconnects", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    const sub1 = JSON.parse(ws1.sent[0]!);
+    ws1.simulateMessage({ v: 1, type: "subscribed", id: sub1.id, subscriptionId: "s-old" });
+
+    ws1.simulateClose(1006);
+    vi.advanceTimersByTime(1500);
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateMessage({ v: 1, type: "hello", serverTime: 2, connectionId: "c2" });
+
+    mgr.updateSubscription({ iatas: ["YYZ"] });
+    const unsubs = ws2.sent.map((s) => JSON.parse(s)).filter((m) => m.type === "unsubscribe");
+    expect(unsubs.map((u) => u.subscriptionId)).not.toContain("s-old");
+  });
+
+  it("signals lagged handlers after a reconnect so views can heal the gap", () => {
+    const handler = vi.fn();
+    const mgr = new WsManager("ws://test/ws");
+    mgr.onLagged(handler);
+    mgr.connect({ iatas: ["YOW"] });
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    expect(handler).not.toHaveBeenCalled(); // first connect is not a gap
+
+    ws1.simulateClose(1006);
+    vi.advanceTimersByTime(1500);
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateMessage({ v: 1, type: "hello", serverTime: 2, connectionId: "c2" });
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
   it("unsubscribes channelMessage handler on cleanup", () => {
     const mgr = new WsManager("ws://test/ws");
     const handler = vi.fn();
