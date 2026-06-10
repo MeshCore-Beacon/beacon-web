@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getPackets } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
@@ -156,13 +156,22 @@ export function usePackets() {
     [store],
   );
 
+  // Reset (drop to one fresh first page) instead of invalidate: an invalidate replays every cached
+  // page sequentially — up to 20 requests per lag notice during a flood.
   const handleLagged = useCallback(
     (data: WsLagged) => {
       setLaggedCount((prev) => prev + data.droppedCount);
-      queryClient.invalidateQueries({ queryKey: ["packets", regionKey] });
+      queryClient.resetQueries({ queryKey: ["packets", regionKey] });
     },
     [queryClient, regionKey],
   );
+
+  // The WS handler is down whenever this tab is unmounted, so cached history may hide a gap right
+  // where the live buffer begins. Refresh the first page on mount to close it.
+  useEffect(() => {
+    queryClient.resetQueries({ queryKey: ["packets", regionKey] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only; region changes refetch via the key
+  }, []);
 
   const dismissLagged = useCallback(() => setLaggedCount(0), []);
 

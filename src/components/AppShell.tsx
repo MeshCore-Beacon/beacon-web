@@ -11,7 +11,7 @@ import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import type { WsManager } from "../api/ws-manager";
 
-const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Stats"] as const;
+export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Stats"] as const;
 
 // header widgets: WS status, region picker, theme picker
 

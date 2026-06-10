@@ -13,7 +13,7 @@ import {
 } from "./hooks/region-selection";
 import { ThemeProvider } from "./hooks/useTheme";
 import { useIsMobile } from "./hooks/useMediaQuery";
-import { AppShell } from "./components/AppShell";
+import { AppShell, TABS } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
@@ -118,7 +118,10 @@ function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "Packets");
+  // The URL is the single source of truth for the active tab — back/forward just work, and an
+  // unknown ?tab value falls back to Packets instead of rendering a blank pane.
+  const tabParam = searchParams.get("tab");
+  const activeTab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as string) : "Packets";
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 
@@ -152,7 +155,6 @@ function AppInner() {
   }, []);
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
     setOverlayNodeId(null);
     setOverlayPacketHash(null);
     // On mobile a detail panel fills the screen, so leaving its tab must close it; desktop side
@@ -182,7 +184,6 @@ function AppInner() {
     (id: string) => {
       setOverlayNodeId(null);
       setOverlayPacketHash(null);
-      setActiveTab("Stats");
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("tab", "Stats");
