@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { typeBarOption } from "../../../src/features/stats/chartOptions";
+import { typeBarOption, leaderboardOption, donutOption } from "../../../src/features/stats/chartOptions";
 import type { ChartColors } from "../../../src/features/stats/chartTheme";
 
 const colors: ChartColors = {
@@ -47,5 +47,27 @@ describe("typeBarOption", () => {
     const many = typeBarOption(items(10), colors) as Record<string, any>;
     expect(few.xAxis.axisLabel.rotate).toBe(0);
     expect(many.xAxis.axisLabel.rotate).toBeGreaterThan(0);
+  });
+});
+
+describe("donutOption", () => {
+  it("centers the total on the ring via a textAlign-centered title at the pie's x", () => {
+    const opt = donutOption([{ name: "repeater", value: 3 }], colors, "10", "NODES") as Record<string, any>;
+    // the old graphic-text approach anchored its left edge at the ring center and clipped
+    expect(opt.graphic).toBeUndefined();
+    expect(opt.title.textAlign).toBe("center");
+    expect(opt.title.text).toBe("10");
+    expect(parseFloat(opt.title.left)).toBeCloseTo(parseFloat(opt.series[0].center[0]), 0);
+  });
+});
+
+describe("leaderboardOption", () => {
+  it("left-aligns names at the card edge and truncates long ones to the label gutter", () => {
+    const rows = [{ name: "A very long observer name that overflows", value: 5, color: "#abc" }];
+    const opt = leaderboardOption(rows, colors, 120) as Record<string, any>;
+    expect(opt.yAxis.axisLabel.align).toBe("left");
+    expect(opt.yAxis.axisLabel.overflow).toBe("truncate");
+    expect(opt.yAxis.axisLabel.width).toBeLessThanOrEqual(120 - 10);
+    expect(opt.yAxis.axisLabel.margin).toBe(110);
   });
 });

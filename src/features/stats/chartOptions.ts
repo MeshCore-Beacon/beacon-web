@@ -100,7 +100,17 @@ export function leaderboardOption(
       data: rows.map((r) => r.name),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: c.textNormal, fontFamily: MONO, fontSize: 11 },
+      // anchor every name at the card's left edge and ellipsize the long ones, instead of letting
+      // them run off the left side of the grid
+      axisLabel: {
+        color: c.textNormal,
+        fontFamily: MONO,
+        fontSize: 11,
+        align: "left",
+        margin: gridLeft - 10,
+        width: gridLeft - 16,
+        overflow: "truncate",
+      },
     },
     series: [
       {
@@ -121,9 +131,57 @@ export function leaderboardOption(
   };
 }
 
-// Vertical bars for the type breakdowns (payload types, node types). Replaced the old donuts: with
-// 10+ slivers the legend needed scrolling, names truncated, and the center total clipped at narrow
-// widths — bars label every category inline and need no legend at all.
+// Donut for small category sets (node types — usually 3 or 4). The center total is a title block
+// anchored at the ring's x with textAlign center, which ECharts centers properly — the old graphic
+// text anchored its LEFT edge there and clipped against the ring.
+export function donutOption(
+  items: { name: string; value: number; color?: string }[],
+  c: ChartColors,
+  centerValue: string,
+  centerLabel: string,
+): EChartsOption {
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    tooltip: { trigger: "item", ...tooltipStyle(c), formatter: "{b}: {c} ({d}%)" },
+    title: {
+      text: centerValue,
+      subtext: centerLabel,
+      left: "35%",
+      top: "39%",
+      textAlign: "center",
+      itemGap: 2,
+      textStyle: { color: c.textBright, fontFamily: MONO, fontSize: 21, fontWeight: 700 },
+      subtextStyle: { color: c.textMuted, fontFamily: MONO, fontSize: 9 },
+    },
+    legend: {
+      orient: "vertical",
+      right: 10,
+      top: "middle",
+      itemWidth: 9,
+      itemHeight: 9,
+      itemGap: 7,
+      textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 },
+      inactiveColor: c.textDim,
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["46%", "68%"],
+        center: ["35%", "50%"],
+        avoidLabelOverlap: false,
+        itemStyle: { borderColor: c.bgSurface, borderWidth: 2, borderRadius: 4 },
+        label: { show: false },
+        emphasis: { scaleSize: 5 },
+        data: items.map((it, i) => ({ name: it.name, value: it.value, itemStyle: { color: it.color ?? c.series[i % c.series.length] } })),
+      },
+    ],
+  };
+}
+
+// Vertical bars for the payload-type breakdown. Replaced the old donut: with 10+ slivers the legend
+// needed scrolling, names truncated, and thin slices couldn't be compared by eye — bars label every
+// category inline and need no legend at all.
 export function typeBarOption(
   items: { name: string; value: number; color?: string }[],
   c: ChartColors,

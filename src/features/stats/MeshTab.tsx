@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { formatCount } from "../../lib/formatters";
 import { useChartColors, type ChartColors } from "./chartTheme";
 import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes } from "./useStats";
-import { observationsAreaOption, leaderboardOption, typeBarOption } from "./chartOptions";
+import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";
 import { useLiveOverview } from "./useLiveStats";
 import { aggregatePresets, formatPreset } from "./transforms";
@@ -98,7 +98,11 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
       .sort((a, b) => b.value - a.value);
   }, [topNodes.data, colors]);
   const nodeTypeTotal = useMemo(() => nodeTypeData.reduce((a, d) => a + d.value, 0), [nodeTypeData]);
-  const nodeTypeOption = useMemo(() => typeBarOption(nodeTypeData, colors), [nodeTypeData, colors]);
+  // few categories, so a donut reads fine here — payload types stays a bar chart (10+ categories)
+  const nodeTypeOption = useMemo(
+    () => donutOption(nodeTypeData, colors, String(nodeTypeTotal), "NODES"),
+    [nodeTypeData, nodeTypeTotal, colors],
+  );
 
   const presetRows = useMemo(
     () => aggregatePresets(radioPresets.data ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), value: r.value, color: colors.primary })),
@@ -147,15 +151,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
           isEmpty={payloadItems.length === 0}
         />
         <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isLoading} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
-        <ChartCard
-          title="Node types · top"
-          right={<span className="font-mono text-[10px] text-text-muted">{nodeTypeTotal} nodes</span>}
-          height={208}
-          option={nodeTypeOption}
-          isLoading={topNodes.isLoading}
-          isError={topNodes.isError}
-          isEmpty={nodeTypeData.length === 0}
-        />
+        <ChartCard title="Node types · top" height={208} option={nodeTypeOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeTypeData.length === 0} />
         <ChartCard title="Radio presets" height={208} option={presetsOption} isLoading={radioPresets.isLoading} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
         <Card title={<>Scopes · all regions</>}>
