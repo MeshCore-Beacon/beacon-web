@@ -57,4 +57,17 @@ describe("patchObserverSummary", () => {
     const out = patchObserverSummary(list, update({ observerId: "a", online: true, displayName: "" }));
     expect(out).toBe(list);
   });
+
+  it("carries lastStatusAt from the event so recency derivation stays live", () => {
+    const list = [observer({ id: "a", status: "offline" })];
+    const out = patchObserverSummary(list, update({ observerId: "a", online: true, lastStatusAt: 123_456 }))!;
+    expect(out[0]!.lastStatusAt).toBe(123_456);
+  });
+
+  it("updates lastStatusAt even when status and displayName are unchanged", () => {
+    const list = [observer({ id: "a", status: "online", displayName: "Keep", lastStatusAt: 100 })];
+    const out = patchObserverSummary(list, update({ observerId: "a", online: true, displayName: "", lastStatusAt: 200 }))!;
+    expect(out).not.toBe(list);
+    expect(out[0]!.lastStatusAt).toBe(200);
+  });
 });

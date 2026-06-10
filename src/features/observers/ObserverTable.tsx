@@ -13,6 +13,8 @@ import { LoadingPill } from "../../components/LoadingPill";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverDetailPanel } from "./ObserverDetailPanel";
 import { patchObserverSummary } from "./observer-updates";
+import { deriveObserverStatus } from "./observer-status";
+import { useTick } from "../../hooks/useTick";
 import type { ObserverSummary } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
@@ -34,7 +36,7 @@ const COLUMNS: Column<ObserverSummary>[] = [
     sortValue: (obs) => obs.displayName ?? formatHex(obs.id),
     cell: (obs) => (
       <div className="flex items-center gap-2">
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${obs.status === "online" ? "bg-green" : "bg-text-dim/30"}`} />
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${deriveObserverStatus(obs) === "online" ? "bg-green" : "bg-text-dim/30"}`} />
         <span className={`truncate ${obs.displayName ? "text-text-normal" : "text-text-dim italic"}`}>
           {obs.displayName ?? formatHex(obs.id)}
         </span>
@@ -61,23 +63,27 @@ const COLUMNS: Column<ObserverSummary>[] = [
   },
   {
     header: "Status",
-    sortValue: (obs) => obs.status,
-    cell: (obs) => <Badge variant={obs.status === "online" ? "live" : "offline"}>{obs.status}</Badge>,
+    sortValue: (obs) => deriveObserverStatus(obs),
+    cell: (obs) => {
+      const status = deriveObserverStatus(obs);
+      return <Badge variant={status === "online" ? "live" : "offline"}>{status}</Badge>;
+    },
   },
 ];
 
 function renderObserverCard(obs: ObserverSummary) {
+  const status = deriveObserverStatus(obs);
   return (
     <div className="flex flex-col gap-1.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-2 min-w-0">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${obs.status === "online" ? "bg-green" : "bg-text-dim/30"}`} />
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status === "online" ? "bg-green" : "bg-text-dim/30"}`} />
           <span className={`flex-1 min-w-0 truncate ${obs.displayName ? "text-text-normal" : "text-text-dim italic"}`}>
             {obs.displayName ?? formatHex(obs.id)}
           </span>
         </div>
         <span className="shrink-0">
-          <Badge variant={obs.status === "online" ? "live" : "offline"}>{obs.status}</Badge>
+          <Badge variant={status === "online" ? "live" : "offline"}>{status}</Badge>
         </span>
       </div>
       <div className="flex items-center gap-2 text-text-muted">
@@ -98,6 +104,8 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
   const [typeFilter, setTypeFilter] = useState("");
   const [brokerFilter, setBrokerFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
+
+  useTick(); // keep recency-derived status badges fresh
 
   const { data: brokers } = useQuery({
     queryKey: ["brokers"],

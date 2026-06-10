@@ -57,6 +57,25 @@ beforeEach(() => {
   mockGetObserverAdverts.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
 });
 
+describe("ObserverDetailPanel status", () => {
+  it("renders offline when lastStatusAt is 10 minutes old even if the API status says online", async () => {
+    mockGetObserver.mockResolvedValue({ ...observer, status: "online", lastStatusAt: Date.now() - 10 * 60_000 });
+
+    renderPanel();
+
+    expect(await screen.findByText("offline")).toBeInTheDocument();
+    expect(screen.queryByText("online")).not.toBeInTheDocument();
+  });
+
+  it("renders online when lastStatusAt is fresh", async () => {
+    mockGetObserver.mockResolvedValue({ ...observer, status: "online", lastStatusAt: Date.now() - 60_000 });
+
+    renderPanel();
+
+    expect(await screen.findByText("online")).toBeInTheDocument();
+  });
+});
+
 describe("ObserverDetailPanel adverts", () => {
   it("lists adverts heard by the observer", async () => {
     mockGetObserverAdverts.mockResolvedValue({

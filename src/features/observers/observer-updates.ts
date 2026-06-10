@@ -14,9 +14,11 @@ export function patchObserverSummary(
   const prev = list[idx]!;
   const status = data.online ? "online" : "offline";
   const displayName = data.displayName || prev.displayName;
-  // an unchanged status event must keep the SAME ref so patchInfinitePages no-ops (no row re-render)
-  if (status === prev.status && displayName === prev.displayName) return list;
+  const lastStatusAt = data.lastStatusAt || prev.lastStatusAt;
+  // a truly unchanged event keeps the SAME ref so patchInfinitePages no-ops; a fresh lastStatusAt
+  // must produce a new ref so the row's recency-derived status stays live
+  if (status === prev.status && displayName === prev.displayName && lastStatusAt === prev.lastStatusAt) return list;
   const updated = [...list];
-  updated[idx] = { ...prev, status, displayName };
+  updated[idx] = { ...prev, status, displayName, lastStatusAt };
   return updated;
 }

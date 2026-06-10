@@ -6,6 +6,8 @@ export interface ObserverSummary {
   status: "online" | "offline";
   radio?: string; // compact "freq,bw,sf" string, e.g. "915.0,250,11"; absent when unknown
   scopes?: string[]; // transport scopes this observer forwards, e.g. ["#bc", "#west"]
+  // epoch ms; not in REST list responses — patched in from WS status events for recency derivation
+  lastStatusAt?: number;
 }
 
 export interface Observer extends ObserverSummary {
@@ -21,7 +23,6 @@ export interface Observer extends ObserverSummary {
   batteryLevel?: number;
   uptimeSeconds?: number;
   statusMetadata?: Record<string, unknown>;
-  lastStatusAt?: number; // epoch ms
   firstSeen: number; // epoch ms
   lastSeen: number; // epoch ms
   observationCount: number;

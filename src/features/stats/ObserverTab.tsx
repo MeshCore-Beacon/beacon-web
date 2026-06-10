@@ -8,6 +8,8 @@ import { useRegion } from "../../hooks/useRegion";
 import { useChartColors } from "./chartTheme";
 import { useTopObservers } from "./useStats";
 import { useObserver, useObserverTelemetry } from "./useTelemetry";
+import { useTick } from "../../hooks/useTick";
+import { deriveObserverStatus } from "../observers/observer-status";
 import { airtimeOption, batteryOption, noiseFloorOption, queueOption, receiveErrorsOption } from "./chartOptions";
 import { Card, ChartCard } from "./cards";
 import { hasTelemetry } from "./transforms";
@@ -102,6 +104,8 @@ function ObserverList({
 }
 
 function ObserverHeader({ observer }: { observer: Observer }) {
+  useTick(); // keep the recency-derived status badge fresh
+  const status = deriveObserverStatus(observer);
   const radio = [
     observer.radioFreqMhz && `${observer.radioFreqMhz} MHz`,
     observer.radioSf && `SF${observer.radioSf}`,
@@ -114,7 +118,7 @@ function ObserverHeader({ observer }: { observer: Observer }) {
       title={
         <span className="flex items-center gap-2">
           <span className="text-text-bright normal-case">{observer.displayName ?? observer.id.slice(0, 8)}</span>
-          <Badge variant={observer.status === "online" ? "live" : "offline"}>{observer.status}</Badge>
+          <Badge variant={status === "online" ? "live" : "offline"}>{status}</Badge>
           {observer.observerType && <Badge variant="default">{observer.observerType}</Badge>}
         </span>
       }

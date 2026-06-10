@@ -5,6 +5,8 @@ import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
+import { useTick } from "../../hooks/useTick";
+import { deriveObserverStatus } from "./observer-status";
 import type { BadgeVariant } from "../../components/badge-utils";
 import { IataChip } from "../../components/IataChip";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -114,7 +116,9 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
     staleTime: 30_000,
   });
 
+  useTick(); // re-derive the status badge as lastStatusAt ages
   const stats = observer ? getStats(observer.statusMetadata) : null;
+  const status = observer ? deriveObserverStatus(observer) : null;
 
   return (
     <DetailPanel
@@ -137,8 +141,8 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
                 <span className="font-mono text-xs font-semibold text-primary tracking-wider">
                   {observer.displayName ?? observer.id.slice(0, 8)}
                 </span>
-                <Badge variant={observer.status === "online" ? "live" : "offline"}>
-                  {observer.status}
+                <Badge variant={status === "online" ? "live" : "offline"}>
+                  {status}
                 </Badge>
               </div>
               <div className="font-mono text-[13px] text-text-muted truncate mb-1.5" title={observer.publicKey}>
