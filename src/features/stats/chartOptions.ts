@@ -1,5 +1,6 @@
 import type { EChartsOption } from "./echarts-setup";
 import { type ChartColors, tooltipStyle, withAlpha } from "./chartTheme";
+import { formatCount } from "../../lib/formatters";
 import type { TelemetryPoint } from "./types";
 
 const MONO = "JetBrains Mono, monospace";
@@ -120,47 +121,41 @@ export function leaderboardOption(
   };
 }
 
-export function donutOption(
+// Vertical bars for the type breakdowns (payload types, node types). Replaced the old donuts: with
+// 10+ slivers the legend needed scrolling, names truncated, and the center total clipped at narrow
+// widths — bars label every category inline and need no legend at all.
+export function typeBarOption(
   items: { name: string; value: number; color?: string }[],
   c: ChartColors,
-  centerValue: string,
-  centerLabel: string,
 ): EChartsOption {
+  const crowded = items.length > 5;
   return {
     animation: false,
     backgroundColor: "transparent",
-    tooltip: { trigger: "item", ...tooltipStyle(c), formatter: "{b}: {c} ({d}%)" },
-    legend: {
-      type: "scroll",
-      orient: "vertical",
-      right: 4,
-      top: "middle",
-      itemWidth: 9,
-      itemHeight: 9,
-      itemGap: 7,
-      // cap label width so long names (e.g. "anonymous_request") can't overrun into the donut
-      formatter: (name: string) => (name.length > 15 ? `${name.slice(0, 14)}…` : name),
-      textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 },
-      pageIconColor: c.textMuted,
-      pageIconInactiveColor: c.textDim,
-      pageTextStyle: { color: c.textMuted, fontFamily: MONO, fontSize: 9 },
-      inactiveColor: c.textDim,
+    grid: { left: 44, right: 10, top: 18, bottom: crowded ? 52 : 24 },
+    tooltip: { trigger: "item", ...tooltipStyle(c), formatter: "{b}: {c}" },
+    xAxis: {
+      type: "category",
+      data: items.map((it) => it.name),
+      axisLine: { lineStyle: { color: c.border } },
+      axisTick: { show: false },
+      // slant only when there are enough categories for labels to collide
+      axisLabel: { color: c.textNormal, fontFamily: MONO, fontSize: 9, interval: 0, rotate: crowded ? 36 : 0, width: 92, overflow: "truncate" },
     },
-    // centered on the donut hole (matches series center x=27%); textAlign/VerticalAlign anchor on the point
-    graphic: [
-      { type: "text", left: "27%", top: "47%", style: { text: centerValue, fill: c.textBright, font: `700 21px ${MONO}`, textAlign: "center", textVerticalAlign: "middle" } },
-      { type: "text", left: "27%", top: "59%", style: { text: centerLabel, fill: c.textMuted, font: `9px ${MONO}`, textAlign: "center", textVerticalAlign: "middle" } },
-    ],
+    yAxis: valueAxis(c),
     series: [
       {
-        type: "pie",
-        radius: ["46%", "68%"],
-        center: ["27%", "50%"],
-        avoidLabelOverlap: false,
-        itemStyle: { borderColor: c.bgSurface, borderWidth: 2, borderRadius: 4 },
-        label: { show: false },
-        emphasis: { scaleSize: 5 },
-        data: items.map((it, i) => ({ name: it.name, value: it.value, itemStyle: { color: it.color ?? c.series[i % c.series.length] } })),
+        type: "bar",
+        barMaxWidth: 28,
+        data: items.map((it, i) => ({ value: it.value, itemStyle: { color: it.color ?? c.series[i % c.series.length], borderRadius: [4, 4, 0, 0] } })),
+        label: {
+          show: true,
+          position: "top",
+          color: c.textBright,
+          fontFamily: MONO,
+          fontSize: 9,
+          formatter: (p: { value: number }) => formatCount(p.value),
+        },
       },
     ],
   };

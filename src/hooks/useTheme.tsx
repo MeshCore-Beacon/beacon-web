@@ -10,16 +10,21 @@ interface ThemeCtx {
   themeId: string;
   themes: Theme[];
   setThemeId: (id: string) => void;
+  // bumps every time CSS vars are (re)applied — themeId alone misses the initial load, where the
+  // saved id is already in state before the vars land, so readers of computed styles key on this
+  paletteRev: number;
 }
 
 const ThemeContext = createContext<ThemeCtx>({
   themeId: DEFAULT_THEME_ID,
   themes: [],
   setThemeId: () => {},
+  paletteRev: 0,
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themes, setThemes] = useState<Theme[]>([]);
+  const [paletteRev, setPaletteRev] = useState(0);
   const [themeId, setThemeIdState] = useState(
     () => localStorage.getItem(STORAGE_KEY) ?? DEFAULT_THEME_ID,
   );
@@ -31,6 +36,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const match = loaded.find((t) => t.id === saved) ?? loaded[0];
       if (!match) return;
       applyTheme(match);
+      setPaletteRev((r) => r + 1);
       setThemeIdState(match.id);
     });
   }, []);
@@ -40,6 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const match = themes.find((t) => t.id === id);
       if (!match) return;
       applyTheme(match);
+      setPaletteRev((r) => r + 1);
       localStorage.setItem(STORAGE_KEY, id);
       setThemeIdState(id);
     },
@@ -47,7 +54,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ThemeContext.Provider value={{ themeId, themes, setThemeId }}>
+    <ThemeContext.Provider value={{ themeId, themes, setThemeId, paletteRev }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { formatCount } from "../../lib/formatters";
 import { useChartColors, type ChartColors } from "./chartTheme";
 import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes } from "./useStats";
-import { observationsAreaOption, leaderboardOption, donutOption } from "./chartOptions";
+import { observationsAreaOption, leaderboardOption, typeBarOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";
 import { useLiveOverview } from "./useLiveStats";
 import { aggregatePresets, formatPreset } from "./transforms";
@@ -65,14 +65,14 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const nodesOption = useMemo(() => leaderboardOption(nodeRows, colors), [nodeRows, colors]);
 
   const payloadItems = useMemo(
-    () => (payload.data ?? []).map((p) => ({ name: p.payloadTypeName.toLowerCase(), value: p.count })),
+    () =>
+      (payload.data ?? [])
+        .map((p) => ({ name: p.payloadTypeName.toLowerCase(), value: p.count }))
+        .sort((a, b) => b.value - a.value),
     [payload.data],
   );
   const payloadTotal = useMemo(() => payloadItems.reduce((a, p) => a + p.value, 0), [payloadItems]);
-  const payloadOption = useMemo(
-    () => donutOption(payloadItems, colors, formatCount(payloadTotal), "OBS"),
-    [payloadItems, payloadTotal, colors],
-  );
+  const payloadOption = useMemo(() => typeBarOption(payloadItems, colors), [payloadItems, colors]);
 
   const observerRows = useMemo(
     () => (topObservers.data ?? []).map((o) => ({ name: o.displayName ?? o.observerId.slice(0, 8), value: o.observationCount, color: colors.secondary })),
@@ -93,13 +93,12 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const nodeTypeData = useMemo(() => {
     const counts = new Map<string, number>();
     for (const n of topNodes.data ?? []) counts.set(n.nodeTypeName, (counts.get(n.nodeTypeName) ?? 0) + 1);
-    return [...counts.entries()].map(([name, value]) => ({ name, value, color: nodeTypeColor(name, colors) }));
+    return [...counts.entries()]
+      .map(([name, value]) => ({ name, value, color: nodeTypeColor(name, colors) }))
+      .sort((a, b) => b.value - a.value);
   }, [topNodes.data, colors]);
   const nodeTypeTotal = useMemo(() => nodeTypeData.reduce((a, d) => a + d.value, 0), [nodeTypeData]);
-  const nodeTypeOption = useMemo(
-    () => donutOption(nodeTypeData, colors, String(nodeTypeTotal), "NODES"),
-    [nodeTypeData, nodeTypeTotal, colors],
-  );
+  const nodeTypeOption = useMemo(() => typeBarOption(nodeTypeData, colors), [nodeTypeData, colors]);
 
   const presetRows = useMemo(
     () => aggregatePresets(radioPresets.data ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), value: r.value, color: colors.primary })),
@@ -138,9 +137,25 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         <ChartCard title="Top nodes" height={208} option={nodesOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
-        <ChartCard title={<>Payload types · {range}</>} height={208} option={payloadOption} isLoading={payload.isLoading} isError={payload.isError} isEmpty={payloadItems.length === 0} />
+        <ChartCard
+          title={<>Payload types · {range}</>}
+          right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadTotal)} obs</span>}
+          height={208}
+          option={payloadOption}
+          isLoading={payload.isLoading}
+          isError={payload.isError}
+          isEmpty={payloadItems.length === 0}
+        />
         <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isLoading} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
-        <ChartCard title="Node types · top" height={208} option={nodeTypeOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeTypeData.length === 0} />
+        <ChartCard
+          title="Node types · top"
+          right={<span className="font-mono text-[10px] text-text-muted">{nodeTypeTotal} nodes</span>}
+          height={208}
+          option={nodeTypeOption}
+          isLoading={topNodes.isLoading}
+          isError={topNodes.isError}
+          isEmpty={nodeTypeData.length === 0}
+        />
         <ChartCard title="Radio presets" height={208} option={presetsOption} isLoading={radioPresets.isLoading} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
         <Card title={<>Scopes · all regions</>}>

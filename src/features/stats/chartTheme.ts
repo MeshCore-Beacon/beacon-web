@@ -3,8 +3,8 @@ import { useTheme } from "../../hooks/useTheme";
 
 // ECharts paints to a canvas and can't inherit our CSS variables, so we read the active palette's
 // resolved `--color-*` tokens (defined in index.css `@theme`, which always resolve — palette value or
-// fallback) and hand them to the option builders. `useChartColors()` re-reads whenever the theme id
-// changes, so every chart recolors on theme switch.
+// fallback) and hand them to the option builders. `useChartColors()` re-reads whenever a palette is
+// applied (initial saved-theme load and every switch), so charts always match the active theme.
 
 export interface ChartColors {
   primary: string;
@@ -93,10 +93,11 @@ export function readChartColors(): ChartColors {
 }
 
 export function useChartColors(): ChartColors {
-  const { themeId } = useTheme();
-  // themeId changes after the palette CSS vars are applied, so re-reading here is correct.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- themeId is the re-read trigger
-  return useMemo(() => readChartColors(), [themeId]);
+  const { paletteRev } = useTheme();
+  // paletteRev bumps after each applyTheme, including the initial saved-theme load (which themeId
+  // alone misses — it's already the saved id before the CSS vars land).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- paletteRev is the re-read trigger
+  return useMemo(() => readChartColors(), [paletteRev]);
 }
 
 // A reusable ECharts tooltip style block bound to the active palette.
