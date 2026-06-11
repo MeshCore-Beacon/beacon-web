@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail } from "../../src/api/client";
+import { getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getStatsNodeTypes } from "../../src/api/client";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
 import type { ChannelMessage, ChannelSummary } from "../../src/features/channels/types";
@@ -329,5 +329,38 @@ describe("getObserversPage", () => {
     expect(url).toContain("type=rak");
     expect(url).toContain("broker=b1");
     expect(url).toContain("name=north");
+  });
+});
+
+describe("stats endpoints", () => {
+  it("joins the region's IATAs into the iatas param", async () => {
+    const getUrl = mockFetchOnce({ totalPackets: 0 });
+
+    await getStatsOverview(["YOW", "YYZ"]);
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/stats/overview");
+    expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
+  });
+
+  it("omits iatas for all regions and still forwards the rest", async () => {
+    const getUrl = mockFetchOnce([]);
+
+    await getTopObservers(undefined, 1700000000000, 15);
+
+    const url = new URL(getUrl());
+    expect(url.searchParams.has("iatas")).toBe(false);
+    expect(url.searchParams.get("since")).toBe("1700000000000");
+    expect(url.searchParams.get("limit")).toBe("15");
+  });
+
+  it("hits /stats/node-types with the region's IATAs", async () => {
+    const getUrl = mockFetchOnce([{ nodeType: 2, nodeTypeName: "repeater", count: 12 }]);
+
+    await getStatsNodeTypes(["YOW", "YYZ"]);
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/stats/node-types");
+    expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
   });
 });

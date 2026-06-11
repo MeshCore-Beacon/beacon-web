@@ -1,17 +1,18 @@
 import type { RadioPreset, TelemetryPoint } from "./types";
 
-// Collapse radio presets (one row per preset+iata+sourceType) into one row per preset, summing
-// counts, sorted by descending total. Junk presets (all-zero "0,0,0" from unconfigured radios) are
-// dropped so they don't clutter the chart.
-export function aggregatePresets(rows: RadioPreset[]): { preset: string; value: number }[] {
-  const byPreset = new Map<string, number>();
+// Collapse presets to one row each (keeping the node/observer split), dropping junk "0,0,0" configs.
+export function aggregatePresets(rows: RadioPreset[]): { preset: string; nodes: number; observers: number }[] {
+  const byPreset = new Map<string, { nodes: number; observers: number }>();
   for (const r of rows) {
     if (isJunkPreset(r.preset)) continue;
-    byPreset.set(r.preset, (byPreset.get(r.preset) ?? 0) + r.count);
+    const cur = byPreset.get(r.preset) ?? { nodes: 0, observers: 0 };
+    if (r.sourceType === "node") cur.nodes += r.count;
+    else cur.observers += r.count;
+    byPreset.set(r.preset, cur);
   }
   return [...byPreset.entries()]
-    .map(([preset, value]) => ({ preset, value }))
-    .sort((a, b) => b.value - a.value);
+    .map(([preset, counts]) => ({ preset, ...counts }))
+    .sort((a, b) => b.nodes + b.observers - (a.nodes + a.observers));
 }
 
 function isJunkPreset(preset: string): boolean {

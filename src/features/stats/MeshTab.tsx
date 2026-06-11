@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { formatCount } from "../../lib/formatters";
 import { useChartColors, type ChartColors } from "./chartTheme";
-import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes } from "./useStats";
-import { observationsAreaOption, leaderboardOption, typeBarOption } from "./chartOptions";
+import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
+import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption, presetBarsOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";
 import { useLiveOverview } from "./useLiveStats";
 import { aggregatePresets, formatPreset } from "./transforms";
@@ -49,6 +49,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const topObservers = useTopObservers(range, 8);
   const radioPresets = useRadioPresets();
   const scopes = useScopes();
+  const nodeTypes = useNodeTypes();
 
   const obs = useMemo(() => aggregateByHour(observations.data ?? []), [observations.data]);
   const obsOption = useMemo(() => observationsAreaOption(obs, colors), [obs, colors]);
@@ -90,11 +91,21 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
     [observerIds, onSelectObserver],
   );
 
-  const presetRows = useMemo(
-    () => aggregatePresets(radioPresets.data ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), value: r.value, color: colors.primary })),
-    [radioPresets.data, colors],
+  const typeRows = useMemo(
+    () =>
+      [...(nodeTypes.data ?? [])]
+        .sort((a, b) => b.count - a.count)
+        .map((t) => ({ name: t.nodeTypeName, value: t.count, color: nodeTypeColor(t.nodeTypeName, colors) })),
+    [nodeTypes.data, colors],
   );
-  const presetsOption = useMemo(() => leaderboardOption(presetRows, colors, 150), [presetRows, colors]);
+  const typeTotal = useMemo(() => typeRows.reduce((a, t) => a + t.value, 0), [typeRows]);
+  const typesOption = useMemo(() => donutOption(typeRows, colors, formatCount(typeTotal), "NODES"), [typeRows, colors, typeTotal]);
+
+  const presetRows = useMemo(
+    () => aggregatePresets(radioPresets.data ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), nodes: r.nodes, observers: r.observers })),
+    [radioPresets.data],
+  );
+  const presetsOption = useMemo(() => presetBarsOption(presetRows, colors), [presetRows, colors]);
 
   const scopeRows = useMemo(
     () => [...(scopes.data ?? [])].sort((a, b) => b.packetCount - a.packetCount),
@@ -106,14 +117,16 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
 
   const ov = overview.data;
   const kpiLoading = overview.isLoading;
+  // top-row KPIs are the overview endpoint's fixed 24h snapshot; range only drives the charts below
+  const ovWindow = `${ov?.windowHours ?? 24}h`;
 
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-3.5 px-4 py-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total packets" sublabel="24h" accent="var(--color-primary)" value={kpiLoading ? "—" : formatCount(ov?.totalPackets)} />
-        <StatCard label="Observations" sublabel="24h" accent="var(--color-green)" value={kpiLoading ? "—" : formatCount(ov?.totalObservations)} spark={obsSpark} />
-        <StatCard label="Active observers" sublabel="24h" accent="var(--color-secondary)" value={kpiLoading ? "—" : (ov?.activeObservers ?? "—")} spark={observerSpark} />
-        <StatCard label="Active IATAs" sublabel="24h" accent="var(--color-warn)" value={kpiLoading ? "—" : (ov?.activeIatas ?? "—")} />
+        <StatCard label="Total packets" sublabel={ovWindow} accent="var(--color-primary)" value={kpiLoading ? "—" : formatCount(ov?.totalPackets)} />
+        <StatCard label="Observations" sublabel={ovWindow} accent="var(--color-green)" value={kpiLoading ? "—" : formatCount(ov?.totalObservations)} spark={obsSpark} />
+        <StatCard label="Active observers" sublabel={ovWindow} accent="var(--color-secondary)" value={kpiLoading ? "—" : (ov?.activeObservers ?? "—")} spark={observerSpark} />
+        <StatCard label="Active IATAs" sublabel={ovWindow} accent="var(--color-warn)" value={kpiLoading ? "—" : (ov?.activeIatas ?? "—")} />
       </div>
 
       <ChartCard
@@ -126,7 +139,8 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
       />
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-        <ChartCard title="Top nodes" height={208} option={nodesOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
+        {/* range-driven charts lead the grid; the all-time ones follow below */}
+        <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isLoading} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
         <ChartCard
           title={<>Payload types · {range}</>}
           right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadTotal)} obs</span>}
@@ -136,17 +150,12 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
           isError={payload.isError}
           isEmpty={payloadItems.length === 0}
         />
-        <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isLoading} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
-        {/* needs a /stats/node-types endpoint (ticket filed) — the old donut counted types among
-            the top-10 nodes only, which read as the region's whole population */}
-        <Card title="Node types">
-          <div className="flex h-[208px] items-center justify-center font-mono text-[11px] text-text-dim">
-            Coming soon
-          </div>
-        </Card>
-        <ChartCard title="Radio presets" height={208} option={presetsOption} isLoading={radioPresets.isLoading} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
+        {/* counts are all-time; the server's 7d filter only prunes the roster to recently-heard nodes */}
+        <ChartCard title="Top nodes · all time" height={208} option={nodesOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
+        <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isLoading} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
+        <ChartCard title="Radio presets · all time" height={208} option={presetsOption} isLoading={radioPresets.isLoading} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
-        <Card title={<>Scopes · all regions</>}>
+        <Card title={<>Scopes · all regions · all time</>}>
           {scopes.isError ? (
             <div className="py-4 text-center font-mono text-[11px] text-text-dim">Failed to load</div>
           ) : scopes.isLoading ? (

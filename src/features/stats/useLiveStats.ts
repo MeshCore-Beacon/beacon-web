@@ -9,6 +9,7 @@ import type { StatsOverview, StatsRange } from "./types";
 // Live overview KPIs: every packetObservation bumps the cached overview counters (no refetch). High
 // frequency, so increments are coalesced and flushed once per animation frame. The overview query also
 // refetches periodically (useStatsOverview) so the live deltas self-correct against the server.
+// both totalPackets and totalObservations feed the top KPIs, so both bumps count.
 export function useLiveOverview(wsManager: WsManager) {
   const { regionKey } = useRegion();
   const qc = useQueryClient();

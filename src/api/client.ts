@@ -12,6 +12,7 @@ import type {
   RadioPreset,
   ScopeStats,
   ObserverTelemetry,
+  NodeTypeCount,
 } from "../features/stats/types";
 
 // typed fetch wrapper with query params
@@ -253,31 +254,34 @@ export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {
   return request(`/nodes/${nodeId}/neighbors`);
 }
 
-// stats endpoints. `iata` is a single code (undefined = all regions); the /stats/* endpoints filter
-// by one IATA only, unlike the comma-separated `iatas` used elsewhere.
+// stats endpoints
 
-export function getStatsOverview(iata?: string): Promise<StatsOverview> {
-  return request("/stats/overview", { iata });
+export function getStatsOverview(iatas?: string[]): Promise<StatsOverview> {
+  return request("/stats/overview", { iatas: iatasParam(iatas) });
 }
 
-export function getStatsObservations(iata?: string, since?: number): Promise<ObservationPoint[]> {
-  return request("/stats/observations", { iata, since });
+export function getStatsObservations(iatas?: string[], since?: number): Promise<ObservationPoint[]> {
+  return request("/stats/observations", { iatas: iatasParam(iatas), since });
 }
 
-export function getPayloadBreakdown(iata?: string, since?: number): Promise<PayloadBreakdownItem[]> {
-  return request("/stats/payload-breakdown", { iata, since });
+export function getPayloadBreakdown(iatas?: string[], since?: number): Promise<PayloadBreakdownItem[]> {
+  return request("/stats/payload-breakdown", { iatas: iatasParam(iatas), since });
 }
 
-export function getTopNodes(iata?: string, limit = 10): Promise<TopNode[]> {
-  return request("/stats/top-nodes", { iata, limit });
+export function getTopNodes(iatas?: string[], limit = 10): Promise<TopNode[]> {
+  return request("/stats/top-nodes", { iatas: iatasParam(iatas), limit });
 }
 
-export function getTopObservers(iata?: string, since?: number, limit = 10): Promise<TopObserver[]> {
-  return request("/stats/top-observers", { iata, since, limit });
+export function getTopObservers(iatas?: string[], since?: number, limit = 10): Promise<TopObserver[]> {
+  return request("/stats/top-observers", { iatas: iatasParam(iatas), since, limit });
 }
 
-export function getRadioPresets(iata?: string): Promise<RadioPreset[]> {
-  return request("/stats/radio-presets", { iata });
+export function getRadioPresets(iatas?: string[]): Promise<RadioPreset[]> {
+  return request("/stats/radio-presets", { iatas: iatasParam(iatas) });
+}
+
+export function getStatsNodeTypes(iatas?: string[]): Promise<NodeTypeCount[]> {
+  return request("/stats/node-types", { iatas: iatasParam(iatas) });
 }
 
 // renamed from getScopes to avoid colliding with the /scopes name list; this is the /stats/scopes

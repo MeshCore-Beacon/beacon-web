@@ -1,6 +1,6 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { getObserver, getObserverTelemetry } from "../../api/client";
-import type { ObserverTelemetry, StatsRange } from "./types";
+import type { StatsRange } from "./types";
 
 // Go time.ParseDuration strings the telemetry endpoint expects, per selected range.
 const RANGE_PARAM: Record<StatsRange, string> = {
@@ -17,13 +17,6 @@ const INTERVAL_PARAM: Record<StatsRange, string> = {
   "30d": "24h",
 };
 
-// The backend's raw (interval=1h) path emits `t` in epoch SECONDS while the bucketed path emits ms.
-// Normalize everything to ms here so chart code is unit-agnostic. (Tracked: beacon-docs ticket.)
-export function normalizeTelemetry(data: ObserverTelemetry, interval: string): ObserverTelemetry {
-  if (interval !== "1h") return data;
-  return { ...data, points: data.points.map((p) => ({ ...p, t: p.t * 1000 })) };
-}
-
 export function useObserver(observerId: string | null) {
   return useQuery({
     queryKey: ["observer", observerId],
@@ -38,7 +31,7 @@ export function useObserverTelemetry(observerId: string | null, range: StatsRang
   const interval = INTERVAL_PARAM[range];
   return useQuery({
     queryKey: ["observer-telemetry", observerId, range, interval],
-    queryFn: async () => normalizeTelemetry(await getObserverTelemetry(observerId!, RANGE_PARAM[range], interval), interval),
+    queryFn: () => getObserverTelemetry(observerId!, RANGE_PARAM[range], interval),
     enabled: !!observerId,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
