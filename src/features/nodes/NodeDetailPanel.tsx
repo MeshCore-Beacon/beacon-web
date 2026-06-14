@@ -21,8 +21,10 @@ function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClic
         <IataChip>{neighbor.iata}</IataChip>
         <Timestamp value={neighbor.lastSeen} className="text-text-dim ml-auto font-mono text-[11px]" />
       </div>
-      <div className="font-mono text-[11px] text-text-muted mt-1">
-        {neighbor.observationCount.toLocaleString()} obs
+      <div className="font-mono text-[11px] text-text-muted mt-1 flex items-center gap-2">
+        <span className="truncate" title={neighbor.publicKey}>{neighbor.publicKey}</span>
+        <span className="shrink-0 text-text-dim">·</span>
+        <span className="shrink-0">{neighbor.observationCount.toLocaleString()} obs</span>
       </div>
     </div>
   );
@@ -155,7 +157,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               </div>
             </Section>
 
-            <Section title="Neighbors">
+            <Section title={node.knownNeighborCount > 0 ? `Neighbors (${node.knownNeighborCount})` : "Neighbors"}>
               {neighbors && neighbors.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {neighbors.map((n) => (

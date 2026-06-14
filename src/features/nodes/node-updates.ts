@@ -50,6 +50,9 @@ export function upsertNodePages(
     radio: data.radio,
     defaultScope: data.defaultScope,
     iatas: data.iatas,
+    // the nodeUpdate event rides on an advert and doesn't carry a neighbor count; a node we're
+    // meeting for the first time has none resolved yet, so start at 0 until a reload fills it in
+    knownNeighborCount: 0,
     isObserver: data.isObserver,
   };
   const pages = [...old.pages];

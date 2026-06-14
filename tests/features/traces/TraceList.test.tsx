@@ -19,8 +19,8 @@ const mockGetTraces = vi.mocked(getTraces);
 const mockGetTraceDetail = vi.mocked(getTraceDetail);
 const mockGetRegions = vi.mocked(getRegions);
 
-function tag(traceTag: string, packetCount = 1): TraceTagSummary {
-  return { traceTag, firstHeardAt: 1, lastHeardAt: 2, packetCount, iataCount: 1 };
+function tag(traceTag: string, packetCount = 1, extra: Partial<TraceTagSummary> = {}): TraceTagSummary {
+  return { traceTag, firstHeardAt: 1, lastHeardAt: 2, packetCount, iataCount: 1, traceType: "TRACE", pathHashes: [], snrValues: [], ...extra };
 }
 
 const detail: TraceDetail = {
@@ -145,6 +145,33 @@ describe("TraceList", () => {
     // hovering a resolved hop reveals its candidate node
     fireEvent.mouseEnter(hopA);
     expect(await screen.findByRole("tooltip")).toHaveTextContent("GatewayX");
+  });
+
+  it("tags each card as TRACE or PING and previews the most complete path with per-hop SNR", async () => {
+    mockGetTraces.mockResolvedValue([
+      tag("3f2a11c0", 4, { traceType: "PING", pathHashes: ["a1", "b2"], snrValues: [-7.5, -9] }),
+    ]);
+
+    renderTraces();
+
+    expect(await screen.findByText("3F2A11C0")).toBeInTheDocument();
+    expect(screen.getByText("PING")).toBeInTheDocument();
+    // the path preview shows each hop's hash byte (uppercased) with its SNR on the sub-line
+    expect(screen.getByText("A1")).toBeInTheDocument();
+    expect(screen.getByText("B2")).toBeInTheDocument();
+    expect(screen.getByText("-7.50 dB")).toBeInTheDocument();
+  });
+
+  it("refetches with the type param when the trace-type filter changes", async () => {
+    mockGetTraces.mockResolvedValue([tag("3f2a11c0", 1)]);
+
+    renderTraces();
+    await screen.findByText("3F2A11C0");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ping" }));
+
+    // the region arg is undefined for "all regions", so assert on the params object directly
+    await waitFor(() => expect(mockGetTraces.mock.calls.at(-1)?.[1]).toMatchObject({ type: "PING" }));
   });
 
   it("shows an empty state when there are no traces", async () => {

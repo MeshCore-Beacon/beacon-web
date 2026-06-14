@@ -1,5 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, CrossIATARoute, TraceTagSummary, TraceDetail } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
@@ -166,11 +166,12 @@ export function searchCrossIATARoutes(
 // the last item's lastHeardAt); /traces/{tag} returns the tag's packets with resolved routes.
 export function getTraces(
   iatas: string[] | undefined,
-  params?: { scope?: string; since?: number; until?: number; cursor?: number; limit?: number },
+  params?: { scope?: string; type?: TraceType; since?: number; until?: number; cursor?: number; limit?: number },
 ): Promise<TraceTagSummary[]> {
   return request("/traces", {
     iatas: iatasParam(iatas),
     scope: params?.scope,
+    type: params?.type, // TRACE or PING; omitted = both (request() drops undefined params)
     since: params?.since,
     until: params?.until,
     cursor: params?.cursor,
