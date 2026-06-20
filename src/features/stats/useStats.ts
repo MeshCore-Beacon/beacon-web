@@ -8,6 +8,7 @@ import {
   getTopObservers,
   getRadioPresets,
   getStatsScopes,
+  getStatsNodeTypes,
 } from "../../api/client";
 import { RANGE_MS, type StatsRange } from "./types";
 
@@ -21,18 +22,11 @@ const common = {
 // `since` is computed inside queryFn so refetches use a fresh window without churning the query key.
 const sinceFor = (range: StatsRange) => Date.now() - RANGE_MS[range];
 
-// The /stats/* endpoints filter by a single IATA. Map the region selection to one: a single selected
-// IATA filters; "all regions" or a multi-IATA region passes nothing (the endpoints then span all).
-function useStatsIata(): { iata: string | undefined; regionKey: string } {
-  const { iatas, regionKey } = useRegion();
-  return { iata: iatas?.length === 1 ? iatas[0] : undefined, regionKey };
-}
-
 export function useStatsOverview() {
-  const { iata, regionKey } = useStatsIata();
+  const { iatas, regionKey } = useRegion();
   return useQuery({
     queryKey: ["stats-overview", regionKey],
-    queryFn: () => getStatsOverview(iata),
+    queryFn: () => getStatsOverview(iatas),
     ...common,
     // self-correct the WS-accumulated live counters against the server
     refetchInterval: 60_000,
@@ -40,46 +34,58 @@ export function useStatsOverview() {
 }
 
 export function useStatsObservations(range: StatsRange) {
-  const { iata, regionKey } = useStatsIata();
+  const { iatas, regionKey } = useRegion();
   return useQuery({
     queryKey: ["stats-observations", regionKey, range],
-    queryFn: () => getStatsObservations(iata, sinceFor(range)),
+    queryFn: () => getStatsObservations(iatas, sinceFor(range)),
     ...common,
+    // feeds the observations chart + sparklines and gets no WS bumps, so refetch to stay fresh
+    refetchInterval: 60_000,
   });
 }
 
 export function usePayloadBreakdown(range: StatsRange) {
-  const { iata, regionKey } = useStatsIata();
+  const { iatas, regionKey } = useRegion();
   return useQuery({
     queryKey: ["stats-payload", regionKey, range],
-    queryFn: () => getPayloadBreakdown(iata, sinceFor(range)),
+    queryFn: () => getPayloadBreakdown(iatas, sinceFor(range)),
     ...common,
   });
 }
 
 export function useTopNodes(limit = 10) {
-  const { iata, regionKey } = useStatsIata();
+  const { iatas, regionKey } = useRegion();
   return useQuery({
     queryKey: ["stats-top-nodes", regionKey, limit],
-    queryFn: () => getTopNodes(iata, limit),
+    queryFn: () => getTopNodes(iatas, limit),
     ...common,
   });
 }
 
 export function useTopObservers(range: StatsRange, limit = 10) {
-  const { iata, regionKey } = useStatsIata();
+  const { iatas, regionKey } = useRegion();
   return useQuery({
     queryKey: ["stats-top-observers", regionKey, range, limit],
-    queryFn: () => getTopObservers(iata, sinceFor(range), limit),
+    queryFn: () => getTopObservers(iatas, sinceFor(range), limit),
     ...common,
   });
 }
 
 export function useRadioPresets() {
-  const { iata, regionKey } = useStatsIata();
+  const { iatas, regionKey } = useRegion();
   return useQuery({
     queryKey: ["stats-radio-presets", regionKey],
-    queryFn: () => getRadioPresets(iata),
+    queryFn: () => getRadioPresets(iatas),
+    ...common,
+  });
+}
+
+// node-types is a population census (no time window), so the key is region-only
+export function useNodeTypes() {
+  const { iatas, regionKey } = useRegion();
+  return useQuery({
+    queryKey: ["stats-node-types", regionKey],
+    queryFn: () => getStatsNodeTypes(iatas),
     ...common,
   });
 }

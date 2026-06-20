@@ -47,6 +47,12 @@ export interface RadioPreset {
   count: number;
 }
 
+export interface NodeTypeCount {
+  nodeType: number;
+  nodeTypeName: string;
+  count: number;
+}
+
 export interface ScopeStats {
   name: string; // normalized scope name e.g. "#bc"
   packetCount: number;
@@ -55,7 +61,7 @@ export interface ScopeStats {
 }
 
 export interface TelemetryPoint {
-  t: number; // epoch ms (normalized in useObserverTelemetry — backend raw path emits seconds)
+  t: number; // epoch ms
   batteryMv: number | null;
   airtimeTxPct: number | null;
   airtimeRxPct: number | null;

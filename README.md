@@ -33,19 +33,16 @@ EOF
 | `VITE_API_BASE` | Backend REST API base URL |
 | `VITE_WS_URL` | Backend WebSocket URL |
 
-### 3. Authenticate with GitHub Container Registry
-
-```bash
-docker login ghcr.io -u YOUR_GITHUB_USERNAME
-```
-
-Use a Personal Access Token (classic) with `read:packages` scope as the password. You only need to do this once.
-
-### 4. Start the services
+### 3. Start the services
 
 ```bash
 docker compose up -d
 ```
+
+The images are public on GitHub Container Registry — no `docker login` required.
+If a pull fails with `403 Forbidden`, the package visibility has regressed to
+Private; a maintainer needs to set it back to Public (see the troubleshooting note
+in [beacon-docs](https://github.com/MeshCore-Beacon/beacon-docs)).
 
 Caddy will automatically obtain a TLS certificate for your domain. Ensure DNS is pointed at your server before starting.
 

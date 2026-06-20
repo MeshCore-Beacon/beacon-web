@@ -16,7 +16,7 @@ interface StatsOverviewProps {
   wsManager: WsManager;
 }
 
-// Stats page shell: a sub-header bar (Mesh / Observer pills + range + live dot) over the active
+// Stats page shell: a sub-header bar (Mesh / Observer pills + range) over the active
 // sub-tab. Sub-tab, range, and selected observer live in the URL (?statsTab/?range/?observerId) so the
 // view is shareable; replace:true keeps it out of history. Queries are cached, so switching is instant.
 export function StatsOverview({ wsManager }: StatsOverviewProps) {
@@ -48,7 +48,7 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} wsManager={wsManager} />
+      <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "mesh" ? (
           <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />

@@ -131,6 +131,122 @@ export function leaderboardOption(
   };
 }
 
+// Horizontal stacked bars per preset (node + observer segments, total at the bar end).
+export function presetBarsOption(
+  rows: { name: string; nodes: number; observers: number }[],
+  c: ChartColors,
+  gridLeft = 172, // fits a full "910.525 · 62.5k · SF7" label
+): EChartsOption {
+  const totals = rows.map((r) => r.nodes + r.observers);
+  const segment = (data: number[], color: string) => ({
+    type: "bar" as const,
+    stack: "preset",
+    barMaxWidth: 22,
+    barCategoryGap: "42%",
+    data,
+    itemStyle: { color },
+  });
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    grid: { left: gridLeft, right: 56, top: 22, bottom: 6 },
+    tooltip: { trigger: "axis", ...tooltipStyle(c), axisPointer: { type: "shadow" } },
+    legend: {
+      data: ["Nodes", "Observers"],
+      right: 8,
+      top: 0,
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 },
+      inactiveColor: c.textDim,
+    },
+    xAxis: { type: "value", axisLabel: { show: false }, splitLine: { show: false }, axisLine: { show: false }, axisTick: { show: false } },
+    yAxis: {
+      type: "category",
+      inverse: true,
+      data: rows.map((r) => r.name),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: c.textNormal,
+        fontFamily: MONO,
+        fontSize: 11,
+        align: "left",
+        margin: gridLeft - 10,
+        width: gridLeft - 16,
+        overflow: "truncate",
+      },
+    },
+    series: [
+      { name: "Nodes", ...segment(rows.map((r) => r.nodes), c.primary) },
+      {
+        name: "Observers",
+        ...segment(rows.map((r) => r.observers), c.secondary),
+        // outer segment carries the row total so it sits at the end of the whole stack
+        label: {
+          show: true,
+          position: "right" as const,
+          color: c.textBright,
+          fontFamily: MONO,
+          fontSize: 11,
+          formatter: (p: { dataIndex: number }) => totals[p.dataIndex]!.toLocaleString(),
+        },
+      },
+    ],
+  };
+}
+
+// Donut for small category sets; the center total rides on the first slice's label, which ECharts pins to the ring center.
+export function donutOption(
+  items: { name: string; value: number; color?: string }[],
+  c: ChartColors,
+  centerValue: string,
+  centerLabel: string,
+): EChartsOption {
+  const centerText = {
+    show: true,
+    position: "center" as const,
+    formatter: `{v|${centerValue}}\n{l|${centerLabel}}`,
+    rich: {
+      v: { color: c.textBright, fontFamily: MONO, fontSize: 21, fontWeight: 700 as const, lineHeight: 24 },
+      l: { color: c.textMuted, fontFamily: MONO, fontSize: 9, lineHeight: 12 },
+    },
+  };
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    tooltip: { trigger: "item", ...tooltipStyle(c), formatter: "{b}: {c} ({d}%)" },
+    legend: {
+      orient: "horizontal",
+      left: "center",
+      bottom: 4,
+      itemWidth: 9,
+      itemHeight: 9,
+      itemGap: 10,
+      textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 },
+      inactiveColor: c.textDim,
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["48%", "70%"],
+        center: ["50%", "46%"],
+        avoidLabelOverlap: false,
+        itemStyle: { borderColor: c.bgSurface, borderWidth: 2, borderRadius: 4 },
+        label: { show: false },
+        emphasis: { scaleSize: 5 },
+        data: items.map((it, i) => ({
+          name: it.name,
+          value: it.value,
+          itemStyle: { color: it.color ?? c.series[i % c.series.length] },
+          // the center total rides on the first slice only; per-slice labels stay hidden
+          ...(i === 0 ? { label: centerText, emphasis: { label: centerText } } : {}),
+        })),
+      },
+    ],
+  };
+}
+
 // Vertical bars for the payload-type breakdown. Replaced the old donut: with 10+ slivers the legend
 // needed scrolling, names truncated, and thin slices couldn't be compared by eye — bars label every
 // category inline and need no legend at all.
@@ -172,11 +288,10 @@ export function typeBarOption(
 }
 
 // ---- Observer telemetry ----
-// `t` arrives in epoch ms (normalized in useObserverTelemetry).
+// `t` arrives in epoch ms.
 
-// airtimeTx/RxPct are cumulative counters, so chart the per-report delta (airtime used per interval),
-// clamped at 0 to ignore counter resets. Caveat: under bucketing (7d/30d) the backend AVGs these
-// counters, so the delta is approximate — pending a backend MAX−MIN fix (beacon-docs ticket).
+// 1h points are cumulative counters, so chart per-report deltas (clamped at 0 for resets);
+// bucketed points already arrive as per-bucket deltas, so chart those as-is.
 function deltaSeries(points: TelemetryPoint[], key: "airtimeRxPct" | "airtimeTxPct") {
   const out: [number, number | null][] = [];
   for (let i = 1; i < points.length; i++) {
@@ -188,7 +303,9 @@ function deltaSeries(points: TelemetryPoint[], key: "airtimeRxPct" | "airtimeTxP
   return out;
 }
 
-export function airtimeOption(points: TelemetryPoint[], c: ChartColors): EChartsOption {
+export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketed: boolean): EChartsOption {
+  const series = (key: "airtimeRxPct" | "airtimeTxPct") =>
+    bucketed ? points.map((p) => [p.t, p[key]]) : deltaSeries(points, key);
   return {
     animation: false,
     backgroundColor: "transparent",
@@ -198,8 +315,8 @@ export function airtimeOption(points: TelemetryPoint[], c: ChartColors): ECharts
     xAxis: timeAxis(c),
     yAxis: valueAxis(c),
     series: [
-      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: deltaSeries(points, "airtimeRxPct"), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
-      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: deltaSeries(points, "airtimeTxPct"), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
+      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: series("airtimeRxPct"), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
+      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: series("airtimeTxPct"), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
     ],
   };
 }
@@ -254,5 +371,6 @@ export const noiseFloorOption = (p: TelemetryPoint[], c: ChartColors) =>
 export const queueOption = (p: TelemetryPoint[], c: ChartColors) =>
   metricLineOption(p, c, { name: "Queue", color: c.secondary, accessor: (x) => x.queueLength, area: true });
 
-export const receiveErrorsOption = (p: TelemetryPoint[], c: ChartColors) =>
-  metricLineOption(p, c, { name: "Recv errors / report", color: c.danger, accessor: (x) => x.receiveErrors, delta: true, area: true });
+// receiveErrors is a cumulative counter in raw points, a per-bucket delta in bucketed ones
+export const receiveErrorsOption = (p: TelemetryPoint[], c: ChartColors, bucketed: boolean) =>
+  metricLineOption(p, c, { name: "Recv errors", color: c.danger, accessor: (x) => x.receiveErrors, delta: !bucketed, area: true });

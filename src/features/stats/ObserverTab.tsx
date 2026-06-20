@@ -175,11 +175,13 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
   }, [selectedObserverId, topObservers.data, onSelectObserver]);
 
   const points = useMemo(() => telemetry.data?.points ?? [], [telemetry.data]);
-  const airtime = useMemo(() => airtimeOption(points, colors), [points, colors]);
+  // use the response's interval, not the range prop — keepPreviousData can briefly show the old range's points
+  const bucketed = telemetry.data != null && telemetry.data.interval !== "1h";
+  const airtime = useMemo(() => airtimeOption(points, colors, bucketed), [points, colors, bucketed]);
   const battery = useMemo(() => batteryOption(points, colors), [points, colors]);
   const noise = useMemo(() => noiseFloorOption(points, colors), [points, colors]);
   const queue = useMemo(() => queueOption(points, colors), [points, colors]);
-  const recvErrors = useMemo(() => receiveErrorsOption(points, colors), [points, colors]);
+  const recvErrors = useMemo(() => receiveErrorsOption(points, colors, bucketed), [points, colors, bucketed]);
 
   // Bots / MQTT bridges report status but no device telemetry — show one clear empty state rather
   // than five flat-zero charts. When some telemetry exists, gate each chart on its own metric.

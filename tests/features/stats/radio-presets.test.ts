@@ -5,7 +5,7 @@ import type { RadioPreset } from "../../../src/features/stats/types";
 const row = (preset: string, sourceType: string, iata: string, count: number): RadioPreset => ({ preset, sourceType, iata, count });
 
 describe("aggregatePresets", () => {
-  it("sums counts for the same preset across sourceType and iata", () => {
+  it("splits each preset into node and observer totals across iatas", () => {
     const rows = [
       row("910.525,62.5,7", "observer", "YVR", 3),
       row("910.525,62.5,7", "node", "YVR", 5),
@@ -13,13 +13,17 @@ describe("aggregatePresets", () => {
       row("869.525,250,11", "node", "YVR", 4),
     ];
     const out = aggregatePresets(rows);
-    const byPreset = Object.fromEntries(out.map((r) => [r.preset, r.value]));
-    expect(byPreset["910.525,62.5,7"]).toBe(10);
-    expect(byPreset["869.525,250,11"]).toBe(4);
+    expect(out).toContainEqual({ preset: "910.525,62.5,7", nodes: 5, observers: 5 });
+    expect(out).toContainEqual({ preset: "869.525,250,11", nodes: 4, observers: 0 });
   });
 
-  it("returns rows sorted by descending count", () => {
-    const rows = [row("910.5,62.5,7", "node", "YVR", 1), row("868,250,11", "node", "YVR", 9), row("915,125,9", "node", "YVR", 5)];
+  it("returns rows sorted by descending total", () => {
+    const rows = [
+      row("910.5,62.5,7", "node", "YVR", 1),
+      row("868,250,11", "node", "YVR", 5),
+      row("868,250,11", "observer", "YVR", 4),
+      row("915,125,9", "node", "YVR", 5),
+    ];
     expect(aggregatePresets(rows).map((r) => r.preset)).toEqual(["868,250,11", "915,125,9", "910.5,62.5,7"]);
   });
 

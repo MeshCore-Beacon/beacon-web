@@ -73,6 +73,12 @@ const COLUMNS: Column<NodeSummary>[] = [
       ),
   },
   {
+    header: "Neighbors",
+    className: "text-text-muted",
+    sortValue: (node) => node.knownNeighborCount,
+    cell: (node) => node.knownNeighborCount.toLocaleString(),
+  },
+  {
     header: "Location",
     className: "text-text-muted",
     cell: (node) =>
@@ -105,6 +111,7 @@ function renderNodeCard(node: NodeSummary) {
       <div className="flex items-center gap-2 text-text-muted">
         <span>{formatRadio(node.radio) ?? "—"}</span>
         {location && <span>· {location}</span>}
+        {node.knownNeighborCount > 0 && <span>· {node.knownNeighborCount.toLocaleString()} neighbors</span>}
       </div>
       {node.iatas && node.iatas.length > 0 && (
         <div className="flex flex-wrap gap-1">

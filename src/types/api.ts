@@ -173,12 +173,18 @@ export interface CrossIATARoute {
 
 // trace tags — a trace series groups the packets that share a 4-byte trace tag. The list endpoint
 // returns per-tag summaries; the detail endpoint returns the tag's packets with their resolved routes.
+// Each tag is either a route TRACE or a PING (round-trip) — the backend tags which.
+export type TraceType = "TRACE" | "PING";
+
 export interface TraceTagSummary {
   traceTag: string; // hex-encoded 4-byte tag
   firstHeardAt: number; // epoch ms
   lastHeardAt: number; // epoch ms
   packetCount: number;
   iataCount: number; // distinct IATAs the tag was heard in
+  traceType: TraceType;
+  pathHashes: string[]; // hops from the most complete observation we've seen for this tag
+  snrValues: number[]; // per-hop SNR (dB), index-aligned with pathHashes
 }
 
 export interface RawHop {
