@@ -33,6 +33,10 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=beacon-web
+            org.opencontainers.image.description=Beacon Web — real-time LoRa mesh packet analyzer
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
