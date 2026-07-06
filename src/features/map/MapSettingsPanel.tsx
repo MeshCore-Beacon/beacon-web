@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
-import { NODE_TYPE_FILTER_OPTIONS } from "./types";
+import { NODE_TYPE_FILTER_OPTIONS, type NeighborLinesMode } from "./types";
 import { Section } from "../../components/DetailPanel";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 
@@ -13,6 +13,11 @@ const CLUSTER_OPTIONS = [
   { value: "on", label: "On" },
   { value: "off", label: "Off" },
 ];
+const NEIGHBOR_OPTIONS = [
+  { value: "on", label: "On" },
+  { value: "selected", label: "Selected" },
+  { value: "off", label: "Off" },
+];
 
 interface MapSettingsPanelProps {
   styleId: string;
@@ -21,6 +26,8 @@ interface MapSettingsPanelProps {
   onTypeChange: (t: string) => void;
   clustered: boolean;
   onClusteredChange: (c: boolean) => void;
+  neighborLines: NeighborLinesMode;
+  onNeighborLinesChange: (mode: NeighborLinesMode) => void;
 }
 
 export function MapSettingsPanel({
@@ -30,6 +37,8 @@ export function MapSettingsPanel({
   onTypeChange,
   clustered,
   onClusteredChange,
+  neighborLines,
+  onNeighborLinesChange,
 }: MapSettingsPanelProps) {
   const isMobile = useIsMobile();
   // collapsed by default on mobile (the card would cover the map); a saved preference still wins
@@ -88,6 +97,15 @@ export function MapSettingsPanel({
               options={CLUSTER_OPTIONS}
               value={clustered ? "on" : "off"}
               onChange={(v) => onClusteredChange(v === "on")}
+              className="w-full"
+            />
+          </Section>
+          <Section title="Neighbor Lines">
+            <SegmentedControl
+              ariaLabel="Neighbor lines"
+              options={NEIGHBOR_OPTIONS}
+              value={neighborLines}
+              onChange={(v) => onNeighborLinesChange(v as NeighborLinesMode)}
               className="w-full"
             />
           </Section>

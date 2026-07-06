@@ -3,10 +3,14 @@ import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-que
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapLibre } from "./useMapLibre";
 import { useMapNodes } from "./useMapNodes";
+import { useMapNeighbors } from "./useMapNeighbors";
+import { useMapPacketFlow } from "./useMapPacketFlow";
+import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
-import { nodesToFeatureCollection, filterByNodeType } from "./node-geojson";
+import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, type NeighborEdgeProps } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, type NeighborLinesMode } from "./types";
+import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
 import { useRegion } from "../../hooks/useRegion";
@@ -18,6 +22,8 @@ import type { WsManager } from "../../api/ws-manager";
 import type { NodeSummary } from "../nodes/types";
 import type { CursorPage } from "../../types/api";
 import type { WsNodeUpdate } from "../../types/ws";
+
+const EMPTY_EDGES: FeatureCollection<LineString, NeighborEdgeProps> = { type: "FeatureCollection", features: [] };
 
 interface MapViewProps {
   wsManager: WsManager;
@@ -46,6 +52,18 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   const [typeFilter, setTypeFilter] = useState(""); // "" = All
   const [clustered, setClustered] = useState(true);
+
+  const [neighborLines, setNeighborLines] = useState<NeighborLinesMode>(() => {
+    const stored = localStorage.getItem(MAP_NEIGHBOR_LINES_STORAGE_KEY);
+    return stored === "on" || stored === "selected" ? stored : "off";
+  });
+  const handleNeighborLinesChange = useCallback((mode: NeighborLinesMode) => {
+    setNeighborLines(mode);
+    localStorage.setItem(MAP_NEIGHBOR_LINES_STORAGE_KEY, mode);
+  }, []);
+
+  // live packet-flow animation: opt-in per session (off by default, not persisted)
+  const [packetFlow, setPacketFlow] = useState(false);
 
   const { iatas: selectedIatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
@@ -83,6 +101,13 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const baseFc = useMemo(() => nodesToFeatureCollection(nodes), [nodes]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
 
+  // Neighbor edges are a pure client-side render over already-loaded nodes (neighborIds ship with
+  // every map page), so toggling On/Selected/Off never refetches. "off" short-circuits to no edges.
+  const neighborEdges = useMemo(
+    () => (neighborLines === "off" ? EMPTY_EDGES : buildNeighborEdges(nodes, neighborLines, selectedNodeId)),
+    [nodes, neighborLines, selectedNodeId],
+  );
+
   // IATA coords to frame: the selection's airports, or every airport for "All". Regions carry no
   // bounds from the API, so their member IATAs stand in for the extent. See CLAUDE.md (map framing).
   const fitPoints = useMemo<[number, number][] | null>(() => {
@@ -97,6 +122,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
   useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, `${regionKey}:${typeFilter}`);
+  useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
+  useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey);
 
   return (
     <div className="relative flex flex-1 min-h-0">
@@ -111,7 +138,10 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onTypeChange={setTypeFilter}
         clustered={clustered}
         onClusteredChange={setClustered}
+        neighborLines={neighborLines}
+        onNeighborLinesChange={handleNeighborLinesChange}
       />
+      <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
       <LoadingPill loading={isPaging} error={nodesError} count={loadedCount} noun="nodes" />
       {error && (

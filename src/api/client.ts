@@ -208,6 +208,7 @@ export function getNodesPage(
     name?: string;
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
+    neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
   },
 ): Promise<CursorPage<NodeSummary>> {
   return request("/nodes", {
@@ -218,6 +219,7 @@ export function getNodesPage(
     name: params?.name,
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
+    neighbors: params?.neighbors ? "true" : undefined,
   });
 }
 

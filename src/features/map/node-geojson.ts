@@ -1,4 +1,4 @@
-import type { Feature, FeatureCollection, Point } from "geojson";
+import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { NodeSummary } from "../nodes/types";
 
 // Build the maplibre GeoJSON source from the nodes API response. Properties stay primitive because
@@ -29,6 +29,46 @@ export function nodesToFeatureCollection(
         isObserver: !!n.isObserver,
       },
     });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+export interface NeighborEdgeProps {
+  selected: boolean; // incident to the currently selected node — styled brighter
+}
+
+// LineString edges between located nodes and their neighbors (from each node's neighborIds). Each
+// undirected pair is emitted once, and only when both ends are located nodes in this set. "selected"
+// keeps just the selected node's edges; "on" emits all and flags its edges with the `selected` prop.
+export function buildNeighborEdges(
+  nodes: NodeSummary[],
+  mode: "on" | "selected",
+  selectedId: string | null,
+): FeatureCollection<LineString, NeighborEdgeProps> {
+  const located = new Map<string, NodeSummary>();
+  for (const n of nodes) {
+    if (n.lat != null && n.lng != null) located.set(n.id, n);
+  }
+
+  const seen = new Set<string>();
+  const features: Feature<LineString, NeighborEdgeProps>[] = [];
+  for (const n of nodes) {
+    if (n.lat == null || n.lng == null || !n.neighborIds) continue;
+    for (const otherId of n.neighborIds) {
+      if (otherId === n.id) continue; // a node listing itself would draw a zero-length edge
+      const other = located.get(otherId);
+      if (!other) continue;
+      const key = n.id < otherId ? `${n.id}|${otherId}` : `${otherId}|${n.id}`;
+      if (seen.has(key)) continue;
+      const incident = n.id === selectedId || otherId === selectedId;
+      if (mode === "selected" && !incident) continue;
+      seen.add(key);
+      features.push({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: [[n.lng, n.lat], [other.lng!, other.lat!]] },
+        properties: { selected: incident },
+      });
+    }
   }
   return { type: "FeatureCollection", features };
 }

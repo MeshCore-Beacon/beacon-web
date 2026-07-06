@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Badge } from "../../components/Badge";
 import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
-import { ColorAccentField, AdvertFlagsBitBreakdown, PathLengthBitBreakdown, FIELD_COLORS } from "./packet-structure";
+import { ColorAccentField, AdvertFlagsBitBreakdown, PathLengthBitBreakdown, FIELD_COLORS, DEVICE_ROLE_NAMES } from "./packet-structure";
 import type { FieldId } from "./packet-structure";
 import { ResolvedHopBlock } from "./PathData";
 import type { ResolvedHop } from "../../types/api";
@@ -449,27 +449,36 @@ function PathDecryptedContent({ decrypted }: { decrypted: Record<string, unknown
   );
 }
 
-function DiscoverReqFields({ payload }: PayloadProps) {
-  const tag = payload.tag as number | undefined;
-  const typeFilterNames = payload.typeFilterNames as string[] | undefined;
+function DiscoverReqPayload({ payload }: PayloadProps) {
+  const tag = payload.tag as string | undefined;
+  const typeFilter = payload.typeFilter as number | undefined;
   const since = payload.since as number | null | undefined;
   const prefixOnly = payload.prefixOnly as boolean | undefined;
 
+  // typeFilter is a bitfield: bit n set means "wants responses from ADV_TYPE_n".
+  const roles = typeFilter != null
+    ? Array.from({ length: 8 }, (_, i) => i).filter((i) => (typeFilter >> i) & 1)
+    : [];
+
   return (
     <div className="flex flex-col gap-1.5">
-      {tag != null && (
+      {tag && (
         <FieldRow label="Tag">
-          <span className="text-text-normal">0x{tag.toString(16).toUpperCase()}</span>
+          <span className="text-text-normal">0x{tag.toUpperCase()}</span>
         </FieldRow>
       )}
-      {typeFilterNames && typeFilterNames.length > 0 && (
+      {typeFilter != null && (
         <div>
           <span className="text-text-dim">Type Filter </span>
-          <span className="inline-flex gap-1 flex-wrap">
-            {typeFilterNames.map((name) => (
-              <FlagChip key={name} label={name} active />
-            ))}
-          </span>
+          {roles.length > 0 ? (
+            <span className="inline-flex gap-1 flex-wrap">
+              {roles.map((i) => (
+                <FlagChip key={i} label={DEVICE_ROLE_NAMES[i] ?? `Type ${i}`} active />
+              ))}
+            </span>
+          ) : (
+            <span className="text-text-muted">any</span>
+          )}
         </div>
       )}
       {since != null && (
@@ -484,21 +493,21 @@ function DiscoverReqFields({ payload }: PayloadProps) {
   );
 }
 
-function DiscoverRespFields({ payload }: PayloadProps) {
-  const tag = payload.tag as number | undefined;
+function DiscoverRespPayload({ payload }: PayloadProps) {
+  const tag = payload.tag as string | undefined;
   const nodeTypeName = payload.nodeTypeName as string | undefined;
-  const snr = payload.snr as number | undefined;
-  const publicKey = payload.publicKey as string | undefined;
-  const publicKeyLength = payload.publicKeyLength as number | undefined;
+  const requestSnr = payload.requestSnr as number | undefined;
+  const pubKey = payload.pubKey as string | undefined;
+  const pubKeyPrefixOnly = payload.pubKeyPrefixOnly as boolean | undefined;
 
-  const level = snr != null ? snrLevel(snr) : null;
+  const level = requestSnr != null ? snrLevel(requestSnr) : null;
   const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
 
   return (
     <div className="flex flex-col gap-1.5">
-      {tag != null && (
+      {tag && (
         <FieldRow label="Tag">
-          <span className="text-text-normal">0x{tag.toString(16).toUpperCase()}</span>
+          <span className="text-text-normal">0x{tag.toUpperCase()}</span>
         </FieldRow>
       )}
       {nodeTypeName && (
@@ -507,29 +516,27 @@ function DiscoverRespFields({ payload }: PayloadProps) {
           <Badge variant="default">{nodeTypeName}</Badge>
         </div>
       )}
-      {snr != null && (
-        <FieldRow label="SNR"><span className={sigClass}>{formatSnr(snr)} dB</span></FieldRow>
+      {requestSnr != null && (
+        <FieldRow label="Request SNR">
+          <span className={sigClass}>{formatSnr(requestSnr)} dB</span>
+          <span className="text-text-dim"> (node-to-node)</span>
+        </FieldRow>
       )}
-      {publicKey && (
-        <TruncatedHex label={publicKeyLength === 32 ? "Public Key" : "Key Prefix"} value={publicKey} accentClass={FIELD_COLORS.publicKey.accent} />
+      {pubKey && (
+        <TruncatedHex
+          label={pubKeyPrefixOnly ? "Key Prefix" : "Public Key"}
+          value={pubKey}
+          maxChars={32}
+          accentClass={FIELD_COLORS.publicKey.accent}
+        />
       )}
     </div>
   );
 }
 
+// Non-DISCOVER control payloads have no dedicated fields yet, so fall back to the generic dump.
 function ControlPayload({ payload }: PayloadProps) {
-  const subTypeName = payload.subTypeName as string | undefined;
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      {subTypeName && <div><Badge variant="request">{subTypeName}</Badge></div>}
-      {subTypeName === "DISCOVER_REQ" && <DiscoverReqFields payload={payload} />}
-      {subTypeName === "DISCOVER_RESP" && <DiscoverRespFields payload={payload} />}
-      {subTypeName !== "DISCOVER_REQ" && subTypeName !== "DISCOVER_RESP" && (
-        <GenericPayload payload={payload} />
-      )}
-    </div>
-  );
+  return <GenericPayload payload={payload} />;
 }
 
 function RawPayload({ payload }: PayloadProps) {
@@ -681,6 +688,8 @@ export function PayloadBreakdown({ payload, resolvedRoute, onViewNode }: {
     case "ACK": return <AckPayload payload={payload} />;
     case "PATH": return <PathPayload payload={payload} />;
     case "CONTROL": return <ControlPayload payload={payload} />;
+    case "DISCOVER_REQ": return <DiscoverReqPayload payload={payload} />;
+    case "DISCOVER_RESP": return <DiscoverRespPayload payload={payload} />;
     case "GROUP_DATA": return <GroupTextPayload payload={payload} />;
     case "RAW": return <RawPayload payload={payload} />;
     // MULTIPART carries structured remaining/wrappedType/wrappedPayload fields, which the

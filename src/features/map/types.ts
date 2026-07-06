@@ -90,6 +90,19 @@ export const NODES_SELECTED_LAYER_ID = "nodes-selected"; // circle ring under th
 // NODES_SELECTED_LAYER_ID can't reach it). Fed by its own geojson source, pointed at the leaf.
 export const NODES_SELECTED_LEAF_LAYER_ID = "nodes-selected-leaf";
 
+// --- Neighbor edges layer ---
+export const NEIGHBORS_SOURCE_ID = "neighbors";
+export const NEIGHBORS_LINE_LAYER_ID = "neighbor-lines"; // line layer drawn beneath the node markers
+export const MAP_NEIGHBOR_LINES_STORAGE_KEY = "beacon-map-neighbor-lines";
+export type NeighborLinesMode = "on" | "selected" | "off";
+
+// --- Live packet-flow animation ---
+export const PACKET_FLOW_SOURCE_ID = "packet-flow";
+export const PACKET_FLOW_LAYER_ID = "packet-flow-pulses"; // circle layer on top (moving pulse)
+export const PACKET_FLOW_MAX_PULSES = 60; // cap concurrent animations; drop the oldest past this
+export const PACKET_FLOW_SEGMENT_MS = 700; // pulse travel time per hop segment
+export const PACKET_FLOW_DEDUP_MS = 3000; // collapse repeat observations of one packetHash within this window
+
 export const CLUSTER_RADIUS = 50; // px
 // Keep clustering alive across the whole reachable zoom range (default max is 22). maplibre drops
 // clustering above clusterMaxZoom, which would leave co-located nodes as stacked, un-spiderfy-able

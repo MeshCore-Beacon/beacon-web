@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nodesToFeatureCollection, filterByNodeType } from "../../../src/features/map/node-geojson";
+import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges } from "../../../src/features/map/node-geojson";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 
 function node(overrides: Partial<NodeSummary>): NodeSummary {
@@ -73,6 +73,46 @@ describe("nodesToFeatureCollection", () => {
   it("passes decimal coordinates through untouched (api/nodes.go sends *float64 degrees)", () => {
     const fc = nodesToFeatureCollection([node({ lat: 49.28, lng: -123.12 })]);
     expect(fc.features[0]!.geometry.coordinates).toEqual([-123.12, 49.28]);
+  });
+});
+
+describe("buildNeighborEdges", () => {
+  const a = node({ id: "a", lat: 45, lng: -75, neighborIds: ["b", "c"] });
+  const b = node({ id: "b", lat: 46, lng: -76, neighborIds: ["a"] });
+  const c = node({ id: "c", lat: 47, lng: -77, neighborIds: ["a"] });
+
+  it("emits one undirected edge per neighbor pair (a<->b counted once) in [lng, lat] order", () => {
+    const fc = buildNeighborEdges([a, b], "on", null);
+    expect(fc.type).toBe("FeatureCollection");
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0]!.geometry).toEqual({
+      type: "LineString",
+      coordinates: [[-75, 45], [-76, 46]],
+    });
+  });
+
+  it("skips neighbor ids absent from the set or without coordinates", () => {
+    const lonely = node({ id: "a", lat: 45, lng: -75, neighborIds: ["ghost"] });
+    const noCoord = node({ id: "b", lat: null, lng: null, neighborIds: ["a"] });
+    expect(buildNeighborEdges([lonely, noCoord], "on", null).features).toEqual([]);
+  });
+
+  it("in 'selected' mode keeps only edges incident to the selected node", () => {
+    const fc = buildNeighborEdges([a, b, c], "selected", "b");
+    expect(fc.features).toHaveLength(1); // only a<->b
+    expect(fc.features[0]!.properties.selected).toBe(true);
+  });
+
+  it("in 'on' mode emits all edges and flags those incident to the selected node", () => {
+    const fc = buildNeighborEdges([a, b, c], "on", "b");
+    expect(fc.features).toHaveLength(2); // a<->b and a<->c
+    expect(fc.features.filter((f) => f.properties.selected)).toHaveLength(1); // a<->b
+  });
+
+  it("ignores a node that lists itself as a neighbor (no zero-length edge)", () => {
+    const selfRef = node({ id: "a", lat: 45, lng: -75, neighborIds: ["a", "b"] });
+    const fc = buildNeighborEdges([selfRef, b], "on", null);
+    expect(fc.features).toHaveLength(1); // a<->b only, not a<->a
   });
 });
 

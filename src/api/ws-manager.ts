@@ -21,6 +21,9 @@ export class WsManager {
   private ws: WebSocket | null = null;
   private url: string;
   private filter: SubscriptionFilter | null = null;
+  // connection-wide toggle for resolvedPath on packetObservation events; survives reconnect (like
+  // filter), re-applied on each hello. Default off keeps the event payload small.
+  private resolvePath = false;
   private subscriptionId: string | null = null;
   private lastSubscribeId: string | null = null;
   private everConnected = false;
@@ -113,6 +116,16 @@ export class WsManager {
     this.sendSubscribe();
   }
 
+  // Enable/disable per-hop resolvedPath data on packetObservation events for the whole connection.
+  // Stored so it re-applies after a reconnect; sent immediately when the socket is already open.
+  setResolvePath(enabled: boolean): void {
+    if (this.resolvePath === enabled) return;
+    this.resolvePath = enabled;
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.sendConfigure();
+    }
+  }
+
   disconnect(): void {
     this.intentionalClose = true;
     this.reconnectAttempt = 0;
@@ -174,6 +187,7 @@ export class WsManager {
         this.setStatus("connected");
         this.startPing();
         this.sendSubscribe();
+        if (this.resolvePath) this.sendConfigure(); // re-apply the connection-wide toggle
         if (isReconnect) {
           // we were dark during the outage — synthesize a lag notice so live views heal the gap
           const notice: WsLagged = { v: 1, type: "lagged", droppedCount: 0, since: this.lastEventTimestamp };
@@ -191,6 +205,10 @@ export class WsManager {
           // ack for a subscribe we've since replaced — drop the server-side sub it created
           this.send({ v: 1, type: "unsubscribe", id: `unsub-${this.nextId()}`, subscriptionId: msg.subscriptionId });
         }
+        break;
+
+      case "configured":
+        // ack for our resolvePath toggle; nothing to do beyond the server now honoring it
         break;
 
       case "pong":
@@ -242,6 +260,10 @@ export class WsManager {
       id,
       scope: this.filter,
     });
+  }
+
+  private sendConfigure(): void {
+    this.send({ v: 1, type: "configure", id: `cfg-${this.nextId()}`, resolvePath: this.resolvePath });
   }
 
   private startPing(): void {
