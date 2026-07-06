@@ -2,11 +2,14 @@ import { useCallback, useEffect, useRef } from "react";
 import type { Map as MapLibreMap, GeoJSONSource, CircleLayerSpecification, ExpressionSpecification } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
 import type { WsManager } from "../../api/ws-manager";
-import { resolvedPathNodes, buildLitFC, type LitNode } from "./packet-flow";
+import { resolvedPathNodes, buildLitFC, routeMetrics, buildCometFC, pulseProgress, type LitNode, type Pulse } from "./packet-flow";
 import {
   PACKET_FLOW_SOURCE_ID,
   PACKET_FLOW_LAYER_ID,
+  PACKET_FLOW_COMET_SOURCE_ID,
+  PACKET_FLOW_COMET_LAYER_ID,
   PACKET_FLOW_FADE_MS,
+  PACKET_FLOW_SEGMENT_MS,
   LIVE_DIM_OPACITY,
   NODES_POINT_LAYER_ID,
   NODES_CLUSTER_LAYER_ID,
@@ -22,10 +25,10 @@ function paletteVar(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-// Live mode: dim every node/cluster to near-invisible, then flash the nodes on each observed packet's
-// resolved path to full opacity and fade them back over PACKET_FLOW_FADE_MS. Enabling it also opts the
-// WS connection into resolvedPath data. Geometry is pure (packet-flow.ts); here we own the maplibre
-// highlight layer, the dimming, the rAF fade loop, and the subscription.
+// Live mode: dim every node/cluster to near-invisible; on each observed packet, flash its resolved-path
+// nodes to full opacity (fading over PACKET_FLOW_FADE_MS) and shoot a comet along the route. Enabling
+// it opts the WS connection into resolvedPath data. Geometry is pure (packet-flow.ts); here we own the
+// maplibre layers, the dimming, the rAF loop, and the subscription.
 export function useMapPacketFlow(
   mapRef: React.RefObject<MapLibreMap | null>,
   isReady: boolean,
@@ -35,33 +38,44 @@ export function useMapPacketFlow(
   resetKey: string,
 ) {
   const litRef = useRef<Map<string, LitNode>>(new Map());
+  const pulsesRef = useRef<Pulse[]>([]);
+  const nextIdRef = useRef(0);
   const rafRef = useRef<number | null>(null);
 
-  // fade loop: recompute each lit node's opacity, drop the fully-faded, stop once none remain
+  // one animation frame: fade the lit nodes and advance the comets; keep going while either has work
   const startLoop = useCallback(() => {
     if (rafRef.current != null) return;
     function frame() {
+      const map = mapRef.current;
       const now = performance.now();
+
       for (const [id, n] of litRef.current) {
         if (now - n.litAt >= PACKET_FLOW_FADE_MS) litRef.current.delete(id);
       }
-      const src = mapRef.current?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
-      if (src) src.setData(buildLitFC([...litRef.current.values()], now, PACKET_FLOW_FADE_MS));
-      rafRef.current = litRef.current.size > 0 ? requestAnimationFrame(frame) : null;
+      const litSrc = map?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
+      if (litSrc) litSrc.setData(buildLitFC([...litRef.current.values()], now, PACKET_FLOW_FADE_MS));
+
+      pulsesRef.current = pulsesRef.current.filter((p) => pulseProgress(p, now) <= 1);
+      const cometSrc = map?.getSource(PACKET_FLOW_COMET_SOURCE_ID) as GeoJSONSource | undefined;
+      if (cometSrc) cometSrc.setData(buildCometFC(pulsesRef.current, now));
+
+      const busy = litRef.current.size > 0 || pulsesRef.current.length > 0;
+      rafRef.current = busy ? requestAnimationFrame(frame) : null;
     }
     rafRef.current = requestAnimationFrame(frame);
   }, [mapRef]);
 
-  // build the highlight source + layer (a bright glow over lit nodes); re-adds after a style switch
+  // build both layers: the node-highlight glow and the comet (head + trail). Re-adds after a style switch.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
     const accent = paletteVar("--palette-primary", "#3B82F6");
+
     if (!map.getSource(PACKET_FLOW_SOURCE_ID)) {
       map.addSource(PACKET_FLOW_SOURCE_ID, { type: "geojson", data: EMPTY_FC });
     }
     if (!map.getLayer(PACKET_FLOW_LAYER_ID)) {
-      // no beforeId: draw on top so the highlight pops over the dimmed markers
+      // no beforeId: draw over the dimmed markers
       map.addLayer({
         id: PACKET_FLOW_LAYER_ID,
         type: "circle",
@@ -79,6 +93,25 @@ export function useMapPacketFlow(
     }
     map.setPaintProperty(PACKET_FLOW_LAYER_ID, "circle-color", accent);
     map.setPaintProperty(PACKET_FLOW_LAYER_ID, "circle-stroke-color", accent);
+
+    // comet on top of the glow
+    if (!map.getSource(PACKET_FLOW_COMET_SOURCE_ID)) {
+      map.addSource(PACKET_FLOW_COMET_SOURCE_ID, { type: "geojson", data: EMPTY_FC });
+    }
+    if (!map.getLayer(PACKET_FLOW_COMET_LAYER_ID)) {
+      map.addLayer({
+        id: PACKET_FLOW_COMET_LAYER_ID,
+        type: "circle",
+        source: PACKET_FLOW_COMET_SOURCE_ID,
+        paint: {
+          "circle-radius": ["case", ["==", ["get", "head"], 1], 5, 3],
+          "circle-color": accent,
+          "circle-opacity": ["get", "opacity"],
+          "circle-blur": 0.5,
+        },
+      } as CircleLayerSpecification);
+    }
+    map.setPaintProperty(PACKET_FLOW_COMET_LAYER_ID, "circle-color", accent);
   }, [mapRef, isReady, themeKey]);
 
   // connection-wide resolvePath toggle: on while enabled, off otherwise
@@ -104,7 +137,7 @@ export function useMapPacketFlow(
     }
   }, [mapRef, isReady, enabled, themeKey]);
 
-  // light up each observed packet's resolved-path nodes; tear down when disabled
+  // per observed packet: flash its route's nodes and launch a comet along the route
   useEffect(() => {
     if (!enabled) return;
     const map = mapRef.current;
@@ -115,30 +148,49 @@ export function useMapPacketFlow(
       const nodes = resolvedPathNodes(resolved);
       if (nodes.length === 0) return;
       const now = performance.now();
+
       for (const n of nodes) lit.set(n.id, { lng: n.lng, lat: n.lat, litAt: now });
+
+      if (nodes.length >= 2) {
+        const coords = nodes.map((n) => [n.lng, n.lat] as [number, number]);
+        const { cumLengths, total } = routeMetrics(coords);
+        if (total > 0) {
+          pulsesRef.current.push({
+            id: nextIdRef.current++,
+            coords,
+            cumLengths,
+            total,
+            startMs: now,
+            durationMs: (coords.length - 1) * PACKET_FLOW_SEGMENT_MS,
+          });
+        }
+      }
       startLoop();
     });
 
     return () => {
       unsub();
       lit.clear();
+      pulsesRef.current = [];
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      const src = map?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
-      src?.setData(EMPTY_FC);
+      (map?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
+      (map?.getSource(PACKET_FLOW_COMET_SOURCE_ID) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
     };
   }, [enabled, wsManager, mapRef, startLoop]);
 
-  // clear highlights when the region changes (those nodes came from the old dataset)
+  // clear highlights + comets when the region changes (they came from the old dataset)
   useEffect(() => {
     litRef.current.clear();
-    const src = mapRef.current?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
-    src?.setData(EMPTY_FC);
+    pulsesRef.current = [];
+    const map = mapRef.current;
+    (map?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
+    (map?.getSource(PACKET_FLOW_COMET_SOURCE_ID) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
   }, [resetKey, mapRef]);
 
-  // remove the layer + source on unmount (runs before useMapLibre's map.remove())
+  // remove both layers + sources on unmount (runs before useMapLibre's map.remove())
   useEffect(() => {
     const map = mapRef.current;
     return () => {
@@ -146,8 +198,12 @@ export function useMapPacketFlow(
       rafRef.current = null;
       if (!map) return;
       try {
-        if (map.getLayer(PACKET_FLOW_LAYER_ID)) map.removeLayer(PACKET_FLOW_LAYER_ID);
-        if (map.getSource(PACKET_FLOW_SOURCE_ID)) map.removeSource(PACKET_FLOW_SOURCE_ID);
+        for (const id of [PACKET_FLOW_LAYER_ID, PACKET_FLOW_COMET_LAYER_ID]) {
+          if (map.getLayer(id)) map.removeLayer(id);
+        }
+        for (const id of [PACKET_FLOW_SOURCE_ID, PACKET_FLOW_COMET_SOURCE_ID]) {
+          if (map.getSource(id)) map.removeSource(id);
+        }
       } catch {
         // map may already be torn down
       }

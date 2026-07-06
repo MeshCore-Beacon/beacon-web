@@ -96,10 +96,13 @@ export const NEIGHBORS_LINE_LAYER_ID = "neighbor-lines"; // line layer drawn ben
 export const MAP_NEIGHBOR_LINES_STORAGE_KEY = "beacon-map-neighbor-lines";
 export type NeighborLinesMode = "on" | "selected" | "off";
 
-// --- Live packet-flow: dim every node, then flash a packet's resolved-path nodes and fade them out ---
+// --- Live packet-flow: dim every node, flash the resolved-path nodes, and shoot a comet along the route ---
 export const PACKET_FLOW_SOURCE_ID = "packet-flow";
 export const PACKET_FLOW_LAYER_ID = "packet-flow-lit"; // bright highlight drawn over the route's nodes
+export const PACKET_FLOW_COMET_SOURCE_ID = "packet-flow-comet";
+export const PACKET_FLOW_COMET_LAYER_ID = "packet-flow-comet"; // moving comet head + trail, on top
 export const PACKET_FLOW_FADE_MS = 4000; // a lit node fades from full opacity back to nothing over this
+export const PACKET_FLOW_SEGMENT_MS = 650; // comet travel time per hop segment
 export const LIVE_DIM_OPACITY = 0.1; // base node + cluster opacity while Live mode is on
 
 export const CLUSTER_RADIUS = 50; // px
