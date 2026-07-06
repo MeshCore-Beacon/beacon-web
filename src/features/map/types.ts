@@ -96,12 +96,11 @@ export const NEIGHBORS_LINE_LAYER_ID = "neighbor-lines"; // line layer drawn ben
 export const MAP_NEIGHBOR_LINES_STORAGE_KEY = "beacon-map-neighbor-lines";
 export type NeighborLinesMode = "on" | "selected" | "off";
 
-// --- Live packet-flow animation ---
+// --- Live packet-flow: dim every node, then flash a packet's resolved-path nodes and fade them out ---
 export const PACKET_FLOW_SOURCE_ID = "packet-flow";
-export const PACKET_FLOW_LAYER_ID = "packet-flow-pulses"; // circle layer on top (moving pulse)
-export const PACKET_FLOW_MAX_PULSES = 60; // cap concurrent animations; drop the oldest past this
-export const PACKET_FLOW_SEGMENT_MS = 700; // pulse travel time per hop segment
-export const PACKET_FLOW_DEDUP_MS = 3000; // collapse repeat observations of one packetHash within this window
+export const PACKET_FLOW_LAYER_ID = "packet-flow-lit"; // bright highlight drawn over the route's nodes
+export const PACKET_FLOW_FADE_MS = 4000; // a lit node fades from full opacity back to nothing over this
+export const LIVE_DIM_OPACITY = 0.1; // base node + cluster opacity while Live mode is on
 
 export const CLUSTER_RADIUS = 50; // px
 // Keep clustering alive across the whole reachable zoom range (default max is 22). maplibre drops

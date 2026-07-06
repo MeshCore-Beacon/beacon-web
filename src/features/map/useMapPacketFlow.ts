@@ -1,25 +1,31 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Map as MapLibreMap, GeoJSONSource, CircleLayerSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, GeoJSONSource, CircleLayerSpecification, ExpressionSpecification } from "maplibre-gl";
 import type { FeatureCollection } from "geojson";
 import type { WsManager } from "../../api/ws-manager";
-import { resolvedPathToRoute, routeMetrics, buildPulseFC, pulseProgress, type Pulse } from "./packet-flow";
+import { resolvedPathNodes, buildLitFC, type LitNode } from "./packet-flow";
 import {
   PACKET_FLOW_SOURCE_ID,
   PACKET_FLOW_LAYER_ID,
-  PACKET_FLOW_MAX_PULSES,
-  PACKET_FLOW_SEGMENT_MS,
-  PACKET_FLOW_DEDUP_MS,
+  PACKET_FLOW_FADE_MS,
+  LIVE_DIM_OPACITY,
+  NODES_POINT_LAYER_ID,
+  NODES_CLUSTER_LAYER_ID,
+  NODE_LABEL_MIN_ZOOM,
 } from "./types";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
+
+// node labels normally fade in past NODE_LABEL_MIN_ZOOM — restored when Live turns off
+const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
 
 function paletteVar(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-// Live "packets moving between repeaters" overlay. While enabled it turns on resolvedPath over the
-// WS (setResolvePath) and animates a pulse along each observed packet's path. Geometry is pure
-// (packet-flow.ts); here we own the maplibre source, the rAF loop, and the subscription.
+// Live mode: dim every node/cluster to near-invisible, then flash the nodes on each observed packet's
+// resolved path to full opacity and fade them back over PACKET_FLOW_FADE_MS. Enabling it also opts the
+// WS connection into resolvedPath data. Geometry is pure (packet-flow.ts); here we own the maplibre
+// highlight layer, the dimming, the rAF fade loop, and the subscription.
 export function useMapPacketFlow(
   mapRef: React.RefObject<MapLibreMap | null>,
   isReady: boolean,
@@ -28,47 +34,46 @@ export function useMapPacketFlow(
   themeKey: string,
   resetKey: string,
 ) {
-  const pulsesRef = useRef<Pulse[]>([]);
+  const litRef = useRef<Map<string, LitNode>>(new Map());
   const rafRef = useRef<number | null>(null);
-  const nextIdRef = useRef(0);
-  const recentRef = useRef<Map<string, number>>(new Map());
 
-  // start the rAF loop if it's idle. The frame reschedules itself until the last pulse expires, then
-  // leaves rafRef null so we stop instead of spinning on an empty source.
+  // fade loop: recompute each lit node's opacity, drop the fully-faded, stop once none remain
   const startLoop = useCallback(() => {
     if (rafRef.current != null) return;
     function frame() {
-      const src = mapRef.current?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
       const now = performance.now();
-      pulsesRef.current = pulsesRef.current.filter((p) => pulseProgress(p, now) <= 1);
-      if (src) src.setData(buildPulseFC(pulsesRef.current, now));
-      rafRef.current = pulsesRef.current.length > 0 ? requestAnimationFrame(frame) : null;
+      for (const [id, n] of litRef.current) {
+        if (now - n.litAt >= PACKET_FLOW_FADE_MS) litRef.current.delete(id);
+      }
+      const src = mapRef.current?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
+      if (src) src.setData(buildLitFC([...litRef.current.values()], now, PACKET_FLOW_FADE_MS));
+      rafRef.current = litRef.current.size > 0 ? requestAnimationFrame(frame) : null;
     }
     rafRef.current = requestAnimationFrame(frame);
   }, [mapRef]);
 
-  // build the pulse source + layer; re-adds itself after every style switch, re-tints on theme change
+  // build the highlight source + layer (a bright glow over lit nodes); re-adds after a style switch
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
-
     const accent = paletteVar("--palette-primary", "#3B82F6");
     if (!map.getSource(PACKET_FLOW_SOURCE_ID)) {
       map.addSource(PACKET_FLOW_SOURCE_ID, { type: "geojson", data: EMPTY_FC });
     }
     if (!map.getLayer(PACKET_FLOW_LAYER_ID)) {
-      // no beforeId: draw on top of the node markers so the moving pulse stays visible
+      // no beforeId: draw on top so the highlight pops over the dimmed markers
       map.addLayer({
         id: PACKET_FLOW_LAYER_ID,
         type: "circle",
         source: PACKET_FLOW_SOURCE_ID,
         paint: {
-          "circle-radius": 5,
+          "circle-radius": 9,
           "circle-color": accent,
-          "circle-opacity": ["get", "opacity"],
-          "circle-stroke-width": 1.5,
+          "circle-opacity": ["*", ["get", "opacity"], 0.85],
+          "circle-blur": 0.35,
+          "circle-stroke-width": 2,
           "circle-stroke-color": accent,
-          "circle-stroke-opacity": ["*", ["get", "opacity"], 0.5],
+          "circle-stroke-opacity": ["get", "opacity"],
         },
       } as CircleLayerSpecification);
     }
@@ -76,54 +81,47 @@ export function useMapPacketFlow(
     map.setPaintProperty(PACKET_FLOW_LAYER_ID, "circle-stroke-color", accent);
   }, [mapRef, isReady, themeKey]);
 
-  // connection-wide resolvePath toggle: on when enabled, off on disable/unmount
+  // connection-wide resolvePath toggle: on while enabled, off otherwise
   useEffect(() => {
     wsManager.setResolvePath(enabled);
     return () => wsManager.setResolvePath(false);
   }, [enabled, wsManager]);
 
-  // feed observed resolved paths into new pulses; tear the animation down when disabled
+  // dim (or restore) the base node + cluster layers. Keyed on themeKey too so it re-applies after
+  // useMapNodes rebuilds its layers on a theme/style change (that hook runs first, resetting opacity).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isReady) return;
+    const iconOpacity = enabled ? LIVE_DIM_OPACITY : 1;
+    for (const id of [NODES_POINT_LAYER_ID, NODES_CLUSTER_LAYER_ID]) {
+      if (map.getLayer(id)) map.setPaintProperty(id, "icon-opacity", iconOpacity);
+    }
+    if (map.getLayer(NODES_POINT_LAYER_ID)) {
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", enabled ? 0 : LABEL_OPACITY);
+    }
+    if (map.getLayer(NODES_CLUSTER_LAYER_ID)) {
+      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", enabled ? 0 : 1);
+    }
+  }, [mapRef, isReady, enabled, themeKey]);
+
+  // light up each observed packet's resolved-path nodes; tear down when disabled
   useEffect(() => {
     if (!enabled) return;
-    const map = mapRef.current; // stable for the component's life; used to clear the source on cleanup
+    const map = mapRef.current;
+    const lit = litRef.current; // stable Map for the component's life; used in the cleanup too
     const unsub = wsManager.onPacketObservation((data) => {
       const resolved = data.observation?.resolvedPath;
       if (!resolved || resolved.length === 0) return;
-
+      const nodes = resolvedPathNodes(resolved);
+      if (nodes.length === 0) return;
       const now = performance.now();
-      // many observers report the same packet — animate it once per dedup window
-      const seenAt = recentRef.current.get(data.packetHash);
-      if (seenAt != null && now - seenAt < PACKET_FLOW_DEDUP_MS) return;
-
-      const coords = resolvedPathToRoute(resolved);
-      if (coords.length < 2) return; // nothing to draw between
-      const { cumLengths, total } = routeMetrics(coords);
-      if (total === 0) return;
-
-      // record only after we know this observation produced a pulse, so a partially-resolved report
-      // doesn't suppress a later fully-resolved one for the same packet
-      recentRef.current.set(data.packetHash, now);
-      for (const [hash, ts] of recentRef.current) {
-        if (now - ts > PACKET_FLOW_DEDUP_MS) recentRef.current.delete(hash);
-      }
-
-      pulsesRef.current.push({
-        id: nextIdRef.current++,
-        coords,
-        cumLengths,
-        total,
-        startMs: now,
-        durationMs: (coords.length - 1) * PACKET_FLOW_SEGMENT_MS,
-      });
-      if (pulsesRef.current.length > PACKET_FLOW_MAX_PULSES) {
-        pulsesRef.current.splice(0, pulsesRef.current.length - PACKET_FLOW_MAX_PULSES);
-      }
+      for (const n of nodes) lit.set(n.id, { lng: n.lng, lat: n.lat, litAt: now });
       startLoop();
     });
 
     return () => {
       unsub();
-      pulsesRef.current = [];
+      lit.clear();
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -133,10 +131,9 @@ export function useMapPacketFlow(
     };
   }, [enabled, wsManager, mapRef, startLoop]);
 
-  // clear in-flight pulses when the region changes (their geometry came from the old dataset)
+  // clear highlights when the region changes (those nodes came from the old dataset)
   useEffect(() => {
-    pulsesRef.current = [];
-    recentRef.current.clear();
+    litRef.current.clear();
     const src = mapRef.current?.getSource(PACKET_FLOW_SOURCE_ID) as GeoJSONSource | undefined;
     src?.setData(EMPTY_FC);
   }, [resetKey, mapRef]);
