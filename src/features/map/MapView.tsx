@@ -9,7 +9,7 @@ import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, type NeighborEdgeProps } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, type NeighborLinesMode } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -50,12 +50,21 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     localStorage.setItem(MAP_STYLE_STORAGE_KEY, lastGoodStyleId);
   }, []);
 
-  const [typeFilter, setTypeFilter] = useState(""); // "" = All
-  const [clustered, setClustered] = useState(true);
+  const [typeFilter, setTypeFilter] = useState(() => localStorage.getItem(MAP_NODE_TYPE_STORAGE_KEY) ?? ""); // "" = All
+  const handleTypeChange = useCallback((t: string) => {
+    setTypeFilter(t);
+    localStorage.setItem(MAP_NODE_TYPE_STORAGE_KEY, t);
+  }, []);
+
+  const [clustered, setClustered] = useState(() => localStorage.getItem(MAP_CLUSTER_STORAGE_KEY) !== "off");
+  const handleClusteredChange = useCallback((c: boolean) => {
+    setClustered(c);
+    localStorage.setItem(MAP_CLUSTER_STORAGE_KEY, c ? "on" : "off");
+  }, []);
 
   const [neighborLines, setNeighborLines] = useState<NeighborLinesMode>(() => {
     const stored = localStorage.getItem(MAP_NEIGHBOR_LINES_STORAGE_KEY);
-    return stored === "on" || stored === "selected" ? stored : "off";
+    return stored === "on" || stored === "selected" || stored === "off" ? stored : "selected";
   });
   const handleNeighborLinesChange = useCallback((mode: NeighborLinesMode) => {
     setNeighborLines(mode);
@@ -135,9 +144,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         styleId={styleId}
         onStyleChange={handleStyleChange}
         typeFilter={typeFilter}
-        onTypeChange={setTypeFilter}
+        onTypeChange={handleTypeChange}
         clustered={clustered}
-        onClusteredChange={setClustered}
+        onClusteredChange={handleClusteredChange}
         neighborLines={neighborLines}
         onNeighborLinesChange={handleNeighborLinesChange}
       />
