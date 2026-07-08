@@ -96,14 +96,19 @@ export const NEIGHBORS_LINE_LAYER_ID = "neighbor-lines"; // line layer drawn ben
 export const MAP_NEIGHBOR_LINES_STORAGE_KEY = "beacon-map-neighbor-lines";
 export type NeighborLinesMode = "on" | "selected" | "off";
 
-// --- Live packet-flow: dim every node, flash the resolved-path nodes, and shoot a comet along the route ---
-export const PACKET_FLOW_SOURCE_ID = "packet-flow";
-export const PACKET_FLOW_LAYER_ID = "packet-flow-lit"; // bright highlight drawn over the route's nodes
-export const PACKET_FLOW_COMET_SOURCE_ID = "packet-flow-comet";
-export const PACKET_FLOW_COMET_LAYER_ID = "packet-flow-comet"; // moving comet head + trail, on top
-export const PACKET_FLOW_FADE_MS = 4000; // a lit node fades from full opacity back to nothing over this
-export const PACKET_FLOW_SEGMENT_MS = 650; // comet travel time per hop segment
-export const LIVE_DIM_OPACITY = 0.1; // base node + cluster opacity while Live mode is on
+// --- Live packet-flow (modelled on MeshMapper's "LiveViz"): dim every node, then per packet shoot an
+// orange dot along its real hop path with a fading dashed trail, flashing each node as the dot crosses ---
+export const PACKET_FLOW_TRAIL_SOURCE_ID = "packet-flow-trail";
+export const PACKET_FLOW_TRAIL_LAYER_ID = "packet-flow-trail"; // dashed line tracing behind the dot
+export const PACKET_FLOW_DOT_SOURCE_ID = "packet-flow-dot";
+export const PACKET_FLOW_DOT_HALO_LAYER_ID = "packet-flow-dot-halo"; // dark halo behind the dot
+export const PACKET_FLOW_DOT_LAYER_ID = "packet-flow-dot"; // the moving packet dot
+export const PACKET_FLOW_COLOR = "#ff6b35"; // warm orange, distinct from the node palette so packets pop
+export const PACKET_FLOW_HOP_MS = 480; // ms the dot takes to cross one hop segment
+export const PACKET_FLOW_FLASH_MS = 900; // a crossed node's flash decays back to dim over this
+export const PACKET_FLOW_TRAIL_FADE_MS = 1000; // the dashed trail fades once the dot reaches the end
+export const PACKET_FLOW_MAX = 120; // cap on concurrent packet animations (busy-feed guard)
+export const LIVE_DIM_OPACITY = 0.18; // idle node/cluster opacity while Live mode is on
 
 export const CLUSTER_RADIUS = 50; // px
 // Keep clustering alive across the whole reachable zoom range (default max is 22). maplibre drops

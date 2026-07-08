@@ -162,6 +162,8 @@ export function useMapNodes(
         cluster: clustered,
         clusterRadius: CLUSTER_RADIUS,
         clusterMaxZoom: CLUSTER_MAX_ZOOM,
+        // promote the node id so live packet-flow can flash individual nodes via feature-state
+        promoteId: "id",
       });
     }
 
