@@ -11,7 +11,6 @@ import {
   PACKET_FLOW_DOT_LAYER_ID,
   PACKET_FLOW_COLOR,
   PACKET_FLOW_HOP_MS,
-  PACKET_FLOW_FLASH_MS,
   PACKET_FLOW_TRAIL_FADE_MS,
   PACKET_FLOW_MAX,
   LIVE_DIM_OPACITY,
@@ -50,19 +49,8 @@ export function useMapPacketFlow(
   resetKey: string,
 ) {
   const flowsRef = useRef<Flow[]>([]);
-  const hotRef = useRef<Map<string, number>>(new Map()); // node id -> flash start time
+  const litRef = useRef<Set<string>>(new Set()); // node ids currently lit (feature-state glow set)
   const rafRef = useRef<number | null>(null);
-
-  // flash a node to full immediately (cheap GPU feature-state) and register it for decay
-  const flash = useCallback((id: string | null) => {
-    if (id == null) return;
-    hotRef.current.set(id, performance.now());
-    try {
-      mapRef.current?.setFeatureState({ source: NODES_SOURCE_ID, id }, { glow: 1 });
-    } catch {
-      // node not currently rendered (e.g. inside a cluster) — nothing to light
-    }
-  }, [mapRef]);
 
   const clearFlows = useCallback((map: MapLibreMap | null) => {
     if (rafRef.current != null) {
@@ -72,13 +60,13 @@ export function useMapPacketFlow(
     flowsRef.current = [];
     // guard the whole block: on a not-yet-ready or torn-down map, getSource/setFeatureState throw
     try {
-      for (const id of hotRef.current.keys()) map?.removeFeatureState({ source: NODES_SOURCE_ID, id }, "glow");
+      for (const id of litRef.current) map?.removeFeatureState({ source: NODES_SOURCE_ID, id }, "glow");
       (map?.getSource(PACKET_FLOW_TRAIL_SOURCE_ID) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
       (map?.getSource(PACKET_FLOW_DOT_SOURCE_ID) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
     } catch {
       // map style not ready / already removed
     }
-    hotRef.current.clear();
+    litRef.current.clear();
   }, []);
 
   const startLoop = useCallback(() => {
@@ -87,34 +75,20 @@ export function useMapPacketFlow(
       const map = mapRef.current;
       const now = performance.now();
 
-      // 1) decay node flashes back to dim
-      for (const [id, t0] of hotRef.current) {
-        const glow = 1 - (now - t0) / PACKET_FLOW_FLASH_MS;
-        try {
-          if (glow <= 0) {
-            map?.removeFeatureState({ source: NODES_SOURCE_ID, id }, "glow");
-            hotRef.current.delete(id);
-          } else {
-            map?.setFeatureState({ source: NODES_SOURCE_ID, id }, { glow });
-          }
-        } catch { /* node gone */ }
-      }
-
-      // 2) advance packets -> growing dashed trail + moving dot, flashing nodes as they're crossed
       const dots: Feature<Point>[] = [];
       const lines: Feature<LineString>[] = [];
+      const glowByNode = new Map<string, number>(); // node id -> glow this frame (max across packets)
+
       for (let i = flowsRef.current.length - 1; i >= 0; i--) {
         const p = flowsRef.current[i]!;
         const nSeg = p.coords.length - 1;
         const t = (now - p.start) / PACKET_FLOW_HOP_MS;
-        if (p.lastNode < 0) { flash(p.ids[0] ?? null); p.lastNode = 0; }
         const node = Math.min(nSeg, Math.floor(t + 1e-6));
-        if (node > p.lastNode) {
-          for (let nn = p.lastNode + 1; nn <= node; nn++) flash(p.ids[nn] ?? null);
-          p.lastNode = node;
-        }
+        if (node > p.lastNode) p.lastNode = node;
         const headT = Math.min(t, nSeg);
+        // full while the dot is travelling, then eases out with the trail after it reaches the end
         const fade = t > nSeg ? Math.max(0, 1 - (now - (p.start + nSeg * PACKET_FLOW_HOP_MS)) / PACKET_FLOW_TRAIL_FADE_MS) : 1;
+
         const coords = trailCoords(p.coords, headT);
         if (coords.length >= 2) {
           lines.push({ type: "Feature", properties: { a: 0.6 * fade }, geometry: { type: "LineString", coordinates: coords } });
@@ -122,17 +96,33 @@ export function useMapPacketFlow(
         if (t <= nSeg) {
           dots.push({ type: "Feature", properties: { r: 5, a: 1 }, geometry: { type: "Point", coordinates: posAtHop(p.coords, headT) } });
         }
+        // light every node the dot has reached; they hold at full while it travels, then fade with the trail
+        if (fade > 0) {
+          for (let k = 0; k <= p.lastNode; k++) {
+            const id = p.ids[k];
+            if (id != null) glowByNode.set(id, Math.max(glowByNode.get(id) ?? 0, fade));
+          }
+        }
         if (t > nSeg && fade <= 0) flowsRef.current.splice(i, 1);
       }
+
+      // apply node glows via feature-state; drop nodes that are no longer lit by any packet
+      try {
+        for (const [id, g] of glowByNode) map?.setFeatureState({ source: NODES_SOURCE_ID, id }, { glow: g });
+        for (const id of litRef.current) {
+          if (!glowByNode.has(id)) map?.removeFeatureState({ source: NODES_SOURCE_ID, id }, "glow");
+        }
+      } catch { /* node gone */ }
+      litRef.current = new Set(glowByNode.keys());
 
       (map?.getSource(PACKET_FLOW_TRAIL_SOURCE_ID) as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: lines });
       (map?.getSource(PACKET_FLOW_DOT_SOURCE_ID) as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: dots });
 
-      const busy = flowsRef.current.length > 0 || hotRef.current.size > 0;
+      const busy = flowsRef.current.length > 0 || litRef.current.size > 0;
       rafRef.current = busy ? requestAnimationFrame(frame) : null;
     }
     rafRef.current = requestAnimationFrame(frame);
-  }, [mapRef, flash]);
+  }, [mapRef]);
 
   // build the trail + dot layers (re-add after a style switch); the dot is orange with a white stroke
   // and a dark halo behind it, the trail a dashed line whose opacity is data-driven
