@@ -97,6 +97,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     <DetailPanel
       title="Node Detail"
       onClose={onClose}
+      collapsible
       isLoading={isLoading}
       notFound={!node}
       notFoundLabel="Node not found"
