@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Map as MapLibreMap, GeoJSONSource, CircleLayerSpecification, LineLayerSpecification, ExpressionSpecification } from "maplibre-gl";
+import type { Map as MapLibreMap, GeoJSONSource, CircleLayerSpecification, LineLayerSpecification } from "maplibre-gl";
 import type { Feature, FeatureCollection, Point, LineString } from "geojson";
 import type { WsManager } from "../../api/ws-manager";
 import { resolvedPathNodes, posAtHop, trailCoords } from "./packet-flow";
@@ -13,20 +13,10 @@ import {
   PACKET_FLOW_HOP_MS,
   PACKET_FLOW_TRAIL_FADE_MS,
   PACKET_FLOW_MAX,
-  LIVE_DIM_OPACITY,
-  LIVE_CLUSTER_DIM_OPACITY,
   NODES_SOURCE_ID,
-  NODES_POINT_LAYER_ID,
-  NODES_CLUSTER_LAYER_ID,
-  NODE_LABEL_MIN_ZOOM,
 } from "./types";
 
 const EMPTY_FC: FeatureCollection = { type: "FeatureCollection", features: [] };
-
-// node labels normally fade in past NODE_LABEL_MIN_ZOOM — restored when Live turns off
-const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
-// dimmed to the idle baseline, but lifted to full for a node currently flashing (feature-state glow 0..1)
-const LIVE_ICON_OPACITY: ExpressionSpecification = ["max", LIVE_DIM_OPACITY, ["coalesce", ["feature-state", "glow"], 0]];
 
 // one packet riding its hop path once
 interface Flow {
@@ -175,21 +165,8 @@ export function useMapPacketFlow(
     return () => wsManager.setResolvePath(false);
   }, [enabled, wsManager]);
 
-  // dim the base nodes. The point layer lifts back to full per-node via feature-state glow; clusters
-  // dim flat (a clustered node can't be individually flashed). Keyed on themeKey so it re-applies
-  // after useMapNodes rebuilds its layers on a theme/style change.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !isReady) return;
-    if (map.getLayer(NODES_POINT_LAYER_ID)) {
-      map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", enabled ? LIVE_ICON_OPACITY : 1);
-      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", enabled ? 0 : LABEL_OPACITY);
-    }
-    if (map.getLayer(NODES_CLUSTER_LAYER_ID)) {
-      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", enabled ? LIVE_CLUSTER_DIM_OPACITY : 1);
-      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", enabled ? 0 : 1);
-    }
-  }, [mapRef, isReady, enabled, themeKey]);
+  // Base-node dimming (fade all, lift the flashing node) is owned by useMapNodes so live mode and
+  // selection focus share one opacity owner; here we only feed it the per-node glow feature-state.
 
   // launch a flow per observed packet; tear the animation down when disabled
   useEffect(() => {

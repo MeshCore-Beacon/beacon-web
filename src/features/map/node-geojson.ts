@@ -73,6 +73,29 @@ export function buildNeighborEdges(
   return { type: "FeatureCollection", features };
 }
 
+// The located nodes to keep lit when a node is selected: the selection plus its neighbors (links are
+// undirected — a node listing the selection counts). Returns null when there's nothing to focus on:
+// no selection, the selected node isn't on the map, or it has no located neighbors. Mirrors the
+// undirected logic in buildNeighborEdges so the bright set matches the drawn edges.
+export function neighborFocusIds(nodes: NodeSummary[], selectedId: string | null): string[] | null {
+  if (!selectedId) return null;
+  const located = new Map<string, NodeSummary>();
+  for (const n of nodes) {
+    if (n.lat != null && n.lng != null) located.set(n.id, n);
+  }
+  const selected = located.get(selectedId);
+  if (!selected) return null;
+
+  const focus = new Set<string>([selectedId]);
+  for (const otherId of selected.neighborIds ?? []) {
+    if (otherId !== selectedId && located.has(otherId)) focus.add(otherId);
+  }
+  for (const n of located.values()) {
+    if (n.id !== selectedId && n.neighborIds?.includes(selectedId)) focus.add(n.id);
+  }
+  return focus.size > 1 ? [...focus] : null;
+}
+
 // Filter to a single device type ("" = All). Filtering the data (not a layer filter) lets the
 // clustered source re-count only the visible type.
 export function filterByNodeType(

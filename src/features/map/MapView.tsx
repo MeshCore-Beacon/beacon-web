@@ -7,7 +7,7 @@ import { useMapNeighbors } from "./useMapNeighbors";
 import { useMapPacketFlow } from "./useMapPacketFlow";
 import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
-import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, type NeighborEdgeProps } from "./node-geojson";
+import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
@@ -117,6 +117,13 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     [nodes, neighborLines, selectedNodeId],
   );
 
+  // With neighbors shown and a node selected, fade every other node (like live mode) to spotlight
+  // the selection and its neighbors. null when there's nothing to focus, so the map stays full-bright.
+  const focusIds = useMemo(
+    () => (neighborLines === "off" ? null : neighborFocusIds(nodes, selectedNodeId)),
+    [nodes, neighborLines, selectedNodeId],
+  );
+
   // IATA coords to frame: the selection's airports, or every airport for "All". Regions carry no
   // bounds from the API, so their member IATAs stand in for the extent. See CLAUDE.md (map framing).
   const fitPoints = useMemo<[number, number][] | null>(() => {
@@ -130,7 +137,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, fitPoints, handleStyleError);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
-  useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, `${regionKey}:${typeFilter}`);
+  useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey);
 

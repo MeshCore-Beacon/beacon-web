@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges } from "../../../src/features/map/node-geojson";
+import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, neighborFocusIds } from "../../../src/features/map/node-geojson";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 
 function node(overrides: Partial<NodeSummary>): NodeSummary {
@@ -113,6 +113,42 @@ describe("buildNeighborEdges", () => {
     const selfRef = node({ id: "a", lat: 45, lng: -75, neighborIds: ["a", "b"] });
     const fc = buildNeighborEdges([selfRef, b], "on", null);
     expect(fc.features).toHaveLength(1); // a<->b only, not a<->a
+  });
+});
+
+describe("neighborFocusIds", () => {
+  const a = node({ id: "a", lat: 45, lng: -75, neighborIds: ["b", "c"] });
+  const b = node({ id: "b", lat: 46, lng: -76, neighborIds: ["a"] });
+  const c = node({ id: "c", lat: 47, lng: -77, neighborIds: ["a"] });
+
+  const sorted = (ids: string[] | null) => (ids ? [...ids].sort() : ids);
+
+  it("returns null when nothing is selected", () => {
+    expect(neighborFocusIds([a, b, c], null)).toBeNull();
+  });
+
+  it("includes the selected node and its located neighbors", () => {
+    expect(sorted(neighborFocusIds([a, b, c], "a"))).toEqual(["a", "b", "c"]);
+  });
+
+  it("treats neighbor links as undirected (a node listing the selection counts)", () => {
+    // b lists a; c does not list b, so only a<->b makes c irrelevant to b's focus set
+    expect(sorted(neighborFocusIds([a, b, c], "b"))).toEqual(["a", "b"]);
+  });
+
+  it("skips neighbor ids that are absent or unlocated", () => {
+    const noCoord = node({ id: "c", lat: null, lng: null, neighborIds: ["a"] });
+    expect(sorted(neighborFocusIds([a, b, noCoord], "a"))).toEqual(["a", "b"]);
+  });
+
+  it("returns null when the selected node is unlocated (no marker to keep lit)", () => {
+    const unlocated = node({ id: "a", lat: null, lng: null, neighborIds: ["b"] });
+    expect(neighborFocusIds([unlocated, b], "a")).toBeNull();
+  });
+
+  it("returns null when the selected node has no located neighbors", () => {
+    const lonely = node({ id: "x", lat: 45, lng: -75, neighborIds: ["ghost"] });
+    expect(neighborFocusIds([lonely, b], "x")).toBeNull();
   });
 });
 
