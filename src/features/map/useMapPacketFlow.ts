@@ -15,6 +15,7 @@ import {
   PACKET_FLOW_TRAIL_FADE_MS,
   PACKET_FLOW_MAX,
   LIVE_DIM_OPACITY,
+  LIVE_CLUSTER_DIM_OPACITY,
   NODES_SOURCE_ID,
   NODES_POINT_LAYER_ID,
   NODES_CLUSTER_LAYER_ID,
@@ -195,7 +196,7 @@ export function useMapPacketFlow(
       map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", enabled ? 0 : LABEL_OPACITY);
     }
     if (map.getLayer(NODES_CLUSTER_LAYER_ID)) {
-      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", enabled ? LIVE_DIM_OPACITY : 1);
+      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", enabled ? LIVE_CLUSTER_DIM_OPACITY : 1);
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", enabled ? 0 : 1);
     }
   }, [mapRef, isReady, enabled, themeKey]);
