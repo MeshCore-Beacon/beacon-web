@@ -38,8 +38,8 @@ describe("useMapNodesData", () => {
     expect(result.current.nodes.map((n) => n.id)).toEqual(["a", "b", "c"]);
     expect(result.current.loadedCount).toBe(3);
     expect(mockGetNodesPage).toHaveBeenCalledTimes(2);
-    // second call paginates with the previous page's nextCursor
-    expect(mockGetNodesPage).toHaveBeenLastCalledWith(["YYZ"], { cursor: 2 });
+    // second call paginates with the previous page's nextCursor; the map always requests neighbor ids
+    expect(mockGetNodesPage).toHaveBeenLastCalledWith(["YYZ"], { cursor: 2, neighbors: true });
   });
 
   it("stops after a single page when hasMore is false", async () => {

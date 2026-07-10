@@ -46,6 +46,58 @@ describe("PayloadBreakdown — trace resolvedRoute overlay", () => {
   });
 });
 
+describe("PayloadBreakdown — DISCOVER_REQ", () => {
+  // Backend emits DISCOVER as a top-level parsedPayload.type (not nested under CONTROL).
+  // See beacon-server internal/ingest/packet.go parsedDiscoverReq.
+  const reqPayload = {
+    type: "DISCOVER_REQ",
+    raw: "0b00",
+    prefixOnly: true,
+    typeFilter: 0x06, // bits 1 and 2 → ADV_TYPE 1 (ChatNode) + 2 (Repeater)
+    tag: "0a0b0c0d",
+    since: 1_700_000_000, // epoch seconds
+  };
+
+  it("decodes the typeFilter bitfield into device-role names", () => {
+    render(<PayloadBreakdown payload={reqPayload} />);
+    expect(screen.getByText("ChatNode")).toBeInTheDocument();
+    expect(screen.getByText("Repeater")).toBeInTheDocument();
+  });
+
+  it("renders the tag as a 0x-prefixed hex value", () => {
+    render(<PayloadBreakdown payload={reqPayload} />);
+    expect(screen.getByText("0x0A0B0C0D")).toBeInTheDocument();
+  });
+});
+
+describe("PayloadBreakdown — DISCOVER_RESP", () => {
+  // See beacon-server internal/ingest/packet.go parsedDiscoverResp.
+  const respPayload = {
+    type: "DISCOVER_RESP",
+    raw: "0b01",
+    nodeType: 2,
+    nodeTypeName: "repeater",
+    requestSnr: -4.5, // responder's node-to-node reading of the request, not observer reception
+    tag: "0a0b0c0d",
+    pubKey: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    pubKeyPrefixOnly: false,
+  };
+
+  it("renders the responder node type and its request SNR", () => {
+    render(<PayloadBreakdown payload={respPayload} />);
+    expect(screen.getByText("repeater")).toBeInTheDocument();
+    expect(screen.getByText(/-4\.50/)).toBeInTheDocument();
+  });
+
+  it("labels a full public key vs. an 8-byte prefix", () => {
+    const { unmount } = render(<PayloadBreakdown payload={respPayload} />);
+    expect(screen.getByText(/Public Key/)).toBeInTheDocument();
+    unmount();
+    render(<PayloadBreakdown payload={{ ...respPayload, pubKey: "abcdef0011223344", pubKeyPrefixOnly: true }} />);
+    expect(screen.getByText(/Key Prefix/)).toBeInTheDocument();
+  });
+});
+
 describe("PayloadBreakdown — GROUP_TEXT decrypted channel message", () => {
   // Backend GetPacket enrichment nests decrypted:{sender,content,sentAt} (sentAt is epoch ms).
   // See beacon-server db/packets.go + internal/ingest/side_effects.go.

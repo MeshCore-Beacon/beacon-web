@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
-import { NODE_TYPE_FILTER_OPTIONS } from "./types";
+import { NODE_TYPE_FILTER_OPTIONS, type NeighborLinesMode } from "./types";
 import { Section } from "../../components/DetailPanel";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 
@@ -13,6 +13,31 @@ const CLUSTER_OPTIONS = [
   { value: "on", label: "On" },
   { value: "off", label: "Off" },
 ];
+const NEIGHBOR_OPTIONS = [
+  { value: "on", label: "On" },
+  { value: "selected", label: "Selected" },
+  { value: "off", label: "Off" },
+];
+
+// Legend for a selected node's coloured edges. Gradient stops mirror the map paint's log anchors
+// (red ~1, yellow ~20 at 60%, green ~150+); palette vars keep it in step with the active theme.
+function NeighborLegend() {
+  return (
+    <div className="mt-2.5">
+      <div className="text-[10px] text-text-dim uppercase tracking-wider mb-1">Observations</div>
+      <div
+        className="h-2 rounded-sm border border-border-subtle"
+        style={{ background: "linear-gradient(to right, var(--palette-danger) 0%, var(--palette-warn) 60%, var(--palette-green) 100%)" }}
+      />
+      <div className="relative h-3 mt-0.5 text-[9px] text-text-dim tabular-nums">
+        <span className="absolute left-0">1</span>
+        <span className="absolute -translate-x-1/2" style={{ left: "60%" }}>20</span>
+        <span className="absolute right-0">150+</span>
+      </div>
+      <div className="text-[9px] text-text-dim mt-1">fainter = heard longer ago</div>
+    </div>
+  );
+}
 
 interface MapSettingsPanelProps {
   styleId: string;
@@ -21,6 +46,8 @@ interface MapSettingsPanelProps {
   onTypeChange: (t: string) => void;
   clustered: boolean;
   onClusteredChange: (c: boolean) => void;
+  neighborLines: NeighborLinesMode;
+  onNeighborLinesChange: (mode: NeighborLinesMode) => void;
 }
 
 export function MapSettingsPanel({
@@ -30,6 +57,8 @@ export function MapSettingsPanel({
   onTypeChange,
   clustered,
   onClusteredChange,
+  neighborLines,
+  onNeighborLinesChange,
 }: MapSettingsPanelProps) {
   const isMobile = useIsMobile();
   // collapsed by default on mobile (the card would cover the map); a saved preference still wins
@@ -90,6 +119,16 @@ export function MapSettingsPanel({
               onChange={(v) => onClusteredChange(v === "on")}
               className="w-full"
             />
+          </Section>
+          <Section title="Neighbor Lines">
+            <SegmentedControl
+              ariaLabel="Neighbor lines"
+              options={NEIGHBOR_OPTIONS}
+              value={neighborLines}
+              onChange={(v) => onNeighborLinesChange(v as NeighborLinesMode)}
+              className="w-full"
+            />
+            {neighborLines === "selected" && <NeighborLegend />}
           </Section>
         </div>
       )}

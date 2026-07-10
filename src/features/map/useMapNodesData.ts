@@ -10,7 +10,9 @@ const nodeId = (n: NodeSummary) => n.id;
 export function useMapNodesData(selectedIatas: string[] | undefined, regionKey: string) {
   const { items, loadedCount, isPaging, isError } = useInfinitePages<NodeSummary>({
     queryKey: ["map-nodes", regionKey],
-    queryFn: (cursor) => getNodesPage(selectedIatas, { cursor }),
+    // Always request neighborIds (just UUIDs) so the neighbor-lines toggle is a pure client-side
+    // render switch over already-loaded data — no refetch when toggling.
+    queryFn: (cursor) => getNodesPage(selectedIatas, { cursor, neighbors: true }),
     getId: nodeId,
   });
   return { nodes: items, loadedCount, isPaging, isError };
