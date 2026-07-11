@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildNeighbourGraph, obsColor, ageOpacity, foldNeighbourWeights } from "../../../src/features/stats/neighbour-graph";
+import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity } from "../../../src/features/stats/neighbour-graph";
 import type { NodeSummary, NodeNeighbor } from "../../../src/features/nodes/types";
 
 function neighbor(overrides: Partial<NodeNeighbor>): NodeNeighbor {
@@ -180,33 +180,57 @@ describe("ageOpacity", () => {
   });
 });
 
-describe("foldNeighbourWeights", () => {
+describe("buildEgoGraph", () => {
   const NOW = 10 * DAY;
+  const center = { id: "c", name: "Center", nodeTypeName: "companion" };
 
-  it("returns an empty map for no neighbours", () => {
-    expect(foldNeighbourWeights([], "self", NOW)).toEqual({});
+  it("puts the center first with its neighbours fanned out from it", () => {
+    const g = buildEgoGraph(center, [neighbor({ id: "a" }), neighbor({ id: "b" })], NOW);
+    expect(g.nodes.map((n) => n.id)).toEqual(["c", "a", "b"]);
+    expect(g.links).toHaveLength(2);
+    expect(g.links.every((l) => l.source === 0)).toBe(true);
+    expect(g.nodes[0]!.category).toBe(0); // companion
   });
 
-  it("sums observations and takes the freshest lastSeen across per-iata rows", () => {
-    const w = foldNeighbourWeights(
+  it("shows a label on every node", () => {
+    const g = buildEgoGraph(center, [neighbor({ id: "a" })], NOW);
+    expect(g.nodes.every((n) => n.label?.show)).toBe(true);
+  });
+
+  it("folds per-iata rows: obs summed, freshest lastSeen wins", () => {
+    const g = buildEgoGraph(
+      center,
       [
         neighbor({ id: "a", iata: "YYZ", observationCount: 3, lastSeen: 8 * DAY }),
         neighbor({ id: "a", iata: "YUL", observationCount: 5, lastSeen: 9 * DAY }),
       ],
-      "self",
       NOW,
     );
-    expect(w.a!.obs).toBe(8);
-    expect(w.a!.ageDays).toBeCloseTo(1); // NOW - 9d (the freshest)
+    expect(g.nodes.filter((n) => n.id === "a")).toHaveLength(1);
+    const link = g.links.find((l) => g.nodes[l.target]!.id === "a")!;
+    expect(link.obs).toBe(8);
+    expect(link.ageDays).toBeCloseTo(1);
   });
 
-  it("excludes the selected node's own rows", () => {
-    const w = foldNeighbourWeights([neighbor({ id: "self", observationCount: 4 })], "self", NOW);
-    expect(w).toEqual({});
+  it("excludes the center's own rows", () => {
+    const g = buildEgoGraph(center, [neighbor({ id: "c" })], NOW);
+    expect(g.nodes).toHaveLength(1);
+    expect(g.links).toEqual([]);
   });
 
-  it("never reports a negative age for a future lastSeen", () => {
-    const w = foldNeighbourWeights([neighbor({ id: "a", lastSeen: NOW + 5 * DAY })], "self", NOW);
-    expect(w.a!.ageDays).toBe(0);
+  it("returns just the center when there are no neighbours", () => {
+    const g = buildEgoGraph(center, [], NOW);
+    expect(g.nodes.map((n) => n.id)).toEqual(["c"]);
+    expect(g.links).toEqual([]);
+  });
+
+  it("never reports a negative edge age", () => {
+    const g = buildEgoGraph(center, [neighbor({ id: "a", lastSeen: NOW + 3 * DAY })], NOW);
+    expect(g.links[0]!.ageDays).toBe(0);
+  });
+
+  it("maps a neighbour's node type to a category index", () => {
+    const g = buildEgoGraph(center, [neighbor({ id: "a", nodeTypeName: "sensor" })], NOW);
+    expect(g.nodes.find((n) => n.id === "a")!.category).toBe(3);
   });
 });

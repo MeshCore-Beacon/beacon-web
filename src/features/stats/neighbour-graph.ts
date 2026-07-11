@@ -22,6 +22,8 @@ export interface GraphNode {
 export interface GraphLink {
   source: number; // index into GraphNode[]
   target: number;
+  obs?: number; // weighted-edge fields, set on the ego view's edges (drive colour + freshness fade)
+  ageDays?: number;
 }
 
 export interface NeighbourGraph {
@@ -104,34 +106,50 @@ export function ageOpacity(ageDays: number): number {
   return AGE.freshOp + (AGE.staleOp - AGE.freshOp) * t;
 }
 
-export interface NeighbourWeight {
-  obs: number;
-  ageDays: number;
+const CENTER_SIZE = 30;
+const NEIGHBOUR_SIZE = 14;
+
+function egoNode(id: string, name: string | null, nodeTypeName: string, size: number, degree: number): GraphNode {
+  const cat = (NODE_TYPE_NAMES as readonly string[]).indexOf(nodeTypeName);
+  return {
+    id,
+    name: name ?? id.slice(0, 6),
+    category: cat === -1 ? OTHER_CATEGORY : cat,
+    nodeTypeName,
+    degree,
+    symbolSize: size,
+    label: { show: true },
+  };
 }
 
-// Fold the /nodes/{id}/neighbors rows (one per neighbour+iata) into a per-neighbour weight: obs summed
-// across iatas, age from the freshest lastSeen. Same reduction the map uses in buildFocusedNeighborEdges.
-export function foldNeighbourWeights(
+// The focused view: one centre node with its neighbours fanned out around it. Neighbours come from
+// GET /nodes/{id}/neighbors (one row per neighbour+iata), folded per neighbour — obs summed, age from
+// the freshest lastSeen. Edges carry those weights so the option can colour/fade them like the map.
+export function buildEgoGraph(
+  center: { id: string; name: string | null; nodeTypeName: string },
   neighbors: NodeNeighbor[],
-  selfId: string,
   now: number,
-): Record<string, NeighbourWeight> {
-  const folded = new Map<string, { obs: number; lastSeen: number }>();
+): NeighbourGraph {
+  const folded = new Map<string, { name: string | null; nodeTypeName: string; obs: number; lastSeen: number }>();
   for (const nb of neighbors) {
-    if (nb.id === selfId) continue;
+    if (nb.id === center.id) continue;
     const prev = folded.get(nb.id);
     if (prev) {
       prev.obs += nb.observationCount;
       prev.lastSeen = Math.max(prev.lastSeen, nb.lastSeen);
     } else {
-      folded.set(nb.id, { obs: nb.observationCount, lastSeen: nb.lastSeen });
+      folded.set(nb.id, { name: nb.name ?? null, nodeTypeName: nb.nodeTypeName, obs: nb.observationCount, lastSeen: nb.lastSeen });
     }
   }
-  const out: Record<string, NeighbourWeight> = {};
-  for (const [id, w] of folded) {
-    out[id] = { obs: w.obs, ageDays: Math.max(0, (now - w.lastSeen) / 86_400_000) };
+
+  const nodes: GraphNode[] = [egoNode(center.id, center.name, center.nodeTypeName, CENTER_SIZE, folded.size)];
+  const links: GraphLink[] = [];
+  for (const [id, n] of folded) {
+    // push the link first so target points at the node's about-to-be index
+    links.push({ source: 0, target: nodes.length, obs: n.obs, ageDays: Math.max(0, (now - n.lastSeen) / 86_400_000) });
+    nodes.push(egoNode(id, n.name, n.nodeTypeName, NEIGHBOUR_SIZE, 0));
   }
-  return out;
+  return { nodes, links, total: nodes.length, capped: false };
 }
 
 // One legend/category per device type (in NODE_TYPES order) plus an "Other" bucket for unknowns; the
@@ -143,10 +161,22 @@ function graphCategories(c: ChartColors) {
   ];
 }
 
-// The themed ECharts force-graph option. Selection styling is applied imperatively (dispatchAction +
-// link-only merge) so it never rebuilds this option — see NeighbourGraph.tsx.
-export function neighbourGraphOption(graph: NeighbourGraph, c: ChartColors): EChartsOption {
-  const big = graph.nodes.length > 500; // settle without animating once the graph gets dense
+// The themed ECharts force-graph option, for both the full mesh and the ego (single-node focus) view.
+// No hover-adjacency emphasis: it toggles on/off as a dragged node lags the cursor, which flickers the
+// graph. Focus is instead the ego view (opts.ego), a clean re-render the caller swaps in.
+export function neighbourGraphOption(
+  graph: NeighbourGraph,
+  c: ChartColors,
+  opts: { ego?: boolean } = {},
+): EChartsOption {
+  const ego = !!opts.ego;
+  const big = graph.nodes.length > 500; // settle without animating once the full mesh gets dense
+  // weighted edges (ego view) get an obs→colour, freshness→opacity line; plain mesh edges stay uniform
+  const links = graph.links.map((l) =>
+    l.obs != null
+      ? { ...l, lineStyle: { color: obsColor(l.obs, c), opacity: ageOpacity(l.ageDays ?? 0), width: 1.8 } }
+      : l,
+  );
   return {
     animation: false,
     backgroundColor: "transparent",
@@ -157,12 +187,13 @@ export function neighbourGraphOption(graph: NeighbourGraph, c: ChartColors): ECh
         const param = p as { dataType?: string; data: Record<string, unknown> };
         if (param.dataType === "edge") {
           const obs = param.data.obs as number | undefined;
-          if (obs == null) return ""; // ambient (non-selected) edge — nothing to show
+          if (obs == null) return ""; // uniform mesh edge — nothing to show
           const days = Math.round((param.data.ageDays as number) ?? 0);
           return `${obs} obs · ${days === 0 ? "seen today" : `seen ${days}d ago`}`;
         }
         const d = param.data as unknown as GraphNode;
-        return `${d.name}\n${d.nodeTypeName} · ${d.degree} neighbour${d.degree === 1 ? "" : "s"}`;
+        const type = d.nodeTypeName || "unknown";
+        return d.degree > 0 ? `${d.name}\n${type} · ${d.degree} neighbour${d.degree === 1 ? "" : "s"}` : `${d.name}\n${type}`;
       },
     },
     legend: [
@@ -185,20 +216,16 @@ export function neighbourGraphOption(graph: NeighbourGraph, c: ChartColors): ECh
         draggable: true,
         scaleLimit: { min: 0.2, max: 8 },
         categories: graphCategories(c),
-        force: {
-          repulsion: big ? 60 : 120,
-          edgeLength: big ? [20, 60] : [40, 90],
-          gravity: 0.08,
-          friction: 0.2,
-          layoutAnimation: !big,
-        },
-        emphasis: { focus: "adjacency", scale: false, label: { show: true }, lineStyle: { width: 1.6 } },
+        force: ego
+          ? { repulsion: 320, edgeLength: 120, gravity: 0.05, friction: 0.15, layoutAnimation: true }
+          : { repulsion: big ? 60 : 120, edgeLength: big ? [20, 60] : [40, 90], gravity: 0.08, friction: 0.2, layoutAnimation: !big },
+        emphasis: { focus: "none", scale: false },
         label: { show: false, position: "right", color: c.textNormal, fontFamily: MONO, fontSize: 9 },
         labelLayout: { hideOverlap: true },
         lineStyle: { color: withAlpha(c.textMuted, 0.22), width: 0.6 },
         itemStyle: { borderColor: c.bgBase, borderWidth: 0.5 },
         data: graph.nodes,
-        links: graph.links,
+        links,
       },
     ],
   };
