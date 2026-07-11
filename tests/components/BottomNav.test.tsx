@@ -24,7 +24,7 @@ describe("BottomNav", () => {
   });
 
   it("highlights More when an overflow tab is active", () => {
-    render(<BottomNav activeTab="Stats" onTabChange={() => {}} />);
+    render(<BottomNav activeTab="Analytics" onTabChange={() => {}} />);
     const more = screen.getByText("More").closest("button")!;
     expect(more.className).toContain("text-primary");
   });

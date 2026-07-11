@@ -120,7 +120,8 @@ function AppInner() {
   const isMobile = useIsMobile();
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
-  const tabParam = searchParams.get("tab");
+  // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
+  const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
   const activeTab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as string) : "Packets";
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
@@ -171,7 +172,7 @@ function AppInner() {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
       // stats sub-state shouldn't haunt the URL on other tabs
-      if (tab !== "Stats") {
+      if (tab !== "Analytics") {
         next.delete("statsTab");
         next.delete("observerId");
         next.delete("range");
@@ -194,7 +195,7 @@ function AppInner() {
       setOverlayPacketHash(null);
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set("tab", "Stats");
+        next.set("tab", "Analytics");
         next.set("statsTab", "observer");
         next.set("observerId", id);
         return next;
@@ -220,7 +221,7 @@ function AppInner() {
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
     Traces: <TraceList onAnalyze={setOverlayPacketHash} onViewNode={setOverlayNodeId} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
-    Stats: <StatsOverview wsManager={wsManager} />,
+    Analytics: <StatsOverview wsManager={wsManager} />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
   };
 

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Map as MapLibreMap, GeoJSONSource, LineLayerSpecification, ExpressionSpecification } from "maplibre-gl";
 import type { FeatureCollection, LineString } from "geojson";
 import type { NeighborEdgeProps } from "./node-geojson";
+import { OBS_STOPS, AGE } from "./neighbor-thresholds";
 import { NEIGHBORS_SOURCE_ID, NEIGHBORS_LINE_LAYER_ID, NODES_CLUSTER_LAYER_ID } from "./types";
 
 type EdgeFC = FeatureCollection<LineString, NeighborEdgeProps>;
@@ -14,7 +15,7 @@ function paletteVar(name: string, fallback: string): string {
 // faint by ~4 weeks (matches the 30-day retention). Ambient "on" edges keep the flat selected/dim split.
 const NEIGHBOR_OPACITY = [
   "case", ["has", "obs"],
-  ["interpolate", ["linear"], ["get", "ageDays"], 0, 0.9, 28, 0.35],
+  ["interpolate", ["linear"], ["get", "ageDays"], AGE.freshDays, AGE.freshOp, AGE.staleDays, AGE.staleOp],
   ["case", ["get", "selected"], 0.9, 0.3],
 ] as ExpressionSpecification;
 
@@ -23,7 +24,7 @@ const NEIGHBOR_OPACITY = [
 function neighborLineColor(danger: string, warn: string, green: string, primary: string): ExpressionSpecification {
   return [
     "case", ["has", "obs"],
-    ["interpolate", ["linear"], ["log10", ["max", 1, ["get", "obs"]]], 0, danger, 1.3, warn, 2.18, green],
+    ["interpolate", ["linear"], ["log10", ["max", 1, ["get", "obs"]]], OBS_STOPS.danger, danger, OBS_STOPS.warn, warn, OBS_STOPS.green, green],
     primary,
   ] as ExpressionSpecification;
 }

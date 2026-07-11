@@ -4,9 +4,10 @@ import type { WsManager } from "../../api/ws-manager";
 import { StatsSubHeader } from "./StatsSubHeader";
 import { MeshTab } from "./MeshTab";
 import { ObserverTab } from "./ObserverTab";
+import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import type { StatsRange, StatsTab } from "./types";
 
-const TABS: StatsTab[] = ["mesh", "observer"];
+const TABS: StatsTab[] = ["mesh", "observer", "graph"];
 const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
@@ -50,11 +51,11 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
     <div className="flex min-h-0 flex-1 flex-col">
       <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === "mesh" ? (
-          <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />
-        ) : (
+        {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />}
+        {tab === "observer" && (
           <ObserverTab range={range} selectedObserverId={observerId} onSelectObserver={handleSelectObserver} wsManager={wsManager} />
         )}
+        {tab === "graph" && <NeighbourGraphTab />}
       </div>
     </div>
   );

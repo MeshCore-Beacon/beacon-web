@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatCount } from "../../lib/formatters";
-import { useChartColors, type ChartColors } from "./chartTheme";
+import { useChartColors, nodeTypeColor } from "./chartTheme";
 import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
 import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption, presetBarsOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";
@@ -21,16 +21,6 @@ function aggregateByHour(points: ObservationPoint[]) {
     byHour.set(p.hour, cur);
   }
   return [...byHour.values()].sort((a, b) => a.hour - b.hour);
-}
-
-function nodeTypeColor(typeName: string, c: ChartColors): string {
-  switch (typeName) {
-    case "companion": return c.primary;
-    case "repeater": return c.green;
-    case "room_server": return c.secondary;
-    case "sensor": return c.warn;
-    default: return c.primaryDim;
-  }
 }
 
 interface MeshTabProps {

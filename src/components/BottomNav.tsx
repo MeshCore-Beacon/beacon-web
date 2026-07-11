@@ -3,7 +3,7 @@ import { BottomSheet } from "./BottomSheet";
 
 // Mobile-only tab bar (hidden at md+); overflow tabs live behind "More" in a bottom sheet.
 const PRIMARY_TABS = ["Packets", "Channels", "Map", "Nodes"] as const;
-const OVERFLOW_TABS = ["Observers", "Routes", "Traces", "Stats"] as const;
+const OVERFLOW_TABS = ["Observers", "Routes", "Traces", "Analytics"] as const;
 
 // inline SVGs, 20px / 1.6 stroke to match the rest of the icons
 function Icon({ name }: { name: string }) {
