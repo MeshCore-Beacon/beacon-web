@@ -44,10 +44,12 @@ interface DetailPanelProps {
   notFound?: boolean;
   notFoundIcon?: ReactNode;
   notFoundLabel?: string;
+  // action rendered in the header, left of the minimize/close controls (e.g. a Copy Link button)
+  headerAction?: ReactNode;
   children: ReactNode;
 }
 
-export function DetailPanel({ title, onClose, collapsible, isLoading, notFound, notFoundIcon, notFoundLabel = "Not found", children }: DetailPanelProps) {
+export function DetailPanel({ title, onClose, collapsible, isLoading, notFound, notFoundIcon, notFoundLabel = "Not found", headerAction, children }: DetailPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
   // collapse only touches the mobile overlay: shrink to a bottom bar and hide the body. The md:*
   // classes below always win at desktop width, so a lingering collapsed state never hides the sidebar.
@@ -56,9 +58,12 @@ export function DetailPanel({ title, onClose, collapsible, isLoading, notFound, 
     <div className={`${minimized ? "absolute inset-x-0 bottom-0" : "absolute inset-0"} z-30 w-full md:static md:inset-auto md:z-auto md:shrink-0 md:w-[400px] md:border-l border-border bg-bg-surface flex flex-col min-h-0 overflow-hidden`}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{title}</span>
-        <div className="flex items-center gap-0.5 -mr-1">
-          {collapsible && <MinimizeButton collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />}
-          <CloseButton onClose={onClose} label="Close detail panel" />
+        <div className="flex items-center gap-1.5 -mr-1">
+          {headerAction}
+          <div className="flex items-center gap-0.5">
+            {collapsible && <MinimizeButton collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />}
+            <CloseButton onClose={onClose} label="Close detail panel" />
+          </div>
         </div>
       </div>
 

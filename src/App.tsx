@@ -96,19 +96,20 @@ function RegionUrlSync() {
   return null;
 }
 
-// Drop the shared node selection when the region changes, so the detail panel doesn't keep showing a
-// node that's no longer in the re-queried map/table. Lives inside RegionProvider so it can read useRegion.
-function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
-  const { regionKey } = useRegion();
-  const first = useRef(true);
+// Drop the shared node/observer selection when the user changes region, so a detail panel doesn't keep
+// showing an entity that's no longer in the re-queried map/table. Watches the raw selection rather than
+// the resolved regionKey: the async slug→IATA expansion on load bumps regionKey without any user action,
+// and that must NOT count as a change or it would wipe a deep-linked ?node/?observer before it renders.
+// Comparing the previous selection (vs a first-run flag) also survives StrictMode's double effect invoke.
+export function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
+  const { selection } = useRegionSelection();
+  const prev = useRef(selection);
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false; // skip the initial mount; only react to a real change
-      return;
-    }
+    if (prev.current === selection) return; // initial mount, or a re-render that didn't change the selection
+    prev.current = selection;
     onRegionChange();
-  }, [regionKey, onRegionChange]);
+  }, [selection, onRegionChange]);
 
   return null;
 }
@@ -126,11 +127,12 @@ function AppInner() {
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 
+  // ?hash / ?node / ?observer restore a shared deep link on load (see each panel's Copy Link button)
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => searchParams.get("node"));
   // lifted (like selectedNodeId) so a node's "View observer" link can select it before the tab mounts
-  const [selectedObserverId, setSelectedObserverId] = useState<string | null>(null);
+  const [selectedObserverId, setSelectedObserverId] = useState<string | null>(() => searchParams.get("observer"));
   // node detail shown as a modal over the packet analyzer (e.g. clicking a resolved path hop)
   const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
@@ -188,6 +190,27 @@ function AppInner() {
     setSelectedObserverId(null);
   }, []);
 
+  // Closing a detail panel drops its deep-link param so a reload can't reopen it (mirrors the packet
+  // analyzer's ?hash cleanup). Selecting a different node/observer doesn't touch the URL — the panel's
+  // Copy Link button rebuilds a fresh link on demand.
+  const dropSelectionParam = useCallback((key: "node" | "observer") => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete(key);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const handleCloseNode = useCallback(() => {
+    setSelectedNodeId(null);
+    dropSelectionParam("node");
+  }, [dropSelectionParam]);
+
+  const handleSelectObserver = useCallback((id: string | null) => {
+    setSelectedObserverId(id);
+    if (id === null) dropSelectionParam("observer");
+  }, [dropSelectionParam]);
+
   // Jump from an observer's detail panel to its telemetry on the Stats tab (Stats → Observer, preselected).
   const handleViewObserverStats = useCallback(
     (id: string) => {
@@ -215,7 +238,7 @@ function AppInner() {
   const tabContent: Record<string, React.ReactNode> = {
     Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={setSelectedObserverId} onAnalyzePacket={setOverlayPacketHash} onViewStats={handleViewObserverStats} />,
+    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={handleSelectObserver} onAnalyzePacket={setOverlayPacketHash} onViewStats={handleViewObserverStats} />,
     Routes: <RouteTable />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
@@ -250,7 +273,7 @@ function AppInner() {
           {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
             <NodeDetailPanel
               nodeId={selectedNodeId}
-              onClose={() => setSelectedNodeId(null)}
+              onClose={handleCloseNode}
               onViewObserver={(observerId) => {
                 handleTabChange("Observers");
                 setSelectedObserverId(observerId);

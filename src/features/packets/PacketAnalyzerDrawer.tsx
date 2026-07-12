@@ -1,11 +1,12 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CloseButton } from "../../components/CloseButton";
+import { CopyLinkButton } from "../../components/CopyLinkButton";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType, PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES, type PayloadTypeValue, type RouteTypeValue } from "../../types/enums";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
-import { VARIANT_CLASSES, payloadTypeVariant } from "../../components/badge-utils";
+import { payloadTypeVariant } from "../../components/badge-utils";
 import { ScopeTag } from "../../components/ScopeTag";
 import { formatHex, formatPropagation } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
@@ -23,30 +24,6 @@ function decodePayloadHex(encoded: string): string | null {
   } catch {
     return null;
   }
-}
-
-function CopyLinkButton({ packetHash }: { packetHash: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", "Packets");
-    url.searchParams.set("hash", packetHash);
-    navigator.clipboard.writeText(url.toString());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [packetHash]);
-
-  return (
-    <button
-      type="button"
-      className={`inline-flex items-center font-mono text-[11px] font-semibold px-2 py-0.5 rounded-sm border tracking-wider uppercase cursor-pointer transition-colors ${copied ? VARIANT_CLASSES.live : VARIANT_CLASSES.text}`}
-      onClick={handleCopy}
-      aria-label="Copy packet link"
-    >
-      {copied ? "Copied" : "Copy Link"}
-    </button>
-  );
 }
 
 interface PacketAnalyzerDrawerProps {
@@ -91,7 +68,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">Packet Analyzer</span>
         <div className="flex items-center gap-1.5">
-          {detail && <CopyLinkButton packetHash={detail.packetHash} />}
+          {detail && <CopyLinkButton params={{ tab: "Packets", hash: detail.packetHash }} ariaLabel="Copy packet link" />}
           <CloseButton onClose={handleClose} label="Close analyzer" className="-mr-1" />
         </div>
       </div>

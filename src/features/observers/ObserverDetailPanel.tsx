@@ -4,6 +4,7 @@ import { getObserver, getObserverAdverts } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { CopyButton } from "../../components/CopyButton";
+import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { useTick } from "../../hooks/useTick";
@@ -125,6 +126,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
     <DetailPanel
       title="Observer Detail"
       onClose={onClose}
+      headerAction={<CopyLinkButton params={{ tab: "Observers", observer: observerId }} ariaLabel="Copy observer link" />}
       isLoading={isLoading}
       notFound={!observer}
       notFoundLabel="Observer not found"

@@ -3,6 +3,7 @@ import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { CopyButton } from "../../components/CopyButton";
+import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
 import { formatHex, formatSnr, snrLevel, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
@@ -99,6 +100,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
       title="Node Detail"
       onClose={onClose}
       collapsible
+      headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel="Copy node link" />}
       isLoading={isLoading}
       notFound={!node}
       notFoundLabel="Node not found"
