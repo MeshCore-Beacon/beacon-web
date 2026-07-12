@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity, labelSize } from "../../../src/features/stats/neighbour-graph";
+import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity, labelSize, nodeNameMatches } from "../../../src/features/stats/neighbour-graph";
 import type { NodeSummary, NodeNeighbor } from "../../../src/features/nodes/types";
 
 function neighbor(overrides: Partial<NodeNeighbor>): NodeNeighbor {
@@ -156,6 +156,20 @@ describe("buildNeighbourGraph", () => {
     expect(hub.label?.show).toBe(true);
     expect(small.label?.show).toBe(true);
     expect(hub.label!.fontSize!).toBeGreaterThan(small.label!.fontSize!);
+  });
+});
+
+describe("nodeNameMatches", () => {
+  it("matches a case-insensitive substring", () => {
+    expect(nodeNameMatches("McCall_Lake", "call")).toBe(true);
+    expect(nodeNameMatches("YWK Repeater", "repe")).toBe(true);
+  });
+  it("does not match a missing substring", () => {
+    expect(nodeNameMatches("McCall_Lake", "xyz")).toBe(false);
+  });
+  it("treats an empty/whitespace query as no match", () => {
+    expect(nodeNameMatches("anything", "")).toBe(false);
+    expect(nodeNameMatches("anything", "   ")).toBe(false);
   });
 });
 

@@ -40,6 +40,12 @@ const HUB_LABELS = 30; // only the biggest hubs get a persistent label, else 100
 const MIN_LABEL = 9;
 const MAX_LABEL = 16;
 
+// Case-insensitive substring match for the graph search; an empty query matches nothing.
+export function nodeNameMatches(name: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  return q.length > 0 && name.toLowerCase().includes(q);
+}
+
 // Busier hubs get a louder label; sqrt so a few giant hubs don't dwarf the rest of the labelled set.
 export function labelSize(degree: number, maxDegree: number): number {
   if (maxDegree <= 0) return MIN_LABEL;
