@@ -1,4 +1,6 @@
 import { Segmented } from "./Segmented";
+import { SelectDropdown } from "../../components/SelectDropdown";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 import type { StatsRange, StatsTab } from "./types";
 
 function MeshIcon() {
@@ -40,6 +42,9 @@ const TAB_OPTIONS = [
   { value: "graph", label: "Neighbour Graph", icon: <GraphIcon /> },
 ];
 
+// Same sections, minus icons, for the mobile dropdown (which is text-only). Scales with TAB_OPTIONS.
+const TAB_SELECT_OPTIONS = TAB_OPTIONS.map(({ value, label }) => ({ value, label }));
+
 const RANGE_OPTIONS = [
   { value: "24h", label: "24h" },
   { value: "7d", label: "7d" },
@@ -54,18 +59,30 @@ interface Props {
 }
 
 export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props) {
+  const isMobile = useIsMobile();
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
-      {/* strip scrolls if too narrow, and the range wraps below rather than being pushed off-screen */}
-      <div className="min-w-0 max-w-full overflow-x-auto">
-        <Segmented
-          options={TAB_OPTIONS}
+      {/* pills don't scale on a phone as sections grow — swap to a compact dropdown there */}
+      {isMobile ? (
+        <SelectDropdown
+          label="Section"
+          hideAll
+          align="left"
+          options={TAB_SELECT_OPTIONS}
           value={tab}
           onChange={(v) => onTabChange(v as StatsTab)}
-          ariaLabel="Stats section"
-          size="md"
         />
-      </div>
+      ) : (
+        <div className="min-w-0 max-w-full overflow-x-auto">
+          <Segmented
+            options={TAB_OPTIONS}
+            value={tab}
+            onChange={(v) => onTabChange(v as StatsTab)}
+            ariaLabel="Stats section"
+            size="md"
+          />
+        </div>
+      )}
       {/* the graph is topology, not time-series — no range to pick */}
       {tab !== "graph" && (
         <Segmented
