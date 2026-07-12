@@ -55,19 +55,21 @@ interface Props {
 
 export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props) {
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg-surface px-4 py-2.5">
-      <Segmented
-        options={TAB_OPTIONS}
-        value={tab}
-        onChange={(v) => onTabChange(v as StatsTab)}
-        ariaLabel="Stats section"
-        size="md"
-      />
-      {/* the graph is topology, not time-series — no range to pick */}
-      {tab === "graph" ? (
-        <span />
-      ) : (
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
+      {/* strip scrolls if too narrow, and the range wraps below rather than being pushed off-screen */}
+      <div className="min-w-0 max-w-full overflow-x-auto">
         <Segmented
+          options={TAB_OPTIONS}
+          value={tab}
+          onChange={(v) => onTabChange(v as StatsTab)}
+          ariaLabel="Stats section"
+          size="md"
+        />
+      </div>
+      {/* the graph is topology, not time-series — no range to pick */}
+      {tab !== "graph" && (
+        <Segmented
+          className="shrink-0"
           options={RANGE_OPTIONS}
           value={range}
           onChange={(v) => onRangeChange(v as StatsRange)}
