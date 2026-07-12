@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
+import { CopyButton } from "../../components/CopyButton";
 import { IataChip } from "../../components/IataChip";
 import { formatHex, formatSnr, snrLevel, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
@@ -116,8 +117,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 </span>
                 <Badge variant="default">{node.nodeTypeName}</Badge>
               </div>
-              <div className="font-mono text-[13px] text-text-muted truncate" title={node.publicKey}>
-                {node.publicKey}
+              <div className="flex items-center gap-2">
+                <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>
+                  {node.publicKey}
+                </div>
+                <CopyButton value={node.publicKey} ariaLabel="Copy public key" className="shrink-0" />
               </div>
               {node.observerId && (
                 <button

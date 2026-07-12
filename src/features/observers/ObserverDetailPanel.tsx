@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getObserver, getObserverAdverts } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
+import { CopyButton } from "../../components/CopyButton";
 import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { useTick } from "../../hooks/useTick";
@@ -145,8 +146,11 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
                   {status}
                 </Badge>
               </div>
-              <div className="font-mono text-[13px] text-text-muted truncate mb-1.5" title={observer.publicKey}>
-                {observer.publicKey}
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={observer.publicKey}>
+                  {observer.publicKey}
+                </div>
+                <CopyButton value={observer.publicKey} ariaLabel="Copy public key" className="shrink-0" />
               </div>
               <div className="flex items-center gap-3 font-mono text-[13px]">
                 <Field label="Observations" value={observer.observationCount.toLocaleString()} />
