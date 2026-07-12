@@ -14,7 +14,10 @@ const CAP = 1000;
 
 export function NeighbourGraphTab() {
   const { iatas, regionKey } = useRegion();
-  const { nodes, loadedCount, isPaging, isError } = useMapNodesData(iatas, regionKey);
+  // "All regions" is 5k+ nodes — too heavy for the canvas force layout, so gate the fetch off and
+  // prompt for a region instead of freezing the browser.
+  const isAll = regionKey === "*";
+  const { nodes, loadedCount, isPaging, isError } = useMapNodesData(iatas, regionKey, { enabled: !isAll });
   const colors = useChartColors();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -48,6 +51,13 @@ export function NeighbourGraphTab() {
 
   const option = useMemo(() => neighbourGraphOption(ego ?? graph, colors, { ego: !!ego }), [ego, graph, colors]);
 
+  if (isAll)
+    return (
+      <EmptyState
+        title="Pick a region"
+        subtitle="All regions is 5,000+ nodes — choose a region from the REGION picker above, or narrow to an IATA, to view its mesh."
+      />
+    );
   if (isError) return <EmptyState title="Neighbour Graph" subtitle="Failed to load nodes" />;
   // build only once the pager settles, or the force layout would restart on every streamed page
   if (isPaging) return <EmptyState title="Loading mesh…" subtitle={`${loadedCount} nodes`} />;

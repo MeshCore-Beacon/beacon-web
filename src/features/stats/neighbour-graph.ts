@@ -16,7 +16,7 @@ export interface GraphNode {
   nodeTypeName: string;
   degree: number;
   symbolSize: number;
-  label?: { show: boolean };
+  label?: { show: boolean; fontSize?: number };
 }
 
 export interface GraphLink {
@@ -36,7 +36,16 @@ export interface NeighbourGraph {
 const OTHER_CATEGORY = NODE_TYPE_NAMES.length;
 const MIN_SIZE = 6;
 const MAX_SIZE = 34;
-const HUB_LABELS = 20; // only the biggest hubs get a persistent label, else 1000 nodes are a text wall
+const HUB_LABELS = 30; // only the biggest hubs get a persistent label, else 1000 nodes are a text wall
+const MIN_LABEL = 9;
+const MAX_LABEL = 16;
+
+// Busier hubs get a louder label; sqrt so a few giant hubs don't dwarf the rest of the labelled set.
+export function labelSize(degree: number, maxDegree: number): number {
+  if (maxDegree <= 0) return MIN_LABEL;
+  const t = Math.sqrt(degree) / Math.sqrt(maxDegree);
+  return Math.round(MIN_LABEL + (MAX_LABEL - MIN_LABEL) * t);
+}
 
 // Keep the top-`cap` most-connected nodes and their internal edges. Unlike the map's edge builder we
 // do NOT require coordinates — the graph is non-geographic, so unlocated nodes belong here too.
@@ -62,7 +71,10 @@ export function buildNeighbourGraph(nodes: NodeSummary[], cap: number): Neighbou
       nodeTypeName: n.nodeTypeName,
       degree: n.knownNeighborCount,
       symbolSize: symbolSize(n.knownNeighborCount, maxDegree),
-      label: i < HUB_LABELS && n.knownNeighborCount > 0 ? { show: true } : undefined,
+      label:
+        i < HUB_LABELS && n.knownNeighborCount > 0
+          ? { show: true, fontSize: labelSize(n.knownNeighborCount, maxDegree) }
+          : undefined,
     };
   });
 

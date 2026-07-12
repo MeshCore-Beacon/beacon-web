@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity } from "../../../src/features/stats/neighbour-graph";
+import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity, labelSize } from "../../../src/features/stats/neighbour-graph";
 import type { NodeSummary, NodeNeighbor } from "../../../src/features/nodes/types";
 
 function neighbor(overrides: Partial<NodeNeighbor>): NodeNeighbor {
@@ -144,6 +144,31 @@ describe("buildNeighbourGraph", () => {
     const g = buildNeighbourGraph([node({ id: "a", neighborIds: undefined })], 5);
     expect(g.nodes).toHaveLength(1);
     expect(g.links).toEqual([]);
+  });
+
+  it("gives busier hubs a larger label font than quieter ones", () => {
+    const g = buildNeighbourGraph(
+      [node({ id: "hub", knownNeighborCount: 40 }), node({ id: "small", knownNeighborCount: 2 })],
+      10,
+    );
+    const hub = g.nodes.find((n) => n.id === "hub")!;
+    const small = g.nodes.find((n) => n.id === "small")!;
+    expect(hub.label?.show).toBe(true);
+    expect(small.label?.show).toBe(true);
+    expect(hub.label!.fontSize!).toBeGreaterThan(small.label!.fontSize!);
+  });
+});
+
+describe("labelSize", () => {
+  it("grows with degree and is largest at the max", () => {
+    expect(labelSize(40, 40)).toBeGreaterThan(labelSize(5, 40));
+    expect(labelSize(20, 40)).toBeGreaterThanOrEqual(labelSize(5, 40));
+  });
+
+  it("clamps to a sane font range and survives maxDegree 0", () => {
+    expect(labelSize(0, 0)).toBeGreaterThanOrEqual(9);
+    expect(labelSize(0, 40)).toBeGreaterThanOrEqual(9);
+    expect(labelSize(1000, 1000)).toBeLessThanOrEqual(16);
   });
 });
 
