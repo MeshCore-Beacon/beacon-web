@@ -17,7 +17,7 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick?: (
   const level = snrLevel(advert.snr);
   return (
     <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">

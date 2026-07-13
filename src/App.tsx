@@ -28,7 +28,7 @@ import { ChannelList } from "./features/channels/ChannelList";
 import { EmptyState } from "./components/EmptyState";
 import { getPacketDetail } from "./api/client";
 import { WsManager } from "./api/ws-manager";
-import { WS_URL, TABS } from "./lib/constants";
+import { WS_URL, ENABLED_TABS } from "./lib/constants";
 
 // Map is the only heavy tab (maplibre-gl is ~1MB), so lazy-load it — its chunk is fetched the
 // first time someone opens the Map tab instead of bloating the initial bundle.
@@ -123,7 +123,7 @@ function AppInner() {
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
   const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
-  const activeTab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as string) : "Packets";
+  const activeTab = ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS[0] ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 

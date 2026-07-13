@@ -15,3 +15,35 @@ export const WS_RECONNECT_JITTER = 0.25;
 
 // app tab names, in display order; the ?tab URL param is validated against this list
 export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Analytics"] as const;
+
+// Per-deployment .env config (VITE_* prefix is required so the build can expose it to the browser;
+// the Docker entrypoint sed-substitutes each sentinel at container start — see .build/).
+
+// Split a comma-separated env value into trimmed, non-empty entries. An unset var or an
+// un-substituted "__VITE_..__" sentinel yields a harmless single entry that matches nothing.
+export function parseEnvList(raw: string | undefined): string[] {
+  return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// Tabs left after removing the disabled ones (case-insensitive), keeping display order.
+export function filterEnabledTabs(tabs: readonly string[], disabledRaw: string | undefined): string[] {
+  const disabled = new Set(parseEnvList(disabledRaw).map((t) => t.toLowerCase()));
+  return tabs.filter((t) => !disabled.has(t.toLowerCase()));
+}
+
+// A theme shows in the picker if it isn't hidden, or if its id is in the enabled allowlist.
+export function isThemeVisible(theme: { id: string; hidden?: boolean }, enabledIds: Set<string>): boolean {
+  return !theme.hidden || enabledIds.has(theme.id.toLowerCase());
+}
+
+const enabledTabs = filterEnabledTabs(TABS, import.meta.env.VITE_DISABLED_TABS);
+// Floor: an all-disabled misconfig would otherwise leave a blank app.
+export const ENABLED_TABS = enabledTabs.length > 0 ? enabledTabs : [...TABS];
+
+export const ENABLED_THEME_IDS = new Set(
+  parseEnvList(import.meta.env.VITE_ENABLED_THEMES).map((s) => s.toLowerCase()),
+);
+
+// "||" (not "??") so an empty sed substitution falls back to the default too.
+export const APP_NAME = import.meta.env.VITE_APP_NAME || "BEACON";
+export const GITHUB_URL = "https://github.com/MeshCore-Beacon";

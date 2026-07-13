@@ -28,7 +28,7 @@ export function SegmentedControl({ options, value, onChange, ariaLabel, wrap = f
             : "border-border text-text-muted hover:text-text-normal hover:border-text-dim"
         }`
       : `flex-1 px-2.5 py-1 font-mono text-[11px] transition-colors cursor-pointer ${
-          active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+          active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
         }`;
 
   return (

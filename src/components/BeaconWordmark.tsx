@@ -1,8 +1,9 @@
-// BEACON wordmark: beacon icon + "BEACON" text in Chakra Petch.
+// BEACON wordmark: beacon icon + app name (VITE_APP_NAME, default "BEACON") in Chakra Petch.
 // `text-primary` on the wrapper drives both the icon (currentColor) and the
 // text color, so the whole mark follows the active theme.
 
 import { BeaconLogo } from "./BeaconLogo";
+import { APP_NAME } from "../lib/constants";
 
 interface BeaconWordmarkProps {
   iconSize?: number;
@@ -21,10 +22,10 @@ export function BeaconWordmark({
     <span className={`inline-flex items-center gap-2 text-primary ${className ?? ""}`}>
       <BeaconLogo size={iconSize} pulse={pulse} />
       <span
-        className={`font-medium tracking-[0.18em] uppercase leading-none ${textClassName}`}
+        className={`font-medium tracking-[0.18em] leading-none ${textClassName}`}
         style={{ fontFamily: "'Chakra Petch', sans-serif" }}
       >
-        BEACON
+        {APP_NAME}
       </span>
     </span>
   );

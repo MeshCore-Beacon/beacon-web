@@ -25,7 +25,7 @@ function MinimizeButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       type="button"
       onClick={onToggle}
       aria-label={collapsed ? "Expand detail panel" : "Minimize detail panel"}
-      className="md:hidden flex items-center justify-center w-9 h-9 rounded text-text-muted hover:text-text-bright hover:bg-white/5 cursor-pointer transition-colors"
+      className="md:hidden flex items-center justify-center w-9 h-9 rounded text-text-muted hover:text-text-bright hover:bg-text-normal/5 cursor-pointer transition-colors"
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d={collapsed ? "M3 10L8 5L13 10" : "M3 6L8 11L13 6"} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />

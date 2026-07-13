@@ -4,6 +4,8 @@ export interface Theme {
   id: string;
   name: string;
   vars: Record<string, string>;
+  // hidden themes are omitted from the picker unless enabled via VITE_ENABLED_THEMES
+  hidden?: boolean;
 }
 
 export const DEFAULT_THEME_ID = "neutral-blue";

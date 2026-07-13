@@ -15,7 +15,7 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
         selected
           ? "border-l-secondary bg-secondary/5"
           : "border-l-primary"
-      } ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      } ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">

@@ -54,7 +54,7 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
               role="option"
               aria-selected={!active}
               className={`w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
-                !active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                !active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
               }`}
               onClick={() => { onChange(""); close(); }}
             >
@@ -70,7 +70,7 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
                 role="option"
                 aria-selected={isSelected}
                 className={`w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
-                  isSelected ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                  isSelected ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
                 }`}
                 onClick={() => { onChange(opt.value); close(); }}
               >

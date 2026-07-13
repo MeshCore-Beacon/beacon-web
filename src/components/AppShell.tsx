@@ -9,7 +9,7 @@ import { Dropdown } from "./Dropdown";
 import { BottomNav } from "./BottomNav";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
-import { TABS } from "../lib/constants";
+import { ENABLED_TABS, ENABLED_THEME_IDS, isThemeVisible, APP_NAME, GITHUB_URL } from "../lib/constants";
 import type { WsManager } from "../api/ws-manager";
 
 // header widgets: WS status, region picker, theme picker
@@ -131,7 +131,7 @@ function RegionSelector() {
             className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
               isAllRegions(selection)
                 ? "text-text-bright bg-primary/10"
-                : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
             }`}
             onClick={() => setSelection(ALL_REGIONS)}
           >
@@ -151,7 +151,7 @@ function RegionSelector() {
                     key={r.slug}
                     type="button"
                     className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-                      checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                      checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
                     }`}
                     onClick={() => toggleRegion(r.slug)}
                   >
@@ -172,7 +172,7 @@ function RegionSelector() {
                   key={i.iata}
                   type="button"
                   className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-                    checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                    checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
                   }`}
                   onClick={() => toggleIata(i.iata)}
                 >
@@ -206,7 +206,7 @@ function ThemePicker() {
           onClick={toggle}
         >
           <span
-            className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/10"
+            className="w-2.5 h-2.5 rounded-full shrink-0 border border-text-normal/20"
             style={{ background: current?.vars["--palette-primary"] }}
           />
           <span className="text-text-dim text-[11px]">▾</span>
@@ -215,14 +215,14 @@ function ThemePicker() {
     >
       {(close) => (
         <>
-          {themes.map((t) => (
+          {themes.filter((t) => isThemeVisible(t, ENABLED_THEME_IDS) || t.id === themeId).map((t) => (
             <button
               key={t.id}
               type="button"
               className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
                 t.id === themeId
                   ? "text-text-bright bg-primary/10"
-                  : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                  : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
               }`}
               onClick={() => {
                 setThemeId(t.id);
@@ -230,7 +230,7 @@ function ThemePicker() {
               }}
             >
               <span
-                className="w-3 h-3 rounded-full shrink-0 border border-white/10"
+                className="w-3 h-3 rounded-full shrink-0 border border-text-normal/20"
                 style={{ background: t.vars["--palette-primary"] }}
               />
               {t.name}
@@ -260,11 +260,22 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
           <RegionSelector />
           <ThemePicker />
           <LiveBadge wsManager={wsManager} />
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub"
+            className="text-text-muted hover:text-text-normal transition-colors shrink-0"
+          >
+            <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+            </svg>
+          </a>
         </div>
       </header>
 
       <nav className="hidden md:flex bg-bg-surface border-b border-border px-4 shrink-0" role="tablist">
-        {TABS.map((tab) => (
+        {ENABLED_TABS.map((tab) => (
           <button
             key={tab}
             type="button"
@@ -287,7 +298,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
       </main>
 
       <footer className="hidden md:flex items-center px-4 py-1.5 bg-bg-surface border-t border-border font-mono text-[11px] text-text-dim shrink-0">
-        <span>BEACON v{__APP_VERSION__}</span>
+        <span>{APP_NAME} v{__APP_VERSION__}</span>
       </footer>
 
       <BottomNav activeTab={activeTab} onTabChange={onTabChange} />

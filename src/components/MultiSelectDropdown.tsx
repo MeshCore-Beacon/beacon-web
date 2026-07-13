@@ -132,7 +132,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
                   className={`w-full flex items-center gap-2 px-2.5 py-1 text-left text-xs font-mono transition-colors ${
                     isSelected
                       ? "text-text-bright bg-primary/10"
-                      : "text-text-muted hover:text-text-normal hover:bg-white/3"
+                      : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
                   }`}
                   onClick={() => {
                     if (isSelected) {

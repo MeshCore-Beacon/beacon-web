@@ -80,7 +80,7 @@ export function SearchBar({ value, onChange, fields, field, onFieldChange }: Sea
                 ? "text-text-dim/40 cursor-not-allowed"
                 : f.value === field
                   ? "text-text-bright bg-primary/10"
-                  : "text-text-muted hover:text-text-normal hover:bg-white/3 cursor-pointer"
+                  : "text-text-muted hover:text-text-normal hover:bg-text-normal/3 cursor-pointer"
             }`}
             onClick={() => {
               if (!f.disabled) {

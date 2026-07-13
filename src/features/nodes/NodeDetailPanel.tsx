@@ -12,7 +12,7 @@ import type { NodeObservation, NodeNeighbor } from "./types";
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   return (
     <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      className={`bg-bg-base border border-border rounded px-3 py-2 ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px]">
@@ -36,7 +36,7 @@ function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: 
   const level = snrLevel(obs.snr);
   return (
     <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
