@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { type Theme, DEFAULT_THEME_ID, loadThemes, applyTheme } from "../lib/themes";
+import { ENABLED_THEME_IDS, selectableThemes } from "../lib/constants";
 
 // loads themes from JSON, persists selection, applies CSS vars
 
@@ -33,7 +34,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     loadThemes().then((loaded) => {
       setThemes(loaded);
       const saved = localStorage.getItem(STORAGE_KEY);
-      const match = loaded.find((t) => t.id === saved) ?? loaded[0];
+      // Restrict the startup theme to the selectable set, so an allowlist can't leave the app on a
+      // theme the picker won't offer (e.g. a persisted default when only MeshMapper themes are enabled).
+      const selectable = selectableThemes(loaded, ENABLED_THEME_IDS);
+      const match = selectable.find((t) => t.id === saved) ?? selectable[0] ?? loaded[0];
       if (!match) return;
       applyTheme(match);
       setPaletteRev((r) => r + 1);

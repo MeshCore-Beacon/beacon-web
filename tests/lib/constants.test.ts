@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TABS, parseEnvList, filterEnabledTabs, isThemeVisible } from "../../src/lib/constants";
+import { TABS, parseEnvList, filterEnabledTabs, selectableThemes } from "../../src/lib/constants";
 
 describe("parseEnvList", () => {
   it("returns [] for undefined or empty", () => {
@@ -37,20 +37,29 @@ describe("filterEnabledTabs", () => {
   });
 });
 
-describe("isThemeVisible", () => {
-  const empty = new Set<string>();
+describe("selectableThemes", () => {
+  const THEMES = [
+    { id: "neutral-blue", name: "Neutral Blue" },
+    { id: "teal", name: "Teal" },
+    { id: "meshmapper_dark", name: "MeshMapper Dark", hidden: true },
+    { id: "meshmapper_light", name: "MeshMapper Light", hidden: true },
+  ];
 
-  it("always shows a non-hidden theme", () => {
-    expect(isThemeVisible({ id: "neutral-blue" }, empty)).toBe(true);
-    expect(isThemeVisible({ id: "neutral-blue", hidden: false }, empty)).toBe(true);
+  it("shows all non-hidden themes when no allowlist is set", () => {
+    expect(selectableThemes(THEMES, new Set()).map((t) => t.id)).toEqual(["neutral-blue", "teal"]);
   });
 
-  it("hides a hidden theme unless it is enabled", () => {
-    expect(isThemeVisible({ id: "meshmapper_dark", hidden: true }, empty)).toBe(false);
-    expect(isThemeVisible({ id: "meshmapper_dark", hidden: true }, new Set(["meshmapper_dark"]))).toBe(true);
+  it("shows ONLY the allowlisted themes when set (exclusive), including hidden ones", () => {
+    const ids = selectableThemes(THEMES, new Set(["meshmapper_dark", "meshmapper_light"])).map((t) => t.id);
+    expect(ids).toEqual(["meshmapper_dark", "meshmapper_light"]);
   });
 
-  it("matches enabled ids case-insensitively", () => {
-    expect(isThemeVisible({ id: "MeshMapper_Dark", hidden: true }, new Set(["meshmapper_dark"]))).toBe(true);
+  it("allowlist excludes non-listed defaults", () => {
+    expect(selectableThemes(THEMES, new Set(["teal"])).map((t) => t.id)).toEqual(["teal"]);
+  });
+
+  it("matches allowlist ids case-insensitively", () => {
+    const themes = [{ id: "MeshMapper_Dark", hidden: true }];
+    expect(selectableThemes(themes, new Set(["meshmapper_dark"])).map((t) => t.id)).toEqual(["MeshMapper_Dark"]);
   });
 });

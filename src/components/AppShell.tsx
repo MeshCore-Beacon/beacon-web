@@ -9,7 +9,7 @@ import { Dropdown } from "./Dropdown";
 import { BottomNav } from "./BottomNav";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
-import { ENABLED_TABS, ENABLED_THEME_IDS, isThemeVisible, APP_NAME, GITHUB_URL } from "../lib/constants";
+import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL } from "../lib/constants";
 import type { WsManager } from "../api/ws-manager";
 
 // header widgets: WS status, region picker, theme picker
@@ -196,6 +196,7 @@ function RegionSelector() {
 function ThemePicker() {
   const { themeId, themes, setThemeId } = useTheme();
   const current = themes.find((t) => t.id === themeId);
+  const list = selectableThemes(themes, ENABLED_THEME_IDS);
 
   return (
     <Dropdown
@@ -215,7 +216,7 @@ function ThemePicker() {
     >
       {(close) => (
         <>
-          {themes.filter((t) => isThemeVisible(t, ENABLED_THEME_IDS) || t.id === themeId).map((t) => (
+          {list.map((t) => (
             <button
               key={t.id}
               type="button"

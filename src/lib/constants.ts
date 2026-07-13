@@ -31,9 +31,17 @@ export function filterEnabledTabs(tabs: readonly string[], disabledRaw: string |
   return tabs.filter((t) => !disabled.has(t.toLowerCase()));
 }
 
-// A theme shows in the picker if it isn't hidden, or if its id is in the enabled allowlist.
-export function isThemeVisible(theme: { id: string; hidden?: boolean }, enabledIds: Set<string>): boolean {
-  return !theme.hidden || enabledIds.has(theme.id.toLowerCase());
+// The themes offered in the picker. When VITE_ENABLED_THEMES lists ids it's an EXCLUSIVE allowlist —
+// only those show (e.g. a branded deployment that wants just its own themes). Otherwise every
+// non-hidden theme shows and `hidden` ones (like the MeshMapper pair) stay out.
+export function selectableThemes<T extends { id: string; hidden?: boolean }>(
+  themes: readonly T[],
+  enabledIds: Set<string>,
+): T[] {
+  if (enabledIds.size > 0) {
+    return themes.filter((t) => enabledIds.has(t.id.toLowerCase()));
+  }
+  return themes.filter((t) => !t.hidden);
 }
 
 const enabledTabs = filterEnabledTabs(TABS, import.meta.env.VITE_DISABLED_TABS);
