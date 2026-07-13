@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TABS, parseEnvList, filterEnabledTabs, selectableThemes } from "../../src/lib/constants";
+import { TABS, parseEnvList, filterEnabledTabs, parseEnvBool, selectableThemes } from "../../src/lib/constants";
 
 describe("parseEnvList", () => {
   it("returns [] for undefined or empty", () => {
@@ -34,6 +34,16 @@ describe("filterEnabledTabs", () => {
 
   it("can disable every tab", () => {
     expect(filterEnabledTabs(TABS, TABS.join(","))).toEqual([]);
+  });
+});
+
+describe("parseEnvBool", () => {
+  it("is true for common truthy strings (case-insensitive)", () => {
+    for (const v of ["1", "true", "TRUE", "Yes", "on", " on "]) expect(parseEnvBool(v)).toBe(true);
+  });
+
+  it("is false for unset, empty, sentinel, or other values", () => {
+    for (const v of [undefined, "", "0", "false", "no", "__VITE_SKIP_SPLASH__"]) expect(parseEnvBool(v)).toBe(false);
   });
 });
 

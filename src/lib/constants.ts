@@ -31,6 +31,12 @@ export function filterEnabledTabs(tabs: readonly string[], disabledRaw: string |
   return tabs.filter((t) => !disabled.has(t.toLowerCase()));
 }
 
+// Truthy env flag: "1"/"true"/"yes"/"on" (case-insensitive). Anything else — empty, unset, or an
+// un-substituted sentinel — is false, so the gated behaviour only turns on when explicitly asked for.
+export function parseEnvBool(raw: string | undefined): boolean {
+  return ["1", "true", "yes", "on"].includes((raw ?? "").trim().toLowerCase());
+}
+
 // The themes offered in the picker. When VITE_ENABLED_THEMES lists ids it's an EXCLUSIVE allowlist —
 // only those show (e.g. a branded deployment that wants just its own themes). Otherwise every
 // non-hidden theme shows and `hidden` ones (like the MeshMapper pair) stay out.
@@ -55,3 +61,6 @@ export const ENABLED_THEME_IDS = new Set(
 // "||" (not "??") so an empty sed substitution falls back to the default too.
 export const APP_NAME = import.meta.env.VITE_APP_NAME || "BEACON";
 export const GITHUB_URL = "https://github.com/MeshCore-Beacon";
+
+// Skip the once-per-session load splash entirely (e.g. an embedded/branded deployment).
+export const SKIP_SPLASH = parseEnvBool(import.meta.env.VITE_SKIP_SPLASH);
