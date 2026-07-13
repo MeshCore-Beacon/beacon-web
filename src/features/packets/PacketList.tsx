@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePackets } from "./usePackets";
 import { usePacketFilters, matchesFilters } from "./usePacketFilters";
 import { useScopes } from "../../hooks/useScopes";
+import { useRegion } from "../../hooks/useRegion";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
 import { PacketVirtualList } from "./PacketVirtualList";
 import { FilterBar } from "../../components/FilterBar";
@@ -33,6 +34,14 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   const scopeNames = useScopes();
   const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
+  const { regionKey } = useRegion();
+
+  // isAtTop drives the freeze (list held static while scrolled off the very top); isScrolledAway
+  // (a wider deadband) drives the banner. listResetKey remounts the list to reveal held packets.
+  const [isScrolledAway, setIsScrolledAway] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
+  const [listResetKey, setListResetKey] = useState(0);
+
   const {
     allPackets,
     observerOptions,
@@ -46,15 +55,12 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
     handleLagged,
     laggedCount,
     dismissLagged,
-  } = usePackets();
+  } = usePackets(!isAtTop);
 
   const packets = useMemo(
     () => allPackets.filter((p) => matchesFilters(p, filters, observersByHash)),
     [allPackets, filters, observersByHash],
   );
-
-  const [isScrolledAway, setIsScrolledAway] = useState(false);
-  const scrollToTopRef = useRef<(() => void) | null>(null);
 
   // ?hash is the source of truth — the analyzer drawer clears it on close, deselecting the row
   const expandedHash = searchParams.get("hash");
@@ -74,18 +80,36 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
 
   const bannerCount = isScrolledAway ? newPacketCount : 0;
 
-  const handleScrolledAway = useCallback(
-    (isAway: boolean) => {
-      setIsScrolledAway(isAway);
-      if (!isAway) acknowledgeNewPackets();
-    },
-    [acknowledgeNewPackets],
-  );
+  // Remount the list (fresh at the top, no stale scroll anchor for the virtualizer to preserve)
+  // when returning to the top with packets held while away — a big prepend into the live list
+  // would otherwise keep the old row anchored instead of landing on the newest.
+  const [prevAtTop, setPrevAtTop] = useState(isAtTop);
+  if (prevAtTop !== isAtTop) {
+    setPrevAtTop(isAtTop);
+    if (isAtTop && newPacketCount > 0) setListResetKey((k) => k + 1);
+  }
 
+  // A region switch starts fresh at the top so the new region's list isn't held frozen.
+  const [prevRegionKey, setPrevRegionKey] = useState(regionKey);
+  if (prevRegionKey !== regionKey) {
+    setPrevRegionKey(regionKey);
+    setListResetKey((k) => k + 1);
+    setIsAtTop(true);
+    setIsScrolledAway(false);
+  }
+
+  // At the top the held packets are revealed, so acknowledge continuously there — the banner then
+  // counts only what arrived while the user was away (and never flashes a count at the top).
+  useEffect(() => {
+    if (isAtTop && newPacketCount > 0) acknowledgeNewPackets();
+  }, [isAtTop, newPacketCount, acknowledgeNewPackets]);
+
+  // Returning to the top (revealing held packets) is a remount; releasing the freeze first lets
+  // the fresh list mount with the newest packet already in place.
   const handleScrollToTop = useCallback(() => {
-    scrollToTopRef.current?.();
-    acknowledgeNewPackets();
-  }, [acknowledgeNewPackets]);
+    setIsScrolledAway(false);
+    setIsAtTop(true);
+  }, []);
 
   return (
     <div className="flex flex-1 min-h-0">
@@ -135,12 +159,13 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
         )}
 
         <PacketVirtualList
+          key={listResetKey}
           packets={packets}
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           fetchNextPage={fetchNextPage}
-          onScrollAwayFromTop={handleScrolledAway}
-          scrollToTopRef={scrollToTopRef}
+          onScrollAwayFromTop={setIsScrolledAway}
+          onAtTopChange={setIsAtTop}
           expandedHash={expandedHash}
           onToggleExpand={handleToggleExpand}
         />

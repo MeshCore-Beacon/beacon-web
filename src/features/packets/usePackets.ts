@@ -114,14 +114,15 @@ class LivePacketStore {
 
 // combines live WS stream with paginated history
 
-export function usePackets() {
+export function usePackets(frozen: boolean = false) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [store] = useState(() => new LivePacketStore());
   const [laggedCount, setLaggedCount] = useState(0);
 
   const [prevRegionKey, setPrevRegionKey] = useState(regionKey);
-  if (prevRegionKey !== regionKey) {
+  const regionChanged = prevRegionKey !== regionKey;
+  if (regionChanged) {
     setPrevRegionKey(regionKey);
     store.reset();
     setLaggedCount(0);
@@ -131,6 +132,15 @@ export function usePackets() {
     store.subscribe,
     store.getSnapshot,
   );
+
+  // While scrolled away from the top, render a latched buffer so live prepends don't shift the
+  // view; the held packets reveal when the user returns to the top. Latched by holding the last
+  // value (set-state-during-render, this file's pattern — cf. prevRegionKey above). The
+  // regionChanged guard drops the latch so a region switch never shows the previous region.
+  const [displayBuffer, setDisplayBuffer] = useState(liveBuffer);
+  if ((!frozen || regionChanged) && displayBuffer !== liveBuffer) {
+    setDisplayBuffer(liveBuffer);
+  }
 
   const handlePacketObservation = useCallback(
     (data: WsPacketObservation["data"]) => {
@@ -191,8 +201,8 @@ export function usePackets() {
   });
 
   const allPackets = useMemo(
-    () => dedup([...liveBuffer, ...flattenPages(history)]),
-    [liveBuffer, history],
+    () => dedup([...displayBuffer, ...flattenPages(history)]),
+    [displayBuffer, history],
   );
 
   const observerOptions = useMemo(() => {

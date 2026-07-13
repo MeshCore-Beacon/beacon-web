@@ -23,6 +23,10 @@ vi.mock("../../../src/features/packets/usePackets", () => ({
 
 vi.mock("../../../src/hooks/useScopes", () => ({ useScopes: () => [] }));
 
+vi.mock("../../../src/hooks/useRegion", () => ({
+  useRegion: () => ({ iatas: ["YOW"], regionKey: "YOW" }),
+}));
+
 vi.mock("../../../src/hooks/useWsHandlers", () => ({
   useWsPacketHandler: () => {},
   useWsLaggedHandler: () => {},

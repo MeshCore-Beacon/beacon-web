@@ -7,6 +7,8 @@ export const DEFAULT_PAGE_SIZE = 50;
 
 export const SCROLL_TOP_THRESHOLD_PX = 100;
 export const SCROLL_BOTTOM_THRESHOLD_PX = 500;
+// reveal held live packets only at the very top, so the prepend that reveals them is jump-free
+export const SCROLL_REVEAL_EPSILON_PX = 4;
 
 export const WS_PING_INTERVAL_MS = 30_000;
 export const WS_RECONNECT_BASE_MS = 1000;
