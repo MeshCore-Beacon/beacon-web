@@ -3,6 +3,7 @@ import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
 import { NODE_TYPE_FILTER_OPTIONS, type NeighborLinesMode } from "./types";
 import { Section } from "../../components/DetailPanel";
+import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 
 // Open/closed state persists across sessions; no click-outside dismiss, so it stays open while you pan.
@@ -48,6 +49,8 @@ interface MapSettingsPanelProps {
   onClusteredChange: (c: boolean) => void;
   neighborLines: NeighborLinesMode;
   onNeighborLinesChange: (mode: NeighborLinesMode) => void;
+  // builds deep-link params for the current view, evaluated at copy time (reads the live camera)
+  buildShareParams: () => Record<string, string | null>;
 }
 
 export function MapSettingsPanel({
@@ -59,6 +62,7 @@ export function MapSettingsPanel({
   onClusteredChange,
   neighborLines,
   onNeighborLinesChange,
+  buildShareParams,
 }: MapSettingsPanelProps) {
   const isMobile = useIsMobile();
   // collapsed by default on mobile (the card would cover the map); a saved preference still wins
@@ -130,6 +134,13 @@ export function MapSettingsPanel({
             />
             {neighborLines === "selected" && <NeighborLegend />}
           </Section>
+          <div className="px-3 py-2.5 border-t border-border-subtle flex justify-end">
+            <CopyLinkButton
+              params={buildShareParams}
+              label="Copy map link"
+              ariaLabel="Copy a link to this map view"
+            />
+          </div>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapLibre } from "./useMapLibre";
@@ -9,7 +10,8 @@ import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, type NeighborLinesMode } from "./types";
+import { parseMapView, buildMapParams, type MapViewSnapshot } from "./map-url";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -33,9 +35,15 @@ interface MapViewProps {
 }
 
 export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProps) {
+  // Deep-link params, read once at mount (like the region's ?iata seed). Each setting below is seeded
+  // URL -> localStorage -> default; the URL wins for this session but is never written back to
+  // localStorage, so a shared link can't clobber the visitor's saved prefs. See docs/superpowers/specs.
+  const [searchParams] = useSearchParams();
+  const [urlView] = useState(() => parseMapView(searchParams));
+
   // restore the saved style; resolveMapStyle falls back to the default if the stored id is stale
   const [styleId, setStyleId] = useState(
-    () => resolveMapStyle(localStorage.getItem(MAP_STYLE_STORAGE_KEY) ?? DEFAULT_STYLE_ID).id,
+    () => urlView.styleId ?? resolveMapStyle(localStorage.getItem(MAP_STYLE_STORAGE_KEY) ?? DEFAULT_STYLE_ID).id,
   );
 
   const handleStyleChange = useCallback((id: string) => {
@@ -50,19 +58,24 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     localStorage.setItem(MAP_STYLE_STORAGE_KEY, lastGoodStyleId);
   }, []);
 
-  const [typeFilter, setTypeFilter] = useState(() => localStorage.getItem(MAP_NODE_TYPE_STORAGE_KEY) ?? ""); // "" = All
+  const [typeFilter, setTypeFilter] = useState(
+    () => urlView.nodeType ?? localStorage.getItem(MAP_NODE_TYPE_STORAGE_KEY) ?? "",
+  ); // "" = All
   const handleTypeChange = useCallback((t: string) => {
     setTypeFilter(t);
     localStorage.setItem(MAP_NODE_TYPE_STORAGE_KEY, t);
   }, []);
 
-  const [clustered, setClustered] = useState(() => localStorage.getItem(MAP_CLUSTER_STORAGE_KEY) !== "off");
+  const [clustered, setClustered] = useState(
+    () => urlView.clustered ?? localStorage.getItem(MAP_CLUSTER_STORAGE_KEY) !== "off",
+  );
   const handleClusteredChange = useCallback((c: boolean) => {
     setClustered(c);
     localStorage.setItem(MAP_CLUSTER_STORAGE_KEY, c ? "on" : "off");
   }, []);
 
   const [neighborLines, setNeighborLines] = useState<NeighborLinesMode>(() => {
+    if (urlView.neighborLines) return urlView.neighborLines;
     const stored = localStorage.getItem(MAP_NEIGHBOR_LINES_STORAGE_KEY);
     return stored === "on" || stored === "selected" || stored === "off" ? stored : "selected";
   });
@@ -71,8 +84,14 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     localStorage.setItem(MAP_NEIGHBOR_LINES_STORAGE_KEY, mode);
   }, []);
 
-  // live packet-flow animation: opt-in per session (off by default, not persisted)
-  const [packetFlow, setPacketFlow] = useState(false);
+  // live packet-flow animation: opt-in per session (off by default, not persisted; a deep link can seed it)
+  const [packetFlow, setPacketFlow] = useState(() => urlView.flow ?? false);
+
+  // A deep-link camera opens the map here and suppresses the initial region fit (see useMapLibre).
+  const initialCamera = useMemo(
+    () => (urlView.center ? { center: urlView.center, zoom: urlView.zoom ?? DEFAULT_ZOOM } : undefined),
+    [urlView],
+  );
 
   const { iatas: selectedIatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
@@ -148,8 +167,25 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     return chosen.length > 0 ? chosen.map((i) => [i.lon!, i.lat!]) : null;
   }, [iatas, selectedIatas]);
 
-  const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, fitPoints, handleStyleError);
+  const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
+
+  // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
+  // Evaluated at click, so it reads the real camera; forces tab=Map so the link lands on the map.
+  const buildShareParams = useCallback((): Record<string, string | null> => {
+    const map = mapRef.current;
+    const center = map?.getCenter();
+    const snapshot: MapViewSnapshot = {
+      center: center ? [center.lng, center.lat] : DEFAULT_CENTER,
+      zoom: map?.getZoom() ?? DEFAULT_ZOOM,
+      clustered,
+      nodeType: typeFilter,
+      neighborLines,
+      styleId,
+      flow: packetFlow,
+    };
+    return { tab: "Map", ...buildMapParams(snapshot) };
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow]);
 
   useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
@@ -170,6 +206,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onClusteredChange={handleClusteredChange}
         neighborLines={neighborLines}
         onNeighborLinesChange={handleNeighborLinesChange}
+        buildShareParams={buildShareParams}
       />
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}

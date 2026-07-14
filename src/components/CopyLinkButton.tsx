@@ -3,13 +3,15 @@ import { VARIANT_CLASSES } from "./badge-utils";
 
 // Copies a shareable deep link to the current page with the given query params set (built fresh from
 // the address bar at click time, so region/other params are preserved). Flips to "Copied" for 1.5s.
+// `params` may be a static map or a thunk evaluated on click — the thunk form can read live state
+// (e.g. the map camera) and use a null value to delete a key that's now at its default.
 export function CopyLinkButton({
   params,
   label = "Copy Link",
   copiedLabel = "Copied",
   ariaLabel,
 }: {
-  params: Record<string, string>;
+  params: Record<string, string> | (() => Record<string, string | null>);
   label?: string;
   copiedLabel?: string;
   ariaLabel?: string;
@@ -18,8 +20,10 @@ export function CopyLinkButton({
 
   const handleCopy = useCallback(() => {
     const url = new URL(window.location.href);
-    for (const [key, value] of Object.entries(params)) {
-      url.searchParams.set(key, value);
+    const resolved = typeof params === "function" ? params() : params;
+    for (const [key, value] of Object.entries(resolved)) {
+      if (value === null) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
     }
     navigator.clipboard.writeText(url.toString());
     setCopied(true);
