@@ -7,6 +7,8 @@ import { useRegion } from "../../hooks/useRegion";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
 import { PacketVirtualList } from "./PacketVirtualList";
 import { FilterBar } from "../../components/FilterBar";
+import { LoadingPill } from "../../components/LoadingPill";
+import { SkeletonRows } from "../../components/SkeletonRows";
 import { PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES } from "../../types/enums";
 import type { WsManager } from "../../api/ws-manager";
 
@@ -52,6 +54,8 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isLoading,
+    isError,
     observersByHash,
     handlePacketObservation,
     handleLagged,
@@ -115,7 +119,7 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
 
   return (
     <div className="flex flex-1 min-h-0">
-      <div className="flex flex-col flex-1 min-h-0 min-w-0">
+      <div className="relative flex flex-col flex-1 min-h-0 min-w-0">
         <FilterBar
           typeOptions={TYPE_OPTIONS}
           routeOptions={ROUTE_OPTIONS}
@@ -160,16 +164,27 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
           </div>
         )}
 
-        <PacketVirtualList
-          key={listResetKey}
-          packets={packets}
-          hasNextPage={hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          fetchNextPage={fetchNextPage}
-          onScrollAwayFromTop={setIsScrolledAway}
-          onAtTopChange={setIsAtTop}
-          expandedHash={expandedHash}
-          onToggleExpand={handleToggleExpand}
+        {isLoading && packets.length === 0 ? (
+          <SkeletonRows />
+        ) : (
+          <PacketVirtualList
+            key={listResetKey}
+            packets={packets}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            fetchNextPage={fetchNextPage}
+            onScrollAwayFromTop={setIsScrolledAway}
+            onAtTopChange={setIsAtTop}
+            expandedHash={expandedHash}
+            onToggleExpand={handleToggleExpand}
+          />
+        )}
+        <LoadingPill
+          loading={isLoading || isFetchingNextPage}
+          error={isError}
+          count={packets.length}
+          noun="packets"
+          position="bottom-3 right-3"
         />
       </div>
     </div>

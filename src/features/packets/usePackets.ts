@@ -193,6 +193,8 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isLoading,
+    isError,
   } = useInfiniteQuery({
     // The unfiltered key must stay 2-element so its cached entry survives filter toggling; the
     // lagged/mount resets above match both shapes by prefix.
@@ -236,6 +238,8 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     fetchNextPage,
     hasNextPage: hasNextPage ?? false,
     isFetchingNextPage,
+    isLoading,
+    isError,
     observersByHash,
     handlePacketObservation,
     handleLagged,

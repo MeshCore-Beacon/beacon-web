@@ -169,6 +169,28 @@ describe("usePackets server filter", () => {
     expect(result.current.newPacketCount).toBe(1); // store untouched by the key switch
   });
 
+  it("reports isLoading during the first fetch of a key and clears it after", async () => {
+    let resolveFetch!: (v: unknown) => void;
+    getPackets.mockReturnValueOnce(new Promise((r) => (resolveFetch = r)));
+
+    const { result } = renderHook(() => usePackets(false, { payloadType: 4 }), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(true));
+
+    await act(async () => {
+      resolveFetch({ items: [packet("fresh")], nextCursor: null });
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+  });
+
+  it("reports isError when the history fetch fails", async () => {
+    getPackets.mockRejectedValue(new Error("boom"));
+
+    const { result } = renderHook(() => usePackets(), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
   it("lag reset collapses the filtered entry and refetches with the filter", async () => {
     const { result } = renderHook(() => usePackets(false, { payloadType: 4 }), { wrapper });
     await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
