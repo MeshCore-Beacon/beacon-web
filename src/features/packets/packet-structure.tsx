@@ -6,6 +6,14 @@ import { formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "..
 import { Timestamp } from "../../components/Timestamp";
 import { IataChip } from "../../components/IataChip";
 
+// Advert device-role (ADV_TYPE) low-nibble names, shared with the DISCOVER payload renderers.
+export const DEVICE_ROLE_NAMES: Record<number, string> = {
+  0x01: "ChatNode",
+  0x02: "Repeater",
+  0x03: "RoomServer",
+  0x04: "Sensor",
+};
+
 // maps packet bytes to named field ranges for hex coloring
 
 export type FieldId = "header" | "transport" | "pathLength" | "pathData" | "payload" | "channelHash" | "cipherMac" | "ciphertext" | "publicKey" | "signature" | "advertTimestamp" | "flags" | "location" | "advertName" | "destinationHash" | "sourceHash" | "senderPublicKey" | "checksum" | "traceTag" | "authCode" | "tracePath";
@@ -337,12 +345,6 @@ export function AdvertFlagsBitBreakdown({ flagsByte }: { flagsByte: number }) {
   const nm = bits[0];
 
   const role = flagsByte & 0x0f;
-  const DEVICE_ROLE_NAMES: Record<number, string> = {
-    0x01: "ChatNode",
-    0x02: "Repeater",
-    0x03: "RoomServer",
-    0x04: "Sensor",
-  };
   const roleName = DEVICE_ROLE_NAMES[role] ?? `0x${role.toString(16)}`;
 
   return (

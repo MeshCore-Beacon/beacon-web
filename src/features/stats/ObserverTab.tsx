@@ -82,7 +82,7 @@ function ObserverList({
               type="button"
               onClick={() => onSelect(r.id)}
               className={`relative overflow-hidden rounded border-l-2 px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
-                active ? "border-primary bg-primary/10" : "border-transparent hover:bg-white/3"
+                active ? "border-primary bg-primary/10" : "border-transparent hover:bg-text-normal/3"
               }`}
             >
               {r.count != null && (

@@ -1,4 +1,6 @@
 import { Segmented } from "./Segmented";
+import { SelectDropdown } from "../../components/SelectDropdown";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 import type { StatsRange, StatsTab } from "./types";
 
 function MeshIcon() {
@@ -21,10 +23,27 @@ function ObserverIcon() {
   );
 }
 
+function GraphIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+      <circle cx="7" cy="7" r="1.7" />
+      <circle cx="2.4" cy="3" r="1.3" />
+      <circle cx="11.6" cy="3.4" r="1.3" />
+      <circle cx="4" cy="12" r="1.3" />
+      <circle cx="11" cy="11" r="1.3" />
+      <path d="M3.3 3.7 5.6 6M10.4 4 8.4 6M5.2 8.2 4.3 10.7M8.5 8.1 10.2 9.9" strokeOpacity="0.7" />
+    </svg>
+  );
+}
+
 const TAB_OPTIONS = [
   { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
   { value: "observer", label: "Observer", icon: <ObserverIcon /> },
+  { value: "graph", label: "Neighbour Graph", icon: <GraphIcon /> },
 ];
+
+// Same sections, minus icons, for the mobile dropdown (which is text-only). Scales with TAB_OPTIONS.
+const TAB_SELECT_OPTIONS = TAB_OPTIONS.map(({ value, label }) => ({ value, label }));
 
 const RANGE_OPTIONS = [
   { value: "24h", label: "24h" },

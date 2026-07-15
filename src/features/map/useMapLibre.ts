@@ -67,6 +67,9 @@ export function useMapLibre(
   // lng/lat pairs to fitBounds over; null/empty falls back to the configured default view
   fitPoints: [number, number][] | null,
   onStyleError?: (lastGoodStyleId: string) => void,
+  // a deep-link camera ([lng, lat] + zoom); when set it opens the map here and wins over the initial
+  // region fitBounds. Later region changes still auto-fit.
+  initialCamera?: { center: [number, number]; zoom: number },
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -77,6 +80,8 @@ export function useMapLibre(
   const swapPendingRef = useRef(false); // a setStyle() basemap swap is in flight (awaiting style.load)
   const onStyleErrorRef = useRef(onStyleError);
   const lastFitKeyRef = useRef<string | null>(null); // last applied fit target; skips redundant re-fits
+  const skipInitialFitRef = useRef(!!initialCamera); // let a deep-link camera win over the first fit
+  const initialCameraRef = useRef(initialCamera); // read once at map creation (deep link is load-time only)
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -96,12 +101,13 @@ export function useMapLibre(
     const container = containerRef.current;
     if (!container) return;
 
-    // open at the default view; the fit effect frames the selection once the style is ready
+    // open at the deep-link camera if one was given, else the default view; the fit effect frames the
+    // selection once the style is ready (unless a deep-link camera suppresses that first fit)
     const map = new maplibregl.Map({
       container,
       style: resolveMapStyle(styleIdRef.current).url,
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
+      center: initialCameraRef.current?.center ?? DEFAULT_CENTER,
+      zoom: initialCameraRef.current?.zoom ?? DEFAULT_ZOOM,
       pitch: DEFAULT_PITCH,
       bearing: DEFAULT_BEARING,
       maxPitch: MAX_PITCH,
@@ -194,6 +200,13 @@ export function useMapLibre(
 
     if (!fitPoints || fitPoints.length === 0) {
       map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, pitch: DEFAULT_PITCH, bearing: DEFAULT_BEARING });
+      return;
+    }
+
+    // First real fit after a deep-link camera: keep the URL-supplied view instead of framing the
+    // region. Consumed once, so later region changes fit normally.
+    if (skipInitialFitRef.current) {
+      skipInitialFitRef.current = false;
       return;
     }
 

@@ -28,7 +28,7 @@ import { ChannelList } from "./features/channels/ChannelList";
 import { EmptyState } from "./components/EmptyState";
 import { getPacketDetail } from "./api/client";
 import { WsManager } from "./api/ws-manager";
-import { WS_URL, TABS } from "./lib/constants";
+import { WS_URL, ENABLED_TABS } from "./lib/constants";
 
 // Map is the only heavy tab (maplibre-gl is ~1MB), so lazy-load it — its chunk is fetched the
 // first time someone opens the Map tab instead of bloating the initial bundle.
@@ -96,19 +96,20 @@ function RegionUrlSync() {
   return null;
 }
 
-// Drop the shared node selection when the region changes, so the detail panel doesn't keep showing a
-// node that's no longer in the re-queried map/table. Lives inside RegionProvider so it can read useRegion.
-function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
-  const { regionKey } = useRegion();
-  const first = useRef(true);
+// Drop the shared node/observer selection when the user changes region, so a detail panel doesn't keep
+// showing an entity that's no longer in the re-queried map/table. Watches the raw selection rather than
+// the resolved regionKey: the async slug→IATA expansion on load bumps regionKey without any user action,
+// and that must NOT count as a change or it would wipe a deep-linked ?node/?observer before it renders.
+// Comparing the previous selection (vs a first-run flag) also survives StrictMode's double effect invoke.
+export function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () => void }) {
+  const { selection } = useRegionSelection();
+  const prev = useRef(selection);
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false; // skip the initial mount; only react to a real change
-      return;
-    }
+    if (prev.current === selection) return; // initial mount, or a re-render that didn't change the selection
+    prev.current = selection;
     onRegionChange();
-  }, [regionKey, onRegionChange]);
+  }, [selection, onRegionChange]);
 
   return null;
 }
@@ -120,16 +121,18 @@ function AppInner() {
   const isMobile = useIsMobile();
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
-  const tabParam = searchParams.get("tab");
-  const activeTab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as string) : "Packets";
+  // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
+  const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
+  const activeTab = ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS[0] ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 
+  // ?hash / ?node / ?observer restore a shared deep link on load (see each panel's Copy Link button)
   const [analyzerHash, setAnalyzerHash] = useState<string | null>(() => searchParams.get("hash"));
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => searchParams.get("node"));
   // lifted (like selectedNodeId) so a node's "View observer" link can select it before the tab mounts
-  const [selectedObserverId, setSelectedObserverId] = useState<string | null>(null);
+  const [selectedObserverId, setSelectedObserverId] = useState<string | null>(() => searchParams.get("observer"));
   // node detail shown as a modal over the packet analyzer (e.g. clicking a resolved path hop)
   const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
@@ -171,7 +174,7 @@ function AppInner() {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
       // stats sub-state shouldn't haunt the URL on other tabs
-      if (tab !== "Stats") {
+      if (tab !== "Analytics") {
         next.delete("statsTab");
         next.delete("observerId");
         next.delete("range");
@@ -187,6 +190,27 @@ function AppInner() {
     setSelectedObserverId(null);
   }, []);
 
+  // Closing a detail panel drops its deep-link param so a reload can't reopen it (mirrors the packet
+  // analyzer's ?hash cleanup). Selecting a different node/observer doesn't touch the URL — the panel's
+  // Copy Link button rebuilds a fresh link on demand.
+  const dropSelectionParam = useCallback((key: "node" | "observer") => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete(key);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const handleCloseNode = useCallback(() => {
+    setSelectedNodeId(null);
+    dropSelectionParam("node");
+  }, [dropSelectionParam]);
+
+  const handleSelectObserver = useCallback((id: string | null) => {
+    setSelectedObserverId(id);
+    if (id === null) dropSelectionParam("observer");
+  }, [dropSelectionParam]);
+
   // Jump from an observer's detail panel to its telemetry on the Stats tab (Stats → Observer, preselected).
   const handleViewObserverStats = useCallback(
     (id: string) => {
@@ -194,7 +218,7 @@ function AppInner() {
       setOverlayPacketHash(null);
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set("tab", "Stats");
+        next.set("tab", "Analytics");
         next.set("statsTab", "observer");
         next.set("observerId", id);
         return next;
@@ -214,13 +238,13 @@ function AppInner() {
   const tabContent: Record<string, React.ReactNode> = {
     Packets: <PacketList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={setSelectedObserverId} onAnalyzePacket={setOverlayPacketHash} onViewStats={handleViewObserverStats} />,
+    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={handleSelectObserver} onAnalyzePacket={setOverlayPacketHash} onViewStats={handleViewObserverStats} />,
     Routes: <RouteTable />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
     Traces: <TraceList onAnalyze={setOverlayPacketHash} onViewNode={setOverlayNodeId} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
-    Stats: <StatsOverview wsManager={wsManager} />,
+    Analytics: <StatsOverview wsManager={wsManager} />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
   };
 
@@ -249,7 +273,7 @@ function AppInner() {
           {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
             <NodeDetailPanel
               nodeId={selectedNodeId}
-              onClose={() => setSelectedNodeId(null)}
+              onClose={handleCloseNode}
               onViewObserver={(observerId) => {
                 handleTabChange("Observers");
                 setSelectedObserverId(observerId);

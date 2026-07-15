@@ -21,6 +21,8 @@ import {
   NODES_SOURCE_MAXZOOM,
   SPIDERFY_MIN_ZOOM,
   NODE_LABEL_MIN_ZOOM,
+  LIVE_DIM_OPACITY,
+  LIVE_CLUSTER_DIM_OPACITY,
   NODE_TYPE_NAMES,
   NODE_ICON_UNKNOWN,
   nodeIconId,
@@ -81,6 +83,11 @@ const ICON_IMAGE: ExpressionSpecification = [
   NODE_ICON_UNKNOWN,
 ] as unknown as ExpressionSpecification;
 
+// Node labels fade in only past NODE_LABEL_MIN_ZOOM.
+const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
+// Live mode: dim to the idle floor, but lift a currently-flashing node to full (feature-state glow 0..1).
+const LIVE_ICON_OPACITY: ExpressionSpecification = ["max", LIVE_DIM_OPACITY, ["coalesce", ["feature-state", "glow"], 0]];
+
 const SPIDER_LEAVES_LAYOUT: SymbolLayerSpecification["layout"] = {
   "icon-image": ICON_IMAGE,
   "icon-size": 1,
@@ -98,6 +105,10 @@ export function useMapNodes(
   clustered: boolean,
   onSelectNode: (id: string) => void,
   selectedNodeId: string | null,
+  // live packet-flow on: fade every node (a crossed one lifts via feature-state glow)
+  live: boolean,
+  // selection focus: keep only these node ids lit and fade the rest; null = off
+  focusIds: string[] | null,
   // identity of the dataset (region + type filter); an open spiderfy fan closes when it changes,
   // since its leaves were drawn from the previous dataset
   resetKey = "",
@@ -162,6 +173,8 @@ export function useMapNodes(
         cluster: clustered,
         clusterRadius: CLUSTER_RADIUS,
         clusterMaxZoom: CLUSTER_MAX_ZOOM,
+        // promote the node id so live packet-flow can flash individual nodes via feature-state
+        promoteId: "id",
       });
     }
 
@@ -208,8 +221,7 @@ export function useMapNodes(
           "text-color": textColor,
           "text-halo-color": halo,
           "text-halo-width": 1.3,
-          // labels fade in only at high zoom
-          "text-opacity": ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1],
+          "text-opacity": LABEL_OPACITY, // labels fade in only at high zoom
         },
       } as SymbolLayerSpecification);
     }
@@ -310,6 +322,31 @@ export function useMapNodes(
     map.setFilter(NODES_SELECTED_LAYER_ID, ["==", ["get", "id"], selectedNodeId ?? ""]);
     syncLeafSelectionRing(map, selectedNodeId);
   }, [mapRef, isReady, selectedNodeId]);
+
+  // Base-layer opacity for the two "fade all but a subset" dim modes. Single owner of icon/text
+  // opacity so live mode and selection focus never fight over the paint property; re-applies after a
+  // style/theme/clustering rebuild via the deps. Live wins over focus. The live-mode packet glow
+  // rides feature-state (set by useMapPacketFlow's loop), so it needs no re-run here.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isReady) return;
+    // lit for the focus set, dimmed otherwise
+    const focusCase = (lit: ExpressionSpecification | number, dim: ExpressionSpecification | number) =>
+      ["case", ["in", ["get", "id"], ["literal", focusIds ?? []]], lit, dim] as ExpressionSpecification;
+
+    const iconOpacity: ExpressionSpecification | number = live ? LIVE_ICON_OPACITY : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
+    const labelOpacity: ExpressionSpecification | number = live ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
+    const dimActive = live || Boolean(focusIds);
+    if (map.getLayer(NODES_POINT_LAYER_ID)) {
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", iconOpacity);
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", labelOpacity);
+    }
+    // a cluster can't tell which nodes it holds, so both modes just dim it flat (matches live mode)
+    if (map.getLayer(NODES_CLUSTER_LAYER_ID)) {
+      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : 1);
+      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", dimActive ? 0 : 1);
+    }
+  }, [mapRef, isReady, live, focusIds, clustered, themeKey]);
 
   // Push new node data into the source as it arrives; the source re-clusters automatically.
   useEffect(() => {

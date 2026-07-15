@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { BottomSheet } from "./BottomSheet";
+import { ENABLED_TABS } from "../lib/constants";
 
 // Mobile-only tab bar (hidden at md+); overflow tabs live behind "More" in a bottom sheet.
 const PRIMARY_TABS = ["Packets", "Channels", "Map", "Nodes"] as const;
-const OVERFLOW_TABS = ["Observers", "Routes", "Traces", "Stats"] as const;
+const OVERFLOW_TABS = ["Observers", "Routes", "Traces", "Analytics"] as const;
 
 // inline SVGs, 20px / 1.6 stroke to match the rest of the icons
 function Icon({ name }: { name: string }) {
@@ -79,17 +80,17 @@ function NavButton({ label, icon, active, onClick, role, ariaSelected, ariaHasPo
 }
 
 // Bottom sheet listing the overflow tabs.
-function MoreSheet({ activeTab, onPick, onClose }: { activeTab: string; onPick: (tab: string) => void; onClose: () => void }) {
+function MoreSheet({ tabs, activeTab, onPick, onClose }: { tabs: string[]; activeTab: string; onPick: (tab: string) => void; onClose: () => void }) {
   return (
     <BottomSheet onClose={onClose} role="menu" label="More tabs">
-      {OVERFLOW_TABS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab}
           type="button"
           role="menuitem"
           onClick={() => onPick(tab)}
           className={`w-full flex items-center gap-3 px-5 py-3 text-left text-sm font-medium cursor-pointer transition-colors ${
-            activeTab === tab ? "text-primary" : "text-text-normal hover:bg-white/3"
+            activeTab === tab ? "text-primary" : "text-text-normal hover:bg-text-normal/3"
           }`}
         >
           {tab}
@@ -101,7 +102,10 @@ function MoreSheet({ activeTab, onPick, onClose }: { activeTab: string; onPick: 
 
 export function BottomNav({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const overflowActive = (OVERFLOW_TABS as readonly string[]).includes(activeTab);
+  const enabled = new Set<string>(ENABLED_TABS);
+  const primary: string[] = PRIMARY_TABS.filter((t) => enabled.has(t));
+  const overflow: string[] = OVERFLOW_TABS.filter((t) => enabled.has(t));
+  const overflowActive = overflow.includes(activeTab);
 
   const pick = (tab: string) => {
     onTabChange(tab);
@@ -111,7 +115,7 @@ export function BottomNav({ activeTab, onTabChange }: { activeTab: string; onTab
   return (
     <>
       <nav className="flex md:hidden shrink-0 bg-bg-surface border-t border-border" role="tablist" aria-label="Primary">
-        {PRIMARY_TABS.map((tab) => (
+        {primary.map((tab) => (
           <NavButton
             key={tab}
             label={tab}
@@ -122,17 +126,21 @@ export function BottomNav({ activeTab, onTabChange }: { activeTab: string; onTab
             ariaSelected={activeTab === tab}
           />
         ))}
-        <NavButton
-          label="More"
-          icon={<Icon name="More" />}
-          active={overflowActive || sheetOpen}
-          onClick={() => setSheetOpen((v) => !v)}
-          ariaHasPopup="menu"
-          ariaExpanded={sheetOpen}
-        />
+        {overflow.length > 0 && (
+          <NavButton
+            label="More"
+            icon={<Icon name="More" />}
+            active={overflowActive || sheetOpen}
+            onClick={() => setSheetOpen((v) => !v)}
+            ariaHasPopup="menu"
+            ariaExpanded={sheetOpen}
+          />
+        )}
       </nav>
 
-      {sheetOpen && <MoreSheet activeTab={activeTab} onPick={pick} onClose={() => setSheetOpen(false)} />}
+      {sheetOpen && overflow.length > 0 && (
+        <MoreSheet tabs={overflow} activeTab={activeTab} onPick={pick} onClose={() => setSheetOpen(false)} />
+      )}
     </>
   );
 }

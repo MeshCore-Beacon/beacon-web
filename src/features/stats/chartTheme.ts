@@ -53,7 +53,7 @@ export function withAlpha(color: string, a: number): string {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
-function blend(a: string, b: string, t = 0.5): string {
+export function blend(a: string, b: string, t = 0.5): string {
   const [r1, g1, b1] = parseColor(a);
   const [r2, g2, b2] = parseColor(b);
   const mix = (x: number, y: number) => Math.round(x + (y - x) * t);
@@ -98,6 +98,18 @@ export function useChartColors(): ChartColors {
   // alone misses — it's already the saved id before the CSS vars land).
   // eslint-disable-next-line react-hooks/exhaustive-deps -- paletteRev is the re-read trigger
   return useMemo(() => readChartColors(), [paletteRev]);
+}
+
+// Per-device-type colour, shared by the Mesh "Node types" donut and the neighbour graph so the two
+// views stay in sync. Unknown types fall back to a dim primary.
+export function nodeTypeColor(typeName: string, c: ChartColors): string {
+  switch (typeName) {
+    case "companion": return c.primary;
+    case "repeater": return c.green;
+    case "room_server": return c.secondary;
+    case "sensor": return c.warn;
+    default: return c.primaryDim;
+  }
 }
 
 // A reusable ECharts tooltip style block bound to the active palette.

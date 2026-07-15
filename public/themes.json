@@ -334,5 +334,49 @@
       "--palette-text-muted": "#6B8A8A",
       "--palette-text-dim": "#4D6A6A"
     }
+  },
+  {
+    "id": "meshmapper_dark",
+    "name": "MeshMapper Dark",
+    "hidden": true,
+    "vars": {
+      "--palette-bg-base": "#121212",
+      "--palette-bg-surface": "#1E1E1E",
+      "--palette-bg-raised": "#2A2A2A",
+      "--palette-border": "#333333",
+      "--palette-border-subtle": "#242424",
+      "--palette-primary": "#00D2FF",
+      "--palette-primary-dim": "#00A5C8",
+      "--palette-secondary": "#4A9EFF",
+      "--palette-green": "#28A745",
+      "--palette-danger": "#DC3545",
+      "--palette-warn": "#FFC107",
+      "--palette-text-bright": "#FFFFFF",
+      "--palette-text-normal": "#E0E0E0",
+      "--palette-text-muted": "#AAAAAA",
+      "--palette-text-dim": "#777777"
+    }
+  },
+  {
+    "id": "meshmapper_light",
+    "name": "MeshMapper Light",
+    "hidden": true,
+    "vars": {
+      "--palette-bg-base": "#F4F4F9",
+      "--palette-bg-surface": "#FFFFFF",
+      "--palette-bg-raised": "#FFFFFF",
+      "--palette-border": "#DDDDDD",
+      "--palette-border-subtle": "#EEEEEE",
+      "--palette-primary": "#007A94",
+      "--palette-primary-dim": "#005F73",
+      "--palette-secondary": "#0062CC",
+      "--palette-green": "#1E7E34",
+      "--palette-danger": "#C82333",
+      "--palette-warn": "#9A6A00",
+      "--palette-text-bright": "#1A1A1A",
+      "--palette-text-normal": "#333333",
+      "--palette-text-muted": "#666666",
+      "--palette-text-dim": "#767676"
+    }
   }
 ]

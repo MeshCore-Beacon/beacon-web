@@ -13,6 +13,9 @@ interface UseInfinitePagesOptions<T> {
   // auto-chain every page eagerly (default). false = load only the first page; the caller pulls the
   // rest via loadMore() (e.g. on scroll) so a large dataset isn't fetched all at once.
   auto?: boolean;
+  // false = don't fetch at all (idle query). Lets a caller gate a heavy load off — e.g. the neighbour
+  // graph skips the ~5k-node "All regions" fetch until a region is picked.
+  enabled?: boolean;
 }
 
 // Page through a cursor-paginated endpoint. By default it auto-chains page by page as each settles so
@@ -20,7 +23,7 @@ interface UseInfinitePagesOptions<T> {
 // load only the first page and pull the rest on demand via loadMore(). Loads once per key (staleTime
 // Infinity, no maxPages); dedupes by id because a non-unique cursor can repeat a row across a page
 // boundary. Shared by the map and the entity tables.
-export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious, auto = true }: UseInfinitePagesOptions<T>) {
+export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T>) {
   const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
@@ -28,6 +31,7 @@ export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious, au
       getNextPageParam: (last) => last.nextCursor ?? undefined,
       initialPageParam: undefined as number | undefined,
       staleTime: Infinity,
+      enabled,
       placeholderData: keepPrevious ? keepPreviousData : undefined,
     });
 
@@ -41,8 +45,8 @@ export function useInfinitePages<T>({ queryKey, queryFn, getId, keepPrevious, au
   // In auto mode, chain to the next page once the current settles — this streams rows batch by batch.
   // In on-demand mode the caller drives loadMore() instead.
   useEffect(() => {
-    if (auto) loadMore();
-  }, [auto, loadMore]);
+    if (auto && enabled) loadMore();
+  }, [auto, enabled, loadMore]);
 
   const items = useMemo<T[]>(() => {
     const seen = new Set<string>();

@@ -146,7 +146,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
               type="button"
               onClick={onBack}
               aria-label="Back to channels"
-              className="self-center flex items-center justify-center w-9 h-9 -ml-1.5 rounded text-text-muted hover:text-text-bright hover:bg-white/5 cursor-pointer transition-colors shrink-0"
+              className="self-center flex items-center justify-center w-9 h-9 -ml-1.5 rounded text-text-muted hover:text-text-bright hover:bg-text-normal/5 cursor-pointer transition-colors shrink-0"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />

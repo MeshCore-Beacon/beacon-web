@@ -34,7 +34,7 @@ export function Segmented({ options, value, onChange, ariaLabel, size = "sm", cl
             type="button"
             aria-pressed={active}
             onClick={() => onChange(o.value)}
-            className={`flex items-center gap-1.5 rounded font-mono font-semibold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${pad} ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded font-mono font-semibold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${pad} ${
               active
                 ? "bg-primary/15 text-text-bright ring-1 ring-inset ring-primary/30"
                 : "text-text-muted hover:text-text-normal"

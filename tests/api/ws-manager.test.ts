@@ -136,6 +136,53 @@ describe("WsManager", () => {
     expect(sub.scope.iatas).toEqual(["YOW"]);
   });
 
+  it("sends a configure frame when resolvePath is enabled while connected", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 123, connectionId: "abc" });
+
+    mgr.setResolvePath(true);
+
+    const configure = JSON.parse(ws.sent.at(-1)!);
+    expect(configure.type).toBe("configure");
+    expect(configure.resolvePath).toBe(true);
+  });
+
+  it("re-sends the resolvePath configure after a reconnect", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateMessage({ v: 1, type: "hello", serverTime: 123, connectionId: "abc" });
+    mgr.setResolvePath(true);
+    ws1.simulateClose(1006);
+
+    vi.advanceTimersByTime(1500);
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateMessage({ v: 1, type: "hello", serverTime: 456, connectionId: "def" });
+
+    const frames = ws2.sent.map((s) => JSON.parse(s));
+    expect(frames.some((f) => f.type === "configure" && f.resolvePath === true)).toBe(true);
+  });
+
+  it("handles a configured reply without throwing", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 123, connectionId: "abc" });
+
+    expect(() =>
+      ws.simulateMessage({ v: 1, type: "configured", id: "cfg-1", resolvePath: true }),
+    ).not.toThrow();
+  });
+
   it("updates subscription without reconnecting", () => {
     const mgr = new WsManager("ws://test/ws");
     mgr.connect({ iatas: ["YOW"] });

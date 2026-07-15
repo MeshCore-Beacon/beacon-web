@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { nodesToFeatureCollection, filterByNodeType } from "../../../src/features/map/node-geojson";
-import type { NodeSummary } from "../../../src/features/nodes/types";
+import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, neighborFocusIds, buildFocusedNeighborEdges } from "../../../src/features/map/node-geojson";
+import type { NodeSummary, NodeNeighbor } from "../../../src/features/nodes/types";
 
 function node(overrides: Partial<NodeSummary>): NodeSummary {
   return {
@@ -73,6 +73,132 @@ describe("nodesToFeatureCollection", () => {
   it("passes decimal coordinates through untouched (api/nodes.go sends *float64 degrees)", () => {
     const fc = nodesToFeatureCollection([node({ lat: 49.28, lng: -123.12 })]);
     expect(fc.features[0]!.geometry.coordinates).toEqual([-123.12, 49.28]);
+  });
+});
+
+describe("buildNeighborEdges", () => {
+  const a = node({ id: "a", lat: 45, lng: -75, neighborIds: ["b", "c"] });
+  const b = node({ id: "b", lat: 46, lng: -76, neighborIds: ["a"] });
+  const c = node({ id: "c", lat: 47, lng: -77, neighborIds: ["a"] });
+
+  it("emits one undirected edge per neighbor pair (a<->b counted once) in [lng, lat] order", () => {
+    const fc = buildNeighborEdges([a, b], "on", null);
+    expect(fc.type).toBe("FeatureCollection");
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0]!.geometry).toEqual({
+      type: "LineString",
+      coordinates: [[-75, 45], [-76, 46]],
+    });
+  });
+
+  it("skips neighbor ids absent from the set or without coordinates", () => {
+    const lonely = node({ id: "a", lat: 45, lng: -75, neighborIds: ["ghost"] });
+    const noCoord = node({ id: "b", lat: null, lng: null, neighborIds: ["a"] });
+    expect(buildNeighborEdges([lonely, noCoord], "on", null).features).toEqual([]);
+  });
+
+  it("in 'selected' mode keeps only edges incident to the selected node", () => {
+    const fc = buildNeighborEdges([a, b, c], "selected", "b");
+    expect(fc.features).toHaveLength(1); // only a<->b
+    expect(fc.features[0]!.properties.selected).toBe(true);
+  });
+
+  it("in 'on' mode emits all edges and flags those incident to the selected node", () => {
+    const fc = buildNeighborEdges([a, b, c], "on", "b");
+    expect(fc.features).toHaveLength(2); // a<->b and a<->c
+    expect(fc.features.filter((f) => f.properties.selected)).toHaveLength(1); // a<->b
+  });
+
+  it("ignores a node that lists itself as a neighbor (no zero-length edge)", () => {
+    const selfRef = node({ id: "a", lat: 45, lng: -75, neighborIds: ["a", "b"] });
+    const fc = buildNeighborEdges([selfRef, b], "on", null);
+    expect(fc.features).toHaveLength(1); // a<->b only, not a<->a
+  });
+});
+
+describe("neighborFocusIds", () => {
+  const a = node({ id: "a", lat: 45, lng: -75, neighborIds: ["b", "c"] });
+  const b = node({ id: "b", lat: 46, lng: -76, neighborIds: ["a"] });
+  const c = node({ id: "c", lat: 47, lng: -77, neighborIds: ["a"] });
+
+  const sorted = (ids: string[] | null) => (ids ? [...ids].sort() : ids);
+
+  it("returns null when nothing is selected", () => {
+    expect(neighborFocusIds([a, b, c], null)).toBeNull();
+  });
+
+  it("includes the selected node and its located neighbors", () => {
+    expect(sorted(neighborFocusIds([a, b, c], "a"))).toEqual(["a", "b", "c"]);
+  });
+
+  it("treats neighbor links as undirected (a node listing the selection counts)", () => {
+    // b lists a; c does not list b, so only a<->b makes c irrelevant to b's focus set
+    expect(sorted(neighborFocusIds([a, b, c], "b"))).toEqual(["a", "b"]);
+  });
+
+  it("skips neighbor ids that are absent or unlocated", () => {
+    const noCoord = node({ id: "c", lat: null, lng: null, neighborIds: ["a"] });
+    expect(sorted(neighborFocusIds([a, b, noCoord], "a"))).toEqual(["a", "b"]);
+  });
+
+  it("returns null when the selected node is unlocated (no marker to keep lit)", () => {
+    const unlocated = node({ id: "a", lat: null, lng: null, neighborIds: ["b"] });
+    expect(neighborFocusIds([unlocated, b], "a")).toBeNull();
+  });
+
+  it("returns null when the selected node has no located neighbors", () => {
+    const lonely = node({ id: "x", lat: 45, lng: -75, neighborIds: ["ghost"] });
+    expect(neighborFocusIds([lonely, b], "x")).toBeNull();
+  });
+});
+
+describe("buildFocusedNeighborEdges", () => {
+  const DAY = 86400000;
+  const NOW = 1000 * DAY;
+  const sel = node({ id: "a", lat: 45, lng: -75 });
+  function nb(o: Partial<NodeNeighbor>): NodeNeighbor {
+    return { id: "b", publicKey: "pk", nodeType: 2, nodeTypeName: "repeater", iata: "YOW", observationCount: 10, firstSeen: 0, lastSeen: NOW, lat: 46, lng: -76, ...o };
+  }
+
+  it("returns empty when nothing is selected", () => {
+    expect(buildFocusedNeighborEdges(null, [nb({})], NOW).features).toEqual([]);
+  });
+
+  it("returns empty when the selected node has no coordinates", () => {
+    expect(buildFocusedNeighborEdges(node({ id: "a", lat: null, lng: null }), [nb({})], NOW).features).toEqual([]);
+  });
+
+  it("draws one edge selected->neighbor with obs, in [lng, lat] order", () => {
+    const fc = buildFocusedNeighborEdges(sel, [nb({ id: "b", lat: 46, lng: -76, observationCount: 42, lastSeen: NOW })], NOW);
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0]!.geometry.coordinates).toEqual([[-75, 45], [-76, 46]]);
+    expect(fc.features[0]!.properties.obs).toBe(42);
+    expect(fc.features[0]!.properties.selected).toBe(true);
+    expect(fc.features[0]!.properties.ageDays).toBe(0);
+  });
+
+  it("computes ageDays from lastSeen relative to now", () => {
+    const fc = buildFocusedNeighborEdges(sel, [nb({ id: "b", lastSeen: NOW - 3 * DAY })], NOW);
+    expect(fc.features[0]!.properties.ageDays).toBeCloseTo(3);
+  });
+
+  it("aggregates a neighbor's per-iata rows: sums obs, keeps the freshest lastSeen", () => {
+    const fc = buildFocusedNeighborEdges(sel, [
+      nb({ id: "b", iata: "YOW", observationCount: 30, lastSeen: NOW - 5 * DAY }),
+      nb({ id: "b", iata: "YYZ", observationCount: 12, lastSeen: NOW - 1 * DAY }),
+    ], NOW);
+    expect(fc.features).toHaveLength(1);
+    expect(fc.features[0]!.properties.obs).toBe(42);
+    expect(fc.features[0]!.properties.ageDays).toBeCloseTo(1);
+  });
+
+  it("skips neighbors without coordinates and any self-referential row", () => {
+    const fc = buildFocusedNeighborEdges(sel, [
+      nb({ id: "b", lat: undefined, lng: undefined }),
+      nb({ id: "a", lat: 45, lng: -75 }), // self — no zero-length edge
+      nb({ id: "c", lat: 47, lng: -77, observationCount: 5 }),
+    ], NOW);
+    expect(fc.features.map((f) => f.properties.obs)).toEqual([5]);
   });
 });
 

@@ -11,6 +11,13 @@ export interface PacketFilterState {
   searchField: SearchField;
 }
 
+// Filters /packets history can apply server-side (each accepts a single value per request)
+export interface PacketServerFilter {
+  payloadType?: number;
+  routeType?: number;
+  scope?: string;
+}
+
 export const EMPTY_FILTERS: PacketFilterState = {
   payloadTypes: [],
   routeTypes: [],

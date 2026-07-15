@@ -58,12 +58,15 @@ function iatasParam(iatas?: string[]): string | undefined {
 
 export function getPackets(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number },
+  params?: { cursor?: number; limit?: number; payloadType?: number; routeType?: number; scope?: string },
 ): Promise<CursorPage<PacketSummary>> {
   return request("/packets", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+    payloadType: params?.payloadType,
+    routeType: params?.routeType,
+    scope: params?.scope,
   });
 }
 
@@ -208,6 +211,7 @@ export function getNodesPage(
     name?: string;
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
+    neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
   },
 ): Promise<CursorPage<NodeSummary>> {
   return request("/nodes", {
@@ -218,6 +222,7 @@ export function getNodesPage(
     name: params?.name,
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
+    neighbors: params?.neighbors ? "true" : undefined,
   });
 }
 

@@ -7,19 +7,27 @@ interface EChartProps {
   style?: React.CSSProperties;
   // Map of ECharts event name -> handler (e.g. { click: (p) => ... }). Kept stable by the caller.
   onEvents?: Record<string, (params: unknown) => void>;
+  // Called once with the instance after init, for callers that need imperative control (e.g. the
+  // neighbour graph dispatches highlight/downplay so selection never re-runs the force layout).
+  onInit?: (chart: EChartsInstance) => void;
 }
 
 // Thin React wrapper over the core ECharts API: init once, resize via ResizeObserver, dispose on
 // unmount, and re-apply the (memoized) option with notMerge so theme/data swaps fully replace state.
 // Hand-rolled on purpose — we avoid the echarts-for-react dependency.
-export function EChart({ option, className, style, onEvents }: EChartProps) {
+export function EChart({ option, className, style, onEvents, onInit }: EChartProps) {
   const elRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsInstance | null>(null);
+  const onInitRef = useRef(onInit);
+  useEffect(() => {
+    onInitRef.current = onInit;
+  }, [onInit]);
 
   useEffect(() => {
     if (!elRef.current) return;
     const chart = echarts.init(elRef.current, null, { renderer: "canvas" });
     chartRef.current = chart;
+    onInitRef.current?.(chart);
     const ro = new ResizeObserver(() => chart.resize());
     ro.observe(elRef.current);
     return () => {

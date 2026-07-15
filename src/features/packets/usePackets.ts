@@ -4,6 +4,7 @@ import { getPackets } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
 import type { PacketSummary } from "../../types/api";
+import type { PacketServerFilter } from "./types";
 import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
 
 // merge and deduplicate live + paginated packets
@@ -114,14 +115,15 @@ class LivePacketStore {
 
 // combines live WS stream with paginated history
 
-export function usePackets() {
+export function usePackets(frozen: boolean = false, serverFilter: PacketServerFilter | null = null) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [store] = useState(() => new LivePacketStore());
   const [laggedCount, setLaggedCount] = useState(0);
 
   const [prevRegionKey, setPrevRegionKey] = useState(regionKey);
-  if (prevRegionKey !== regionKey) {
+  const regionChanged = prevRegionKey !== regionKey;
+  if (regionChanged) {
     setPrevRegionKey(regionKey);
     store.reset();
     setLaggedCount(0);
@@ -131,6 +133,15 @@ export function usePackets() {
     store.subscribe,
     store.getSnapshot,
   );
+
+  // While scrolled away from the top, render a latched buffer so live prepends don't shift the
+  // view; the held packets reveal when the user returns to the top. Latched by holding the last
+  // value (set-state-during-render, this file's pattern — cf. prevRegionKey above). The
+  // regionChanged guard drops the latch so a region switch never shows the previous region.
+  const [displayBuffer, setDisplayBuffer] = useState(liveBuffer);
+  if ((!frozen || regionChanged) && displayBuffer !== liveBuffer) {
+    setDisplayBuffer(liveBuffer);
+  }
 
   const handlePacketObservation = useCallback(
     (data: WsPacketObservation["data"]) => {
@@ -157,7 +168,8 @@ export function usePackets() {
   );
 
   // Reset (drop to one fresh first page) instead of invalidate: an invalidate replays every cached
-  // page sequentially — up to 20 requests per lag notice during a flood.
+  // page sequentially — up to 20 requests per lag notice during a flood. The 2-element key matches
+  // filtered variants by prefix, so those reset too.
   const handleLagged = useCallback(
     (data: WsLagged) => {
       setLaggedCount((prev) => prev + data.droppedCount);
@@ -167,7 +179,8 @@ export function usePackets() {
   );
 
   // The WS handler is down whenever this tab is unmounted, so cached history may hide a gap right
-  // where the live buffer begins. Refresh the first page on mount to close it.
+  // where the live buffer begins. Refresh the first page on mount to close it (prefix match:
+  // filtered variants included).
   useEffect(() => {
     queryClient.resetQueries({ queryKey: ["packets", regionKey] });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only; region changes refetch via the key
@@ -180,10 +193,14 @@ export function usePackets() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isLoading,
+    isError,
   } = useInfiniteQuery({
-    queryKey: ["packets", regionKey],
+    // The unfiltered key must stay 2-element so its cached entry survives filter toggling; the
+    // lagged/mount resets above match both shapes by prefix.
+    queryKey: serverFilter ? ["packets", regionKey, serverFilter] : ["packets", regionKey],
     // first load and every scroll page are the default 50; getPackets fills in the limit
-    queryFn: ({ pageParam }) => getPackets(iatas, { cursor: pageParam }),
+    queryFn: ({ pageParam }) => getPackets(iatas, { cursor: pageParam, ...serverFilter }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     initialPageParam: undefined as number | undefined,
     staleTime: Infinity,
@@ -191,8 +208,8 @@ export function usePackets() {
   });
 
   const allPackets = useMemo(
-    () => dedup([...liveBuffer, ...flattenPages(history)]),
-    [liveBuffer, history],
+    () => dedup([...displayBuffer, ...flattenPages(history)]),
+    [displayBuffer, history],
   );
 
   const observerOptions = useMemo(() => {
@@ -221,6 +238,8 @@ export function usePackets() {
     fetchNextPage,
     hasNextPage: hasNextPage ?? false,
     isFetchingNextPage,
+    isLoading,
+    isError,
     observersByHash,
     handlePacketObservation,
     handleLagged,

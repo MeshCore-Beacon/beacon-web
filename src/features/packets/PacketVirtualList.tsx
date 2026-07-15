@@ -1,9 +1,13 @@
-import { useRef, useCallback, useEffect, useLayoutEffect } from "react";
+import { useRef, useCallback, useLayoutEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { PacketSummary } from "../../types/api";
 import { PacketRow } from "./PacketRow";
 import { useFreshHashes } from "./useFreshHashes";
-import { SCROLL_TOP_THRESHOLD_PX, SCROLL_BOTTOM_THRESHOLD_PX } from "../../lib/constants";
+import {
+  SCROLL_TOP_THRESHOLD_PX,
+  SCROLL_BOTTOM_THRESHOLD_PX,
+  SCROLL_REVEAL_EPSILON_PX,
+} from "../../lib/constants";
 
 interface PacketVirtualListProps {
   packets: PacketSummary[];
@@ -11,7 +15,7 @@ interface PacketVirtualListProps {
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
   onScrollAwayFromTop: (isAway: boolean) => void;
-  scrollToTopRef?: React.MutableRefObject<(() => void) | null>;
+  onAtTopChange: (isAtTop: boolean) => void;
   expandedHash: string | null;
   onToggleExpand: (hash: string) => void;
 }
@@ -24,33 +28,14 @@ export function PacketVirtualList({
   isFetchingNextPage,
   fetchNextPage,
   onScrollAwayFromTop,
-  scrollToTopRef,
+  onAtTopChange,
   expandedHash,
   onToggleExpand,
 }: PacketVirtualListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const freshHashes = useFreshHashes(packets);
-  const isAtTopRef = useRef(true);
-  const prevCountRef = useRef(packets.length);
+  const atTopRef = useRef(true);
   const prevFirstKeyRef = useRef<string | undefined>(packets[0]?.packetHash);
-  const savedScrollHeightRef = useRef(0);
-  const shouldCompensateRef = useRef(false);
-
-  // Anchor scroll position when live packets are PREPENDED while the user is scrolled away from
-  // the top. The pre-commit scroll height must be read here in the render body (parentRef still
-  // points at the old DOM); a post-commit effect is too late — the virtualizer's spacer has
-  // already grown, collapsing the delta to ~0 so nothing offsets the new rows. A changed first
-  // key distinguishes a real top-prepend from history pages appended at the bottom by
-  // fetchNextPage (those grow the count too but must NOT shift the view).
-  if (
-    packets.length > prevCountRef.current &&
-    packets[0]?.packetHash !== prevFirstKeyRef.current &&
-    !isAtTopRef.current &&
-    parentRef.current
-  ) {
-    savedScrollHeightRef.current = parentRef.current.scrollHeight;
-    shouldCompensateRef.current = true;
-  }
 
   const virtualizer = useVirtualizer({
     count: packets.length,
@@ -60,28 +45,16 @@ export function PacketVirtualList({
     getItemKey: (index) => packets[index]?.packetHash ?? index,
   });
 
-  // After commit, before paint: offset scrollTop by the height the prepended rows added so the
-  // view stays anchored on the same packet. Keyed on the array (not just length) so bookkeeping
-  // stays current even when the live buffer is at its cap and the count holds steady.
-  useLayoutEffect(() => {
-    if (shouldCompensateRef.current) {
-      shouldCompensateRef.current = false;
-      const el = parentRef.current;
-      if (el) {
-        const delta = el.scrollHeight - savedScrollHeightRef.current;
-        if (delta > 0) el.scrollTop += delta;
-      }
-    }
-    prevCountRef.current = packets.length;
-    prevFirstKeyRef.current = packets[0]?.packetHash;
-  }, [packets]);
-
+  // The list is frozen at the data layer while scrolled away, so there's nothing to compensate
+  // here — we only report scroll position: past the threshold shows the banner, and back at the
+  // very top releases the freeze (revealing held packets where a prepend is jump-free).
   const handleScroll = useCallback(() => {
     const el = parentRef.current;
     if (!el) return;
 
-    isAtTopRef.current = el.scrollTop <= SCROLL_TOP_THRESHOLD_PX;
-    onScrollAwayFromTop(!isAtTopRef.current);
+    atTopRef.current = el.scrollTop <= SCROLL_REVEAL_EPSILON_PX;
+    onScrollAwayFromTop(el.scrollTop > SCROLL_TOP_THRESHOLD_PX);
+    onAtTopChange(atTopRef.current);
 
     if (hasNextPage && !isFetchingNextPage) {
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -89,19 +62,21 @@ export function PacketVirtualList({
         fetchNextPage();
       }
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, onScrollAwayFromTop]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, onScrollAwayFromTop, onAtTopChange]);
 
-  useEffect(() => {
-    if (!scrollToTopRef) return;
-    scrollToTopRef.current = () => {
-      const el = parentRef.current;
-      if (el) {
-        isAtTopRef.current = true;
-        el.scrollTop = 0;
-        onScrollAwayFromTop(false);
-      }
-    };
-  }, [scrollToTopRef, onScrollAwayFromTop]);
+  // When rows are prepended at the top (a reveal on return-to-top, or a live packet while already
+  // at the top), TanStack keeps the previously-top row anchored — which drifts the view off the
+  // newest packet. Re-pin index 0 so the newest stays at the top; only while at the top, so a
+  // prepend never disturbs someone reading further down.
+  useLayoutEffect(() => {
+    const firstKey = packets[0]?.packetHash;
+    const firstChanged = firstKey !== prevFirstKeyRef.current;
+    prevFirstKeyRef.current = firstKey;
+    if (firstChanged && atTopRef.current) {
+      virtualizer.scrollToIndex(0, { align: "start" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires on packet-list change; virtualizer is stable
+  }, [packets]);
 
   return (
     <div

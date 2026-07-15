@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
+import { CopyButton } from "../../components/CopyButton";
+import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
 import { formatHex, formatSnr, snrLevel, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
@@ -10,7 +12,7 @@ import type { NodeObservation, NodeNeighbor } from "./types";
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   return (
     <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      className={`bg-bg-base border border-border rounded px-3 py-2 ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px]">
@@ -34,7 +36,7 @@ function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: 
   const level = snrLevel(obs.snr);
   return (
     <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
@@ -97,6 +99,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     <DetailPanel
       title="Node Detail"
       onClose={onClose}
+      collapsible
+      headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel="Copy node link" />}
       isLoading={isLoading}
       notFound={!node}
       notFoundLabel="Node not found"
@@ -115,8 +119,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 </span>
                 <Badge variant="default">{node.nodeTypeName}</Badge>
               </div>
-              <div className="font-mono text-[13px] text-text-muted truncate" title={node.publicKey}>
-                {node.publicKey}
+              <div className="flex items-center gap-2">
+                <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>
+                  {node.publicKey}
+                </div>
+                <CopyButton value={node.publicKey} ariaLabel="Copy public key" className="shrink-0" />
               </div>
               {node.observerId && (
                 <button

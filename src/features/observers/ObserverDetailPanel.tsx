@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getObserver, getObserverAdverts } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
+import { CopyButton } from "../../components/CopyButton";
+import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { useTick } from "../../hooks/useTick";
@@ -15,7 +17,7 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick?: (
   const level = snrLevel(advert.snr);
   return (
     <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-white/3" : ""}`}
+      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
@@ -124,6 +126,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
     <DetailPanel
       title="Observer Detail"
       onClose={onClose}
+      headerAction={<CopyLinkButton params={{ tab: "Observers", observer: observerId }} ariaLabel="Copy observer link" />}
       isLoading={isLoading}
       notFound={!observer}
       notFoundLabel="Observer not found"
@@ -145,8 +148,11 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
                   {status}
                 </Badge>
               </div>
-              <div className="font-mono text-[13px] text-text-muted truncate mb-1.5" title={observer.publicKey}>
-                {observer.publicKey}
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={observer.publicKey}>
+                  {observer.publicKey}
+                </div>
+                <CopyButton value={observer.publicKey} ariaLabel="Copy public key" className="shrink-0" />
               </div>
               <div className="flex items-center gap-3 font-mono text-[13px]">
                 <Field label="Observations" value={observer.observationCount.toLocaleString()} />

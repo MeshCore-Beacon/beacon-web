@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { useMemo, useCallback } from "react";
-import type { PacketFilterState, SearchField } from "./types";
+import type { PacketFilterState, PacketServerFilter, SearchField } from "./types";
 import type { PacketSummary } from "../../types/api";
 import type { PayloadTypeValue, RouteTypeValue } from "../../types/enums";
 
@@ -113,6 +113,16 @@ export function usePacketFilters() {
   }, [setSearchParams]);
 
   return { filters, setFilter, setSearch, setSearchField, clearFilters };
+}
+
+// The /packets endpoint filters by a single payloadType/routeType/scope per request, so a
+// dimension only goes server-side when exactly one value is selected; the rest stay client-side.
+export function toServerFilter(filters: PacketFilterState): PacketServerFilter | null {
+  const serverFilter: PacketServerFilter = {};
+  if (filters.payloadTypes.length === 1) serverFilter.payloadType = filters.payloadTypes[0]!;
+  if (filters.routeTypes.length === 1) serverFilter.routeType = filters.routeTypes[0]!;
+  if (filters.scopes.length === 1) serverFilter.scope = filters.scopes[0]!;
+  return Object.keys(serverFilter).length > 0 ? serverFilter : null;
 }
 
 // client-side filter predicate for packet rows

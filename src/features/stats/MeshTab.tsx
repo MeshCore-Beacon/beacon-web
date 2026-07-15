@@ -23,16 +23,6 @@ function aggregateByHour(points: ObservationPoint[]) {
   return [...byHour.values()].sort((a, b) => a.hour - b.hour);
 }
 
-function nodeTypeColor(typeName: string, c: ChartColors): string {
-  switch (typeName) {
-    case "companion": return c.primary;
-    case "repeater": return c.green;
-    case "room_server": return c.secondary;
-    case "sensor": return c.warn;
-    default: return c.primaryDim;
-  }
-}
-
 interface MeshTabProps {
   range: StatsRange;
   onSelectObserver: (observerId: string) => void;
