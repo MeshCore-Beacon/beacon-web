@@ -59,40 +59,21 @@ interface Props {
 }
 
 export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props) {
-  const isMobile = useIsMobile();
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
-      {/* pills don't scale on a phone as sections grow — swap to a compact dropdown there */}
-      {isMobile ? (
-        <SelectDropdown
-          label="Section"
-          hideAll
-          align="left"
-          options={TAB_SELECT_OPTIONS}
-          value={tab}
-          onChange={(v) => onTabChange(v as StatsTab)}
-        />
-      ) : (
-        <div className="min-w-0 max-w-full overflow-x-auto">
-          <Segmented
-            options={TAB_OPTIONS}
-            value={tab}
-            onChange={(v) => onTabChange(v as StatsTab)}
-            ariaLabel="Stats section"
-            size="md"
-          />
-        </div>
-      )}
-      {/* the graph is topology, not time-series — no range to pick */}
-      {tab !== "graph" && (
-        <Segmented
-          className="shrink-0"
-          options={RANGE_OPTIONS}
-          value={range}
-          onChange={(v) => onRangeChange(v as StatsRange)}
-          ariaLabel="Time range"
-        />
-      )}
+    <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg-surface px-4 py-2.5">
+      <Segmented
+        options={TAB_OPTIONS}
+        value={tab}
+        onChange={(v) => onTabChange(v as StatsTab)}
+        ariaLabel="Stats section"
+        size="md"
+      />
+      <Segmented
+        options={RANGE_OPTIONS}
+        value={range}
+        onChange={(v) => onRangeChange(v as StatsRange)}
+        ariaLabel="Time range"
+      />
     </div>
   );
 }

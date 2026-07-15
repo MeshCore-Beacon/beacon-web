@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatCount } from "../../lib/formatters";
-import { useChartColors, nodeTypeColor } from "./chartTheme";
+import { useChartColors, type ChartColors } from "./chartTheme";
 import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
 import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption, presetBarsOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";

@@ -15,7 +15,6 @@ export interface NodeSummary {
   defaultScope?: string; // most recently matched transport scope name, e.g. "#bc"
   iatas: NodeIATA[];
   knownNeighborCount: number; // distinct first-hop neighbors we've resolved for this node
-  neighborIds?: string[]; // first-hop neighbor node ids; only present when the list request opts in (?neighbors)
   // Set when this node also runs as an observer (watches traffic for uplink). isObserver drives the
   // map's observer-pip marker variant; observerId, when present, links to that observer's detail.
   isObserver?: boolean;
