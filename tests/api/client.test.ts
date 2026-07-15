@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getStatsNodeTypes } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getStatsNodeTypes } from "../../src/api/client";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
 import type { ChannelMessage, ChannelSummary } from "../../src/features/channels/types";
@@ -20,6 +20,33 @@ function mockFetchOnce(body: unknown): () => string {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("getPackets", () => {
+  it("forwards the single-value server filters (routeType 0 survives, scope is encoded)", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+
+    await getPackets(["YOW"], { payloadType: 4, routeType: 0, scope: "#bc" });
+
+    const url = getUrl();
+    expect(url).toContain("/packets");
+    expect(url).toContain("payloadType=4");
+    expect(url).toContain("routeType=0");
+    expect(url).toContain("scope=%23bc");
+  });
+
+  it("omits the filter params when none are given", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+
+    await getPackets(["YOW"], { cursor: 100 });
+
+    const url = getUrl();
+    expect(url).not.toContain("payloadType=");
+    expect(url).not.toContain("routeType=");
+    expect(url).not.toContain("scope=");
+    expect(url).toContain("cursor=100");
+    expect(url).toContain("limit=50");
+  });
 });
 
 describe("getNodesPage", () => {

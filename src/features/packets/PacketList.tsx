@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePackets } from "./usePackets";
-import { usePacketFilters, matchesFilters } from "./usePacketFilters";
+import { usePacketFilters, matchesFilters, toServerFilter } from "./usePacketFilters";
 import { useScopes } from "../../hooks/useScopes";
 import { useRegion } from "../../hooks/useRegion";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
@@ -32,6 +32,8 @@ interface PacketListProps {
 export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
+  // single-value selections go to the server so scrolling pages through matching history
+  const serverFilter = useMemo(() => toServerFilter(filters), [filters]);
   const scopeNames = useScopes();
   const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
   const { regionKey } = useRegion();
@@ -55,7 +57,7 @@ export function PacketList({ wsManager, onAnalyze }: PacketListProps) {
     handleLagged,
     laggedCount,
     dismissLagged,
-  } = usePackets(!isAtTop);
+  } = usePackets(!isAtTop, serverFilter);
 
   const packets = useMemo(
     () => allPackets.filter((p) => matchesFilters(p, filters, observersByHash)),

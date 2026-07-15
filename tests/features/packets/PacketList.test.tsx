@@ -4,21 +4,22 @@ import { MemoryRouter, useSearchParams } from "react-router-dom";
 import { PacketList } from "../../../src/features/packets/PacketList";
 import type { WsManager } from "../../../src/api/ws-manager";
 
+const usePackets = vi.fn(() => ({
+  allPackets: [],
+  observerOptions: [],
+  newPacketCount: 0,
+  acknowledgeNewPackets: () => {},
+  fetchNextPage: () => {},
+  hasNextPage: false,
+  isFetchingNextPage: false,
+  observersByHash: new Map(),
+  handlePacketObservation: () => {},
+  handleLagged: () => {},
+  laggedCount: 0,
+  dismissLagged: () => {},
+}));
 vi.mock("../../../src/features/packets/usePackets", () => ({
-  usePackets: () => ({
-    allPackets: [],
-    observerOptions: [],
-    newPacketCount: 0,
-    acknowledgeNewPackets: () => {},
-    fetchNextPage: () => {},
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    observersByHash: new Map(),
-    handlePacketObservation: () => {},
-    handleLagged: () => {},
-    laggedCount: 0,
-    dismissLagged: () => {},
-  }),
+  usePackets: (...args: unknown[]) => usePackets(...(args as [])),
 }));
 
 vi.mock("../../../src/hooks/useScopes", () => ({ useScopes: () => [] }));
@@ -66,6 +67,28 @@ function ExternalHashCloser() {
     </button>
   );
 }
+
+describe("PacketList server filter wiring", () => {
+  function renderAt(url: string) {
+    render(
+      <MemoryRouter initialEntries={[url]}>
+        <PacketList wsManager={{} as unknown as WsManager} onAnalyze={vi.fn()} />
+      </MemoryRouter>,
+    );
+  }
+
+  it("passes a single selected type to usePackets as the server filter", () => {
+    usePackets.mockClear();
+    renderAt("/?types=4");
+    expect(usePackets).toHaveBeenLastCalledWith(false, { payloadType: 4 });
+  });
+
+  it("passes null for multi-select so history stays unfiltered", () => {
+    usePackets.mockClear();
+    renderAt("/?types=2,4");
+    expect(usePackets).toHaveBeenLastCalledWith(false, null);
+  });
+});
 
 describe("PacketList expanded row", () => {
   it("follows the ?hash param so an external analyzer close deselects the row", () => {

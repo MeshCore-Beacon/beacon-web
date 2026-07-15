@@ -4,6 +4,7 @@ import { getPackets } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
 import type { PacketSummary } from "../../types/api";
+import type { PacketServerFilter } from "./types";
 import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
 
 // merge and deduplicate live + paginated packets
@@ -114,7 +115,7 @@ class LivePacketStore {
 
 // combines live WS stream with paginated history
 
-export function usePackets(frozen: boolean = false) {
+export function usePackets(frozen: boolean = false, serverFilter: PacketServerFilter | null = null) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [store] = useState(() => new LivePacketStore());
@@ -167,7 +168,8 @@ export function usePackets(frozen: boolean = false) {
   );
 
   // Reset (drop to one fresh first page) instead of invalidate: an invalidate replays every cached
-  // page sequentially — up to 20 requests per lag notice during a flood.
+  // page sequentially — up to 20 requests per lag notice during a flood. The 2-element key matches
+  // filtered variants by prefix, so those reset too.
   const handleLagged = useCallback(
     (data: WsLagged) => {
       setLaggedCount((prev) => prev + data.droppedCount);
@@ -177,7 +179,8 @@ export function usePackets(frozen: boolean = false) {
   );
 
   // The WS handler is down whenever this tab is unmounted, so cached history may hide a gap right
-  // where the live buffer begins. Refresh the first page on mount to close it.
+  // where the live buffer begins. Refresh the first page on mount to close it (prefix match:
+  // filtered variants included).
   useEffect(() => {
     queryClient.resetQueries({ queryKey: ["packets", regionKey] });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only; region changes refetch via the key
@@ -191,9 +194,11 @@ export function usePackets(frozen: boolean = false) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["packets", regionKey],
+    // The unfiltered key must stay 2-element so its cached entry survives filter toggling; the
+    // lagged/mount resets above match both shapes by prefix.
+    queryKey: serverFilter ? ["packets", regionKey, serverFilter] : ["packets", regionKey],
     // first load and every scroll page are the default 50; getPackets fills in the limit
-    queryFn: ({ pageParam }) => getPackets(iatas, { cursor: pageParam }),
+    queryFn: ({ pageParam }) => getPackets(iatas, { cursor: pageParam, ...serverFilter }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     initialPageParam: undefined as number | undefined,
     staleTime: Infinity,

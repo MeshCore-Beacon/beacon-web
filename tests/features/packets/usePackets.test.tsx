@@ -3,6 +3,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { usePackets } from "../../../src/features/packets/usePackets";
+import type { PacketServerFilter } from "../../../src/features/packets/types";
 import type { PacketSummary } from "../../../src/types/api";
 import type { WsPacketObservation } from "../../../src/types/ws";
 
@@ -83,6 +84,112 @@ describe("usePackets gap healing", () => {
     });
     expect(getPackets).toHaveBeenCalledTimes(1);
     expect(result.current.laggedCount).toBe(5);
+  });
+});
+
+describe("usePackets server filter", () => {
+  let qc: QueryClient;
+
+  beforeEach(() => {
+    getPackets.mockReset();
+    getPackets.mockResolvedValue({ items: [packet("fresh")], nextCursor: 999 });
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+
+  it("fetches filtered history under its own query key, leaving the unfiltered entry alone", async () => {
+    renderHook(() => usePackets(false, { payloadType: 4 }), { wrapper });
+
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
+    expect(getPackets.mock.calls[0]![0]).toEqual(["YOW"]);
+    expect(getPackets.mock.calls[0]![1]).toEqual({ cursor: undefined, payloadType: 4 });
+    await waitFor(() => {
+      expect(qc.getQueryData(["packets", "YOW", { payloadType: 4 }])).toBeDefined();
+    });
+    expect(qc.getQueryData(["packets", "YOW"])).toBeUndefined();
+  });
+
+  it("carries the filter on subsequent pages", async () => {
+    const { result } = renderHook(() => usePackets(false, { payloadType: 4 }), { wrapper });
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+
+    expect(getPackets).toHaveBeenCalledTimes(2);
+    expect(getPackets.mock.calls[1]![1]).toEqual({ cursor: 999, payloadType: 4 });
+  });
+
+  it("reuses the cached unfiltered pages when the filter clears (no refetch)", async () => {
+    const { result, rerender } = renderHook(
+      ({ filter }: { filter: PacketServerFilter | null }) => usePackets(false, filter),
+      { initialProps: { filter: null as PacketServerFilter | null }, wrapper },
+    );
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
+
+    rerender({ filter: { payloadType: 4 } });
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(2));
+
+    rerender({ filter: null });
+    await waitFor(() => expect(result.current.allPackets.length).toBeGreaterThan(0));
+    expect(getPackets).toHaveBeenCalledTimes(2); // staleTime Infinity + unchanged unfiltered key
+  });
+
+  it("keeps the live buffer when the filter changes", async () => {
+    const rafCallbacks: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      rafCallbacks.push(cb);
+      return rafCallbacks.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+
+    const { result, rerender } = renderHook(
+      ({ filter }: { filter: PacketServerFilter | null }) => usePackets(false, filter),
+      { initialProps: { filter: null as PacketServerFilter | null }, wrapper },
+    );
+    await waitFor(() => expect(getPackets).toHaveBeenCalled());
+
+    act(() => {
+      result.current.handlePacketObservation(observation("p1"));
+      rafCallbacks.splice(0).forEach((cb) => cb(0));
+    });
+    expect(result.current.newPacketCount).toBe(1);
+
+    rerender({ filter: { payloadType: 4 } });
+
+    expect(result.current.allPackets.map((p) => p.packetHash)).toContain("p1");
+    expect(result.current.newPacketCount).toBe(1); // store untouched by the key switch
+  });
+
+  it("lag reset collapses the filtered entry and refetches with the filter", async () => {
+    const { result } = renderHook(() => usePackets(false, { payloadType: 4 }), { wrapper });
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
+
+    qc.setQueryData(["packets", "YOW", { payloadType: 4 }], {
+      pages: [
+        { items: [packet("a1")], nextCursor: 200 },
+        { items: [packet("b2")], nextCursor: 100 },
+        { items: [packet("c3")], nextCursor: null },
+      ],
+      pageParams: [undefined, 200, 100],
+    });
+    getPackets.mockClear();
+    result.current.handleLagged({ v: 1, type: "lagged", droppedCount: 5, since: 0, lastObservationId: 0 });
+
+    await waitFor(() => expect(getPackets).toHaveBeenCalled());
+    await waitFor(() => {
+      const data = qc.getQueryData<{ pages: unknown[] }>(["packets", "YOW", { payloadType: 4 }]);
+      expect(data?.pages).toHaveLength(1);
+    });
+    expect(getPackets.mock.calls[0]![1]).toEqual({ cursor: undefined, payloadType: 4 });
   });
 });
 
