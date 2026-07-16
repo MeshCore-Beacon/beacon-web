@@ -1,6 +1,6 @@
 import type { EChartsOption } from "./echarts-setup";
 import { type ChartColors, tooltipStyle, withAlpha } from "./chartTheme";
-import { formatCount } from "../../lib/formatters";
+import { formatCount, formatAirtime } from "../../lib/formatters";
 import type { TelemetryPoint } from "./types";
 
 const MONO = "JetBrains Mono, monospace";
@@ -311,9 +311,21 @@ export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketed
     backgroundColor: "transparent",
     grid: { left: 44, right: 14, top: 24, bottom: 22 },
     legend: { data: ["RX", "TX"], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },
-    tooltip: { trigger: "axis", ...tooltipStyle(c) },
+    // values are on-air seconds per interval — render the axis and tooltip as durations, not bare numbers
+    tooltip: {
+      trigger: "axis",
+      ...tooltipStyle(c),
+      formatter: (params: unknown) => {
+        const arr = (Array.isArray(params) ? params : [params]) as Array<{ axisValueLabel?: string; seriesName?: string; marker?: string; value?: unknown }>;
+        const rows = arr.map((p) => {
+          const secs = Array.isArray(p.value) ? p.value[1] : p.value;
+          return `${p.marker ?? ""} ${p.seriesName ?? ""} ${secs == null ? "—" : formatAirtime(Math.round(secs as number))}`;
+        });
+        return [arr[0]?.axisValueLabel ?? "", ...rows].join("<br>");
+      },
+    },
     xAxis: timeAxis(c),
-    yAxis: valueAxis(c),
+    yAxis: { ...valueAxis(c), axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 10, formatter: (v: number) => formatAirtime(Math.round(v)) } },
     series: [
       { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: series("airtimeRxPct"), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
       { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: series("airtimeTxPct"), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },

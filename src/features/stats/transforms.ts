@@ -28,19 +28,24 @@ export function formatPreset(preset: string): string {
   return `${freq} · ${bw}k · SF${sf}`;
 }
 
-// True if any point carries at least one meaningful (non-null, non-zero) metric. Bots / MQTT bridges
-// report telemetry rows that are all zeros (no real radio hardware); those count as "no telemetry"
-// so we show an empty state rather than a wall of flat-zero charts.
-export function hasTelemetry(points: TelemetryPoint[]): boolean {
+// A point with no meaningful (non-null, non-zero) metric. The server writes an all-zero telemetry
+// row whenever a /status message arrives without a usable `stats` block (empty announce frames,
+// bots / MQTT bridges); those aren't real readings, so we drop them rather than plot flat zeros.
+export function isEmptyPoint(p: TelemetryPoint): boolean {
   const live = (v: number | null) => v != null && v !== 0;
-  return points.some(
-    (p) =>
-      live(p.batteryMv) ||
-      live(p.airtimeTxPct) ||
-      live(p.airtimeRxPct) ||
-      live(p.noiseFloorDb) ||
-      live(p.uptimeSeconds) ||
-      live(p.queueLength) ||
-      live(p.receiveErrors),
+  return !(
+    live(p.batteryMv) ||
+    live(p.airtimeTxPct) ||
+    live(p.airtimeRxPct) ||
+    live(p.noiseFloorDb) ||
+    live(p.uptimeSeconds) ||
+    live(p.queueLength) ||
+    live(p.receiveErrors)
   );
+}
+
+// True if any point carries real telemetry; an all-empty series means "no telemetry" and we show
+// an empty state instead of flat-zero charts.
+export function hasTelemetry(points: TelemetryPoint[]): boolean {
+  return points.some((p) => !isEmptyPoint(p));
 }

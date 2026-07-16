@@ -5,7 +5,7 @@ import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { CopyButton } from "../../components/CopyButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
-import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES, formatAirtime } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { useTick } from "../../hooks/useTick";
 import { deriveObserverStatus } from "./observer-status";
@@ -66,14 +66,6 @@ function brokerStatusVariant(lastPacketAt: number | null): BadgeVariant {
 function getStats(metadata: Record<string, unknown> | undefined): Stats | null {
   if (!metadata?.stats || typeof metadata.stats !== "object") return null;
   return metadata.stats as Stats;
-}
-
-function formatAirtime(secs: number): string {
-  if (secs < 60) return `${secs}s`;
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  return `${h}h ${m}m`;
 }
 
 function RadioSection({ observer, noiseFloor }: { observer: Observer; noiseFloor?: number | null }) {

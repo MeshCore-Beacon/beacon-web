@@ -140,6 +140,17 @@ describe("airtimeOption", () => {
     expect(opt.series[0].data).toEqual([[1000, 10], [2000, 12], [3000, 11]]);
     expect(opt.series[1].data).toEqual([[1000, 4], [2000, 4], [3000, 7]]);
   });
+
+  it("labels the axis and tooltip as on-air durations", () => {
+    const opt = airtimeOption(points, colors, true) as Record<string, any>;
+    expect(opt.yAxis.axisLabel.formatter(74)).toBe("1m 14s");
+    const tip = opt.tooltip.formatter([
+      { axisValueLabel: "t", seriesName: "RX", value: [2000, 74], marker: "●" },
+      { seriesName: "TX", value: [2000, null], marker: "●" },
+    ]);
+    expect(tip).toContain("RX 1m 14s");
+    expect(tip).toContain("TX —");
+  });
 });
 
 describe("receiveErrorsOption", () => {
