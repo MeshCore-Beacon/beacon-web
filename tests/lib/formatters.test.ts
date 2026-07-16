@@ -7,7 +7,6 @@ import {
   snrLevel,
   formatPropagation,
   formatCount,
-  formatAirtime,
 } from "../../src/lib/formatters";
 
 describe("formatHex", () => {
@@ -102,17 +101,5 @@ describe("formatPropagation", () => {
 
   it("returns dash for null", () => {
     expect(formatPropagation(null)).toBe("—");
-  });
-});
-
-describe("formatAirtime", () => {
-  it("renders seconds, minutes+seconds, and hours+minutes", () => {
-    expect(formatAirtime(45)).toBe("45s");
-    expect(formatAirtime(74)).toBe("1m 14s");
-    expect(formatAirtime(3720)).toBe("1h 2m");
-  });
-
-  it("renders zero as 0s", () => {
-    expect(formatAirtime(0)).toBe("0s");
   });
 });

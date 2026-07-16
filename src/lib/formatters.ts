@@ -56,15 +56,6 @@ export function formatBattery(volts: number): string {
   return `${volts.toFixed(2)}V`;
 }
 
-// on-air time as a compact duration: 45 -> "45s", 74 -> "1m 14s", 3720 -> "1h 2m"
-export function formatAirtime(secs: number): string {
-  if (secs < 60) return `${secs}s`;
-  if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  return `${h}h ${m}m`;
-}
-
 // Compact large counts for KPI/stat displays: 932 -> "932", 14732 -> "14.7k", 8_900_000 -> "8.9M".
 export function formatCount(n: number | null | undefined): string {
   if (n == null) return "—";

@@ -12,7 +12,7 @@ import { useTick } from "../../hooks/useTick";
 import { deriveObserverStatus } from "../observers/observer-status";
 import { airtimeOption, batteryOption, noiseFloorOption, queueOption, receiveErrorsOption } from "./chartOptions";
 import { Card, ChartCard } from "./cards";
-import { hasTelemetry, isEmptyPoint } from "./transforms";
+import { hasTelemetry } from "./transforms";
 import { useLiveObserver } from "./useLiveStats";
 import type { WsManager } from "../../api/ws-manager";
 import type { Observer } from "../observers/types";
@@ -174,9 +174,7 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
     if (first) onSelectObserver(first.observerId);
   }, [selectedObserverId, topObservers.data, onSelectObserver]);
 
-  // drop empty announce frames (all-zero rows the server writes for stats-less /status messages)
-  // so the noise-floor line and airtime deltas don't spike through zero
-  const points = useMemo(() => (telemetry.data?.points ?? []).filter((p) => !isEmptyPoint(p)), [telemetry.data]);
+  const points = useMemo(() => telemetry.data?.points ?? [], [telemetry.data]);
   // use the response's interval, not the range prop — keepPreviousData can briefly show the old range's points
   const bucketed = telemetry.data != null && telemetry.data.interval !== "1h";
   const airtime = useMemo(() => airtimeOption(points, colors, bucketed), [points, colors, bucketed]);
@@ -214,7 +212,7 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
             ) : (
               <>
                 <ChartCard
-                  title={<>Airtime (RX / TX) · {range}</>}
+                  title={<>Airtime TX / RX · {range}</>}
                   height={180}
                   option={airtime}
                   isLoading={telemetry.isLoading}
