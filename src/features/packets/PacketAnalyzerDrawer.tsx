@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CloseButton } from "../../components/CloseButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
@@ -14,6 +14,7 @@ import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBre
 import { PayloadBreakdown } from "./payload-renderers";
 import { ObservationCard } from "./ObservationCard";
 import { PathData } from "./PathData";
+import { buildPacketPaths } from "../map/packet-path";
 
 function decodePayloadHex(encoded: string): string | null {
   try {
@@ -32,13 +33,16 @@ interface PacketAnalyzerDrawerProps {
   onClose: () => void;
   onSelectObservation?: (id: number) => void;
   onViewNode?: (nodeId: string) => void;
+  onViewPath?: () => void;
   loading?: boolean;
 }
 
 // side panel (full-screen on mobile) showing packet structure and payload breakdown
 
-export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, loading }: PacketAnalyzerDrawerProps) {
+export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, onViewPath, loading }: PacketAnalyzerDrawerProps) {
   const [, setSearchParams] = useSearchParams();
+
+  const hasPath = useMemo(() => (detail ? buildPacketPaths(detail).length > 0 : false), [detail]);
 
   // drop ?hash so the closed analyzer can't reopen on reload and the packet row deselects
   const handleClose = useCallback(() => {
@@ -114,6 +118,22 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 <span><span className="text-text-dim">Propagation </span><span className="text-text-normal">{formatPropagation(detail.firstToLastMs)}</span></span>
               </div>
             </DrawerSection>
+
+            <div className="px-3 py-2 border-b border-border-subtle">
+              <button
+                type="button"
+                onClick={onViewPath}
+                disabled={!hasPath || !onViewPath}
+                title={hasPath ? undefined : "No resolved path to map"}
+                className="w-full flex items-center justify-center gap-1.5 rounded border border-border bg-bg-base px-3 py-1.5 text-[13px] font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M9 5l-6 2v12l6-2 6 2 6-2V5l-6 2-6-2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                  <path d="M9 5v12M15 7v12" stroke="currentColor" strokeWidth="1.4" />
+                </svg>
+                View path on map
+              </button>
+            </div>
 
             {selectedObs && (
               <DrawerSection title="Observation">

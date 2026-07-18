@@ -18,6 +18,7 @@ import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { PacketAnalyzerOverlay } from "./features/packets/PacketAnalyzerOverlay";
+import { PacketPathMapModal } from "./features/map/PacketPathMapModal";
 import { NodeTable } from "./features/nodes/NodeTable";
 import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
 import { NodeDetailOverlay } from "./features/nodes/NodeDetailOverlay";
@@ -29,6 +30,7 @@ import { EmptyState } from "./components/EmptyState";
 import { getPacketDetail } from "./api/client";
 import { WsManager } from "./api/ws-manager";
 import { WS_URL, ENABLED_TABS } from "./lib/constants";
+import type { PacketDetail } from "./types/api";
 
 // Map is the only heavy tab (maplibre-gl is ~1MB), so lazy-load it — its chunk is fetched the
 // first time someone opens the Map tab instead of bloating the initial bundle.
@@ -137,6 +139,8 @@ function AppInner() {
   const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
   const [overlayPacketHash, setOverlayPacketHash] = useState<string | null>(null);
+  // packet path popup shown as a modal over the analyzer drawer/overlay ("View path on map")
+  const [pathMapDetail, setPathMapDetail] = useState<PacketDetail | null>(null);
 
   // short staleTime: observations keep accruing, so reopening the analyzer should show them
   // instead of a snapshot frozen at first open
@@ -162,6 +166,7 @@ function AppInner() {
   const handleTabChange = (tab: string) => {
     setOverlayNodeId(null);
     setOverlayPacketHash(null);
+    setPathMapDetail(null);
     // On mobile a detail panel fills the screen, so leaving its tab must close it; desktop side
     // panels persist across tabs. Cross-nav (onViewObserver) re-sets its selection after this.
     if (isMobile) {
@@ -188,6 +193,7 @@ function AppInner() {
     setOverlayNodeId(null);
     setOverlayPacketHash(null);
     setSelectedObserverId(null);
+    setPathMapDetail(null);
   }, []);
 
   // Closing a detail panel drops its deep-link param so a reload can't reopen it (mirrors the packet
@@ -268,6 +274,7 @@ function AppInner() {
               onSelectObservation={setSelectedObservationId}
               onClose={() => handleAnalyze(null)}
               onViewNode={setOverlayNodeId}
+              onViewPath={() => { if (analyzerDetail) setPathMapDetail(analyzerDetail); }}
             />
           )}
           {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
@@ -302,7 +309,12 @@ function AppInner() {
                 handleTabChange("Observers");
                 setSelectedObserverId(observerId);
               }}
+              onViewPath={() => { if (overlayPacketDetail) setPathMapDetail(overlayPacketDetail); }}
+              inactive={!!pathMapDetail}
             />
+          )}
+          {pathMapDetail && (
+            <PacketPathMapModal detail={pathMapDetail} onClose={() => setPathMapDetail(null)} />
           )}
         </div>
       </AppShell>
