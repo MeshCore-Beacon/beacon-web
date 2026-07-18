@@ -8,6 +8,7 @@ import type {
   CircleLayerSpecification,
   SymbolLayerSpecification,
 } from "maplibre-gl";
+import type { Point } from "geojson";
 import type { PacketPath } from "./packet-path";
 import { packetPathsToFeatures } from "./packet-path";
 import { resolveMapStyle, DEFAULT_CENTER, DEFAULT_ZOOM, IATA_ZOOM } from "./types";
@@ -52,6 +53,25 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
     attrib?.classList.add("maplibregl-compact");
     attrib?.classList.remove("maplibregl-compact-show");
+    // click a path node → popup with its name and raw-decimal coords; pointer cursor on hover
+    map.on("mouseenter", NODE_LAYER, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", NODE_LAYER, () => { map.getCanvas().style.cursor = ""; });
+    map.on("click", NODE_LAYER, (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const [lng, lat] = (f.geometry as Point).coordinates as [number, number];
+      const el = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "pp-popup-name";
+      name.textContent = (f.properties?.title as string) ?? "";
+      const coords = document.createElement("div");
+      coords.className = "pp-popup-coords";
+      coords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      el.append(name, coords);
+      // a fresh popup per click; closeOnClick removes the previous one on the same click
+      new maplibregl.Popup({ closeButton: false, closeOnClick: true, offset: 10 })
+        .setLngLat([lng, lat]).setDOMContent(el).addTo(map);
+    });
     const onLoad = () => setReady(true);
     map.on("load", onLoad);
     return () => {
@@ -109,5 +129,5 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     }
   }, [ready, paths, selectedKey]);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return <div ref={containerRef} data-dark={resolveMapStyle(styleId).dark} className="w-full h-full" />;
 }

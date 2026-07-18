@@ -107,7 +107,7 @@
 }
 
 /* MapLibre controls ship light chrome; re-skin to the app's dark tokens when the active basemap
-   is dark (data-dark set on the map container in MapView). Glyphs are baked-in dark SVGs, so they
+   is dark (data-dark set on each map container — MapView and the packet-path mini-map). Glyphs are baked-in dark SVGs, so they
    are inverted rather than recolored. Light basemaps (Liberty/Light) keep the default chrome. */
 [data-dark="true"] .maplibregl-ctrl-group {
   background: var(--color-bg-raised);
@@ -134,3 +134,20 @@
 [data-dark="true"] .maplibregl-ctrl-attrib a {
   color: var(--color-text-muted);
 }
+/* Path-node popup: dark chrome to match the controls, plus name/coords typography. */
+[data-dark="true"] .maplibregl-popup-content {
+  background: var(--color-bg-raised);
+  color: var(--color-text-normal);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+[data-dark="true"] .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+[data-dark="true"] .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+[data-dark="true"] .maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--color-bg-raised); }
+[data-dark="true"] .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+[data-dark="true"] .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+[data-dark="true"] .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--color-bg-raised); }
+[data-dark="true"] .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--color-bg-raised); }
+[data-dark="true"] .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--color-bg-raised); }
+.pp-popup-name { font-weight: 600; }
+.pp-popup-coords { font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }

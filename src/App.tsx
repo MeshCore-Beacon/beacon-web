@@ -141,6 +141,9 @@ function AppInner() {
   const [overlayPacketHash, setOverlayPacketHash] = useState<string | null>(null);
   // packet path popup shown as a modal over the analyzer drawer/overlay ("View path on map")
   const [pathMapDetail, setPathMapDetail] = useState<PacketDetail | null>(null);
+  const [initialPath] = useState<string | null>(() => searchParams.get("path"));
+  const [pathMapInitialKey, setPathMapInitialKey] = useState<string | null>(null);
+  const pathLinkHandledRef = useRef(false);
 
   // short staleTime: observations keep accruing, so reopening the analyzer should show them
   // instead of a snapshot frozen at first open
@@ -157,6 +160,14 @@ function AppInner() {
     enabled: !!overlayPacketHash,
     staleTime: 30_000,
   });
+
+  // deep link: ?hash opens the analyzer drawer; ?path then opens the path popup once, pre-selected
+  useEffect(() => {
+    if (!initialPath || !analyzerDetail || pathLinkHandledRef.current) return;
+    pathLinkHandledRef.current = true;
+    setPathMapDetail(analyzerDetail);
+    setPathMapInitialKey(initialPath);
+  }, [initialPath, analyzerDetail]);
 
   const handleAnalyze = useCallback((hash: string | null) => {
     setAnalyzerHash(hash);
@@ -274,7 +285,7 @@ function AppInner() {
               onSelectObservation={setSelectedObservationId}
               onClose={() => handleAnalyze(null)}
               onViewNode={setOverlayNodeId}
-              onViewPath={() => { if (analyzerDetail) setPathMapDetail(analyzerDetail); }}
+              onViewPath={() => { if (analyzerDetail) { setPathMapDetail(analyzerDetail); setPathMapInitialKey(null); } }}
             />
           )}
           {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
@@ -309,12 +320,19 @@ function AppInner() {
                 handleTabChange("Observers");
                 setSelectedObserverId(observerId);
               }}
-              onViewPath={() => { if (overlayPacketDetail) setPathMapDetail(overlayPacketDetail); }}
+              onViewPath={() => { if (overlayPacketDetail) { setPathMapDetail(overlayPacketDetail); setPathMapInitialKey(null); } }}
               inactive={!!pathMapDetail}
             />
           )}
           {pathMapDetail && (
-            <PacketPathMapModal detail={pathMapDetail} onClose={() => setPathMapDetail(null)} />
+            <PacketPathMapModal
+              detail={pathMapDetail}
+              initialSelectedKey={pathMapInitialKey}
+              onClose={() => {
+                setPathMapDetail(null);
+                setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete("path"); return n; }, { replace: true });
+              }}
+            />
           )}
         </div>
       </AppShell>

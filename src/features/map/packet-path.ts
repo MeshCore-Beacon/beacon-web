@@ -10,9 +10,9 @@ export interface PathPoint {
 }
 
 export interface PacketPath {
-  key: string; // observation id as string, or "trace"
-  label: string; // observer name, or a truncated observer id, or "Trace route"
-  hopCount: number;
+  key: string; // observerId, or "trace"
+  label: string; // observer name, a truncated observer id, or "Trace route"
+  propagationMs?: number; // packet's propagation to this observer (ms); absent for the trace route
   color: string;
   points: PathPoint[];
 }
@@ -50,22 +50,25 @@ function observerLabel(obs: Observation): string {
 }
 
 // One drawable path per observation (and the trace route for TRACE packets) that resolves to >=2
-// located hops. Colors are assigned by result index so they stay contiguous after filtering.
+// located hops, keyed by observerId and sorted fastest-first. Colors are assigned after sorting so
+// the selector swatch matches the drawn line.
 export function buildPacketPaths(detail: PacketDetail): PacketPath[] {
-  const paths: PacketPath[] = [];
-  const push = (key: string, label: string, hopCount: number, points: PathPoint[]) => {
+  const raw: Omit<PacketPath, "color">[] = [];
+  const add = (key: string, label: string, propagationMs: number | undefined, points: PathPoint[]) => {
     if (points.length < 2) return;
-    paths.push({ key, label, hopCount, color: PATH_COLORS[paths.length % PATH_COLORS.length]!, points });
+    raw.push({ key, label, propagationMs, points });
   };
 
   for (const obs of detail.observations) {
-    push(String(obs.id), observerLabel(obs), obs.pathLength.hopCount, pathPoints(obs.resolvedPath));
+    add(obs.observerId, observerLabel(obs), obs.propagationTimeMs, pathPoints(obs.resolvedPath));
   }
   if (detail.header.payloadType === PayloadType.TRACE && detail.resolvedRoute) {
-    const pts = pathPoints(detail.resolvedRoute);
-    push("trace", "Trace route", detail.resolvedRoute.length, pts);
+    add("trace", "Trace route", undefined, pathPoints(detail.resolvedRoute));
   }
-  return paths;
+
+  // fastest first; missing propagation (incl. the trace route) sorts last
+  raw.sort((a, b) => ((a.propagationMs ?? Infinity) - (b.propagationMs ?? Infinity)) || 0); // || 0: two Infinity props → NaN; keep insertion order
+  return raw.map((p, i) => ({ ...p, color: PATH_COLORS[i % PATH_COLORS.length]! }));
 }
 
 export interface PathLineProps {
@@ -76,7 +79,8 @@ export interface PathLineProps {
 export interface PathNodeProps {
   key: string;
   color: string;
-  label: string;
+  label: string; // short label for the map (truncated id when unnamed)
+  title: string; // untruncated name/id for the click popup
   endpoint: "start" | "end" | "mid";
 }
 
@@ -101,7 +105,7 @@ export function packetPathsToFeatures(
       const endpoint = i === 0 ? "start" : i === path.points.length - 1 ? "end" : "mid";
       points.push({
         type: "Feature",
-        properties: { key: path.key, color: path.color, label: pt.name ?? pt.id.slice(0, 6), endpoint },
+        properties: { key: path.key, color: path.color, label: pt.name ?? pt.id.slice(0, 6), title: pt.name ?? pt.id, endpoint },
         geometry: { type: "Point", coordinates: [pt.lng, pt.lat] },
       });
       bounds.push([pt.lng, pt.lat]);

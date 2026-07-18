@@ -21,49 +21,52 @@ function detail(observations: Observation[], over: Partial<PacketDetail> = {}): 
 }
 
 describe("buildPacketPaths", () => {
-  it("returns one color-coded path per observation with >=2 located hops", () => {
+  it("keys each path by observerId and carries propagation, fastest first", () => {
     const d = detail([
-      obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerName: "Alpha" }),
-      obs(2, [hop("c", -80, 44), hop("d", -76, 46)]),
+      obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-slow", observerName: "Slow", propagationTimeMs: 900 }),
+      obs(2, [hop("c", -80, 44), hop("d", -76, 46)], { observerId: "obs-fast", observerName: "Fast", propagationTimeMs: 100 }),
     ]);
     const paths = buildPacketPaths(d);
-    expect(paths).toHaveLength(2);
-    expect(paths[0]).toMatchObject({ key: "1", label: "Alpha", hopCount: 2, color: PATH_COLORS[0] });
-    expect(paths[1]).toMatchObject({ key: "2", label: "observer", color: PATH_COLORS[1] });
-    expect(paths[0]!.points).toEqual([
-      { id: "a", name: undefined, lng: -79, lat: 43 },
-      { id: "b", name: undefined, lng: -75, lat: 45 },
-    ]);
+    expect(paths.map((p) => p.key)).toEqual(["obs-fast", "obs-slow"]); // fastest first
+    expect(paths[0]).toMatchObject({ key: "obs-fast", label: "Fast", propagationMs: 100, color: PATH_COLORS[0] });
+    expect(paths[1]).toMatchObject({ key: "obs-slow", propagationMs: 900, color: PATH_COLORS[1] }); // colors follow sort order
+  });
+
+  it("sorts missing propagation and the trace route last", () => {
+    const d = detail(
+      [
+        obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-none" }),                       // no propagation
+        obs(2, [hop("c", -80, 44), hop("d", -76, 46)], { observerId: "obs-fast", propagationTimeMs: 50 }),
+      ],
+      {
+        header: { payloadType: PayloadType.TRACE, routeType: 1 },
+        resolvedRoute: [hop("e", -81, 47), hop("f", -77, 48)],
+      } as unknown as Partial<PacketDetail>,
+    );
+    const keys = buildPacketPaths(d).map((p) => p.key);
+    expect(keys[0]).toBe("obs-fast");
+    expect(keys).toContain("obs-none");
+    expect(keys[keys.length - 1]).toBe("trace"); // trace (no propagation) last
   });
 
   it("omits observations that resolve to fewer than 2 located hops", () => {
     const d = detail([
-      obs(1, [hop("a", -79, 43), hop("x")]),          // one unlocated -> 1 point -> omitted
-      obs(2, [hop("b", -80, 44), hop("c", -76, 46)]),
+      obs(1, [hop("a", -79, 43), hop("x")], { observerId: "obs-1" }),
+      obs(2, [hop("b", -80, 44), hop("c", -76, 46)], { observerId: "obs-2" }),
     ]);
-    expect(buildPacketPaths(d).map((p) => p.key)).toEqual(["2"]);
-  });
-
-  it("includes the trace route for TRACE packets", () => {
-    const d = detail([], {
-      header: { payloadType: PayloadType.TRACE, routeType: 1 },
-      resolvedRoute: [hop("a", -79, 43), hop("b", -75, 45)],
-    } as unknown as Partial<PacketDetail>);
-    const paths = buildPacketPaths(d);
-    expect(paths).toHaveLength(1);
-    expect(paths[0]).toMatchObject({ key: "trace", label: "Trace route", hopCount: 2 });
+    expect(buildPacketPaths(d).map((p) => p.key)).toEqual(["obs-2"]);
   });
 
   it("returns empty when nothing is drawable", () => {
-    expect(buildPacketPaths(detail([obs(1, [hop("a", -79, 43)])]))).toEqual([]);
+    expect(buildPacketPaths(detail([obs(1, [hop("a", -79, 43)], { observerId: "obs-1" })]))).toEqual([]);
   });
 });
 
 const P: PacketPath[] = [
-  { key: "1", label: "A", hopCount: 3, color: "#111", points: [
+  { key: "1", label: "A", color: "#111", points: [
     { id: "a", lng: -79, lat: 43 }, { id: "b", lng: -78, lat: 44 }, { id: "c", lng: -77, lat: 45 },
   ] },
-  { key: "2", label: "B", hopCount: 2, color: "#222", points: [
+  { key: "2", label: "B", color: "#222", points: [
     { id: "d", lng: -80, lat: 46 }, { id: "e", lng: -76, lat: 47 },
   ] },
 ];
@@ -88,5 +91,16 @@ describe("packetPathsToFeatures", () => {
     const { lines, points } = packetPathsToFeatures(P, "2");
     expect(lines.features.map((f) => f.properties.key)).toEqual(["2"]);
     expect(points.features).toHaveLength(2);
+  });
+
+  it("carries the untruncated node identity as title", () => {
+    const path: PacketPath = { key: "k", label: "L", color: "#111", points: [
+      { id: "abcdef123456", lng: -79, lat: 43 },                 // no name -> title is the full id
+      { id: "z", name: "Repeater North", lng: -78, lat: 44 },    // named -> title is the name
+    ] };
+    const { points } = packetPathsToFeatures([path], null);
+    expect(points.features[0]!.properties.title).toBe("abcdef123456");
+    expect(points.features[0]!.properties.label).toBe("abcdef"); // label stays truncated for the map
+    expect(points.features[1]!.properties.title).toBe("Repeater North");
   });
 });

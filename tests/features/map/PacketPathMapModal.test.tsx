@@ -27,8 +27,8 @@ const hop = (id: string, lng: number, lat: number) => ({ confidence: "high" as c
 const detail = {
   header: { payloadType: PayloadType.TEXT, routeType: 1 },
   observations: [
-    { id: 1, observerId: "obs-alpha", observerName: "Alpha", iata: "YYZ", heardAt: 0, sourceBroker: "b", pathLength: { raw: "", hashSize: 1, hopCount: 2 }, resolvedPath: [hop("a", -79, 43), hop("b", -75, 45)] },
-    { id: 2, observerId: "obs-bravo", observerName: "Bravo", iata: "YOW", heardAt: 0, sourceBroker: "b", pathLength: { raw: "", hashSize: 1, hopCount: 2 }, resolvedPath: [hop("c", -80, 44), hop("d", -76, 46)] },
+    { id: 1, observerId: "obs-alpha", observerName: "Alpha", iata: "YYZ", heardAt: 0, sourceBroker: "b", pathLength: { raw: "", hashSize: 1, hopCount: 2 }, resolvedPath: [hop("a", -79, 43), hop("b", -75, 45)], propagationTimeMs: 100 },
+    { id: 2, observerId: "obs-bravo", observerName: "Bravo", iata: "YOW", heardAt: 0, sourceBroker: "b", pathLength: { raw: "", hashSize: 1, hopCount: 2 }, resolvedPath: [hop("c", -80, 44), hop("d", -76, 46)], propagationTimeMs: 480 },
   ],
 } as unknown as PacketDetail;
 
@@ -44,7 +44,13 @@ describe("PacketPathMapModal", () => {
   it("isolates a path when its row is clicked", () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} />);
     fireEvent.click(screen.getByText("Bravo"));
-    expect(screen.getByTestId("mini-map")).toHaveTextContent("2");
+    expect(screen.getByTestId("mini-map")).toHaveTextContent("obs-bravo");
+  });
+
+  it("shows each observer's propagation", () => {
+    render(<PacketPathMapModal detail={detail} onClose={() => {}} />);
+    expect(screen.getByText("0.100s")).toBeInTheDocument(); // formatPropagation(100)
+    expect(screen.getByText("0.480s")).toBeInTheDocument();
   });
 
   it("closes from the close button", () => {
@@ -52,5 +58,20 @@ describe("PacketPathMapModal", () => {
     render(<PacketPathMapModal detail={detail} onClose={onClose} />);
     fireEvent.click(screen.getByLabelText("Close path map"));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("pre-selects the observer from initialSelectedKey", () => {
+    render(<PacketPathMapModal detail={detail} onClose={() => {}} initialSelectedKey="obs-bravo" />);
+    expect(screen.getByTestId("mini-map")).toHaveTextContent("obs-bravo");
+  });
+
+  it("falls back to All when initialSelectedKey isn't a known path", () => {
+    render(<PacketPathMapModal detail={detail} onClose={() => {}} initialSelectedKey="nope" />);
+    expect(screen.getByTestId("mini-map")).toHaveTextContent("all");
+  });
+
+  it("renders a copy-link button", () => {
+    render(<PacketPathMapModal detail={detail} onClose={() => {}} />);
+    expect(screen.getByRole("button", { name: "Copy path link" })).toBeInTheDocument();
   });
 });
