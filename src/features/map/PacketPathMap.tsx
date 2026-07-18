@@ -47,6 +47,11 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new maplibregl.AttributionControl({ compact: true }));
+    // start the attribution as a bare (i) instead of the wide expanded bar it pops open on load —
+    // on mobile that bar overlaps the observer list beneath the map (same trick as useMapLibre)
+    const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+    attrib?.classList.add("maplibregl-compact");
+    attrib?.classList.remove("maplibregl-compact-show");
     const onLoad = () => setReady(true);
     map.on("load", onLoad);
     return () => {
