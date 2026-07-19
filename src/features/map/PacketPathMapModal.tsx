@@ -64,7 +64,7 @@ export function PacketPathMapModal({ detail, onClose, initialSelectedKey }: {
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-          <div className="h-[55vh] md:h-auto md:flex-1 min-h-0 bg-bg-base">
+          <div className="h-[55vh] max-md:shrink-0 md:h-auto md:flex-1 min-h-0 bg-bg-base">
             <PacketPathMap paths={paths} selectedKey={selectedKey} styleId={styleId} />
           </div>
           <div className="md:w-[220px] md:border-l border-t md:border-t-0 border-border flex flex-col min-h-0 overflow-y-auto">
