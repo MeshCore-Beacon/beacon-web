@@ -5,7 +5,7 @@ import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { CopyButton } from "../../components/CopyButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
-import { formatHex, formatSnr, snrLevel, formatRadio, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatHex, formatSnr, snrLevel, formatRadio, formatClockDrift, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import type { NodeObservation, NodeNeighbor } from "./types";
 
@@ -161,6 +161,12 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 <Field label="First" value={<Timestamp value={node.firstSeen} />} />
                 <Field label="Last" value={<Timestamp value={node.lastSeen} />} />
                 {node.lastAdvertAt != null && <Field label="Advert" value={<Timestamp value={node.lastAdvertAt} />} />}
+                {node.clockDriftSeconds != null && (
+                  <Field
+                    label="Clock drift"
+                    value={<span className={node.clockOutOfSync ? "text-warn" : "text-green"}>{formatClockDrift(node.clockDriftSeconds)}</span>}
+                  />
+                )}
               </div>
             </Section>
 

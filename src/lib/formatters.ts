@@ -52,6 +52,21 @@ export function formatUptime(seconds: number): string {
   return `${m}m`;
 }
 
+// Signed device-clock drift for the node detail, e.g. "+42s ahead", "-1h 1m behind", "in sync".
+// formatUptime floors to whole minutes and is unsigned, so it can't render sub-minute drift.
+// +ve = device clock ahead of the server (matches clockDriftSeconds).
+export function formatClockDrift(seconds: number): string {
+  if (seconds === 0) return "in sync";
+  const dir = seconds > 0 ? "ahead" : "behind";
+  const sign = seconds > 0 ? "+" : "-";
+  const s = Math.abs(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mag = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  return `${sign}${mag} ${dir}`;
+}
+
 export function formatBattery(volts: number): string {
   return `${volts.toFixed(2)}V`;
 }

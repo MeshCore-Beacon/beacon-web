@@ -31,6 +31,12 @@ export interface Node extends NodeSummary {
   firstSeen: number; // epoch ms
   lastSeen: number; // epoch ms
   metadata: Record<string, unknown> | null;
+  // Clock drift, repeaters/room servers only; absent for other types or before a qualifying advert.
+  // Device minus server time in seconds (+ve = device ahead). clockCheckedAt == lastAdvertAt.
+  // clockOutOfSync is the server's verdict against its threshold — don't recompute it client-side.
+  clockDriftSeconds?: number;
+  clockOutOfSync?: boolean;
+  clockCheckedAt?: number; // epoch ms
 }
 
 // First-hop neighbor of a node, from GET /nodes/{id}/neighbors (bare array, no pagination).

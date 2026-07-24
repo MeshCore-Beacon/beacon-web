@@ -86,3 +86,30 @@ describe("NodeDetailPanel neighbors", () => {
     expect(await screen.findByText("No known neighbors")).toBeInTheDocument();
   });
 });
+
+describe("NodeDetailPanel clock drift", () => {
+  it("shows a repeater's clock drift in amber when the server flags it out of sync", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lastAdvertAt: 2, clockDriftSeconds: 432, clockOutOfSync: true, clockCheckedAt: 2 });
+
+    renderPanel();
+
+    const drift = await screen.findByText("+7m 12s ahead");
+    expect(drift.className).toContain("text-warn");
+  });
+
+  it("shows an in-sync drift in green", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lastAdvertAt: 2, clockDriftSeconds: 20, clockOutOfSync: false, clockCheckedAt: 2 });
+
+    renderPanel();
+
+    const drift = await screen.findByText("+20s ahead");
+    expect(drift.className).toContain("text-green");
+  });
+
+  it("omits clock drift entirely when the node reports none", async () => {
+    renderPanel();
+
+    await screen.findByText("Timestamps");
+    expect(screen.queryByText(/Clock drift/i)).not.toBeInTheDocument();
+  });
+});

@@ -7,6 +7,7 @@ import {
   snrLevel,
   formatPropagation,
   formatCount,
+  formatClockDrift,
 } from "../../src/lib/formatters";
 
 describe("formatHex", () => {
@@ -101,5 +102,21 @@ describe("formatPropagation", () => {
 
   it("returns dash for null", () => {
     expect(formatPropagation(null)).toBe("—");
+  });
+});
+
+describe("formatClockDrift", () => {
+  it("labels a zero drift as in sync", () => {
+    expect(formatClockDrift(0)).toBe("in sync");
+  });
+
+  it("shows sub-minute drift with a sign and direction word", () => {
+    expect(formatClockDrift(42)).toBe("+42s ahead");
+    expect(formatClockDrift(-45)).toBe("-45s behind");
+  });
+
+  it("breaks out minutes and hours, dropping seconds once hours appear", () => {
+    expect(formatClockDrift(432)).toBe("+7m 12s ahead"); // 7*60 + 12
+    expect(formatClockDrift(-3670)).toBe("-1h 1m behind"); // 3670 -> 1h 1m
   });
 });
