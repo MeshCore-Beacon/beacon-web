@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getStatsNodeTypes } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes } from "../../src/api/client";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
 import type { ChannelMessage, ChannelSummary } from "../../src/features/channels/types";
@@ -379,6 +379,30 @@ describe("stats endpoints", () => {
     expect(url.searchParams.has("iatas")).toBe(false);
     expect(url.searchParams.get("since")).toBe("1700000000000");
     expect(url.searchParams.get("limit")).toBe("15");
+  });
+
+  it("hits /stats/top-advertisers with iatas/since/limit", async () => {
+    const getUrl = mockFetchOnce([]);
+
+    await getTopAdvertisers(["YOW", "YYZ"], 1700000000000, 10);
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/stats/top-advertisers");
+    expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
+    expect(url.searchParams.get("since")).toBe("1700000000000");
+    expect(url.searchParams.get("limit")).toBe("10");
+  });
+
+  it("hits /stats/top-talkers with iatas/since/limit", async () => {
+    const getUrl = mockFetchOnce([]);
+
+    await getTopTalkers(["YOW"], 1700000000000, 8);
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/stats/top-talkers");
+    expect(url.searchParams.get("iatas")).toBe("YOW");
+    expect(url.searchParams.get("since")).toBe("1700000000000");
+    expect(url.searchParams.get("limit")).toBe("8");
   });
 
   it("hits /stats/node-types with the region's IATAs", async () => {

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { formatCount } from "../../lib/formatters";
 import { useChartColors, nodeTypeColor } from "./chartTheme";
-import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
+import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useTopAdvertisers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
 import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption, presetBarsOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";
 import { useLiveOverview } from "./useLiveStats";
@@ -37,6 +37,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const payload = usePayloadBreakdown(range);
   const topNodes = useTopNodes(10);
   const topObservers = useTopObservers(range, 8);
+  const topAdvertisers = useTopAdvertisers(range, 10);
   const radioPresets = useRadioPresets();
   const scopes = useScopes();
   const nodeTypes = useNodeTypes();
@@ -54,6 +55,17 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
     [topNodes.data, colors],
   );
   const nodesOption = useMemo(() => leaderboardOption(nodeRows, colors), [nodeRows, colors]);
+
+  const advertiserRows = useMemo(
+    () =>
+      (topAdvertisers.data ?? []).map((a) => ({
+        name: a.nodeName ?? a.nodeId.slice(0, 8),
+        value: a.advertCount,
+        color: nodeTypeColor(a.nodeTypeName, colors),
+      })),
+    [topAdvertisers.data, colors],
+  );
+  const advertisersOption = useMemo(() => leaderboardOption(advertiserRows, colors), [advertiserRows, colors]);
 
   const payloadItems = useMemo(
     () =>
@@ -140,6 +152,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
           isError={payload.isError}
           isEmpty={payloadItems.length === 0}
         />
+        <ChartCard title={<>Top advertisers · {range}</>} height={208} option={advertisersOption} isLoading={topAdvertisers.isLoading} isError={topAdvertisers.isError} isEmpty={advertiserRows.length === 0} />
         {/* counts are all-time; the server's 7d filter only prunes the roster to recently-heard nodes */}
         <ChartCard title="Top nodes · all time" height={208} option={nodesOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
         <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isLoading} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />

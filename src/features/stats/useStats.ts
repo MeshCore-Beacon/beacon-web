@@ -6,6 +6,8 @@ import {
   getPayloadBreakdown,
   getTopNodes,
   getTopObservers,
+  getTopAdvertisers,
+  getTopTalkers,
   getRadioPresets,
   getStatsScopes,
   getStatsNodeTypes,
@@ -67,6 +69,24 @@ export function useTopObservers(range: StatsRange, limit = 10) {
   return useQuery({
     queryKey: ["stats-top-observers", regionKey, range, limit],
     queryFn: () => getTopObservers(iatas, sinceFor(range), limit),
+    ...common,
+  });
+}
+
+export function useTopAdvertisers(range: StatsRange, limit = 10) {
+  const { iatas, regionKey } = useRegion();
+  return useQuery({
+    queryKey: ["stats-top-advertisers", regionKey, range, limit],
+    queryFn: () => getTopAdvertisers(iatas, sinceFor(range), limit),
+    ...common,
+  });
+}
+
+export function useTopTalkers(range: StatsRange, limit = 10) {
+  const { iatas, regionKey } = useRegion();
+  return useQuery({
+    queryKey: ["stats-top-talkers", regionKey, range, limit],
+    queryFn: () => getTopTalkers(iatas, sinceFor(range), limit),
     ...common,
   });
 }

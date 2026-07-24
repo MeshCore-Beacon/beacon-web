@@ -40,6 +40,23 @@ export interface TopObserver {
   observationCount: number;
 }
 
+export interface TopAdvertiser {
+  nodeId: string;
+  nodeName: string | null;
+  nodeType: number;
+  nodeTypeName: string;
+  iata: string;
+  advertCount: number;
+  lastHeard: number; // epoch ms
+}
+
+// grouped by decrypted sender display-name, not node identity: same-named pubkeys merge, a rename splits
+export interface TopTalker {
+  senderName: string;
+  messageCount: number;
+  lastSent: number; // epoch ms
+}
+
 export interface RadioPreset {
   preset: string; // "freqMhz,bwKhz,sf" e.g. "910.525,62.5,7"
   iata: string;
@@ -78,7 +95,7 @@ export interface ObserverTelemetry {
 }
 
 // Sub-tab + time-range identifiers shared across the Stats page.
-export type StatsTab = "mesh" | "observer" | "graph";
+export type StatsTab = "mesh" | "talkers" | "observer" | "graph";
 export type StatsRange = "24h" | "7d" | "30d";
 
 export const RANGE_MS: Record<StatsRange, number> = {

@@ -9,6 +9,8 @@ import type {
   PayloadBreakdownItem,
   TopNode,
   TopObserver,
+  TopAdvertiser,
+  TopTalker,
   RadioPreset,
   ScopeStats,
   ObserverTelemetry,
@@ -280,6 +282,14 @@ export function getTopNodes(iatas?: string[], limit = 10): Promise<TopNode[]> {
 
 export function getTopObservers(iatas?: string[], since?: number, limit = 10): Promise<TopObserver[]> {
   return request("/stats/top-observers", { iatas: iatasParam(iatas), since, limit });
+}
+
+export function getTopAdvertisers(iatas?: string[], since?: number, limit = 10): Promise<TopAdvertiser[]> {
+  return request("/stats/top-advertisers", { iatas: iatasParam(iatas), since, limit });
+}
+
+export function getTopTalkers(iatas?: string[], since?: number, limit = 10): Promise<TopTalker[]> {
+  return request("/stats/top-talkers", { iatas: iatasParam(iatas), since, limit });
 }
 
 export function getRadioPresets(iatas?: string[]): Promise<RadioPreset[]> {
