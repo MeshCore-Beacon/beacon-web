@@ -46,6 +46,42 @@ describe("PayloadBreakdown — trace resolvedRoute overlay", () => {
   });
 });
 
+describe("PayloadBreakdown — resolved source/destination endpoints", () => {
+  const envelope = {
+    type: "TEXT_MESSAGE",
+    sourceHash: "aa",
+    destinationHash: "bb",
+    cipherMac: "0011",
+    ciphertext: "deadbeef",
+    decrypted: null,
+  };
+  const resolvedSource: ResolvedHop = { confidence: "high", nodes: [{ id: "s1", publicKey: "aa", name: "Alice" }] };
+  const resolvedDestination: ResolvedHop = { confidence: "high", nodes: [{ id: "d1", publicKey: "bb", name: "Bob" }] };
+
+  it("makes the resolved From/To hashes clickable node blocks", () => {
+    const onViewNode = vi.fn();
+    render(<PayloadBreakdown payload={envelope} resolvedSource={resolvedSource} resolvedDestination={resolvedDestination} onViewNode={onViewNode} />);
+    fireEvent.click(screen.getByRole("button", { name: "BB" })); // To → destination node
+    expect(onViewNode).toHaveBeenCalledWith("d1");
+    fireEvent.click(screen.getByRole("button", { name: "AA" })); // From → source node
+    expect(onViewNode).toHaveBeenCalledWith("s1");
+  });
+
+  it("falls back to a plain hash badge when the endpoint did not resolve", () => {
+    render(<PayloadBreakdown payload={envelope} />);
+    expect(screen.queryByRole("button", { name: "BB" })).not.toBeInTheDocument();
+    expect(screen.getByText("BB")).toBeInTheDocument();
+  });
+
+  it("resolves an ANON_REQUEST destination hash to a node block", () => {
+    const onViewNode = vi.fn();
+    const anon = { type: "ANON_REQUEST", destination: 0xbb, ephemeralPubKey: "cc" };
+    render(<PayloadBreakdown payload={anon} resolvedDestination={resolvedDestination} onViewNode={onViewNode} />);
+    fireEvent.click(screen.getByRole("button", { name: "0xBB" }));
+    expect(onViewNode).toHaveBeenCalledWith("d1");
+  });
+});
+
 describe("PayloadBreakdown — DISCOVER_REQ", () => {
   // Backend emits DISCOVER as a top-level parsedPayload.type (not nested under CONTROL).
   // See beacon-server internal/ingest/packet.go parsedDiscoverReq.

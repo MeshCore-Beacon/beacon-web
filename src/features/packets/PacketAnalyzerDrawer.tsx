@@ -201,22 +201,12 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                   </ColorAccentField>
                 )}
 
-                {/* Path data — for TRACE the path bytes are per-hop SNR samples, so show them raw */}
+                {/* Path data — TRACE's pathBytes are now its trace path hashes (matching hashSize/hopCount
+                    and resolvedPath), so it resolves through PathData like every other type. */}
                 {selectedObs?.pathBytes && (
                   <ColorAccentField field="pathData">
-                    {detail.header.payloadType === PayloadType.TRACE ? (
-                      <>
-                        <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path SNR Data</div>
-                        <div className="font-mono text-[13px] text-text-normal break-all">
-                          {selectedObs.pathBytes.toUpperCase()}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path Data</div>
-                        <PathData pathBytes={selectedObs.pathBytes} hashSize={selectedObs.pathLength.hashSize} resolvedPath={selectedObs.resolvedPath} onViewNode={onViewNode} />
-                      </>
-                    )}
+                    <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Path Data</div>
+                    <PathData pathBytes={selectedObs.pathBytes} hashSize={selectedObs.pathLength.hashSize} resolvedPath={selectedObs.resolvedPath} onViewNode={onViewNode} />
                   </ColorAccentField>
                 )}
 
@@ -232,7 +222,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
             {detail.parsedPayload && typeof detail.parsedPayload === "object" && Object.keys(detail.parsedPayload).length > 0 && (
               <DrawerSection title="Payload Breakdown">
                 <div className="font-mono text-[13px]">
-                  <PayloadBreakdown payload={detail.parsedPayload} resolvedRoute={detail.resolvedRoute} onViewNode={onViewNode} />
+                  <PayloadBreakdown payload={detail.parsedPayload} resolvedRoute={detail.resolvedRoute} resolvedSource={selectedObs?.resolvedSource} resolvedDestination={selectedObs?.resolvedDestination} onViewNode={onViewNode} />
                 </div>
               </DrawerSection>
             )}

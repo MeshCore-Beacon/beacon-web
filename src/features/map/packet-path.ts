@@ -59,10 +59,19 @@ export function buildPacketPaths(detail: PacketDetail): PacketPath[] {
     raw.push({ key, label, propagationMs, points });
   };
 
-  for (const obs of detail.observations) {
-    add(obs.observerId, observerLabel(obs), obs.propagationTimeMs, pathPoints(obs.resolvedPath));
+  const isTrace = detail.header.payloadType === PayloadType.TRACE;
+  // TRACE observations now resolve to the same hops as detail.resolvedRoute, so their per-observation
+  // lines would just duplicate the single "Trace route" below — draw only that one for traces.
+  if (!isTrace) {
+    for (const obs of detail.observations) {
+      // full chain: source → relay hops → destination; missing/unlocated endpoints drop out in pathPoints
+      const chain = [obs.resolvedSource, ...obs.resolvedPath, obs.resolvedDestination].filter(
+        (h): h is ResolvedHop => h != null,
+      );
+      add(obs.observerId, observerLabel(obs), obs.propagationTimeMs, pathPoints(chain));
+    }
   }
-  if (detail.header.payloadType === PayloadType.TRACE && detail.resolvedRoute) {
+  if (isTrace && detail.resolvedRoute) {
     add("trace", "Trace route", undefined, pathPoints(detail.resolvedRoute));
   }
 

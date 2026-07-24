@@ -13,6 +13,14 @@ interface PayloadProps {
   payload: Record<string, unknown>;
 }
 
+// the packet's resolved endpoints + node-open callback, threaded from the analyzer through the
+// envelope/anon renderers so From/To/Dest hashes resolve to node blocks like path hops do.
+interface EndpointProps {
+  resolvedSource?: ResolvedHop;
+  resolvedDestination?: ResolvedHop;
+  onViewNode?: (nodeId: string) => void;
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">{children}</div>;
 }
@@ -80,11 +88,11 @@ function EncryptedIndicator() {
   );
 }
 
-function EncryptedEnvelope({ payload, headerSlot, children }: {
+function EncryptedEnvelope({ payload, headerSlot, children, resolvedSource, resolvedDestination, onViewNode }: {
   payload: Record<string, unknown>;
   headerSlot?: ReactNode;
   children: (decrypted: Record<string, unknown>) => ReactNode;
-}) {
+} & EndpointProps) {
   const destinationHash = payload.destinationHash as string | undefined;
   const sourceHash = payload.sourceHash as string | undefined;
   const cipherMac = payload.cipherMac as string | undefined;
@@ -96,13 +104,19 @@ function EncryptedEnvelope({ payload, headerSlot, children }: {
       <div className="flex flex-col gap-1">
         {destinationHash && (
           <ColorAccentField field="destinationHash">
-            <span className="text-text-dim">To </span><HexBadge value={destinationHash} />
+            <span className="text-text-dim">To </span>
+            {resolvedDestination
+              ? <ResolvedHopBlock hop={resolvedDestination} label={destinationHash.toUpperCase()} onViewNode={onViewNode} showSnr={false} />
+              : <HexBadge value={destinationHash} />}
             <span className="text-text-dim"> ({destinationHash.length / 2}B)</span>
           </ColorAccentField>
         )}
         {sourceHash && (
           <ColorAccentField field="sourceHash">
-            <span className="text-text-dim">From </span><HexBadge value={sourceHash} />
+            <span className="text-text-dim">From </span>
+            {resolvedSource
+              ? <ResolvedHopBlock hop={resolvedSource} label={sourceHash.toUpperCase()} onViewNode={onViewNode} showSnr={false} />
+              : <HexBadge value={sourceHash} />}
             <span className="text-text-dim"> ({sourceHash.length / 2}B)</span>
           </ColorAccentField>
         )}
@@ -316,9 +330,9 @@ function GroupTextPayload({ payload }: PayloadProps) {
   );
 }
 
-function TextPayload({ payload }: PayloadProps) {
+function TextPayload({ payload, ...endpoints }: PayloadProps & EndpointProps) {
   return (
-    <EncryptedEnvelope payload={payload}>
+    <EncryptedEnvelope payload={payload} {...endpoints}>
       {(d) => (
         <div className="flex flex-col gap-1">
           {d.message != null && (
@@ -335,9 +349,9 @@ function TextPayload({ payload }: PayloadProps) {
   );
 }
 
-function RequestPayload({ payload }: PayloadProps) {
+function RequestPayload({ payload, ...endpoints }: PayloadProps & EndpointProps) {
   return (
-    <EncryptedEnvelope payload={payload}>
+    <EncryptedEnvelope payload={payload} {...endpoints}>
       {(d) => (
         <div className="flex flex-col gap-1.5">
           {d.requestTypeName != null && (
@@ -357,9 +371,9 @@ function RequestPayload({ payload }: PayloadProps) {
   );
 }
 
-function ResponsePayload({ payload }: PayloadProps) {
+function ResponsePayload({ payload, ...endpoints }: PayloadProps & EndpointProps) {
   return (
-    <EncryptedEnvelope payload={payload}>
+    <EncryptedEnvelope payload={payload} {...endpoints}>
       {(d) => (
         <div className="flex flex-col gap-1">
           {d.tag != null && (
@@ -387,9 +401,9 @@ function AckPayload({ payload }: PayloadProps) {
   );
 }
 
-function PathPayload({ payload }: PayloadProps) {
+function PathPayload({ payload, ...endpoints }: PayloadProps & EndpointProps) {
   return (
-    <EncryptedEnvelope payload={payload}>
+    <EncryptedEnvelope payload={payload} {...endpoints}>
       {(d) => <PathDecryptedContent decrypted={d} />}
     </EncryptedEnvelope>
   );
@@ -652,15 +666,18 @@ function GenericPayload({ payload }: PayloadProps) {
   );
 }
 
-function AnonReqPayload({ payload }: PayloadProps) {
+function AnonReqPayload({ payload, resolvedDestination, onViewNode }: PayloadProps & EndpointProps) {
   const destination = payload.destination as number | undefined;
   const ephemeralPubKey = payload.ephemeralPubKey as string | undefined;
+  const destLabel = destination != null ? `0x${destination.toString(16).toUpperCase().padStart(2, "0")}` : "";
 
   return (
     <div className="flex flex-col gap-2.5">
       {destination != null && (
         <FieldRow label="Dest Hash">
-          <span className="text-text-normal">0x{destination.toString(16).toUpperCase().padStart(2, "0")}</span>
+          {resolvedDestination
+            ? <ResolvedHopBlock hop={resolvedDestination} label={destLabel} onViewNode={onViewNode} showSnr={false} />
+            : <span className="text-text-normal">{destLabel}</span>}
         </FieldRow>
       )}
       {ephemeralPubKey && (
@@ -672,21 +689,21 @@ function AnonReqPayload({ payload }: PayloadProps) {
 
 // routes payload.type to the right renderer
 
-export function PayloadBreakdown({ payload, resolvedRoute, onViewNode }: {
+export function PayloadBreakdown({ payload, resolvedRoute, resolvedSource, resolvedDestination, onViewNode }: {
   payload: Record<string, unknown>;
   resolvedRoute?: ResolvedHop[]; // trace packets only — packet-level, not part of parsedPayload
-  onViewNode?: (nodeId: string) => void;
-}) {
+} & EndpointProps) {
+  const endpoints: EndpointProps = { resolvedSource, resolvedDestination, onViewNode };
   switch (payload.type) {
     case "ADVERT": return <AdvertPayload payload={payload} />;
     case "TRACE": return <TracePayload payload={payload} resolvedRoute={resolvedRoute} onViewNode={onViewNode} />;
     case "GROUP_TEXT": return <GroupTextPayload payload={payload} />;
-    case "TEXT_MESSAGE": return <TextPayload payload={payload} />;
-    case "REQUEST": return <RequestPayload payload={payload} />;
-    case "RESPONSE": return <ResponsePayload payload={payload} />;
-    case "ANON_REQUEST": return <AnonReqPayload payload={payload} />;
+    case "TEXT_MESSAGE": return <TextPayload payload={payload} {...endpoints} />;
+    case "REQUEST": return <RequestPayload payload={payload} {...endpoints} />;
+    case "RESPONSE": return <ResponsePayload payload={payload} {...endpoints} />;
+    case "ANON_REQUEST": return <AnonReqPayload payload={payload} {...endpoints} />;
     case "ACK": return <AckPayload payload={payload} />;
-    case "PATH": return <PathPayload payload={payload} />;
+    case "PATH": return <PathPayload payload={payload} {...endpoints} />;
     case "CONTROL": return <ControlPayload payload={payload} />;
     case "DISCOVER_REQ": return <DiscoverReqPayload payload={payload} />;
     case "DISCOVER_RESP": return <DiscoverRespPayload payload={payload} />;

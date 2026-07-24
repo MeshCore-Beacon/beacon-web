@@ -32,21 +32,75 @@ describe("buildPacketPaths", () => {
     expect(paths[1]).toMatchObject({ key: "obs-slow", propagationMs: 900, color: PATH_COLORS[1] }); // colors follow sort order
   });
 
-  it("sorts missing propagation and the trace route last", () => {
+  it("sorts observations with missing propagation after timed ones", () => {
+    const d = detail([
+      obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-none" }),                       // no propagation
+      obs(2, [hop("c", -80, 44), hop("d", -76, 46)], { observerId: "obs-fast", propagationTimeMs: 50 }),
+    ]);
+    const keys = buildPacketPaths(d).map((p) => p.key);
+    expect(keys[0]).toBe("obs-fast");
+    expect(keys[keys.length - 1]).toBe("obs-none"); // missing propagation sorts last
+  });
+
+  it("prepends resolvedSource and appends resolvedDestination to the observation line", () => {
+    const d = detail([
+      obs(1, [hop("relay", -78, 44)], {
+        observerId: "obs-1", propagationTimeMs: 100,
+        resolvedSource: hop("src", -79, 43),
+        resolvedDestination: hop("dst", -77, 45),
+      }),
+    ]);
+    const paths = buildPacketPaths(d);
+    expect(paths).toHaveLength(1);
+    expect(paths[0]!.points.map((p) => p.id)).toEqual(["src", "relay", "dst"]);
+  });
+
+  it("draws a source->destination line for a directed message with no relay hops", () => {
+    const d = detail([
+      obs(1, [], {
+        observerId: "obs-1", propagationTimeMs: 50,
+        resolvedSource: hop("src", -79, 43),
+        resolvedDestination: hop("dst", -77, 45),
+      }),
+    ]);
+    const paths = buildPacketPaths(d);
+    expect(paths).toHaveLength(1);
+    expect(paths[0]!.points.map((p) => p.id)).toEqual(["src", "dst"]);
+  });
+
+  it("dedupes a resolvedSource that matches the first relay hop", () => {
+    const d = detail([
+      obs(1, [hop("src", -79, 43), hop("relay", -78, 44)], {
+        observerId: "obs-1", propagationTimeMs: 100,
+        resolvedSource: hop("src", -79, 43),
+        resolvedDestination: hop("dst", -77, 45),
+      }),
+    ]);
+    const [path] = buildPacketPaths(d);
+    expect(path!.points.map((p) => p.id)).toEqual(["src", "relay", "dst"]);
+  });
+
+  it("skips an unresolved endpoint rather than drawing a misleading line", () => {
+    const d = detail([
+      obs(1, [hop("relay1", -79, 43), hop("relay2", -78, 44)], {
+        observerId: "obs-1", propagationTimeMs: 100,
+        resolvedSource: hop("src"),                    // unlocated — no coords
+        resolvedDestination: hop("dst", -77, 45),
+      }),
+    ]);
+    const [path] = buildPacketPaths(d);
+    expect(path!.points.map((p) => p.id)).toEqual(["relay1", "relay2", "dst"]);
+  });
+
+  it("draws only the trace route for TRACE packets, suppressing per-observation lines", () => {
     const d = detail(
-      [
-        obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-none" }),                       // no propagation
-        obs(2, [hop("c", -80, 44), hop("d", -76, 46)], { observerId: "obs-fast", propagationTimeMs: 50 }),
-      ],
+      [obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-1", propagationTimeMs: 100 })],
       {
         header: { payloadType: PayloadType.TRACE, routeType: 1 },
         resolvedRoute: [hop("e", -81, 47), hop("f", -77, 48)],
       } as unknown as Partial<PacketDetail>,
     );
-    const keys = buildPacketPaths(d).map((p) => p.key);
-    expect(keys[0]).toBe("obs-fast");
-    expect(keys).toContain("obs-none");
-    expect(keys[keys.length - 1]).toBe("trace"); // trace (no propagation) last
+    expect(buildPacketPaths(d).map((p) => p.key)).toEqual(["trace"]);
   });
 
   it("omits observations that resolve to fewer than 2 located hops", () => {

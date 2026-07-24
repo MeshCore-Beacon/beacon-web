@@ -69,6 +69,10 @@ export interface Observation {
   };
   sourceBroker: string;
   resolvedPath: ResolvedHop[];
+  // the packet's logical endpoints, resolved from the payload; separate from the relay
+  // resolvedPath. Absent for payload types with no addressed endpoint (GRP_TXT/GRP_DATA/TRACE).
+  resolvedSource?: ResolvedHop;
+  resolvedDestination?: ResolvedHop;
 }
 
 export interface PacketHeader {
