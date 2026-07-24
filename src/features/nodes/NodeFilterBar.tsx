@@ -12,6 +12,7 @@ const MULTIBYTE_OPTIONS = [
 
 const SEARCH_FIELDS: SearchFieldOption[] = [
   { value: "name", label: "Name" },
+  { value: "pubkey", label: "Public Key" },
 ];
 
 // "" means no filter (Any)

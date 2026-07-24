@@ -84,6 +84,16 @@ describe("getNodesPage", () => {
     expect(url).toContain("limit=50");
   });
 
+  it("forwards the pubkeyPrefix search param", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+
+    await getNodesPage(["YYZ"], { pubkeyPrefix: "a1b2" });
+
+    const url = getUrl();
+    expect(url).toContain("/nodes");
+    expect(url).toContain("pubkeyPrefix=a1b2");
+  });
+
   it("forwards the Nodes-table filters (type maps to typeName, multibyte flags)", async () => {
     const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
 

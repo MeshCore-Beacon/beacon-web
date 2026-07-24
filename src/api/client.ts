@@ -211,6 +211,7 @@ export function getNodesPage(
     limit?: number;
     type?: string;
     name?: string;
+    pubkeyPrefix?: string; // case-insensitive hex prefix; server matches and validates
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
@@ -222,6 +223,7 @@ export function getNodesPage(
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     typeName: params?.type,
     name: params?.name,
+    pubkeyPrefix: params?.pubkeyPrefix,
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,

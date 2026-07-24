@@ -152,6 +152,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         cursor,
         type: typeFilter || undefined,
         name: searchField === "name" ? search || undefined : undefined,
+        pubkeyPrefix: searchField === "pubkey" ? search || undefined : undefined,
         supportsMultibytePaths: pathsFilter || undefined,
         supportsMultibyteTraces: tracesFilter || undefined,
       }),
