@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppShell } from "../../src/components/AppShell";
 import { RegionProvider } from "../../src/hooks/useRegion";
 import { ALL_REGIONS } from "../../src/hooks/region-selection";
 import { getIatas, getRegions, getRegion } from "../../src/api/client";
 import type { WsManager } from "../../src/api/ws-manager";
+import { noteRateLimited, noteRequestOk } from "../../src/api/rate-limit";
 import pkg from "../../package.json";
 
 vi.mock("../../src/api/client", () => ({
@@ -217,5 +218,45 @@ describe("region picker filter", () => {
 
     await waitFor(() => expect(screen.getByPlaceholderText(/Filter/)).toHaveValue(""));
     expect(screen.getByText("Eastern Canada")).toBeInTheDocument();
+  });
+});
+
+describe("rate limit badge", () => {
+  beforeEach(() => {
+    vi.mocked(getIatas).mockResolvedValue([]);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    noteRequestOk();
+    vi.useRealTimers();
+  });
+
+  it("is hidden by default", () => {
+    renderShell();
+    expect(screen.queryByText(/RATE LIMITED/)).not.toBeInTheDocument();
+  });
+
+  it("shows a countdown after a 429 and hides once Retry-After elapses", () => {
+    renderShell();
+
+    act(() => noteRateLimited(5_000));
+    expect(screen.getByText(/RATE LIMITED 5s/)).toHaveAttribute("role", "status");
+
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(screen.getByText(/RATE LIMITED 3s/)).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(3_000));
+    expect(screen.queryByText(/RATE LIMITED/)).not.toBeInTheDocument();
+  });
+
+  it("clears on the next successful request", () => {
+    renderShell();
+
+    act(() => noteRateLimited(30_000));
+    expect(screen.getByText(/RATE LIMITED/)).toBeInTheDocument();
+
+    act(() => noteRequestOk());
+    expect(screen.queryByText(/RATE LIMITED/)).not.toBeInTheDocument();
   });
 });

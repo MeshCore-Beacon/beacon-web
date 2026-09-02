@@ -5,6 +5,8 @@ import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
 import type { ChannelMessage, ChannelSummary } from "../../src/features/channels/types";
 import type { KnownRoute, TraceTagSummary, TraceDetail } from "../../src/types/api";
+import { getRateLimitedUntil, noteRequestOk } from "../../src/api/rate-limit";
+import { RATE_LIMIT_DEFAULT_MS } from "../../src/lib/constants";
 
 // Capture the URL the client fetches and hand back a canned CursorPage.
 function mockFetchOnce(body: unknown): () => string {
@@ -21,6 +23,8 @@ function mockFetchOnce(body: unknown): () => string {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+  noteRequestOk();
 });
 
 describe("getPackets", () => {
@@ -449,6 +453,8 @@ describe("getIataBorder", () => {
         return {
           ok: status >= 200 && status < 300,
           status,
+          statusText: "status",
+          headers: new Headers(),
           json: async () => {
             if (status === 204) throw new Error("no body to parse");
             return body;
@@ -484,5 +490,72 @@ describe("getIataBorder", () => {
   it("returns the GeoJSON Feature when a border exists", async () => {
     mockStatus(200, feature);
     await expect(getIataBorder("YOW")).resolves.toEqual(feature);
+  });
+
+  it("surfaces a 429 with the same ApiError shape as request()", async () => {
+    mockStatus(429, { error: { code: "rate_limited", message: "slow down" } });
+    const err = await getIataBorder("YOW").catch((e: unknown) => e);
+    expect(err).toMatchObject({ name: "ApiError", status: 429, code: "rate_limited" });
+  });
+});
+
+describe("error responses", () => {
+  function mockError(status: number, body: unknown, headers: Record<string, string> = {}) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status,
+        statusText: "status",
+        headers: new Headers(headers),
+        json: async () => body,
+      }) as unknown as Response),
+    );
+  }
+  const limited = { error: { code: "rate_limited", message: "slow down" } };
+
+  it("a 429 throws an ApiError carrying status, code and retryAfterMs from the header", async () => {
+    mockError(429, limited, { "Retry-After": "12" });
+    const err = await getScopes().catch((e: unknown) => e);
+    expect(err).toMatchObject({ name: "ApiError", status: 429, code: "rate_limited", retryAfterMs: 12_000 });
+  });
+
+  it("a 429 without Retry-After leaves retryAfterMs undefined", async () => {
+    mockError(429, limited);
+    const err = await getScopes().catch((e: unknown) => e);
+    expect(err).toMatchObject({ status: 429, retryAfterMs: undefined });
+  });
+
+  it("a 429 marks the app rate-limited for Retry-After", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    mockError(429, limited, { "Retry-After": "12" });
+    await getScopes().catch(() => {});
+    expect(getRateLimitedUntil()).toBe(1_012_000);
+  });
+
+  it("a 429 without the header uses the default window", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    mockError(429, limited);
+    await getScopes().catch(() => {});
+    expect(getRateLimitedUntil()).toBe(1_000_000 + RATE_LIMIT_DEFAULT_MS);
+  });
+
+  it("the next successful request clears the rate-limited state", async () => {
+    mockError(429, limited);
+    await getScopes().catch(() => {});
+    expect(getRateLimitedUntil()).not.toBeNull();
+
+    mockFetchOnce([]);
+    await getScopes();
+    expect(getRateLimitedUntil()).toBeNull();
+  });
+
+  it("a plain 500 is not treated as rate limiting", async () => {
+    mockError(500, { error: { code: "internal", message: "boom" } });
+    const err = await getScopes().catch((e: unknown) => e);
+    expect(err).toMatchObject({ status: 500, code: "internal" });
+    expect(getRateLimitedUntil()).toBeNull();
   });
 });

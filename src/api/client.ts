@@ -1,4 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
+import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
@@ -26,13 +27,23 @@ export type IataBorder = Feature<Polygon | MultiPolygon>;
 class ApiError extends Error {
   status: number;
   code: string;
+  retryAfterMs?: number;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, retryAfterMs?: number) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.retryAfterMs = retryAfterMs;
   }
+}
+
+// Builds the error for a non-ok response; a 429 also flips the app-wide rate-limited flag.
+async function errorFrom(res: Response): Promise<ApiError> {
+  const body = await res.json().catch(() => ({ error: { code: "unknown", message: res.statusText } }));
+  const retryAfterMs = parseRetryAfter(res.headers.get("Retry-After"));
+  if (res.status === 429) noteRateLimited(retryAfterMs);
+  return new ApiError(res.status, body.error?.code ?? "unknown", body.error?.message ?? res.statusText, retryAfterMs);
 }
 
 async function request<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
@@ -47,10 +58,8 @@ async function request<T>(path: string, params?: Record<string, string | number 
 
   const res = await fetch(url.toString());
 
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: { code: "unknown", message: res.statusText } }));
-    throw new ApiError(res.status, body.error?.code ?? "unknown", body.error?.message ?? res.statusText);
-  }
+  if (!res.ok) throw await errorFrom(res);
+  noteRequestOk();
 
   return res.json();
 }
@@ -89,8 +98,9 @@ export function getIatas(): Promise<IataCode[]> {
 export async function getIataBorder(iata: string): Promise<IataBorder | null> {
   const url = new URL(`${API_BASE}/iatas/${iata}/border`, window.location.origin);
   const res = await fetch(url.toString());
+  if (!res.ok) throw await errorFrom(res);
+  noteRequestOk();
   if (res.status === 204) return null;
-  if (!res.ok) throw new ApiError(res.status, "unknown", res.statusText);
   const body = await res.json();
   return (body ?? null) as IataBorder | null;
 }

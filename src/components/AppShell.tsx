@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRegionSelection, useRegions } from "../hooks/useRegion";
 import { ALL_REGIONS, isAllRegions, type RegionSelection } from "../hooks/region-selection";
 import { useWsStatus } from "../hooks/useWsStatus";
+import { useRateLimit } from "../hooks/useRateLimit";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
 import { BottomNav } from "./BottomNav";
@@ -49,6 +50,31 @@ function LiveBadge({ wsManager }: { wsManager: WsManager }) {
   return (
     <div className="flex items-center gap-1.5 font-mono text-[11px] text-danger bg-danger/8 border border-danger/15 px-2 py-0.5 rounded-sm">
       OFFLINE
+    </div>
+  );
+}
+
+// Shown while the API is throttling us; the countdown tells users the blank tables are temporary.
+function RateLimitBadge() {
+  const until = useRateLimit();
+  const [remaining, setRemaining] = useState(0);
+
+  useEffect(() => {
+    if (until === null) return;
+    const end = until;
+    function update() {
+      setRemaining(Math.ceil((end - Date.now()) / 1000));
+    }
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [until]);
+
+  if (until === null || remaining <= 0) return null;
+
+  return (
+    <div role="status" className="flex items-center gap-1.5 font-mono text-[11px] text-warn bg-warn/7 border border-warn/15 px-2 py-0.5 rounded-sm">
+      RATE LIMITED {remaining}s
     </div>
   );
 }
@@ -336,6 +362,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
           <RegionSelector />
           <ThemePicker />
           <LiveBadge wsManager={wsManager} />
+          <RateLimitBadge />
           <a
             href={GITHUB_URL}
             target="_blank"

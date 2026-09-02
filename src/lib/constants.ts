@@ -14,6 +14,12 @@ export const WS_PING_INTERVAL_MS = 30_000;
 export const WS_RECONNECT_BASE_MS = 1000;
 export const WS_RECONNECT_MAX_MS = 30_000;
 export const WS_RECONNECT_JITTER = 0.25;
+// a link that held this long counts as healthy, so the next drop restarts the backoff from scratch
+export const WS_STABLE_MS = 10_000;
+
+// window to assume when a 429 arrives without Retry-After, and a ceiling on what the header can ask
+export const RATE_LIMIT_DEFAULT_MS = 10_000;
+export const RATE_LIMIT_MAX_MS = 300_000;
 
 // app tab names, in display order; the ?tab URL param is validated against this list
 export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Analytics"] as const;

@@ -404,3 +404,72 @@ describe("WsManager", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 });
+
+describe("WsManager reconnect backoff", () => {
+  // Math.random = 0.5 zeroes the jitter so delays are exact
+  function connectOnce() {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    return mgr;
+  }
+
+  it("keeps escalating when the server accepts then closes at once (no 1 s treadmill)", () => {
+    connectOnce();
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateClose(1006);
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateClose(1006);
+    vi.advanceTimersByTime(1999);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(3);
+
+    const ws3 = MockWebSocket.instances[2]!;
+    ws3.simulateOpen();
+    ws3.simulateClose(1006);
+    vi.advanceTimersByTime(3999);
+    expect(MockWebSocket.instances).toHaveLength(3);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(4);
+  });
+
+  it("resets the backoff after a link that held for WS_STABLE_MS", () => {
+    connectOnce();
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateClose(1006);
+    vi.advanceTimersByTime(1000);
+
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    vi.advanceTimersByTime(10_000);
+    ws2.simulateClose(1006);
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.instances).toHaveLength(3);
+  });
+
+  it("jumps to and stays at the max backoff on a 1013 shed close", () => {
+    connectOnce();
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateClose(1013);
+    vi.advanceTimersByTime(29_999);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateClose(1006);
+    vi.advanceTimersByTime(29_999);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(3);
+  });
+});

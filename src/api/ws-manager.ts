@@ -4,7 +4,11 @@ import {
   WS_RECONNECT_BASE_MS,
   WS_RECONNECT_MAX_MS,
   WS_RECONNECT_JITTER,
+  WS_STABLE_MS,
 } from "../lib/constants";
+
+// attempt index at which the backoff first reaches WS_RECONNECT_MAX_MS
+const CAP_ATTEMPT = Math.ceil(Math.log2(WS_RECONNECT_MAX_MS / WS_RECONNECT_BASE_MS));
 
 // handler types and status
 
@@ -29,6 +33,7 @@ export class WsManager {
   private everConnected = false;
   private status: WsStatus = "disconnected";
   private reconnectAttempt = 0;
+  private openedAt: number | null = null;
   private intentionalClose = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -129,6 +134,7 @@ export class WsManager {
   disconnect(): void {
     this.intentionalClose = true;
     this.reconnectAttempt = 0;
+    this.openedAt = null;
     this.clearTimers();
     this.teardownSocket();
     this.subscriptionId = null;
@@ -150,7 +156,7 @@ export class WsManager {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
-      this.reconnectAttempt = 0;
+      this.openedAt = Date.now();
     };
 
     this.ws.onmessage = (e: MessageEvent) => {
@@ -164,14 +170,14 @@ export class WsManager {
       this.handleMessage(msg);
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (e: CloseEvent) => {
       this.clearTimers();
       if (this.intentionalClose) {
         this.setStatus("disconnected");
         return;
       }
       // any unexpected close — including a server-sent 1000 — gets a reconnect
-      this.scheduleReconnect();
+      this.scheduleReconnect(e.code);
     };
 
     this.ws.onerror = () => {
@@ -286,8 +292,13 @@ export class WsManager {
     this.scheduleReconnect();
   }
 
-  private scheduleReconnect(): void {
+  private scheduleReconnect(closeCode?: number): void {
     this.setStatus("connecting");
+    // only a link that actually held resets the backoff — an accept-then-close must keep escalating
+    if (this.openedAt !== null && Date.now() - this.openedAt >= WS_STABLE_MS) this.reconnectAttempt = 0;
+    this.openedAt = null;
+    // 1008 policy / 1013 try-again-later mean the server is shedding us: go straight to the longest wait
+    if (closeCode === 1008 || closeCode === 1013) this.reconnectAttempt = Math.max(this.reconnectAttempt, CAP_ATTEMPT);
     const base = Math.min(WS_RECONNECT_BASE_MS * 2 ** this.reconnectAttempt, WS_RECONNECT_MAX_MS);
     const jitter = base * WS_RECONNECT_JITTER * (Math.random() * 2 - 1);
     const delay = Math.max(base + jitter, 100);

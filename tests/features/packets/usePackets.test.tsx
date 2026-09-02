@@ -6,6 +6,7 @@ import { usePackets } from "../../../src/features/packets/usePackets";
 import type { PacketServerFilter } from "../../../src/features/packets/types";
 import type { PacketSummary } from "../../../src/types/api";
 import type { WsPacketObservation } from "../../../src/types/ws";
+import { noteRateLimited, noteRequestOk } from "../../../src/api/rate-limit";
 
 vi.mock("../../../src/hooks/useRegion", () => ({
   useRegion: () => ({ iatas: ["YOW"], regionKey: "YOW" }),
@@ -83,6 +84,23 @@ describe("usePackets gap healing", () => {
       expect(data?.pages).toHaveLength(1);
     });
     expect(getPackets).toHaveBeenCalledTimes(1);
+    expect(result.current.laggedCount).toBe(5);
+  });
+
+  it("skips the lag reset while the API is rate-limiting us, but still counts the drop", async () => {
+    const { result } = renderHook(() => usePackets(), { wrapper });
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
+
+    seedThreePages(qc);
+    getPackets.mockClear();
+    noteRateLimited(10_000);
+    act(() => {
+      result.current.handleLagged({ v: 1, type: "lagged", droppedCount: 5, since: 0, lastObservationId: 0 });
+    });
+    noteRequestOk();
+
+    expect(getPackets).not.toHaveBeenCalled();
+    expect(qc.getQueryData<{ pages: unknown[] }>(["packets", "YOW"])?.pages).toHaveLength(3);
     expect(result.current.laggedCount).toBe(5);
   });
 });

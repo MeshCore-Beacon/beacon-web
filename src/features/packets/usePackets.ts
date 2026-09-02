@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getPackets } from "../../api/client";
+import { isRateLimited } from "../../api/rate-limit";
 import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
 import type { PacketSummary } from "../../types/api";
@@ -185,7 +186,8 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
   const handleLagged = useCallback(
     (data: WsLagged) => {
       setLaggedCount((prev) => prev + data.droppedCount);
-      queryClient.resetQueries({ queryKey: ["packets", regionKey] });
+      // while the API is throttling us the refetch would only 429; the next lag notice or remount heals it
+      if (!isRateLimited()) queryClient.resetQueries({ queryKey: ["packets", regionKey] });
     },
     [queryClient, regionKey],
   );
