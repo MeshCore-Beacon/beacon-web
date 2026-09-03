@@ -48,6 +48,8 @@ const props = {
   selectedObservationId: null, onSelectObservation: () => {},
 };
 
+const tokens = (el: Element) => (el.getAttribute("class") ?? "").split(/\s+/);
+
 beforeEach(() => {
   usePacketDetail.mockReset();
   setMobile(true);
@@ -99,6 +101,55 @@ describe("PacketExpansion below md", () => {
 
     expect(screen.getByText("Path SNR")).toBeInTheDocument();
     expect(screen.getByText("3201E0")).toBeInTheDocument();
+  });
+
+  // the expansion is the unfolded bottom half of the tapped card, not a separate square slab
+  it("frames itself as a continuation of the packet card", () => {
+    usePacketDetail.mockReturnValue({ data: detail([obs(1)]) });
+    render(<PacketExpansion {...props} />);
+
+    const cls = tokens(screen.getByTestId("packet-expansion"));
+    expect(cls).toEqual(expect.arrayContaining(["border", "border-t-0", "rounded-b-md", "px-3.5"]));
+  });
+
+  // the card header directly above already names the latest observer, so the strip's copy is noise
+  it("hides the observer line that duplicates the card header", () => {
+    usePacketDetail.mockReturnValue({ isLoading: true });
+    render(<PacketExpansion {...props} />);
+
+    const observerLine = screen.getByText("n/a").parentElement!;
+    expect(tokens(observerLine)).toEqual(expect.arrayContaining(["hidden", "md:inline"]));
+  });
+
+  it("sizes the summary strip and its action for touch", () => {
+    usePacketDetail.mockReturnValue({ data: detail([obs(1)]) });
+    render(<PacketExpansion {...props} />);
+
+    const button = screen.getByRole("button", { name: "View path on map" });
+    expect(tokens(button)).toEqual(
+      expect.arrayContaining(["w-full", "md:w-auto", "py-2", "md:py-0.5", "text-[11px]", "md:text-[10px]"]),
+    );
+    expect(tokens(button.parentElement!)).toEqual(expect.arrayContaining(["text-[11px]", "md:text-[10px]"]));
+  });
+
+  it("gives the retry action the same touch sizing", () => {
+    usePacketDetail.mockReturnValue({ isError: true, refetch: vi.fn() });
+    render(<PacketExpansion {...props} />);
+
+    expect(tokens(screen.getByRole("button", { name: /retry/i }))).toEqual(
+      expect.arrayContaining(["py-2", "md:py-0.5"]),
+    );
+  });
+
+  // a capped inner scroller inside the page scroller is a touch scroll trap; on mobile the
+  // observation list flows in the page instead
+  it("does not cap the observation list behind an inner scroller", () => {
+    usePacketDetail.mockReturnValue({ data: detail([obs(1)]) });
+    render(<PacketExpansion {...props} />);
+
+    const cls = (screen.getByTestId("observation-scroller").getAttribute("class") ?? "").split(/\s+/);
+    expect(cls).not.toContain("max-h-[360px]");
+    expect(cls).not.toContain("overflow-y-auto");
   });
 
   it("still renders the table at md and above", () => {

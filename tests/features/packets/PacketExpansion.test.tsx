@@ -90,6 +90,24 @@ describe("PacketExpansion", () => {
     expect(screen.queryByTestId("observation-skeleton")).not.toBeInTheDocument();
   });
 
+  // guards against mobile card styling leaking up: at md+ the expansion stays the flat
+  // left-accented strip under the grid row
+  it("keeps the desktop strip framing at md and above", () => {
+    usePacketDetail.mockReturnValue({ data: detailWithPath() });
+    render(<PacketExpansion {...props} />);
+
+    const cls = (screen.getByTestId("packet-expansion").getAttribute("class") ?? "").split(/\s+/);
+    expect(cls).toEqual(expect.arrayContaining(["md:border-0", "md:border-l-2", "md:rounded-none", "md:pl-6"]));
+  });
+
+  it("keeps the observation scroll cap at md and above", () => {
+    usePacketDetail.mockReturnValue({ data: detailWithPath() });
+    render(<PacketExpansion {...props} />);
+
+    const cls = (screen.getByTestId("observation-scroller").getAttribute("class") ?? "").split(/\s+/);
+    expect(cls).toEqual(expect.arrayContaining(["md:max-h-[360px]", "md:overflow-y-auto"]));
+  });
+
   it("renders the timing strip from the summary without waiting for the fetch", () => {
     usePacketDetail.mockReturnValue({ isLoading: true });
     render(<PacketExpansion {...props} />);

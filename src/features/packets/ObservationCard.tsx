@@ -1,5 +1,5 @@
 import type { Observation } from "../../types/api";
-import { formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES, SIGNAL_LEVEL_BORDER_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { PathData } from "./PathData";
 import { IataChip } from "../../components/IataChip";
@@ -14,34 +14,38 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
       className={`bg-bg-base border border-border rounded px-3 py-2.5 border-l-2 transition-colors ${
         selected
           ? "border-l-secondary bg-secondary/5"
-          : "border-l-primary"
+          // the edge mirrors the table's SNR coloring, so the list scans as a signal column
+          : level
+            ? SIGNAL_LEVEL_BORDER_CLASSES[level]
+            : "border-l-primary"
       } ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
-        <span className="text-text-bright font-semibold">{obs.observerName ?? obs.observerId.slice(0, 8)}</span>
+        <span className="flex-1 min-w-0 truncate text-text-bright font-semibold">{obs.observerName ?? obs.observerId.slice(0, 8)}</span>
         <IataChip>{obs.iata}</IataChip>
-        <Timestamp value={obs.heardAt} className="text-text-dim ml-auto font-mono text-[11px]" />
+        <Timestamp value={obs.heardAt} className="text-text-dim shrink-0 font-mono text-[11px]" />
       </div>
 
-      <div className="flex gap-5 font-mono text-xs">
-        <div className="flex flex-col">
+      {/* equal columns keep stats aligned across stacked cards and fitting any card width */}
+      <div className="grid grid-cols-4 gap-2 font-mono text-xs">
+        <div className="flex flex-col min-w-0">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">SNR</span>
           <span className={`font-medium ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal"}`}>
             {formatSnr(obs.snr)}
           </span>
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">RSSI</span>
           <span className={`font-medium ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal"}`}>
             {obs.rssi ?? "—"}
           </span>
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">Prop</span>
           <span className="font-medium text-text-normal">{formatPropagation(obs.propagationTimeMs)}</span>
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">Hops</span>
           <span className="font-medium text-text-normal">{obs.pathLength.hopCount}</span>
         </div>

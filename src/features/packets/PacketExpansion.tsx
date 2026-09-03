@@ -12,8 +12,9 @@ import { buildPacketPaths } from "../map/packet-path";
 // Roughly what fits the scroll cap; observations are unbounded server-side.
 const SKELETON_ROW_CAP = 12;
 
+// full-width and taller below md for a real tap target; desktop keeps its inline density
 const ACTION_BUTTON_CLASS =
-  "border border-border rounded-sm px-2 py-0.5 bg-bg-raised text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors";
+  "border border-border rounded-sm w-full md:w-auto px-3 py-2 md:px-2 md:py-0.5 text-[11px] md:text-[10px] bg-bg-raised text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors";
 
 interface Props {
   packet: PacketSummary;
@@ -47,10 +48,13 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
     [onSelectObservation, onOpenAnalyzer],
   );
 
+  // below md the expansion is the bottom half of the tapped card (the row's own border-b is the
+  // divider); at md+ it stays the flat left-accented strip.
   return (
-    <div data-testid="packet-expansion" className="bg-bg-surface border-l-2 border-primary pl-3 md:pl-6 pr-3 py-2">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-text-muted pb-2">
-        <span>
+    <div data-testid="packet-expansion" className="bg-bg-surface border border-t-0 border-primary rounded-b-md px-3.5 py-2 md:border-0 md:border-l-2 md:rounded-none md:pl-6 md:pr-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] md:text-[10px] text-text-muted pb-2">
+        {/* the mobile card header right above already names the latest observer */}
+        <span className="hidden md:inline">
           observer{" "}
           {observer
             ? <span className="text-text-normal">{observer.displayName ?? observer.id.slice(0, 8)}</span>
@@ -70,11 +74,12 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
         </button>
       </div>
 
-      <div className="max-h-[360px] overflow-y-auto">
+      {/* capped scroller is desktop-only; on touch it would trap the page scroll */}
+      <div data-testid="observation-scroller" className="md:max-h-[360px] md:overflow-y-auto">
         {isError ? (
-          <div className="flex items-center gap-3 text-[10px] text-danger py-2">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] md:text-[10px] text-danger py-2">
             <span>Failed to load observations</span>
-            <button type="button" onClick={() => refetch()} className="border border-border rounded-sm px-2 py-0.5 bg-bg-raised cursor-pointer">
+            <button type="button" onClick={() => refetch()} className={ACTION_BUTTON_CLASS}>
               Retry
             </button>
           </div>

@@ -26,6 +26,12 @@ export const SIGNAL_LEVEL_CLASSES: Record<SignalLevel, string> = {
   bad: "text-danger",
 };
 
+export const SIGNAL_LEVEL_BORDER_CLASSES: Record<SignalLevel, string> = {
+  good: "border-l-green",
+  mid: "border-l-warn",
+  bad: "border-l-danger",
+};
+
 export function snrLevel(snr: number | null | undefined): SignalLevel | null {
   if (snr == null) return null;
   if (snr >= 10) return "good";

@@ -21,7 +21,8 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
     <div
       className={`group bg-bg-surface border rounded-md px-3.5 py-2.5 cursor-pointer ${
         expanded
-          ? "border-primary bg-primary/10"
+          // squared bottom joins the expansion below into one unfolded card
+          ? "border-primary bg-primary/10 rounded-b-none"
           : isFresh
             ? "packet-fresh"
             : "border-border hover:border-text-dim/30 hover:bg-bg-raised/50"
