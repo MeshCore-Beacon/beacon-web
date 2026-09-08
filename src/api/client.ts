@@ -1,7 +1,7 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
-import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
+import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
 import type {
@@ -114,13 +114,14 @@ export function getRegion(regionId: number): Promise<Region> {
 }
 
 // Preserve the server cursor rather than deriving it from the displayed channel order.
-export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number }): Promise<CursorPage<ChannelSummary>> {
+export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number | string }): Promise<ChannelPage> {
   const iatas = params?.iatas ?? [];
   return request("/channels", {
     iata: iatas.length === 1 ? iatas[0] : undefined,
     iatas: iatas.length > 1 ? iatasParam(iatas) : undefined,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
-    cursor: params?.cursor,
+    cursor: typeof params?.cursor === "number" ? params.cursor : undefined,
+    pageCursor: typeof params?.cursor === "string" ? params.cursor : undefined,
   });
 }
 

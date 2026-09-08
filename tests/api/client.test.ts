@@ -204,6 +204,14 @@ describe("searchKnownRoutes", () => {
 });
 
 describe("getChannels", () => {
+  it.each([1234, "v1:1700000000000123:50"])("sends cursor %s using the compatible parameter", async (cursor) => {
+    const getUrl = mockFetchOnce({ items: [], hasMore: false });
+    await getChannels({ cursor });
+    const params = new URL(getUrl()).searchParams;
+    expect(params.get(typeof cursor === "string" ? "pageCursor" : "cursor")).toBe(String(cursor));
+    expect(params.has(typeof cursor === "string" ? "cursor" : "pageCursor")).toBe(false);
+  });
+
   const channel: ChannelSummary = {
     id: 1,
     name: "Public",

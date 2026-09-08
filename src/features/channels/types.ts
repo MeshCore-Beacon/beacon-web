@@ -1,3 +1,9 @@
+import type { CursorPage } from "../../types/api";
+
+export interface ChannelPage extends CursorPage<ChannelSummary> {
+  nextPageCursor?: string; // opaque precise cursor; older servers only return nextCursor
+}
+
 export interface ChannelSummary {
   id: number;
   name: string | null;

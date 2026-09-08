@@ -38,6 +38,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("channel directory paging", () => {
+  it("prefers the precise server cursor and preserves it through live updates", async () => {
+    const precise = "v1:1700000000000123:50";
+    const firstPage = { ...first(), nextPageCursor: precise };
+    fetchMock.mockResolvedValueOnce(response(firstPage))
+      .mockResolvedValueOnce(response(page([channel(51, "Precise result")])));
+    show();
+    await screen.findByText("#Channel 1");
+    act(() => onMessage({ id: 1, packetHash: "fixture", channelHash: "01", senderName: "fixture", content: "fixture", sentAt: 20000 }));
+    fireEvent.click(screen.getByRole("button", { name: "Load more channels" }));
+    await screen.findByText("#Precise result");
+    expect(lastURL().searchParams.get("pageCursor")).toBe(precise);
+    expect(lastURL().searchParams.has("cursor")).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("can retry an initial failure even without a page cursor", async () => {
     fetchMock.mockRejectedValueOnce(new Error("temporary failure"))
       .mockResolvedValueOnce(response(page([])));

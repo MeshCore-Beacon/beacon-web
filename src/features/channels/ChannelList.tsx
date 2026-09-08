@@ -11,7 +11,7 @@ import { ChannelSidebar } from "./ChannelSidebar";
 import { ChannelFilterBar } from "./ChannelFilterBar";
 import { MessagePanel } from "./MessagePanel";
 import { filterChannels, type ChannelKeyFilter, type ChannelHashtagFilter } from "./channel-filters";
-import type { ChannelMessage, ChannelSummary } from "./types";
+import type { ChannelMessage, ChannelPage, ChannelSummary } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 
@@ -50,8 +50,8 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const { data, isLoading, isFetching, isError, fetchNextPage, hasNextPage, refetch } = useInfiniteQuery({
     queryKey: ["channels", regionKey],
     queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam }),
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (last) => last.hasMore ? last.nextCursor ?? undefined : undefined,
+    initialPageParam: undefined as number | string | undefined,
+    getNextPageParam: (last) => last.hasMore ? last.nextPageCursor ?? last.nextCursor ?? undefined : undefined,
     maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
   });
@@ -102,12 +102,12 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const handleChannelMessage = useCallback(
     (data: ChannelMessage) => {
       const key = ["channels", regionKey];
-      const cached = queryClient.getQueryData<InfiniteData<CursorPage<ChannelSummary>>>(key);
+      const cached = queryClient.getQueryData<InfiniteData<ChannelPage>>(key);
       const cachedChannels = cached?.pages.flatMap((p) => p.items) ?? [];
       const known = cachedChannels.find((ch) => ch.channelHash === data.channelHash);
       if (known) {
         // Display timestamps may change; the server's page cursors must not.
-        queryClient.setQueryData<InfiniteData<CursorPage<ChannelSummary>>>(key, (old) => old && ({
+        queryClient.setQueryData<InfiniteData<ChannelPage>>(key, (old) => old && ({
           ...old,
           pages: old.pages.map((p) => ({ ...p, items: p.items.map((ch) => ch.id === known.id
             ? { ...ch, lastSeen: Math.max(ch.lastSeen, data.sentAt) } : ch) })),
