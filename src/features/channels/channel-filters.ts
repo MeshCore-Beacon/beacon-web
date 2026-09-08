@@ -11,7 +11,7 @@ export interface ChannelFilters {
   hashtagFilter: ChannelHashtagFilter;
 }
 
-// client-side channel-list filtering (the list is fully loaded; the backend has no text search)
+// Filter loaded directory pages; the backend has no text-search parameter.
 export function filterChannels(channels: ChannelSummary[], filters: ChannelFilters): ChannelSummary[] {
   const q = filters.search.trim().toLowerCase();
   return channels.filter((ch) => {

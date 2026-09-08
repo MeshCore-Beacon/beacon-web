@@ -113,16 +113,15 @@ export function getRegion(regionId: number): Promise<Region> {
   return request(`/regions/${regionId}`);
 }
 
-// /channels only honors a singular `iata`, so a one-IATA region goes through it; multi-IATA regions
-// still send `iatas` (ignored server-side, effectively global) until the backend supports it.
-export async function getChannels(params?: { iatas?: string[]; limit?: number }): Promise<ChannelSummary[]> {
+// Preserve the server cursor rather than deriving it from the displayed channel order.
+export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number }): Promise<CursorPage<ChannelSummary>> {
   const iatas = params?.iatas ?? [];
-  const page = await request<{ items: ChannelSummary[] }>("/channels", {
+  return request("/channels", {
     iata: iatas.length === 1 ? iatas[0] : undefined,
     iatas: iatas.length > 1 ? iatasParam(iatas) : undefined,
-    limit: params?.limit,
+    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+    cursor: params?.cursor,
   });
-  return page.items;
 }
 
 // Channel messages come back as { items } ordered id DESC, so the last row is the page's oldest

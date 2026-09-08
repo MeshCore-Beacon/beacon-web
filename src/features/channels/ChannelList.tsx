@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
+import { isRateLimited } from "../../api/rate-limit";
+import { MAX_INFINITE_PAGES } from "../../lib/constants";
 import { useRegion } from "../../hooks/useRegion";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useWsChannelMessageHandler } from "../../hooks/useWsHandlers";
@@ -21,19 +23,23 @@ interface ChannelListProps {
 export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const { iatas, regionKey } = useRegion();
   const isMobile = useIsMobile();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Keep the open channel available when a directory page is evicted or refreshed.
+  const [selection, setSelection] = useState<ChannelSummary | null>(null);
+  const selectedId = selection?.id ?? null;
   const [heardCounts, setHeardCounts] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [keyFilter, setKeyFilter] = useState<ChannelKeyFilter>("");
   const [hashtagFilter, setHashtagFilter] = useState<ChannelHashtagFilter>("");
   const queryClient = useQueryClient();
+  const refreshPending = useRef(false);
 
   const prevRegion = useRef(regionKey);
   useEffect(() => {
     if (prevRegion.current !== regionKey) {
       prevRegion.current = regionKey;
-      setSelectedId(null);
+      refreshPending.current = false;
+      setSelection(null);
       setHeardCounts({});
       setSearch("");
       setKeyFilter("");
@@ -41,21 +47,41 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     }
   }, [regionKey]);
 
-  const handleSelect = useCallback((id: number) => {
-    setSelectedId(id);
-    setHeardCounts({});
-  }, []);
-
-  const { data: channels, isLoading } = useQuery({
+  const { data, isLoading, isFetching, isError, fetchNextPage, hasNextPage, refetch } = useInfiniteQuery({
     queryKey: ["channels", regionKey],
-    queryFn: () => getChannels({ iatas }),
+    queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam }),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.hasMore ? last.nextCursor ?? undefined : undefined,
+    maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    if (!isFetching && refreshPending.current) {
+      refreshPending.current = false;
+      void queryClient.resetQueries({ queryKey: ["channels", regionKey], exact: true });
+    }
+  }, [isFetching, queryClient, regionKey]);
+
+  const channels = useMemo(() => {
+    const byId = new Map<number, ChannelSummary>();
+    for (const page of data?.pages ?? []) {
+      for (const channel of page.items) {
+        if (!byId.has(channel.id)) byId.set(channel.id, channel);
+      }
+    }
+    return [...byId.values()];
+  }, [data]);
+
+  const handleSelect = useCallback((id: number) => {
+    setSelection(channels.find((ch) => ch.id === id) ?? null);
+    setHeardCounts({});
+  }, [channels]);
 
   // "Public" pinned first, then named channels, then unnamed by most recent
   const sortedChannels = useMemo(
     () =>
-      [...(channels ?? [])].sort((a, b) => {
+      [...channels].sort((a, b) => {
         const aPub = a.name === "Public" ? 1 : 0;
         const bPub = b.name === "Public" ? 1 : 0;
         if (aPub !== bPub) return bPub - aPub;
@@ -71,27 +97,28 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     [sortedChannels, search, searchField, keyFilter, hashtagFilter],
   );
 
-  // resolve against the full list so a selected channel keeps showing even when filtered out
-  const selectedChannel = sortedChannels.find((ch) => ch.id === selectedId) ?? null;
+  const selectedChannel = channels.find((ch) => ch.id === selectedId) ?? selection;
 
   const handleChannelMessage = useCallback(
     (data: ChannelMessage) => {
-      // bump lastSeen, or refetch the list if this is a channel we haven't seen yet
-      queryClient.setQueryData<ChannelSummary[]>(["channels", regionKey], (old) => {
-        if (!old) return old;
-        const idx = old.findIndex((ch) => ch.channelHash === data.channelHash);
-        if (idx === -1) {
-          queryClient.invalidateQueries({ queryKey: ["channels", regionKey] });
-          return old;
-        }
-        const updated = [...old];
-        updated[idx] = { ...updated[idx]!, lastSeen: data.sentAt };
-        return updated;
-      });
+      const key = ["channels", regionKey];
+      const cached = queryClient.getQueryData<InfiniteData<CursorPage<ChannelSummary>>>(key);
+      const cachedChannels = cached?.pages.flatMap((p) => p.items) ?? [];
+      const known = cachedChannels.find((ch) => ch.channelHash === data.channelHash);
+      if (known) {
+        // Display timestamps may change; the server's page cursors must not.
+        queryClient.setQueryData<InfiniteData<CursorPage<ChannelSummary>>>(key, (old) => old && ({
+          ...old,
+          pages: old.pages.map((p) => ({ ...p, items: p.items.map((ch) => ch.id === known.id
+            ? { ...ch, lastSeen: Math.max(ch.lastSeen, data.sentAt) } : ch) })),
+        }));
+      } else if (!isRateLimited()) {
+        // An unknown live channel needs a fresh first page, not a replay of every loaded page.
+        if (queryClient.isFetching({ queryKey: key, exact: true })) refreshPending.current = true;
+        else void queryClient.resetQueries({ queryKey: key, exact: true });
+      }
 
-      // use cache directly to avoid stale closure over selectedChannel
-      const cached = queryClient.getQueryData<ChannelSummary[]>(["channels", regionKey]);
-      const selected = cached?.find((ch) => ch.id === selectedId);
+      const selected = cachedChannels.find((ch) => ch.id === selectedId) ?? selection;
       if (selected && data.channelHash === selected.channelHash) {
         // same message, multiple observer paths — count the reach
         setHeardCounts((prev) => ({
@@ -110,7 +137,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         );
       }
     },
-    [queryClient, selectedId, regionKey],
+    [queryClient, selectedId, selection, regionKey],
   );
 
   useWsChannelMessageHandler(wsManager, handleChannelMessage);
@@ -144,6 +171,20 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
                 onSelect={handleSelect}
               />
             )}
+            {!isLoading && filteredChannels.length === 0 && (
+              <p className="px-3 py-2 text-xs font-mono text-text-muted">No matching channels loaded.</p>
+            )}
+            {isError && <p role="alert" className="px-3 py-2 text-xs text-danger">Could not load channels.</p>}
+            {(hasNextPage || isError) && (
+              <button
+                type="button"
+                disabled={isFetching}
+                onClick={() => hasNextPage ? fetchNextPage() : refetch()}
+                className="m-2 shrink-0 rounded border border-border px-3 py-1.5 text-xs font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isFetching ? "Loading channels..." : isError ? "Retry loading channels" : "Load more channels"}
+              </button>
+            )}
           </div>
         )}
         {(!isMobile || selectedChannel !== null) && (
@@ -153,7 +194,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
             iatas={iatas}
             regionKey={regionKey}
             onAnalyze={onAnalyze}
-            onBack={isMobile ? () => setSelectedId(null) : undefined}
+            onBack={isMobile ? () => setSelection(null) : undefined}
           />
         )}
       </div>

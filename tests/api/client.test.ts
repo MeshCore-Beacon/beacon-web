@@ -214,7 +214,8 @@ describe("getChannels", () => {
   };
 
   it("sends a single-IATA region as the singular iata param the server honors", async () => {
-    const getUrl = mockFetchOnce({ items: [channel] });
+    const page = { items: [channel], nextCursor: 900, hasMore: true };
+    const getUrl = mockFetchOnce(page);
 
     const channels = await getChannels({ iatas: ["YYZ"] });
 
@@ -222,7 +223,7 @@ describe("getChannels", () => {
     expect(url.pathname).toContain("/channels");
     expect(url.searchParams.get("iata")).toBe("YYZ");
     expect(url.searchParams.has("iatas")).toBe(false);
-    expect(channels).toEqual([channel]);
+    expect(channels).toEqual(page);
   });
 
   it("keeps the comma-joined iatas param for multi-IATA regions", async () => {
