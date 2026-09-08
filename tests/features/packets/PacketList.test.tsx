@@ -143,6 +143,23 @@ describe("PacketList loading feedback", () => {
     usePackets.mockImplementation(basePackets);
   });
 
+  it("applies latest-path search to the list and explains its scope", () => {
+    const matching = { ...packet("matched"), payloadType: 4, latestObserver: {
+      id: "o1", iata: "YOW", pathLength: { raw: "02", hashSize: 1, hopCount: 2 }, pathBytes: "7fa4",
+    } };
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [matching, packet("other")] }));
+    renderList("/?sf=path&q=7f%20a4&types=4");
+    expect(screen.getByText("matched")).toBeInTheDocument();
+    expect(screen.queryByText("other")).not.toBeInTheDocument();
+    expect(screen.getByText(/latest relay path in loaded packets/)).toBeInTheDocument();
+    expect(usePackets).toHaveBeenLastCalledWith(false, { payloadTypes: [4] });
+  });
+
+  it("explains an invalid path query instead of silently ignoring it", () => {
+    renderList("/?sf=path&q=not-hex");
+    expect(screen.getByRole("alert")).toHaveTextContent("whole hop hashes of the same length");
+  });
+
   it("shows skeletons instead of the list plus a loading pill during an empty initial load", () => {
     usePackets.mockImplementation(() => ({ ...basePackets(), isLoading: true }));
     renderList();

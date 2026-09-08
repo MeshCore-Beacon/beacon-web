@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePackets } from "./usePackets";
 import { usePacketDetail } from "./usePacketDetail";
 import { usePacketFilters, matchesFilters, toServerFilter } from "./usePacketFilters";
+import { parsePathSearch } from "./path-search";
 import { useScopes } from "../../hooks/useScopes";
 import { useRegion } from "../../hooks/useRegion";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
@@ -44,6 +45,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   // single-value selections go to the server so scrolling pages through matching history
   const serverFilter = useMemo(() => toServerFilter(filters), [filters]);
+  const pathSearch = useMemo(() => parsePathSearch(filters.search), [filters.search]);
   const scopeNames = useScopes();
   const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
   const { regionKey } = useRegion();
@@ -72,8 +74,8 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   } = usePackets(!isAtTop, serverFilter);
 
   const packets = useMemo(
-    () => allPackets.filter((p) => matchesFilters(p, filters, observersByHash)),
-    [allPackets, filters, observersByHash],
+    () => allPackets.filter((p) => matchesFilters(p, filters, observersByHash, pathSearch)),
+    [allPackets, filters, observersByHash, pathSearch],
   );
 
   // ?hash is the selected packet — it expands the row inline. The analyzer is a separate state (?analyze=1).
@@ -166,6 +168,14 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
           onSearchFieldChange={setSearchField}
           onClear={clearFilters}
         />
+
+        {filters.searchField === "path" && (
+          <p role={pathSearch === null ? "alert" : undefined} className={`px-4 py-1.5 text-xs font-mono ${pathSearch === null ? "text-danger" : "text-text-muted"}`}>
+            {pathSearch === null
+              ? "Enter whole hop hashes of the same length, separated by spaces, commas or → (e.g. 7f a4)."
+              : "Searches the latest relay path in loaded packets. Use whole hop hashes, e.g. 7f a4 (spaces, commas or →). Trace packets are excluded."}
+          </p>
+        )}
 
         {laggedCount > 0 && (
           <div className="mx-4 px-3 py-1.5 bg-warn/6 border border-warn/12 text-warn text-xs font-medium font-mono rounded-b flex items-center justify-between">
