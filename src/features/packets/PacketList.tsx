@@ -11,6 +11,7 @@ import { PacketVirtualList } from "./PacketVirtualList";
 import { FilterBar } from "../../components/FilterBar";
 import { LoadingPill } from "../../components/LoadingPill";
 import { SkeletonRows } from "../../components/SkeletonRows";
+import { CloseButton } from "../../components/CloseButton";
 import { PAYLOAD_TYPE_NAMES, ROUTE_TYPE_NAMES } from "../../types/enums";
 import type { WsManager } from "../../api/ws-manager";
 import type { PacketDetail } from "../../types/api";
@@ -89,7 +90,8 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   }, [expandedHash, setSearchParams]);
 
   // Shared with the expanded row's own usePacketDetail, so reading it here costs no extra request.
-  const { data: expandedDetail } = usePacketDetail(expandedHash);
+  const { data: expandedDetail, isError: selectedError, error: detailError, refetch: retryDetail } = usePacketDetail(expandedHash);
+  const detailStatus = detailError && "status" in detailError ? detailError.status : undefined;
 
   const handleOpenAnalyzer = useCallback(() => {
     if (expandedHash) onAnalyze(expandedHash);
@@ -166,6 +168,26 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
           onSearchFieldChange={setSearchField}
           onClear={clearFilters}
         />
+
+        {/* A hash-only link still selects a row; offer the existing analyzer when there is no row. */}
+        {expandedHash && !isLoading && searchParams.get("analyze") !== "1" && !packets.some(p => p.packetHash === expandedHash) && (
+          <section aria-label="Selected packet" className="mx-4 my-2 px-3 py-2 border border-border rounded-sm bg-bg-surface flex items-start justify-between gap-3 text-xs text-text-muted">
+            <div>
+              {selectedError ? (
+                <>
+                  <p role="alert">{detailStatus === 400 ? "Invalid packet hash." : detailStatus === 404 ? "Packet not found." : "Failed to load selected packet."}</p>
+                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={() => retryDetail()} aria-label="Retry selected packet">Retry</button>
+                </>
+              ) : expandedDetail ? (
+                <>
+                  <p>Selected packet is outside the loaded results.</p>
+                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={handleOpenAnalyzer}>Open analyzer</button>
+                </>
+              ) : <p role="status">Loading selected packet…</p>}
+            </div>
+            <CloseButton label="Dismiss selected packet" onClose={() => handleToggleExpand(expandedHash)} />
+          </section>
+        )}
 
         {laggedCount > 0 && (
           <div className="mx-4 px-3 py-1.5 bg-warn/6 border border-warn/12 text-warn text-xs font-medium font-mono rounded-b flex items-center justify-between">

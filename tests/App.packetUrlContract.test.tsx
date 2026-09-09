@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { App } from "../src/App";
 import type { PacketSummary, PacketDetail } from "../src/types/api";
 
@@ -70,7 +70,7 @@ vi.mock("../src/features/packets/usePackets", () => ({
 
 vi.mock("../src/features/packets/usePacketDetail", () => ({
   usePacketDetail: (hash: string | null) => ({
-    data: hash === "AA11" ? detail : undefined,
+    data: hash === "AA11" ? detail : hash === "BB22" ? { ...detail, packetHash: "BB22" } : undefined,
     isLoading: false,
     isError: false,
     refetch: () => {},
@@ -136,6 +136,36 @@ afterEach(() => {
 });
 
 describe("Packets deep links", () => {
+  it.each([false, true])("opens an unloaded selection explicitly and preserves region and filters (mobile=%s)", async (mobile) => {
+    setMobile(mobile);
+    window.history.pushState({}, "", "/?tab=Packets&hash=BB22&iata=YOW&q=missing");
+    render(<App />);
+    const notice = await screen.findByRole("region", { name: "Selected packet" });
+    expect(screen.queryByTestId("packet-analyzer-drawer")).not.toBeInTheDocument();
+    fireEvent.click(within(notice).getByRole("button", { name: "Open analyzer" }));
+    expect(screen.getByTestId("packet-analyzer-drawer")).toHaveTextContent("BB22");
+    expect(screen.queryByRole("region", { name: "Selected packet" })).not.toBeInTheDocument();
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("analyze")).toBe("1");
+    expect(params.get("hash")).toBe("BB22");
+    expect(params.get("iata")).toBe("YOW");
+    expect(params.get("q")).toBe("missing");
+    fireEvent.click(screen.getByRole("button", { name: "Close analyzer" }));
+    expect(screen.getByRole("region", { name: "Selected packet" })).toBeInTheDocument();
+  });
+
+  it("updates the selection notice on URL navigation", async () => {
+    window.history.pushState({}, "", "/?tab=Packets&hash=BB22");
+    render(<App />);
+    expect(await screen.findByRole("region", { name: "Selected packet" })).toBeInTheDocument();
+    act(() => {
+      window.history.pushState({}, "", "/?tab=Packets&hash=AA11");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.queryByRole("region", { name: "Selected packet" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("packet-expansion")).toBeInTheDocument();
+  });
+
   it("restores the expanded row and the drawer from ?hash&analyze=1", async () => {
     window.history.pushState({}, "", "/?tab=Packets&hash=AA11&analyze=1");
     render(<App />);
