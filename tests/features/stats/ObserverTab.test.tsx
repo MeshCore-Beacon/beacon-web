@@ -63,8 +63,8 @@ const H = 3_600_000;
 const point = (t: number, p: Partial<TelemetryPoint>): TelemetryPoint => ({
   t,
   batteryMv: null,
-  airtimeTxPct: null,
-  airtimeRxPct: null,
+  airtimeTxSecs: null,
+  airtimeRxSecs: null,
   noiseFloorDb: null,
   uptimeSeconds: null,
   queueLength: null,
@@ -75,7 +75,7 @@ const point = (t: number, p: Partial<TelemetryPoint>): TelemetryPoint => ({
 const telemetry: ObserverTelemetry = {
   range: "24h",
   interval: "1h",
-  points: [point(0, { airtimeRxPct: 100, airtimeTxPct: 10, batteryMv: 4100 }), point(H, { airtimeRxPct: 154, airtimeTxPct: 46, batteryMv: 4100 })],
+  points: [point(0, { airtimeRxSecs: 100, airtimeTxSecs: 10, batteryMv: 4100 }), point(H, { airtimeRxSecs: 154, airtimeTxSecs: 46, batteryMv: 4100 })],
 };
 
 const activity: ObserverActivity = {
@@ -135,7 +135,7 @@ describe("ObserverTab", () => {
   });
 
   it("leaves the header airtime stat out when the observer reports no telemetry", () => {
-    const zero = point(0, { airtimeRxPct: 0, airtimeTxPct: 0 });
+    const zero = point(0, { airtimeRxSecs: 0, airtimeTxSecs: 0 });
     telemetryResult.data = { ...telemetry, points: [zero, { ...zero, t: H }] };
     renderTab();
     expect(screen.queryByText(/RX 0%/)).not.toBeInTheDocument();

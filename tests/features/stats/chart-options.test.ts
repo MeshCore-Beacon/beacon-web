@@ -133,8 +133,8 @@ describe("leaderboardOption", () => {
 const point = (t: number, p: Partial<TelemetryPoint>): TelemetryPoint => ({
   t,
   batteryMv: null,
-  airtimeTxPct: null,
-  airtimeRxPct: null,
+  airtimeTxSecs: null,
+  airtimeRxSecs: null,
   noiseFloorDb: null,
   uptimeSeconds: null,
   queueLength: null,
@@ -146,9 +146,9 @@ const H = 3_600_000;
 
 describe("airtimeOption", () => {
   const points = [
-    point(0, { airtimeRxPct: 10, airtimeTxPct: 4 }),
-    point(H, { airtimeRxPct: 46, airtimeTxPct: 4 }), // +36 s over 1 h → 1%
-    point(3 * H, { airtimeRxPct: 40, airtimeTxPct: 76 }), // RX dips → clamp at 0; TX +72 s over 2 h → 1%
+    point(0, { airtimeRxSecs: 10, airtimeTxSecs: 4 }),
+    point(H, { airtimeRxSecs: 46, airtimeTxSecs: 4 }), // +36 s over 1 h → 1%
+    point(3 * H, { airtimeRxSecs: 40, airtimeTxSecs: 76 }), // RX dips → clamp at 0; TX +72 s over 2 h → 1%
   ];
 
   it("charts raw counters as percent of the wall-clock gap between reports", () => {
@@ -159,7 +159,7 @@ describe("airtimeOption", () => {
   });
 
   it("charts bucketed deltas as percent of the bucket width", () => {
-    const bucketed = [point(0, { airtimeRxPct: 216, airtimeTxPct: 0 }), point(6 * H, { airtimeRxPct: 0, airtimeTxPct: 1080 })];
+    const bucketed = [point(0, { airtimeRxSecs: 216, airtimeTxSecs: 0 }), point(6 * H, { airtimeRxSecs: 0, airtimeTxSecs: 1080 })];
     const opt = airtimeOption(bucketed, colors, 6 * H) as Record<string, any>;
     expect(opt.series[0].data).toEqual([[0, 1], [6 * H, 0]]);
     expect(opt.series[1].data).toEqual([[0, 0], [6 * H, 5]]);

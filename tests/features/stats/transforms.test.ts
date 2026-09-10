@@ -7,8 +7,8 @@ const H = 3_600_000;
 const point = (t: number, p: Partial<TelemetryPoint>): TelemetryPoint => ({
   t,
   batteryMv: null,
-  airtimeTxPct: null,
-  airtimeRxPct: null,
+  airtimeTxSecs: null,
+  airtimeRxSecs: null,
   noiseFloorDb: null,
   uptimeSeconds: null,
   queueLength: null,
@@ -46,46 +46,46 @@ describe("airtimePctSeries", () => {
   // raw points carry cumulative on-air seconds; the series is the increase as a percent of the
   // wall-clock gap between the two reports
   const raw = [
-    point(0, { airtimeRxPct: 10, airtimeTxPct: 4 }),
-    point(H, { airtimeRxPct: 46, airtimeTxPct: 4 }), // +36 s over 1 h
-    point(3 * H, { airtimeRxPct: 40, airtimeTxPct: 76 }), // rx reset, tx +72 s over 2 h
+    point(0, { airtimeRxSecs: 10, airtimeTxSecs: 4 }),
+    point(H, { airtimeRxSecs: 46, airtimeTxSecs: 4 }), // +36 s over 1 h
+    point(3 * H, { airtimeRxSecs: 40, airtimeTxSecs: 76 }), // rx reset, tx +72 s over 2 h
   ];
 
   it("divides each cumulative delta by the real gap to the previous report", () => {
-    expect(airtimePctSeries(raw, "airtimeRxPct", null)).toEqual([[H, 1], [3 * H, 0]]);
-    expect(airtimePctSeries(raw, "airtimeTxPct", null)).toEqual([[H, 0], [3 * H, 1]]);
+    expect(airtimePctSeries(raw, "airtimeRxSecs", null)).toEqual([[H, 1], [3 * H, 0]]);
+    expect(airtimePctSeries(raw, "airtimeTxSecs", null)).toEqual([[H, 0], [3 * H, 1]]);
   });
 
   it("leaves a gap when either side of a delta is missing", () => {
-    const withHole = [point(0, { airtimeRxPct: 10 }), point(H, { airtimeRxPct: null }), point(2 * H, { airtimeRxPct: 82 })];
-    expect(airtimePctSeries(withHole, "airtimeRxPct", null)).toEqual([[H, null], [2 * H, null]]);
+    const withHole = [point(0, { airtimeRxSecs: 10 }), point(H, { airtimeRxSecs: null }), point(2 * H, { airtimeRxSecs: 82 })];
+    expect(airtimePctSeries(withHole, "airtimeRxSecs", null)).toEqual([[H, null], [2 * H, null]]);
   });
 
   it("divides bucketed deltas by the bucket width", () => {
-    const bucketed = [point(0, { airtimeRxPct: 216 }), point(6 * H, { airtimeRxPct: 1080 })];
-    expect(airtimePctSeries(bucketed, "airtimeRxPct", 6 * H)).toEqual([[0, 1], [6 * H, 5]]);
+    const bucketed = [point(0, { airtimeRxSecs: 216 }), point(6 * H, { airtimeRxSecs: 1080 })];
+    expect(airtimePctSeries(bucketed, "airtimeRxSecs", 6 * H)).toEqual([[0, 1], [6 * H, 5]]);
   });
 
   it("rounds to three decimals so tooltips stay readable", () => {
-    const pts = [point(0, { airtimeRxPct: 0 }), point(H, { airtimeRxPct: 1 })]; // 1 s / 3600 s
-    expect(airtimePctSeries(pts, "airtimeRxPct", null)).toEqual([[H, 0.028]]);
+    const pts = [point(0, { airtimeRxSecs: 0 }), point(H, { airtimeRxSecs: 1 })]; // 1 s / 3600 s
+    expect(airtimePctSeries(pts, "airtimeRxSecs", null)).toEqual([[H, 0.028]]);
   });
 });
 
 describe("latestAirtimePct", () => {
   it("reports the last delta for raw points", () => {
-    const raw = [point(0, { airtimeRxPct: 10, airtimeTxPct: 4 }), point(H, { airtimeRxPct: 46, airtimeTxPct: 76 })];
+    const raw = [point(0, { airtimeRxSecs: 10, airtimeTxSecs: 4 }), point(H, { airtimeRxSecs: 46, airtimeTxSecs: 76 })];
     expect(latestAirtimePct(raw, null)).toEqual({ rx: 1, tx: 2 });
   });
 
   it("reports the last bucket for bucketed points", () => {
-    const bucketed = [point(0, { airtimeRxPct: 1, airtimeTxPct: 1 }), point(6 * H, { airtimeRxPct: 216, airtimeTxPct: 0 })];
+    const bucketed = [point(0, { airtimeRxSecs: 1, airtimeTxSecs: 1 }), point(6 * H, { airtimeRxSecs: 216, airtimeTxSecs: 0 })];
     expect(latestAirtimePct(bucketed, 6 * H)).toEqual({ rx: 1, tx: 0 });
   });
 
   it("is null when there is nothing to difference", () => {
     expect(latestAirtimePct([], null)).toEqual({ rx: null, tx: null });
-    expect(latestAirtimePct([point(0, { airtimeRxPct: 10 })], null)).toEqual({ rx: null, tx: null });
+    expect(latestAirtimePct([point(0, { airtimeRxSecs: 10 })], null)).toEqual({ rx: null, tx: null });
   });
 });
 
