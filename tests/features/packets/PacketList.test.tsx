@@ -14,6 +14,7 @@ const basePackets = () => ({
   acknowledgeNewPackets: () => {},
   fetchNextPage: () => {},
   hasNextPage: false,
+  isFetching: false,
   isFetchingNextPage: false,
   isLoading: false,
   isError: false,

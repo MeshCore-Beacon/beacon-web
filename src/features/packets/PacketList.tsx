@@ -61,6 +61,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
     acknowledgeNewPackets,
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isLoading,
     isError,
@@ -198,7 +199,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
             key={listResetKey}
             packets={packets}
             hasNextPage={hasNextPage}
-            isFetchingNextPage={isFetchingNextPage}
+            isFetching={isFetching}
             fetchNextPage={fetchNextPage}
             onScrollAwayFromTop={setIsScrolledAway}
             onAtTopChange={setIsAtTop}

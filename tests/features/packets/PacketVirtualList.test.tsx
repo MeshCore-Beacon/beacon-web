@@ -59,7 +59,7 @@ const many = (n: number) => Array.from({ length: n }, (_, i) => pkt(`AA${i}`));
 function makeHandlers() {
   return {
     hasNextPage: false,
-    isFetchingNextPage: false,
+    isFetching: false,
     fetchNextPage: vi.fn(),
     onScrollAwayFromTop: vi.fn(),
     onAtTopChange: vi.fn(),
@@ -167,6 +167,51 @@ describe("PacketVirtualList header", () => {
 });
 
 describe("PacketVirtualList scrolling", () => {
+  it.each([0, 1])("can manually page with %i visible rows and no scrollbar", (count) => {
+    const handlers = makeHandlers();
+    const { rerender } = render(
+      <PacketVirtualList packets={many(count)} expandedHash={null} {...handlers} hasNextPage />,
+    );
+
+    expect(handlers.fetchNextPage).not.toHaveBeenCalled();
+    if (count === 0) expect(screen.getByText("No matching packets loaded.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Load older packets" }));
+    expect(handlers.fetchNextPage).toHaveBeenCalledTimes(1);
+
+    // A still-empty result after the page arrives must not start scanning further pages.
+    rerender(<PacketVirtualList packets={[]} expandedHash={null} {...handlers} hasNextPage />);
+    flushResize();
+    expect(handlers.fetchNextPage).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Load older packets" }));
+    expect(handlers.fetchNextPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("disables manual paging during a request and allows retry afterward", () => {
+    const handlers = makeHandlers();
+    const { rerender } = render(
+      <PacketVirtualList packets={[]} expandedHash={null} {...handlers} hasNextPage isFetching />,
+    );
+    const pending = screen.getByRole("button", { name: "Loading packets..." });
+    expect(pending).toBeDisabled();
+    fireEvent.click(pending);
+    expect(handlers.fetchNextPage).not.toHaveBeenCalled();
+
+    rerender(<PacketVirtualList packets={[]} expandedHash={null} {...handlers} hasNextPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Load older packets" }));
+    expect(handlers.fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes manual paging when the history cursor is exhausted", () => {
+    const handlers = makeHandlers();
+    const { rerender } = render(
+      <PacketVirtualList packets={[]} expandedHash={null} {...handlers} hasNextPage />,
+    );
+    expect(screen.getByRole("button", { name: "Load older packets" })).toBeEnabled();
+    rerender(<PacketVirtualList packets={[]} expandedHash={null} {...handlers} />);
+    expect(screen.queryByRole("button", { name: "Load older packets" })).not.toBeInTheDocument();
+    expect(handlers.fetchNextPage).not.toHaveBeenCalled();
+  });
+
   it("pages when scrolled near the bottom", () => {
     const handlers = makeHandlers();
     const { container } = render(
@@ -183,7 +228,7 @@ describe("PacketVirtualList scrolling", () => {
   it("does not page while a page is already in flight", () => {
     const handlers = makeHandlers();
     const { container } = render(
-      <PacketVirtualList packets={many(30)} expandedHash={null} {...handlers} hasNextPage isFetchingNextPage />,
+      <PacketVirtualList packets={many(30)} expandedHash={null} {...handlers} hasNextPage isFetching />,
     );
 
     const el = scroller(container);
