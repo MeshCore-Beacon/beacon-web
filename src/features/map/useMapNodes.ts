@@ -98,6 +98,7 @@ const SPIDER_LEAVES_LAYOUT: SymbolLayerSpecification["layout"] = {
 // labels at high zoom). Like useMapLibre, the imperative work re-adds itself after every style switch.
 export function useMapNodes(
   mapRef: React.RefObject<MapLibreMap | null>,
+  nodeIconResolverRef: React.RefObject<((id: string) => Promise<void>) | null>,
   isReady: boolean,
   geojson: NodeFC,
   isDark: boolean,
@@ -281,8 +282,9 @@ export function useMapNodes(
   }, [mapRef, isReady, isDark, clustered, themeKey]);
 
   // Supply and re-color the marker images. SVG glyphs rasterize async, so they're provided both
-  // proactively here and lazily on styleimagemissing. Re-runs on a theme/basemap/DPR change to
-  // re-rasterize; a basemap switch also drops the images via setStyle, which this then restores.
+  // proactively here and lazily through the map's missing-image resolver. Re-runs on a theme/
+  // basemap/DPR change to re-rasterize; a basemap switch also drops the images via setStyle, which
+  // this then restores.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
@@ -297,12 +299,11 @@ export function useMapNodes(
         .catch(() => {
           /* an icon failed to rasterize; the layer simply draws nothing for that id */
         });
-    const onMissing = (e: { id: string }) => provide(e.id);
-    map.on("styleimagemissing", onMissing);
+    nodeIconResolverRef.current = provide;
     // A symbol won't draw until its icon is in, and adding one late doesn't redraw tiles that
     // already laid out — that's the "markers only show after I pan/zoom" bug. So once every icon
     // is ready, nudge the source to lay the markers out again (setData reloads the whole source).
-    // styleimagemissing still covers anything asked for before we get here.
+    // The resolver still covers anything asked for before we get here.
     Promise.all(MAP_ICON_IDS.map(provide)).then(() => {
       if (cancelled || mapRef.current !== map) return;
       const src = map.getSource(NODES_SOURCE_ID) as GeoJSONSource | undefined;
@@ -310,9 +311,9 @@ export function useMapNodes(
     });
     return () => {
       cancelled = true;
-      map.off("styleimagemissing", onMissing);
+      nodeIconResolverRef.current = null;
     };
-  }, [mapRef, isReady, isDark, themeKey, dpr]);
+  }, [mapRef, nodeIconResolverRef, isReady, isDark, themeKey, dpr]);
 
   // Reflect the shared selection as a ring (mirrors the table's row highlight). Its own effect so
   // changing the selection doesn't rebuild the source/layers.

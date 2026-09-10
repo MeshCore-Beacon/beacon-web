@@ -1,8 +1,8 @@
 // src/features/map/PacketPathMap.tsx
 import { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl, AttributionControl, Popup, LngLatBounds } from "maplibre-gl";
+import "./maplibre-worker";
 import type {
-  Map as MapLibreMap,
   GeoJSONSource,
   LineLayerSpecification,
   CircleLayerSpecification,
@@ -38,7 +38,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
   // build the map once (styleId is read at creation; the popup doesn't hot-swap basemaps)
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
-    const map = new maplibregl.Map({
+    const map = new MapLibreMap({
       container: containerRef.current,
       style: resolveMapStyle(styleId).url,
       center: DEFAULT_CENTER,
@@ -46,8 +46,8 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
       attributionControl: false,
     });
     mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.addControl(new maplibregl.AttributionControl({ compact: true }));
+    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new AttributionControl({ compact: true }));
     // start the attribution as a bare (i) instead of the wide expanded bar it pops open on load —
     // on mobile that bar overlaps the observer list beneath the map (same trick as useMapLibre)
     const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
@@ -69,7 +69,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
       coords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
       el.append(name, coords);
       // a fresh popup per click; closeOnClick removes the previous one on the same click
-      new maplibregl.Popup({ closeButton: false, closeOnClick: true, offset: 10 })
+      new Popup({ closeButton: false, closeOnClick: true, offset: 10 })
         .setLngLat([lng, lat]).setDOMContent(el).addTo(map);
     });
     const onLoad = () => setReady(true);
@@ -124,7 +124,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     (map.getSource(NODE_SOURCE) as GeoJSONSource).setData(points);
 
     if (bounds.length) {
-      const b = bounds.reduce((acc, p) => acc.extend(p), new maplibregl.LngLatBounds(bounds[0], bounds[0]));
+      const b = bounds.reduce((acc, p) => acc.extend(p), new LngLatBounds(bounds[0], bounds[0]));
       map.fitBounds(b, { padding: 60, maxZoom: IATA_ZOOM });
     }
   }, [ready, paths, selectedKey]);

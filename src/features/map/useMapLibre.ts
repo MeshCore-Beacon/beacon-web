@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import maplibregl from "maplibre-gl";
-import type { Map as MapLibreMap, RasterDEMSourceSpecification } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl, ScaleControl, AttributionControl, LngLatBounds } from "maplibre-gl";
+import type { RasterDEMSourceSpecification } from "maplibre-gl";
+import "./maplibre-worker";
 import {
   DEM_TILES,
   DEM_ATTRIBUTION,
@@ -78,6 +79,7 @@ export function useMapLibre(
   const lastGoodStyleIdRef = useRef(styleId); // last style that loaded; the revert target on a failed swap
   const hasLoadedRef = useRef(false); // a style has loaded at least once (distinguishes initial-load failure)
   const swapPendingRef = useRef(false); // a setStyle() basemap swap is in flight (awaiting style.load)
+  const nodeIconResolverRef = useRef<((id: string) => Promise<void>) | null>(null); // filled by useMapNodes
   const onStyleErrorRef = useRef(onStyleError);
   const lastFitKeyRef = useRef<string | null>(null); // last applied fit target; skips redundant re-fits
   const skipInitialFitRef = useRef(!!initialCamera); // let a deep-link camera win over the first fit
@@ -103,7 +105,7 @@ export function useMapLibre(
 
     // open at the deep-link camera if one was given, else the default view; the fit effect frames the
     // selection once the style is ready (unless a deep-link camera suppresses that first fit)
-    const map = new maplibregl.Map({
+    const map = new MapLibreMap({
       container,
       style: resolveMapStyle(styleIdRef.current).url,
       center: initialCameraRef.current?.center ?? DEFAULT_CENTER,
@@ -116,9 +118,9 @@ export function useMapLibre(
     mapRef.current = map;
     lastStyleIdRef.current = styleIdRef.current;
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
-    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
-    map.addControl(new maplibregl.AttributionControl({ compact: true })); // bottom-right
+    map.addControl(new NavigationControl({ visualizePitch: true }), "top-right");
+    map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
+    map.addControl(new AttributionControl({ compact: true })); // bottom-right
     // maplibre pops the compact attribution open the first time the basemap credit loads (it tacks
     // on .maplibregl-compact-show). Mark it .maplibregl-compact up front so it skips that and stays
     // a bare (i) on load — clicking it still opens the credit.
@@ -141,14 +143,16 @@ export function useMapLibre(
     // "circle-11"), so maplibre warns on every load. Hand it a transparent 1x1 for anything that
     // isn't ours and the noise goes away — a missing icon already draws nothing, so the map looks
     // identical. Our own markers all start with "node-" and are rasterized by useMapNodes, so we
-    // leave those alone. This lives here (not in useMapNodes) so it's listening before the base
+    // leave those alone. This lives here (not in useMapNodes) so it's installed before the base
     // style's first paint, when those icons are first requested.
-    map.on("styleimagemissing", (e) => {
-      if (!e.id.startsWith("node-") && !map.hasImage(e.id)) map.addImage(e.id, new ImageData(1, 1));
+    // maplibre allows one resolver per map, so node icons route through a slot useMapNodes fills.
+    map.setMissingStyleImageResolver((id) => {
+      if (id.startsWith("node-")) return nodeIconResolverRef.current?.(id);
+      if (!map.hasImage(id)) map.addImage(id, new ImageData(1, 1));
     });
 
     map.on("error", (e) => {
-      const err = e as { error?: Error; sourceId?: string; tile?: unknown };
+      const err = e as unknown as { error?: Error; sourceId?: string; tile?: unknown };
       // A single tile/source failure (one basemap or DEM tile timing out / 403 / a momentary network
       // blip) is transient and non-fatal — the rest of the map stays usable — so never blank the map
       // for it. maplibre tags tile/source errors with a tile/sourceId; style-level errors have neither.
@@ -212,7 +216,7 @@ export function useMapLibre(
 
     const bounds = fitPoints.reduce(
       (b, p) => b.extend(p),
-      new maplibregl.LngLatBounds(fitPoints[0], fitPoints[0]),
+      new LngLatBounds(fitPoints[0], fitPoints[0]),
     );
     map.fitBounds(bounds, {
       padding: 48,
@@ -222,5 +226,5 @@ export function useMapLibre(
     });
   }, [fitPoints, isReady]);
 
-  return { containerRef, mapRef, isReady, error };
+  return { containerRef, mapRef, isReady, error, nodeIconResolverRef };
 }

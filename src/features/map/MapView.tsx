@@ -184,7 +184,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 
-  const { containerRef, mapRef, isReady, error } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera);
+  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
@@ -205,7 +205,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     return { tab: "Map", ...buildMapParams(snapshot) };
   }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders]);
 
-  useMapNodes(mapRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey);
