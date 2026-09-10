@@ -110,14 +110,25 @@ export function timeAgoMs(epochMs: number): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
-// Node/observer summaries carry radio as a compact "freq,bw,sf" string (e.g. "915,250,11").
-// Formats freq/SF/bandwidth like the observer panel ("915 MHz · SF11 · 250 kHz"); the compact
-// string carries no coding rate, so there's no "CR 4/x" segment.
+// One radio config format for every panel ("915 MHz · SF11 · 250 kHz · CR 4/5"); unknown or zero parts drop out.
+export function formatRadioParts(r: { freqMhz?: number | null; sf?: number | null; bwKhz?: number | null; cr?: number | null }): string | null {
+  const known = (v: number | null | undefined): v is number => v != null && v > 0;
+  const parts = [
+    known(r.freqMhz) && `${r.freqMhz} MHz`,
+    known(r.sf) && `SF${r.sf}`,
+    known(r.bwKhz) && `${r.bwKhz} kHz`,
+    known(r.cr) && `CR 4/${r.cr}`,
+  ].filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+// Node/observer summaries carry radio as a compact "freq,bw,sf" string (e.g. "915,250,11"); the
+// compact string carries no coding rate, so there's no "CR 4/x" segment.
 export function formatRadio(radio: string | null | undefined): string | null {
   if (!radio) return null;
   const [freq, bw, sf] = radio.split(",");
   if (!freq || !bw || !sf) return radio; // unexpected shape — show it raw rather than hide it
-  const f = Number(freq), b = Number(bw);
-  if (Number.isNaN(f) || Number.isNaN(b)) return radio; // non-numeric freq/bw — show raw, not "NaN MHz"
-  return `${f} MHz · SF${sf} · ${b} kHz`;
+  const f = Number(freq), b = Number(bw), s = Number(sf);
+  if (Number.isNaN(f) || Number.isNaN(b) || Number.isNaN(s)) return radio; // non-numeric — show raw, not "NaN MHz"
+  return formatRadioParts({ freqMhz: f, sf: s, bwKhz: b });
 }

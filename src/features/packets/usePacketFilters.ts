@@ -3,6 +3,7 @@ import { useMemo, useCallback } from "react";
 import type { PacketFilterState, PacketServerFilter, SearchField } from "./types";
 import type { PacketSummary } from "../../types/api";
 import type { PayloadTypeValue, RouteTypeValue } from "../../types/enums";
+import { matchesPathSearch, parsePathSearch, type PathSearch } from "./path-search";
 
 // filter state synced to URL search params
 
@@ -16,9 +17,8 @@ function parseStringArray(value: string | null): string[] {
   return value.split(",").filter(Boolean);
 }
 
-// "path"/"payload" show as disabled placeholders in the filter bar — matchesFilters only
-// implements hash, so don't accept them from the URL either or the search silently does nothing
-const IMPLEMENTED_SEARCH_FIELDS = new Set<SearchField>(["hash"]);
+// Keep unimplemented search modes out of URLs as well as the dropdown.
+const IMPLEMENTED_SEARCH_FIELDS = new Set<SearchField>(["hash", "path"]);
 
 function parseSearchField(value: string | null): SearchField {
   if (value && IMPLEMENTED_SEARCH_FIELDS.has(value as SearchField)) return value as SearchField;
@@ -132,6 +132,7 @@ export function matchesFilters(
   packet: PacketSummary,
   filters: PacketFilterState,
   observersByHash?: ReadonlyMap<string, ReadonlySet<string>>,
+  pathSearch?: PathSearch | null,
 ): boolean {
   if (filters.payloadTypes.length > 0 && !filters.payloadTypes.includes(packet.payloadType as PayloadTypeValue)) {
     return false;
@@ -155,5 +156,7 @@ export function matchesFilters(
       return false;
     }
   }
+  if (filters.searchField === "path" && !matchesPathSearch(packet,
+    pathSearch === undefined ? parsePathSearch(filters.search) : pathSearch)) return false;
   return true;
 }

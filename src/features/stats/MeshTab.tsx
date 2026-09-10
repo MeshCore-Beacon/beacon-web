@@ -5,7 +5,7 @@ import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNode
 import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption, presetBarsOption } from "./chartOptions";
 import { Card, ChartCard, StatCard } from "./cards";
 import { useLiveOverview } from "./useLiveStats";
-import { aggregatePresets, formatPreset } from "./transforms";
+import { aggregatePresets, formatPreset, payloadBarItems } from "./transforms";
 import type { WsManager } from "../../api/ws-manager";
 import type { ObservationPoint, StatsRange } from "./types";
 
@@ -58,13 +58,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   );
   const nodesOption = useMemo(() => leaderboardOption(nodeRows, colors), [nodeRows, colors]);
 
-  const payloadItems = useMemo(
-    () =>
-      (payload.data ?? [])
-        .map((p) => ({ name: p.payloadTypeName.toLowerCase(), value: p.count }))
-        .sort((a, b) => b.value - a.value),
-    [payload.data],
-  );
+  const payloadItems = useMemo(() => payloadBarItems(payload.data ?? []), [payload.data]);
   const payloadTotal = useMemo(() => payloadItems.reduce((a, p) => a + p.value, 0), [payloadItems]);
   const payloadOption = useMemo(() => typeBarOption(payloadItems, colors), [payloadItems, colors]);
 

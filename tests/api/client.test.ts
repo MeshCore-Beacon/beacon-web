@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -204,6 +204,14 @@ describe("searchKnownRoutes", () => {
 });
 
 describe("getChannels", () => {
+  it.each([1234, "v1:1700000000000123:50"])("sends cursor %s using the compatible parameter", async (cursor) => {
+    const getUrl = mockFetchOnce({ items: [], hasMore: false });
+    await getChannels({ cursor });
+    const params = new URL(getUrl()).searchParams;
+    expect(params.get(typeof cursor === "string" ? "pageCursor" : "cursor")).toBe(String(cursor));
+    expect(params.has(typeof cursor === "string" ? "cursor" : "pageCursor")).toBe(false);
+  });
+
   const channel: ChannelSummary = {
     id: 1,
     name: "Public",
@@ -214,7 +222,8 @@ describe("getChannels", () => {
   };
 
   it("sends a single-IATA region as the singular iata param the server honors", async () => {
-    const getUrl = mockFetchOnce({ items: [channel] });
+    const page = { items: [channel], nextCursor: 900, hasMore: true };
+    const getUrl = mockFetchOnce(page);
 
     const channels = await getChannels({ iatas: ["YYZ"] });
 
@@ -222,7 +231,7 @@ describe("getChannels", () => {
     expect(url.pathname).toContain("/channels");
     expect(url.searchParams.get("iata")).toBe("YYZ");
     expect(url.searchParams.has("iatas")).toBe(false);
-    expect(channels).toEqual([channel]);
+    expect(channels).toEqual(page);
   });
 
   it("keeps the comma-joined iatas param for multi-IATA regions", async () => {
@@ -557,5 +566,38 @@ describe("error responses", () => {
     const err = await getScopes().catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 500, code: "internal" });
     expect(getRateLimitedUntil()).toBeNull();
+  });
+});
+
+describe("getObserverActivity", () => {
+  it("requests the observer's heard-activity series for a range and bucket interval", async () => {
+    const getUrl = mockFetchOnce({ range: "24h", interval: "15m", radio: null, payloadTypes: [], points: [] });
+
+    await getObserverActivity("obs-1", "24h", "15m");
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/observers/obs-1/activity");
+    expect(url.searchParams.get("range")).toBe("24h");
+    expect(url.searchParams.get("interval")).toBe("15m");
+  });
+});
+
+describe("isNotFound", () => {
+  it("is true only for a 404 from the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        headers: new Headers(),
+        json: async () => ({ error: { code: "not_found", message: "no such observer" } }),
+      })),
+    );
+
+    const err = await getObserverActivity("obs-1", "24h", "15m").catch((e: unknown) => e);
+
+    expect(isNotFound(err)).toBe(true);
+    expect(isNotFound(new Error("network down"))).toBe(false);
   });
 });

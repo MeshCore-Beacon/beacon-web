@@ -1,7 +1,7 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
-import type { ChannelSummary, ChannelMessage } from "../features/channels/types";
+import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
 import type {
@@ -15,6 +15,7 @@ import type {
   RadioPreset,
   ScopeStats,
   ObserverTelemetry,
+  ObserverActivity,
   NodeTypeCount,
   ClockDriftEntry,
 } from "../features/stats/types";
@@ -113,16 +114,16 @@ export function getRegion(regionId: number): Promise<Region> {
   return request(`/regions/${regionId}`);
 }
 
-// /channels only honors a singular `iata`, so a one-IATA region goes through it; multi-IATA regions
-// still send `iatas` (ignored server-side, effectively global) until the backend supports it.
-export async function getChannels(params?: { iatas?: string[]; limit?: number }): Promise<ChannelSummary[]> {
+// Preserve the server cursor rather than deriving it from the displayed channel order.
+export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number | string }): Promise<ChannelPage> {
   const iatas = params?.iatas ?? [];
-  const page = await request<{ items: ChannelSummary[] }>("/channels", {
+  return request("/channels", {
     iata: iatas.length === 1 ? iatas[0] : undefined,
     iatas: iatas.length > 1 ? iatasParam(iatas) : undefined,
-    limit: params?.limit,
+    limit: params?.limit ?? DEFAULT_PAGE_SIZE,
+    cursor: typeof params?.cursor === "number" ? params.cursor : undefined,
+    pageCursor: typeof params?.cursor === "string" ? params.cursor : undefined,
   });
-  return page.items;
 }
 
 // Channel messages come back as { items } ordered id DESC, so the last row is the page's oldest
@@ -346,6 +347,15 @@ export function getObserverTelemetry(
   afterId?: number,
 ): Promise<ObserverTelemetry> {
   return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
+}
+
+export function getObserverActivity(observerId: string, range: string, interval: string): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval });
+}
+
+// Lets a caller hide a feature the server doesn't have rather than show it as failed.
+export function isNotFound(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404;
 }
 
 export { ApiError };

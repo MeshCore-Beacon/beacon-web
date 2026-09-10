@@ -16,7 +16,7 @@ import {
 interface PacketVirtualListProps {
   packets: PacketSummary[];
   hasNextPage: boolean;
-  isFetchingNextPage: boolean;
+  isFetching: boolean;
   fetchNextPage: () => void;
   onScrollAwayFromTop: (isAway: boolean) => void;
   onAtTopChange: (isAtTop: boolean) => void;
@@ -34,7 +34,7 @@ interface PacketVirtualListProps {
 export function PacketVirtualList({
   packets,
   hasNextPage,
-  isFetchingNextPage,
+  isFetching,
   fetchNextPage,
   onScrollAwayFromTop,
   onAtTopChange,
@@ -71,13 +71,13 @@ export function PacketVirtualList({
     onScrollAwayFromTop(el.scrollTop > SCROLL_TOP_THRESHOLD_PX);
     onAtTopChange(atTopRef.current);
 
-    if (hasNextPage && !isFetchingNextPage) {
+    if (hasNextPage && !isFetching) {
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       if (distFromBottom < SCROLL_BOTTOM_THRESHOLD_PX) {
         fetchNextPage();
       }
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, onScrollAwayFromTop, onAtTopChange]);
+  }, [hasNextPage, isFetching, fetchNextPage, onScrollAwayFromTop, onAtTopChange]);
 
   // When rows are prepended at the top (a reveal on return-to-top, or a live packet while already
   // at the top), TanStack keeps the previously-top row anchored — which drifts the view off the
@@ -152,6 +152,21 @@ export function PacketVirtualList({
           );
         })}
       </div>
+      {packets.length === 0 && (
+        <p className="py-4 text-center text-xs font-mono text-text-muted">No matching packets loaded.</p>
+      )}
+      {hasNextPage && (
+        <div className="flex justify-center py-4">
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => fetchNextPage()}
+            className="rounded border border-border px-3 py-1.5 text-xs font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {isFetching ? "Loading packets..." : "Load older packets"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

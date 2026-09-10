@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePackets } from "./usePackets";
 import { usePacketDetail } from "./usePacketDetail";
 import { usePacketFilters, matchesFilters, toServerFilter } from "./usePacketFilters";
+import { parsePathSearch } from "./path-search";
 import { useScopes } from "../../hooks/useScopes";
 import { useRegion } from "../../hooks/useRegion";
 import { useWsPacketHandler, useWsLaggedHandler } from "../../hooks/useWsHandlers";
@@ -45,6 +46,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   // single-value selections go to the server so scrolling pages through matching history
   const serverFilter = useMemo(() => toServerFilter(filters), [filters]);
+  const pathSearch = useMemo(() => parsePathSearch(filters.search), [filters.search]);
   const scopeNames = useScopes();
   const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
   const { regionKey } = useRegion();
@@ -62,6 +64,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
     acknowledgeNewPackets,
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isLoading,
     isError,
@@ -73,8 +76,8 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   } = usePackets(!isAtTop, serverFilter);
 
   const packets = useMemo(
-    () => allPackets.filter((p) => matchesFilters(p, filters, observersByHash)),
-    [allPackets, filters, observersByHash],
+    () => allPackets.filter((p) => matchesFilters(p, filters, observersByHash, pathSearch)),
+    [allPackets, filters, observersByHash, pathSearch],
   );
 
   // ?hash is the selected packet — it expands the row inline. The analyzer is a separate state (?analyze=1).
@@ -169,6 +172,14 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
           onClear={clearFilters}
         />
 
+        {filters.searchField === "path" && (
+          <p role={pathSearch === null ? "alert" : undefined} className={`px-4 py-1.5 text-xs font-mono ${pathSearch === null ? "text-danger" : "text-text-muted"}`}>
+            {pathSearch === null
+              ? "Enter whole hop hashes of the same length, separated by spaces, commas or → (e.g. 7f a4)."
+              : "Searches the latest relay path in loaded packets. Use whole hop hashes, e.g. 7f a4 (spaces, commas or →). Trace packets are excluded."}
+          </p>
+        )}
+
         {/* A hash-only link still selects a row; offer the existing analyzer when there is no row. */}
         {expandedHash && !isLoading && searchParams.get("analyze") !== "1" && !packets.some(p => p.packetHash === expandedHash) && (
           <section aria-label="Selected packet" className="mx-4 my-2 px-3 py-2 border border-border rounded-sm bg-bg-surface flex items-start justify-between gap-3 text-xs text-text-muted">
@@ -220,7 +231,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
             key={listResetKey}
             packets={packets}
             hasNextPage={hasNextPage}
-            isFetchingNextPage={isFetchingNextPage}
+            isFetching={isFetching}
             fetchNextPage={fetchNextPage}
             onScrollAwayFromTop={setIsScrolledAway}
             onAtTopChange={setIsAtTop}

@@ -39,6 +39,16 @@ const baseProps = {
 };
 
 describe("FilterBar (mobile)", () => {
+  it.each([true, false])("offers latest-path search on mobile=%s", (mobile) => {
+    setMobile(mobile);
+    const onSearchFieldChange = vi.fn();
+    render(<FilterBar {...baseProps} onSearchFieldChange={onSearchFieldChange} />);
+    fireEvent.click(screen.getByRole("button", { name: /Hash/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Latest path", exact: true }));
+    expect(onSearchFieldChange).toHaveBeenCalledWith("path");
+    expect(screen.queryByRole("button", { name: "Latest path", exact: true })).not.toBeInTheDocument();
+  });
+
   it("hides the inline dropdowns behind a Filters button until opened", () => {
     setMobile(true);
     render(<FilterBar {...baseProps} />);

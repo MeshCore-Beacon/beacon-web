@@ -3,6 +3,8 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { usePackets } from "../../../src/features/packets/usePackets";
+import { matchesFilters } from "../../../src/features/packets/usePacketFilters";
+import { EMPTY_FILTERS } from "../../../src/features/packets/types";
 import type { PacketServerFilter } from "../../../src/features/packets/types";
 import type { PacketSummary } from "../../../src/types/api";
 import type { WsPacketObservation } from "../../../src/types/ws";
@@ -258,8 +260,13 @@ describe("usePackets path and endpoint fields", () => {
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
 
-  it("carries path and endpoint fields from the WS observation into latestObserver", () => {
+  it("carries path and endpoint fields from the WS observation into latestObserver", async () => {
+    const history: PacketSummary = { ...packet("history"), latestObserver: {
+      id: "obs-rest", iata: "YVR", pathLength: { raw: "42", hashSize: 1, hopCount: 2 }, pathBytes: "7fa4",
+    } };
+    getPackets.mockResolvedValue({ items: [history], nextCursor: null });
     const { result } = renderHook(() => usePackets(false, undefined), { wrapper });
+    await waitFor(() => expect(result.current.allPackets).toHaveLength(1));
 
     act(() => {
       result.current.handlePacketObservation({
@@ -294,6 +301,9 @@ describe("usePackets path and endpoint fields", () => {
     expect(obs?.pathBytes).toBe("7fa4");
     expect(obs?.resolvedSource?.nodes[0]!.name).toBe("Salish");
     expect(obs?.resolvedDestination).toBeUndefined();
+    const filters = { ...EMPTY_FILTERS, searchField: "path" as const, search: "7F A4" };
+    expect(result.current.allPackets.filter(p => matchesFilters(p, filters)).map(p => p.packetHash)).toEqual(["AA11", "history"]);
+    expect(result.current.allPackets.filter(p => matchesFilters(p, { ...filters, search: "ff" }))).toEqual([]);
   });
 });
 

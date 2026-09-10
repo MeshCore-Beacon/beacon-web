@@ -12,7 +12,7 @@ interface FilterOption {
 
 const PACKET_SEARCH_FIELDS: SearchFieldOption[] = [
   { value: "hash", label: "Hash" },
-  { value: "path", label: "Path", disabled: true },
+  { value: "path", label: "Latest path" },
   { value: "payload", label: "Payload", disabled: true },
 ];
 

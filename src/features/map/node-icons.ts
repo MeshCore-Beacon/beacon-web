@@ -8,7 +8,7 @@ import {
 } from "./types";
 
 // Marker icons: per-type SVG + cluster hexagon, recolored and rasterized to maplibre images (unknown
-// type = canvas ring). Async, so provided lazily via styleimagemissing in useMapNodes; re-colors on theme.
+// type = canvas ring). Async, so provided lazily via the missing-image resolver in useMapNodes; re-colors on theme.
 
 // Glyph SVGs as raw text per type (+ observer variant). Marker style follows the basemap: filled
 // Glitch on dark, hollow Wireframe on light — which is exactly what isDark encodes. import.meta.glob
