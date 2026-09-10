@@ -204,6 +204,14 @@ describe("searchKnownRoutes", () => {
 });
 
 describe("getChannels", () => {
+  it.each([1234, "v1:1700000000000123:50"])("sends cursor %s using the compatible parameter", async (cursor) => {
+    const getUrl = mockFetchOnce({ items: [], hasMore: false });
+    await getChannels({ cursor });
+    const params = new URL(getUrl()).searchParams;
+    expect(params.get(typeof cursor === "string" ? "pageCursor" : "cursor")).toBe(String(cursor));
+    expect(params.has(typeof cursor === "string" ? "cursor" : "pageCursor")).toBe(false);
+  });
+
   const channel: ChannelSummary = {
     id: 1,
     name: "Public",
@@ -214,7 +222,8 @@ describe("getChannels", () => {
   };
 
   it("sends a single-IATA region as the singular iata param the server honors", async () => {
-    const getUrl = mockFetchOnce({ items: [channel] });
+    const page = { items: [channel], nextCursor: 900, hasMore: true };
+    const getUrl = mockFetchOnce(page);
 
     const channels = await getChannels({ iatas: ["YYZ"] });
 
@@ -222,7 +231,7 @@ describe("getChannels", () => {
     expect(url.pathname).toContain("/channels");
     expect(url.searchParams.get("iata")).toBe("YYZ");
     expect(url.searchParams.has("iatas")).toBe(false);
-    expect(channels).toEqual([channel]);
+    expect(channels).toEqual(page);
   });
 
   it("keeps the comma-joined iatas param for multi-IATA regions", async () => {
