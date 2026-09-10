@@ -324,8 +324,8 @@ export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketMs
     xAxis: timeAxis(c),
     yAxis: percentAxis(c),
     series: [
-      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxPct", bucketMs), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
-      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxPct", bucketMs), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
+      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
+      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
     ],
   };
 }

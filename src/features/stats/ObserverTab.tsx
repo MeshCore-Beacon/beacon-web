@@ -258,7 +258,7 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
                   option={airtime}
                   isLoading={telemetry.isLoading}
                   isError={telemetry.isError}
-                  isEmpty={missing((p) => p.airtimeTxPct, (p) => p.airtimeRxPct)}
+                  isEmpty={missing((p) => p.airtimeTxSecs, (p) => p.airtimeRxSecs)}
                 />
                 <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
                   <ChartCard title="Battery" height={168} option={battery} isLoading={telemetry.isLoading} isError={telemetry.isError} isEmpty={missing((p) => p.batteryMv)} />

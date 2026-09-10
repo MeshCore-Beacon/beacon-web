@@ -37,8 +37,8 @@ export function hasTelemetry(points: TelemetryPoint[]): boolean {
   return points.some(
     (p) =>
       live(p.batteryMv) ||
-      live(p.airtimeTxPct) ||
-      live(p.airtimeRxPct) ||
+      live(p.airtimeTxSecs) ||
+      live(p.airtimeRxSecs) ||
       live(p.noiseFloorDb) ||
       live(p.uptimeSeconds) ||
       live(p.queueLength) ||
@@ -59,9 +59,9 @@ function pct(seconds: number, windowSeconds: number): number {
   return Math.round(((seconds * 100) / windowSeconds) * 1000) / 1000;
 }
 
-type AirtimeKey = "airtimeRxPct" | "airtimeTxPct";
+type AirtimeKey = "airtimeRxSecs" | "airtimeTxSecs";
 
-// The values are on-air seconds despite the field name: cumulative on raw 1h points, per-bucket on
+// The values are on-air seconds: cumulative on raw 1h points, per-bucket on
 // bucketed ones. Chart the increase as a percent of the elapsed time, clamped at 0 on counter resets.
 export function airtimePctSeries(points: TelemetryPoint[], key: AirtimeKey, bucketMs: number | null): [number, number | null][] {
   if (bucketMs != null) {
@@ -88,7 +88,7 @@ export function latestAirtimePct(points: TelemetryPoint[], bucketMs: number | nu
     const s = airtimePctSeries(points, key, bucketMs);
     return s.length ? s[s.length - 1]![1] : null;
   };
-  return { rx: last("airtimeRxPct"), tx: last("airtimeTxPct") };
+  return { rx: last("airtimeRxSecs"), tx: last("airtimeTxSecs") };
 }
 
 // The server skips empty buckets; fill them so a quiet stretch draws as zero instead of a skipped line.

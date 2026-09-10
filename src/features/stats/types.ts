@@ -99,8 +99,8 @@ export interface ScopeStats {
 export interface TelemetryPoint {
   t: number; // epoch ms
   batteryMv: number | null;
-  airtimeTxPct: number | null; // on-air seconds despite the name: cumulative on 1h points, per-bucket otherwise
-  airtimeRxPct: number | null;
+  airtimeTxSecs: number | null; // cumulative since boot on 1h points, per-bucket delta otherwise
+  airtimeRxSecs: number | null;
   noiseFloorDb: number | null;
   uptimeSeconds: number | null;
   queueLength: number | null;
