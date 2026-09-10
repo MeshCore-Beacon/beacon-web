@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  formatRadio,
+  formatRadioParts,
   formatHex,
   formatAbsolute,
   timeAgoMs,
@@ -153,5 +155,21 @@ describe("formatRatePerDay", () => {
   it("shows a dash for a missing count, matching formatCount", () => {
     expect(formatRatePerDay(null, 7 * DAY_MS)).toBe("—");
     expect(formatRatePerDay(undefined, 7 * DAY_MS)).toBe("—");
+  });
+});
+
+describe("formatRadioParts", () => {
+  it("lists frequency, spreading factor, bandwidth and coding rate in the observer panel's order", () => {
+    expect(formatRadioParts({ freqMhz: 910.525, sf: 7, bwKhz: 62.5, cr: 5 })).toBe("910.525 MHz · SF7 · 62.5 kHz · CR 4/5");
+  });
+
+  it("leaves out whatever is unknown and is null when nothing is", () => {
+    expect(formatRadioParts({ freqMhz: 910.525, sf: 7, bwKhz: 62.5 })).toBe("910.525 MHz · SF7 · 62.5 kHz");
+    expect(formatRadioParts({ sf: 11 })).toBe("SF11");
+    expect(formatRadioParts({})).toBeNull();
+  });
+
+  it("backs the compact-string formatter so both read the same", () => {
+    expect(formatRadio("915,250,11")).toBe(formatRadioParts({ freqMhz: 915, sf: 11, bwKhz: 250 }));
   });
 });

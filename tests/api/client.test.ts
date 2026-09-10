@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -557,5 +557,38 @@ describe("error responses", () => {
     const err = await getScopes().catch((e: unknown) => e);
     expect(err).toMatchObject({ status: 500, code: "internal" });
     expect(getRateLimitedUntil()).toBeNull();
+  });
+});
+
+describe("getObserverActivity", () => {
+  it("requests the observer's heard-activity series for a range and bucket interval", async () => {
+    const getUrl = mockFetchOnce({ range: "24h", interval: "15m", radio: null, payloadTypes: [], points: [] });
+
+    await getObserverActivity("obs-1", "24h", "15m");
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/observers/obs-1/activity");
+    expect(url.searchParams.get("range")).toBe("24h");
+    expect(url.searchParams.get("interval")).toBe("15m");
+  });
+});
+
+describe("isNotFound", () => {
+  it("is true only for a 404 from the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        headers: new Headers(),
+        json: async () => ({ error: { code: "not_found", message: "no such observer" } }),
+      })),
+    );
+
+    const err = await getObserverActivity("obs-1", "24h", "15m").catch((e: unknown) => e);
+
+    expect(isNotFound(err)).toBe(true);
+    expect(isNotFound(new Error("network down"))).toBe(false);
   });
 });

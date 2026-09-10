@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- poking into loose ECharts option shapes */
 import { describe, it, expect } from "vitest";
-import { typeBarOption, leaderboardOption, donutOption, presetBarsOption, airtimeOption, receiveErrorsOption } from "../../../src/features/stats/chartOptions";
+import { typeBarOption, leaderboardOption, donutOption, presetBarsOption, airtimeOption, receiveErrorsOption, busyOption, heardOption, snrHeardOption } from "../../../src/features/stats/chartOptions";
 import type { ChartColors } from "../../../src/features/stats/chartTheme";
-import type { TelemetryPoint } from "../../../src/features/stats/types";
+import type { ActivityPoint, TelemetryPoint } from "../../../src/features/stats/types";
 
 const colors: ChartColors = {
   primary: "#3b82f6",
@@ -142,23 +142,93 @@ const point = (t: number, p: Partial<TelemetryPoint>): TelemetryPoint => ({
   ...p,
 });
 
+const H = 3_600_000;
+
 describe("airtimeOption", () => {
   const points = [
-    point(1000, { airtimeRxPct: 10, airtimeTxPct: 4 }),
-    point(2000, { airtimeRxPct: 12, airtimeTxPct: 4 }),
-    point(3000, { airtimeRxPct: 11, airtimeTxPct: 7 }),
+    point(0, { airtimeRxPct: 10, airtimeTxPct: 4 }),
+    point(H, { airtimeRxPct: 46, airtimeTxPct: 4 }), // +36 s over 1 h → 1%
+    point(3 * H, { airtimeRxPct: 40, airtimeTxPct: 76 }), // RX dips → clamp at 0; TX +72 s over 2 h → 1%
   ];
 
-  it("charts raw counters as clamped per-report deltas", () => {
-    const opt = airtimeOption(points, colors, false) as Record<string, any>;
-    expect(opt.series[0].data).toEqual([[2000, 2], [3000, 0]]); // RX dips → clamp at 0
-    expect(opt.series[1].data).toEqual([[2000, 0], [3000, 3]]); // TX
+  it("charts raw counters as percent of the wall-clock gap between reports", () => {
+    const opt = airtimeOption(points, colors, null) as Record<string, any>;
+    expect(opt.series[0].name).toBe("RX");
+    expect(opt.series[0].data).toEqual([[H, 1], [3 * H, 0]]);
+    expect(opt.series[1].data).toEqual([[H, 0], [3 * H, 1]]);
   });
 
-  it("charts bucketed points as-is", () => {
-    const opt = airtimeOption(points, colors, true) as Record<string, any>;
-    expect(opt.series[0].data).toEqual([[1000, 10], [2000, 12], [3000, 11]]);
-    expect(opt.series[1].data).toEqual([[1000, 4], [2000, 4], [3000, 7]]);
+  it("charts bucketed deltas as percent of the bucket width", () => {
+    const bucketed = [point(0, { airtimeRxPct: 216, airtimeTxPct: 0 }), point(6 * H, { airtimeRxPct: 0, airtimeTxPct: 1080 })];
+    const opt = airtimeOption(bucketed, colors, 6 * H) as Record<string, any>;
+    expect(opt.series[0].data).toEqual([[0, 1], [6 * H, 0]]);
+    expect(opt.series[1].data).toEqual([[0, 0], [6 * H, 5]]);
+  });
+
+  it("labels the axis in percent", () => {
+    const opt = airtimeOption(points, colors, null) as Record<string, any>;
+    expect(opt.yAxis.axisLabel.formatter).toContain("%");
+  });
+});
+
+const heard = (t: number, p: Partial<ActivityPoint> = {}): ActivityPoint => ({
+  t,
+  observations: 0,
+  airtimeMs: 0,
+  snrAvg: null,
+  snrMin: null,
+  rssiAvg: null,
+  ...p,
+});
+
+const window = { start: 0, end: 4 * H };
+
+describe("busyOption", () => {
+  const points = [heard(0, { airtimeMs: 36_000 }), heard(H, { airtimeMs: null }), heard(2 * H, { airtimeMs: 0 })];
+
+  it("charts on-air time as percent of each bucket, keeping uncosted buckets as gaps", () => {
+    const opt = busyOption(points, colors, H, window) as Record<string, any>;
+    expect(opt.series[0].data).toEqual([[0, 1], [H, null], [2 * H, 0]]);
+    expect(opt.yAxis.axisLabel.formatter).toContain("%");
+  });
+
+  it("pins the time axis to the selected window so silence stays visible", () => {
+    const opt = busyOption(points, colors, H, window) as Record<string, any>;
+    expect(opt.xAxis.min).toBe(0);
+    expect(opt.xAxis.max).toBe(4 * H);
+  });
+
+  it("prorates the bucket still in progress by the time elapsed so far", () => {
+    const full = [heard(0, { airtimeMs: 36_000 }), heard(H, { airtimeMs: 36_000 }), heard(2 * H, { airtimeMs: 36_000 })];
+    const opt = busyOption(full, colors, H, { start: 0, end: 2 * H + 1_800_000 }) as Record<string, any>;
+    expect(opt.series[0].data).toEqual([[0, 1], [H, 1], [2 * H, 2]]);
+  });
+
+  it("emits only gaps when the bucket width is unknown", () => {
+    const opt = busyOption(points, colors, null, window) as Record<string, any>;
+    expect(opt.series[0].data).toEqual([[0, null], [H, null], [2 * H, null]]);
+  });
+});
+
+describe("heardOption", () => {
+  it("charts the observation count per bucket over the window", () => {
+    const opt = heardOption([heard(0, { observations: 7 }), heard(H, { observations: 0 })], colors, window) as Record<string, any>;
+    expect(opt.series[0].data).toEqual([[0, 7], [H, 0]]);
+    expect(opt.xAxis.min).toBe(0);
+    expect(opt.xAxis.max).toBe(4 * H);
+  });
+});
+
+describe("snrHeardOption", () => {
+  const points = [heard(0, { snrAvg: 6.2, snrMin: -3 }), heard(H), heard(2 * H, { snrAvg: 4, snrMin: 1 })];
+
+  it("charts the average and the worst SNR as two series, leaving quiet buckets as gaps", () => {
+    const opt = snrHeardOption(points, colors, window) as Record<string, any>;
+    expect(opt.series.map((s: { name: string }) => s.name)).toEqual(["Avg", "Min"]);
+    expect(opt.series[0].data).toEqual([[0, 6.2], [H, null], [2 * H, 4]]);
+    expect(opt.series[1].data).toEqual([[0, -3], [H, null], [2 * H, 1]]);
+    expect(opt.series[0].connectNulls).toBe(false);
+    expect(opt.xAxis.max).toBe(4 * H);
   });
 });
 

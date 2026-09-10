@@ -15,6 +15,7 @@ import type {
   RadioPreset,
   ScopeStats,
   ObserverTelemetry,
+  ObserverActivity,
   NodeTypeCount,
   ClockDriftEntry,
 } from "../features/stats/types";
@@ -346,6 +347,15 @@ export function getObserverTelemetry(
   afterId?: number,
 ): Promise<ObserverTelemetry> {
   return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
+}
+
+export function getObserverActivity(observerId: string, range: string, interval: string): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval });
+}
+
+// Lets a caller hide a feature the server doesn't have rather than show it as failed.
+export function isNotFound(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 404;
 }
 
 export { ApiError };

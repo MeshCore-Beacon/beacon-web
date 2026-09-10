@@ -1,7 +1,8 @@
 import type { EChartsOption } from "./echarts-setup";
 import { type ChartColors, tooltipStyle, withAlpha } from "./chartTheme";
 import { formatCount } from "../../lib/formatters";
-import type { TelemetryPoint } from "./types";
+import { airtimePctSeries, busyPct } from "./transforms";
+import type { ActivityPoint, TelemetryPoint } from "./types";
 
 const MONO = "JetBrains Mono, monospace";
 
@@ -307,33 +308,24 @@ export function typeBarOption(
 // ---- Observer telemetry ----
 // `t` arrives in epoch ms.
 
-// 1h points are cumulative counters, so chart per-report deltas (clamped at 0 for resets);
-// bucketed points already arrive as per-bucket deltas, so chart those as-is.
-function deltaSeries(points: TelemetryPoint[], key: "airtimeRxPct" | "airtimeTxPct") {
-  const out: [number, number | null][] = [];
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1]![key];
-    const cur = points[i]![key];
-    const d = prev != null && cur != null ? Math.max(0, cur - prev) : null;
-    out.push([points[i]!.t, d]);
-  }
-  return out;
+function percentAxis(c: ChartColors) {
+  return valueAxis(c, { axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 10, formatter: "{value}%" } });
 }
 
-export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketed: boolean): EChartsOption {
-  const series = (key: "airtimeRxPct" | "airtimeTxPct") =>
-    bucketed ? points.map((p) => [p.t, p[key]]) : deltaSeries(points, key);
+const pctLabel = (v: unknown) => (typeof v === "number" ? `${v}%` : "—");
+
+export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketMs: number | null): EChartsOption {
   return {
     animation: false,
     backgroundColor: "transparent",
-    grid: { left: 44, right: 14, top: 24, bottom: 22 },
+    grid: { left: 48, right: 14, top: 24, bottom: 22 },
     legend: { data: ["RX", "TX"], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },
-    tooltip: { trigger: "axis", ...tooltipStyle(c) },
+    tooltip: { trigger: "axis", ...tooltipStyle(c), valueFormatter: pctLabel },
     xAxis: timeAxis(c),
-    yAxis: valueAxis(c),
+    yAxis: percentAxis(c),
     series: [
-      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: series("airtimeRxPct"), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
-      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: series("airtimeTxPct"), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
+      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxPct", bucketMs), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
+      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxPct", bucketMs), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
     ],
   };
 }
@@ -391,3 +383,84 @@ export const queueOption = (p: TelemetryPoint[], c: ChartColors) =>
 // receiveErrors is a cumulative counter in raw points, a per-bucket delta in bucketed ones
 export const receiveErrorsOption = (p: TelemetryPoint[], c: ChartColors, bucketed: boolean) =>
   metricLineOption(p, c, { name: "Recv errors", color: c.danger, accessor: (x) => x.receiveErrors, delta: !bucketed, area: true });
+
+// ---- Observer activity (what it heard) ----
+
+export interface TimeWindow {
+  start: number; // epoch ms
+  end: number;
+}
+
+// Pin the axis to the selected range so a quiet observer shows empty space up to now.
+function windowAxis(c: ChartColors, w: TimeWindow) {
+  return { ...timeAxis(c), min: w.start, max: w.end };
+}
+
+// The bucket still in progress is measured against the time elapsed so far, not the full width.
+function busySpanMs(t: number, intervalMs: number, w: TimeWindow): number {
+  return t < w.end && t + intervalMs > w.end ? w.end - t : intervalMs;
+}
+
+export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: number | null, w: TimeWindow): EChartsOption {
+  const pct = (p: ActivityPoint) => (intervalMs == null ? null : busyPct(p.airtimeMs, busySpanMs(p.t, intervalMs, w)));
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    grid: { left: 48, right: 14, top: 14, bottom: 22 },
+    tooltip: { trigger: "axis", ...tooltipStyle(c), valueFormatter: pctLabel },
+    xAxis: windowAxis(c, w),
+    yAxis: percentAxis(c),
+    series: [
+      {
+        name: "Busy",
+        type: "line",
+        symbol: "none",
+        connectNulls: false,
+        data: points.map((p) => [p.t, pct(p)]),
+        lineStyle: { width: 1.5, color: c.green },
+        areaStyle: { color: withAlpha(c.green, 0.28) },
+        itemStyle: { color: c.green },
+      },
+    ],
+  };
+}
+
+export function heardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow): EChartsOption {
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    grid: { left: 48, right: 14, top: 14, bottom: 22 },
+    tooltip: { trigger: "axis", ...tooltipStyle(c) },
+    xAxis: windowAxis(c, w),
+    yAxis: valueAxis(c, { minInterval: 1 }),
+    series: [
+      {
+        name: "Heard",
+        type: "line",
+        symbol: "none",
+        data: points.map((p) => [p.t, p.observations]),
+        lineStyle: { width: 1.5, color: c.primary },
+        areaStyle: { color: withAlpha(c.primary, 0.28) },
+        itemStyle: { color: c.primary },
+      },
+    ],
+  };
+}
+
+const dbLabel = (v: unknown) => (typeof v === "number" ? `${v} dB` : "—");
+
+export function snrHeardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow): EChartsOption {
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    grid: { left: 54, right: 14, top: 24, bottom: 22 },
+    legend: { data: ["Avg", "Min"], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },
+    tooltip: { trigger: "axis", ...tooltipStyle(c), valueFormatter: dbLabel },
+    xAxis: windowAxis(c, w),
+    yAxis: valueAxis(c, { scale: true, axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 10, formatter: "{value} dB" } }),
+    series: [
+      { name: "Avg", type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrAvg]), lineStyle: { width: 1.8, color: c.secondary }, itemStyle: { color: c.secondary } },
+      { name: "Min", type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrMin]), lineStyle: { width: 1, color: c.textMuted, type: "dashed" }, itemStyle: { color: c.textMuted } },
+    ],
+  };
+}

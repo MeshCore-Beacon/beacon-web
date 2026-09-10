@@ -1,4 +1,5 @@
-// Response shapes for the /stats/* endpoints and observer telemetry. Verified against beacon-server.
+// Response shapes for the /stats/* endpoints and observer telemetry. Verified against beacon-server,
+// except the activity block, which follows the endpoint handoff until the server ships it.
 
 import type { NodeIATA } from "../nodes/types";
 
@@ -98,7 +99,7 @@ export interface ScopeStats {
 export interface TelemetryPoint {
   t: number; // epoch ms
   batteryMv: number | null;
-  airtimeTxPct: number | null;
+  airtimeTxPct: number | null; // on-air seconds despite the name: cumulative on 1h points, per-bucket otherwise
   airtimeRxPct: number | null;
   noiseFloorDb: number | null;
   uptimeSeconds: number | null;
@@ -110,6 +111,32 @@ export interface ObserverTelemetry {
   range: string;
   interval: string;
   points: TelemetryPoint[];
+}
+
+// GET /observers/{id}/activity: what the observer heard per `interval`. The tab hides these charts on a 404.
+export interface ActivityPoint {
+  t: number; // epoch ms, bucket start
+  observations: number;
+  airtimeMs: number | null; // summed LoRa time-on-air; null when no row in the bucket could be costed
+  snrAvg: number | null;
+  snrMin: number | null;
+  rssiAvg: number | null;
+}
+
+export interface ActivityRadio {
+  freqMhz: number | null;
+  sf: number | null;
+  bwKhz: number | null;
+  cr: number | null;
+  preambleSymbols: number | null;
+}
+
+export interface ObserverActivity {
+  range: string;
+  interval: string;
+  radio: ActivityRadio | null;
+  payloadTypes: PayloadBreakdownItem[];
+  points: ActivityPoint[];
 }
 
 // Sub-tab + time-range identifiers shared across the Stats page.
