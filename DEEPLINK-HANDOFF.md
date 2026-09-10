@@ -1,5 +1,9 @@
 # Packet deep link investigation — 2026-08-07
 
+## Optional hardening added
+
+A `hash` selection outside the loaded or filtered results now shows an explicit **Open analyzer** action, using the existing detail query. Loading, request errors, retry and dismissal are visible. Loaded selections continue expanding inline, and `analyze=1` remains the flag that opens the drawer. Filters and region selection are preserved. The historical investigation below explains the original behavior.
+
 ## Outcome: no bug in beacon-web
 
 A packet deep link that "doesn't pop up" was traced to a hand-built URL missing the
