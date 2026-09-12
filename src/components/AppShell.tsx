@@ -114,6 +114,7 @@ function RegionSelector() {
 
   return (
     <Dropdown
+      align="left"
       width="w-60"
       renderTrigger={({ toggle }) => (
         <button
@@ -356,11 +357,13 @@ interface AppShellProps {
 export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShellProps) {
   return (
     <div className="flex flex-col h-dvh">
-      <header className="flex items-center justify-between gap-2 px-3 md:px-4 h-[42px] bg-bg-surface border-b border-border shrink-0">
-        <BeaconWordmark iconSize={22} textClassName="text-sm" />
-        <div className="flex items-center gap-1.5 md:gap-3 min-w-0">
+      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 min-h-[42px] md:flex md:gap-3 md:px-4 bg-bg-surface border-b border-border shrink-0">
+        <BeaconWordmark iconSize={22} textClassName="text-sm truncate" className="min-w-0" />
+        <div className="col-span-2 row-start-2 flex items-center justify-between gap-1.5 min-w-0 md:ml-auto md:justify-start md:gap-3">
           <RegionSelector />
           <ThemePicker />
+        </div>
+        <div className="col-start-2 row-start-1 flex items-center gap-1.5 md:gap-3">
           <LiveBadge wsManager={wsManager} />
           <RateLimitBadge />
           <a
