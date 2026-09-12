@@ -23,6 +23,13 @@ const observer = (
 };
 
 describe("PacketTableRow", () => {
+  it("keeps endpoints visible alongside a payload summary", () => {
+    render(<PacketTableRow packet={pkt({ summary: "Packet summary", latestObserver: observer({ resolvedSource: node("Source node"), resolvedDestination: node("Destination node") }) })} expanded={false} onToggle={() => {}} />);
+    expect(screen.getByText("Packet summary")).toBeInTheDocument();
+    expect(screen.getByText("Source node")).toBeInTheDocument();
+    expect(screen.getByText("Destination node")).toBeInTheDocument();
+  });
+
   it("exposes one button carrying the expansion state", () => {
     render(<PacketTableRow packet={pkt()} expanded={false} onToggle={() => {}} />);
     const btn = screen.getByRole("button");

@@ -58,6 +58,7 @@ export function PacketTableRow({ packet, expanded, isFresh, onToggle }: PacketTa
         <span className="font-mono text-text-muted">{pathLength?.hopCount ?? na}</span>
         <span className="font-mono text-text-muted">{pathLength?.hashSize ?? na}</span>
         <span className="min-w-0 overflow-hidden">
+          {packet.summary && <span className="block truncate text-text-bright" title={packet.summary}>{packet.summary}</span>}
           <PacketEndpoints packet={packet} />
         </span>
         <span className="font-mono font-bold text-primary tracking-wider">

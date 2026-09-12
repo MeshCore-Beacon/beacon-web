@@ -163,6 +163,7 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
         lastHeardAt: data.observation.heardAt,
         observationCount: data.packet.observationCount,
         scope: data.packet.scope,
+        summary: data.packet.summary,
         latestObserver: {
           id: data.observation.observerId,
           displayName: data.observation.observerName,

@@ -6,7 +6,7 @@ import { GRID_TEMPLATE } from "../../../src/features/packets/packet-grid";
 describe("PacketTableHeader", () => {
   it("declares every column heading", () => {
     render(<PacketTableHeader />);
-    for (const h of ["Hash", "Type", "Route", "Obs", "Hops", "Hash Size", "Src → Dst", "IATA", "Age"]) {
+    for (const h of ["Hash", "Type", "Route", "Obs", "Hops", "Hash Size", "Summary / Src → Dst", "IATA", "Age"]) {
       expect(screen.getByText(h)).toBeInTheDocument();
     }
   });

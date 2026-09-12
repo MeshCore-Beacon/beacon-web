@@ -51,6 +51,7 @@ export interface WsPacketObservation {
       isFirstObservation: boolean;
       observationCount: number;
       scope?: string; // matched transport scope name; omitted when none matched
+      summary?: string;
     };
     observation: {
       observerId: string;
