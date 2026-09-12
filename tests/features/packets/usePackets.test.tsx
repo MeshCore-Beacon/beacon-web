@@ -360,6 +360,20 @@ describe("usePackets live heard window", () => {
 
   const flushRaf = () => rafCallbacks.splice(0).forEach((cb) => cb(0));
 
+  it("keeps summaries from history and passes summaries through live observations", async () => {
+    getPackets.mockResolvedValue({ items: [{ ...packet("history"), summary: "Historical advert" }], nextCursor: null });
+    const { result } = renderHook(() => usePackets(), { wrapper });
+    await waitFor(() => expect(result.current.allPackets.find((p) => p.packetHash === "history")?.summary).toBe("Historical advert"));
+    const event = observation("live");
+    event.packet.summary = "Live advert 📡";
+    act(() => {
+      result.current.handlePacketObservation(event);
+      flushRaf();
+    });
+    expect(result.current.allPackets.find((p) => p.packetHash === "live")?.summary).toBe("Live advert 📡");
+    expect(result.current.allPackets.find((p) => p.packetHash === "history")?.summary).toBe("Historical advert");
+  });
+
   // Each WS message carries only its own heardAt, so a second observation of the same packet used to
   // collapse the window to a single instant — the expanded row then read "spread 0.000s".
   it("widens the heard window across observations instead of collapsing it", async () => {
