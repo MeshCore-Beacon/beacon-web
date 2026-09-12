@@ -199,6 +199,7 @@ function RegionSelectorPanel() {
   return (
     <>
       <div className="sticky -top-1 z-10 -mt-1 bg-bg-raised px-2 pt-1 pb-1.5">
+        {/* Keep focused text at 16px so iOS Safari does not zoom the page. */}
         <input
           ref={inputRef}
           type="text"
@@ -212,7 +213,7 @@ function RegionSelectorPanel() {
             }
           }}
           placeholder="Filter IATA or name…"
-          className="w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
+          className="w-full text-[16px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
         />
       </div>
 
