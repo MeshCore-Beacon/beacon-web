@@ -45,3 +45,18 @@ describe("Dropdown", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Dropdown align", () => {
+  it("left-below-md anchors left on phones and flips to right at md", () => {
+    render(
+      <Dropdown align="left-below-md" renderTrigger={({ toggle }) => <button type="button" onClick={toggle}>trigger</button>}>
+        {() => <div data-testid="dropdown-panel">option</div>}
+      </Dropdown>,
+    );
+    fireEvent.click(screen.getByText("trigger"));
+    const panel = screen.getByTestId("dropdown-panel").parentElement!;
+    expect(panel.className).toContain("left-0");
+    expect(panel.className).toContain("md:left-auto");
+    expect(panel.className).toContain("md:right-0");
+  });
+});

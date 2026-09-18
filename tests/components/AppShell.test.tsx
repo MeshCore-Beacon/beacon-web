@@ -260,3 +260,14 @@ describe("rate limit badge", () => {
     expect(screen.queryByText(/RATE LIMITED/)).not.toBeInTheDocument();
   });
 });
+
+describe("AppShell region picker alignment", () => {
+  it("opens rightward only below md so the desktop row's controls stay visible", async () => {
+    vi.mocked(getIatas).mockResolvedValue([]);
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: /REGION/ }));
+    const panel = screen.getByPlaceholderText("Filter IATA or name…").closest(".absolute")!;
+    expect(panel.className).toContain("left-0");
+    expect(panel.className).toContain("md:right-0");
+  });
+});

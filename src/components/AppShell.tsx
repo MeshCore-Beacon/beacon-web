@@ -114,7 +114,7 @@ function RegionSelector() {
 
   return (
     <Dropdown
-      align="left"
+      align="left-below-md"
       width="w-60"
       renderTrigger={({ toggle }) => (
         <button
