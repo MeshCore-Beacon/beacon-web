@@ -94,7 +94,7 @@ export interface WsObserverStatus {
 export interface WsNodeUpdate {
   v: 1;
   type: "event";
-    event: "nodeUpdate";
+  event: "nodeUpdate";
   data: {
     nodeId: string;
     publicKey: string;
