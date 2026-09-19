@@ -57,6 +57,7 @@ function GraphIcon() {
 const TAB_OPTIONS = [
   { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
   { value: "traffic", label: "Traffic", icon: <MeshIcon /> },
+  { value: "scopes", label: "Scopes", icon: <GraphIcon /> },
   { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
   { value: "observer", label: "Observer", icon: <ObserverIcon /> },
@@ -106,7 +107,7 @@ export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props
         </div>
       )}
       {/* Comparison has explicit dates; graph and clock drift have no rolling window. */}
-      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && (
+      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && tab !== "scopes" && (
         <Segmented
           className="shrink-0"
           options={RANGE_OPTIONS}

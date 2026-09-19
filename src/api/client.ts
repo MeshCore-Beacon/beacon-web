@@ -344,9 +344,9 @@ export function getClockDrift(iatas?: string[], limit = 100): Promise<ClockDrift
 }
 
 // renamed from getScopes to avoid colliding with the /scopes name list; this is the /stats/scopes
-// aggregate (packet/observer/node counts), reported globally regardless of the active region.
-export function getStatsScopes(): Promise<ScopeStats[]> {
-  return request("/stats/scopes");
+// aggregate (packet/observer/node counts), filtered by the selected IATAs.
+export function getStatsScopes(iatas?: string[], signal?: AbortSignal): Promise<ScopeStats[]> {
+  return request("/stats/scopes", { iatas: iatasParam(iatas) }, signal);
 }
 
 export function getObserverTelemetry(

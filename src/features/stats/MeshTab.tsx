@@ -143,10 +143,10 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
         <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isLoading} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
         <ChartCard title="Radio presets · all time" height={208} option={presetsOption} isLoading={radioPresets.isLoading} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
-        <Card title={<>Scopes · all regions · all time</>}>
+        <Card title={<>Scopes · selected region · retained data</>}>
           {scopes.isError ? (
             <div className="py-4 text-center font-mono text-[11px] text-text-dim">Failed to load</div>
-          ) : scopes.isLoading ? (
+          ) : scopes.isPending || scopes.isLoading || scopes.isPlaceholderData ? (
             <div className="py-4 text-center font-mono text-[11px] text-text-dim">Loading…</div>
           ) : scopeRows.length === 0 ? (
             <div className="py-4 text-center font-mono text-[11px] text-text-dim">No data</div>
