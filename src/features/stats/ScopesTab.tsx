@@ -21,7 +21,7 @@ export function ScopesTab() {
   const height = Math.max(180, Math.min(13, rows.length) * 28 + 16);
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-3.5 p-4">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-lg font-semibold text-text-bright">Transport scopes</h2><p className="text-sm text-text-muted">Retained data and memberships for the selected region.</p></div>
         <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching || query.isPending} className="rounded border border-border px-3 py-1.5 text-xs text-text-normal hover:bg-bg-raised disabled:opacity-50">Refresh scopes</button>
