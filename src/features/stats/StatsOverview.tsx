@@ -6,10 +6,11 @@ import { MeshTab } from "./MeshTab";
 import { TalkersTab } from "./TalkersTab";
 import { ClockDriftTab } from "./ClockDriftTab";
 import { ObserverTab } from "./ObserverTab";
+import { CompareObserversTab } from "./CompareObserversTab";
 import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import type { StatsRange, StatsTab } from "./types";
 
-const TABS: StatsTab[] = ["mesh", "talkers", "clockdrift", "observer", "graph"];
+const TABS: StatsTab[] = ["mesh", "talkers", "clockdrift", "observer", "compare", "graph"];
 const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
@@ -60,6 +61,7 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
           <ObserverTab range={range} selectedObserverId={observerId} onSelectObserver={handleSelectObserver} wsManager={wsManager} />
         )}
         {tab === "graph" && <NeighbourGraphTab />}
+        {tab === "compare" && <CompareObserversTab />}
       </div>
     </div>
   );

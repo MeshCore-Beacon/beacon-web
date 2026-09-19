@@ -3,6 +3,19 @@
 
 import type { NodeIATA } from "../nodes/types";
 
+// beacon-server /stats/observer-comparison: disjoint groups of distinct flood
+// packet hashes, selected by reception time in [since, until).
+export interface ObserverComparison {
+  observerA: string;
+  observerB: string;
+  since: number;
+  until: number;
+  totalPackets: number;
+  onlyA: number;
+  onlyB: number;
+  both: number;
+}
+
 export interface StatsOverview {
   totalPackets: number;
   totalObservations: number;
@@ -140,7 +153,7 @@ export interface ObserverActivity {
 }
 
 // Sub-tab + time-range identifiers shared across the Stats page.
-export type StatsTab = "mesh" | "talkers" | "clockdrift" | "observer" | "graph";
+export type StatsTab = "mesh" | "talkers" | "clockdrift" | "observer" | "compare" | "graph";
 export type StatsRange = "24h" | "7d" | "30d";
 
 export const RANGE_MS: Record<StatsRange, number> = {
