@@ -59,6 +59,7 @@ const TAB_OPTIONS = [
   { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
   { value: "observer", label: "Observer", icon: <ObserverIcon /> },
+  { value: "compare", label: "Compare observers", icon: <ObserverIcon /> },
   { value: "graph", label: "Neighbour Graph", icon: <GraphIcon /> },
 ];
 
@@ -103,8 +104,8 @@ export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props
           />
         </div>
       )}
-      {/* graph is topology and clock-drift is each node's latest reading — neither is time-windowed */}
-      {tab !== "graph" && tab !== "clockdrift" && (
+      {/* Comparison has explicit dates; graph and clock drift have no rolling window. */}
+      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && (
         <Segmented
           className="shrink-0"
           options={RANGE_OPTIONS}

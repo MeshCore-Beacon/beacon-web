@@ -6,6 +6,7 @@ import type { ObserverSummary, Observer, AdvertObservation } from "../features/o
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
 import type {
   StatsOverview,
+  ObserverComparison,
   ObservationPoint,
   PayloadBreakdownItem,
   TopNode,
@@ -47,7 +48,7 @@ async function errorFrom(res: Response): Promise<ApiError> {
   return new ApiError(res.status, body.error?.code ?? "unknown", body.error?.message ?? res.statusText, retryAfterMs);
 }
 
-async function request<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+async function request<T>(path: string, params?: Record<string, string | number | undefined>, signal?: AbortSignal): Promise<T> {
   const url = new URL(`${API_BASE}${path}`, window.location.origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -57,7 +58,7 @@ async function request<T>(path: string, params?: Record<string, string | number 
     }
   }
 
-  const res = await fetch(url.toString());
+  const res = await (signal ? fetch(url.toString(), { signal }) : fetch(url.toString()));
 
   if (!res.ok) throw await errorFrom(res);
   noteRequestOk();
@@ -66,6 +67,14 @@ async function request<T>(path: string, params?: Record<string, string | number 
 }
 
 // endpoint functions
+
+export function getObserverComparison(
+  iatas: string[] | undefined,
+  params: { observerA: string; observerB: string; since: number; until: number },
+  signal?: AbortSignal,
+): Promise<ObserverComparison> {
+  return request("/stats/observer-comparison", { ...params, iatas: iatasParam(iatas) }, signal);
+}
 
 // The region filter travels as the comma-separated `iatas` param; undefined/empty means all regions.
 function iatasParam(iatas?: string[]): string | undefined {
