@@ -22,7 +22,7 @@ export function TrafficTab({ range }: { range: StatsRange }) {
   const value = (number: number) => unavailable ? "—" : formatCount(number);
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-3.5 p-4">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-lg font-semibold text-text-bright">Traffic</h2><p className="text-sm text-text-muted">When and where observers report receptions.</p></div>
         <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching || query.isPending} className="rounded border border-border px-3 py-1.5 text-xs text-text-normal hover:bg-bg-raised disabled:opacity-50">Refresh traffic</button>
