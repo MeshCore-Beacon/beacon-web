@@ -24,6 +24,20 @@ function update(overrides: Partial<WsNodeUpdate["data"]>): WsNodeUpdate["data"] 
 }
 
 describe("patchNodeSummary", () => {
+  it("applies foreign status changes without moving coordinates and clears explicit null", () => {
+    const list = [node({ id: "a", name: "Keep", lat: 10, lng: 20, possiblyForeign: true })];
+    const local = patchNodeSummary(list, update({ nodeId: "a", name: "Keep", lat: 10, lng: 20, possiblyForeign: false }))!;
+    expect(local[0]!.possiblyForeign).toBe(false);
+    expect(local).not.toBe(list);
+    const unknown = patchNodeSummary(local, update({ nodeId: "a", name: "Keep", lat: 0, lng: 0, possiblyForeign: null }))!;
+    expect(unknown[0]!.possiblyForeign).toBeUndefined();
+    expect(list[0]!.possiblyForeign).toBe(true);
+  });
+
+  it("retains the flag and list identity when an advert omits the position/classification", () => {
+    const list = [node({ id: "a", name: "Keep", lat: 10, lng: 20, possiblyForeign: true })];
+    expect(patchNodeSummary(list, update({ nodeId: "a", name: "Keep", lat: undefined, lng: undefined }))).toBe(list);
+  });
   it("returns the list unchanged (same ref) when it is undefined", () => {
     expect(patchNodeSummary(undefined, update({}))).toBeUndefined();
   });
@@ -84,12 +98,12 @@ describe("upsertNodePages", () => {
     const old = pages([node({ id: "a" })], [node({ id: "b" })]);
     const out = upsertNodePages(
       old,
-      update({ nodeId: "new1", name: "Fresh", nodeTypeName: "companion", publicKey: "pk2", lat: 50.5, lng: -100.25, isObserver: false, iatas: [] }),
+      update({ nodeId: "new1", name: "Fresh", nodeTypeName: "repeater", publicKey: "pk2", lat: 50.5, lng: -100.25, isObserver: false, iatas: [], possiblyForeign: true }),
     )!;
     expect(out).not.toBe(old);
     expect(out.pages[0]).toBe(old.pages[0]); // earlier pages keep their refs
     expect(out.pages[1]!.items.map((n) => n.id)).toEqual(["b", "new1"]);
-    expect(out.pages[1]!.items[1]).toMatchObject({ name: "Fresh", lat: 50.5, lng: -100.25 });
+    expect(out.pages[1]!.items[1]).toMatchObject({ name: "Fresh", lat: 50.5, lng: -100.25, possiblyForeign: true });
   });
 
   it("keeps the same ref for a re-advert that changes nothing", () => {

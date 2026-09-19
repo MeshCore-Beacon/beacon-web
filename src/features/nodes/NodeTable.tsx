@@ -16,6 +16,7 @@ import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
 import { patchNodeSummary } from "./node-updates";
+import { ForeignNodeBadge } from "./ForeignNodeBadge";
 import type { NodeSummary } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
@@ -44,12 +45,15 @@ const COLUMNS: Column<NodeSummary>[] = [
     header: "Type",
     sortValue: (node) => node.nodeTypeName,
     cell: (node) => (
-      <Badge variant="default">
-        {node.isObserver && (
-          <Tooltip label="Observer" className="mr-1"><ObserverIcon /></Tooltip>
-        )}
-        {node.nodeTypeName}
-      </Badge>
+      <div className="flex flex-wrap gap-1">
+        <Badge variant="default">
+          {node.isObserver && (
+            <Tooltip label="Observer" className="mr-1"><ObserverIcon /></Tooltip>
+          )}
+          {node.nodeTypeName}
+        </Badge>
+        <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
+      </div>
     ),
   },
   {
@@ -114,6 +118,7 @@ function renderNodeCard(node: NodeSummary) {
         {location && <span>· {location}</span>}
         {node.knownNeighborCount > 0 && <span>· {node.knownNeighborCount.toLocaleString()} neighbors</span>}
       </div>
+      <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
       {node.iatas && node.iatas.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {node.iatas.map((entry) => (

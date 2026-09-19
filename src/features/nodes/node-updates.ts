@@ -20,11 +20,12 @@ export function patchNodeSummary(
   const name = data.name || prev.name;
   const lat = data.lat ?? prev.lat;
   const lng = data.lng ?? prev.lng;
+  const possiblyForeign = data.possiblyForeign === undefined ? prev.possiblyForeign : data.possiblyForeign ?? undefined;
   // a re-advert that re-sends the same values must keep the SAME ref so patchInfinitePages no-ops
   // (otherwise an unchanged node would trigger a full map FeatureCollection rebuild + setData)
-  if (name === prev.name && lat === prev.lat && lng === prev.lng) return list;
+  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign) return list;
   const updated = [...list];
-  updated[idx] = { ...prev, name, lat, lng };
+  updated[idx] = { ...prev, name, lat, lng, possiblyForeign };
   return updated;
 }
 
@@ -54,6 +55,7 @@ export function upsertNodePages(
     // meeting for the first time has none resolved yet, so start at 0 until a reload fills it in
     knownNeighborCount: 0,
     isObserver: data.isObserver,
+    possiblyForeign: data.possiblyForeign ?? undefined,
   };
   const pages = [...old.pages];
   const last = pages[pages.length - 1]!;
