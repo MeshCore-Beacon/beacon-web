@@ -20,6 +20,8 @@ export interface NodeSummary {
   // map's observer-pip marker variant; observerId, when present, links to that observer's detail.
   isObserver?: boolean;
   observerId?: string;
+  // Server verdict against its configured local border union; absence is unknown/disabled.
+  possiblyForeign?: boolean;
 }
 
 export interface Node extends NodeSummary {

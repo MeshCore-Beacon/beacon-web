@@ -58,6 +58,18 @@ beforeEach(() => {
 });
 
 describe("NodeDetailPanel neighbors", () => {
+  it("shows the server's possibly-foreign indication", async () => {
+    mockGetNode.mockResolvedValue({ ...node, possiblyForeign: true });
+    renderPanel();
+    expect(await screen.findByText("Possibly foreign")).toBeInTheDocument();
+  });
+
+  it.each([false, undefined])("does not label unflagged nodes as foreign (%s)", async (possiblyForeign) => {
+    mockGetNode.mockResolvedValue({ ...node, possiblyForeign });
+    renderPanel();
+    await screen.findByText("Self Node");
+    expect(screen.queryByText("Possibly foreign")).not.toBeInTheDocument();
+  });
   it("lists each neighbor's name in a Neighbors section", async () => {
     mockGetNodeNeighbors.mockResolvedValue([neighbor("n-1", "Neighbor A"), neighbor("n-2", "Neighbor B")]);
 

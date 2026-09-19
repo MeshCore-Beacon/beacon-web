@@ -8,6 +8,7 @@ import { IataChip } from "../../components/IataChip";
 import { formatHex, formatSnr, snrLevel, formatRadio, formatClockDrift, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import type { NodeObservation, NodeNeighbor } from "./types";
+import { ForeignNodeBadge } from "./ForeignNodeBadge";
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   return (
@@ -113,11 +114,12 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
       {node && (
         <>
           <Section title="Summary" first>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   {node.name ?? formatHex(node.id)}
                 </span>
                 <Badge variant="default">{node.nodeTypeName}</Badge>
+                <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
               </div>
               <div className="flex items-center gap-2">
                 <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>

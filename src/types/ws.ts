@@ -94,13 +94,15 @@ export interface WsObserverStatus {
 export interface WsNodeUpdate {
   v: 1;
   type: "event";
-  event: "nodeUpdate";
+    event: "nodeUpdate";
   data: {
     nodeId: string;
     publicKey: string;
     name: string;
     nodeType: number;
     nodeTypeName: string;
+    // Omitted leaves the prior verdict unchanged; null clears an unknown/reset position.
+    possiblyForeign?: boolean | null;
     iata: string;
     // decimal degrees, same as REST /nodes (api/nodes.go serializes *float64 degrees to both)
     lat?: number;
