@@ -305,8 +305,8 @@ export function getStatsOverview(iatas?: string[]): Promise<StatsOverview> {
   return request("/stats/overview", { iatas: iatasParam(iatas) });
 }
 
-export function getStatsObservations(iatas?: string[], since?: number): Promise<ObservationPoint[]> {
-  return request("/stats/observations", { iatas: iatasParam(iatas), since });
+export function getStatsObservations(iatas?: string[], since?: number, signal?: AbortSignal): Promise<ObservationPoint[]> {
+  return request("/stats/observations", { iatas: iatasParam(iatas), since }, signal);
 }
 
 export function getPayloadBreakdown(iatas?: string[], since?: number): Promise<PayloadBreakdownItem[]> {

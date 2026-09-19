@@ -56,6 +56,7 @@ function GraphIcon() {
 
 const TAB_OPTIONS = [
   { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
+  { value: "traffic", label: "Traffic", icon: <MeshIcon /> },
   { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
   { value: "observer", label: "Observer", icon: <ObserverIcon /> },

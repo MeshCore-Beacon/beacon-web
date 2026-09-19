@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import type { WsManager } from "../../api/ws-manager";
 import { StatsSubHeader } from "./StatsSubHeader";
 import { MeshTab } from "./MeshTab";
+import { TrafficTab } from "./TrafficTab";
 import { TalkersTab } from "./TalkersTab";
 import { ClockDriftTab } from "./ClockDriftTab";
 import { ObserverTab } from "./ObserverTab";
@@ -10,7 +11,7 @@ import { CompareObserversTab } from "./CompareObserversTab";
 import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import type { StatsRange, StatsTab } from "./types";
 
-const TABS: StatsTab[] = ["mesh", "talkers", "clockdrift", "observer", "compare", "graph"];
+const TABS: StatsTab[] = ["mesh", "traffic", "talkers", "clockdrift", "observer", "compare", "graph"];
 const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
@@ -55,6 +56,7 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
       <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />}
+        {tab === "traffic" && <TrafficTab range={range} />}
         {tab === "talkers" && <TalkersTab range={range} />}
         {tab === "clockdrift" && <ClockDriftTab />}
         {tab === "observer" && (

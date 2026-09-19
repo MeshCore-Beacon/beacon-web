@@ -3,7 +3,7 @@
 // the `echarts-for-react` wrapper (it was hit by a supply-chain attack 2026-05-19); EChart.tsx wraps
 // the core API directly instead.
 import * as echarts from "echarts/core";
-import { LineChart, BarChart, PieChart, GaugeChart, GraphChart } from "echarts/charts";
+import { LineChart, BarChart, PieChart, GaugeChart, GraphChart, HeatmapChart } from "echarts/charts";
 import {
   GridComponent,
   TitleComponent,
@@ -12,6 +12,8 @@ import {
   GraphicComponent,
   DataZoomComponent,
   MarkLineComponent,
+  VisualMapComponent,
+  AriaComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
@@ -21,6 +23,7 @@ echarts.use([
   PieChart,
   GaugeChart,
   GraphChart,
+  HeatmapChart,
   GridComponent,
   TitleComponent,
   TooltipComponent,
@@ -28,6 +31,8 @@ echarts.use([
   GraphicComponent,
   DataZoomComponent,
   MarkLineComponent,
+  VisualMapComponent,
+  AriaComponent,
   CanvasRenderer,
 ]);
 
