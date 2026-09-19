@@ -308,7 +308,7 @@ function AppInner() {
       />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="relative flex flex-1 min-h-0">
-          <div key={activeTab} className="flex flex-1 min-h-0 fade-in">
+          <div key={activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
             <Suspense fallback={<EmptyState title={activeTab} subtitle="Loading…" />}>
               {tabContent[activeTab]}
             </Suspense>
