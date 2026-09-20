@@ -153,7 +153,7 @@ export interface ObserverActivity {
 }
 
 // Sub-tab + time-range identifiers shared across the Stats page.
-export type StatsTab = "mesh" | "traffic" | "scopes" | "talkers" | "clockdrift" | "observer" | "compare" | "graph";
+export type StatsTab = "mesh" | "traffic" | "signal" | "scopes" | "talkers" | "clockdrift" | "observer" | "compare" | "graph";
 export type StatsRange = "24h" | "7d" | "30d";
 
 export const RANGE_MS: Record<StatsRange, number> = {
@@ -161,3 +161,23 @@ export const RANGE_MS: Record<StatsRange, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
+
+// beacon-server /stats/signal: retained observation rows in [since, until).
+export interface SignalBin { lower: number | null; upper: number | null; count: number }
+export interface SignalMetric { samples: number; average: number | null; histogram: SignalBin[] }
+export interface SignalHour {
+  hour: number;
+  receptions: number;
+  snrSamples: number;
+  snrAverage: number | null;
+  rssiSamples: number;
+  rssiAverage: number | null;
+}
+export interface SignalStats {
+  since: number;
+  until: number;
+  receptions: number;
+  snr: SignalMetric;
+  rssi: SignalMetric;
+  hourly: SignalHour[];
+}
