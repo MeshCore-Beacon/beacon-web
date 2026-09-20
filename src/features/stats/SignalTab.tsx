@@ -35,7 +35,7 @@ export function SignalTab({ range }: { range: StatsRange }) {
         <StatCard label="Hours with records" value={data ? `${data.hourly.length}/${hours.length}` : "—"} accent={c.warn} />
       </div>
       <p className="text-xs leading-relaxed text-text-muted">Signal measured by observers on the last hop. Charts count retained receptions and use UTC time.</p>
-      {data && <p className="text-xs text-text-muted">Window: {utc(data.since)} to {utc(data.until)} UTC (end exclusive). Updates once a minute. Edge hours may be partial; blank hours do not establish an outage.</p>}
+      {data && <p className="text-xs text-text-muted">Window: {utc(data.since)} to {utc(data.until)} UTC (end exclusive). Complete-hour snapshots refresh in the background; the current hour is excluded. Blank hours do not establish an outage.</p>}
       <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
         <ChartCard title="SNR distribution · dB" option={charts.snr} height={280} isEmpty={!data?.snr.samples} {...state} />
         <ChartCard title="RSSI distribution · dBm" option={charts.rssi} height={280} isEmpty={!data?.rssi.samples} {...state} />

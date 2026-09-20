@@ -42,6 +42,12 @@ function ObserverIcon() {
   );
 }
 
+function SignalIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+    <path d="M1 7h2l2-4 3.5 8L11 5l1 2h1" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>;
+}
+
 function TalkersIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
@@ -76,7 +82,7 @@ function GraphIcon() {
 const TAB_OPTIONS = [
   { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
   { value: "traffic", label: "Traffic", icon: <TrafficIcon /> },
-  { value: "signal", label: "RF / Signal", icon: <ObserverIcon /> },
+  { value: "signal", label: "RF / Signal", icon: <SignalIcon /> },
   { value: "scopes", label: "Scopes", icon: <ScopesIcon /> },
   { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
