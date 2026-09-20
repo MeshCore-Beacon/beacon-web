@@ -3,6 +3,25 @@ import { SelectDropdown } from "../../components/SelectDropdown";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import type { StatsRange, StatsTab } from "./types";
 
+function TrafficIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+    <path d="M2 11.5h10M3.5 9V6.5M7 9V2.5M10.5 9V4.5" strokeLinecap="round" />
+  </svg>;
+}
+
+function ScopesIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+    <circle cx="5" cy="7" r="3.5" /><circle cx="9" cy="7" r="3.5" strokeDasharray="2 1.5" />
+  </svg>;
+}
+
+function CompareIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+    <path d="M3.5 2v10M10.5 2v10M1.5 4h4M8.5 10h4M5.5 7h3" strokeLinecap="round" />
+    <circle cx="3.5" cy="4" r="1.5" fill="currentColor" /><circle cx="10.5" cy="10" r="1.5" fill="currentColor" />
+  </svg>;
+}
+
 function MeshIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
@@ -56,12 +75,12 @@ function GraphIcon() {
 
 const TAB_OPTIONS = [
   { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
-  { value: "traffic", label: "Traffic", icon: <MeshIcon /> },
-  { value: "scopes", label: "Scopes", icon: <GraphIcon /> },
+  { value: "traffic", label: "Traffic", icon: <TrafficIcon /> },
+  { value: "scopes", label: "Scopes", icon: <ScopesIcon /> },
   { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
   { value: "observer", label: "Observer", icon: <ObserverIcon /> },
-  { value: "compare", label: "Compare observers", icon: <ObserverIcon /> },
+  { value: "compare", label: "Compare observers", icon: <CompareIcon /> },
   { value: "graph", label: "Neighbour Graph", icon: <GraphIcon /> },
 ];
 
