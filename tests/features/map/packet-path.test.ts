@@ -21,6 +21,17 @@ function detail(observations: Observation[], over: Partial<PacketDetail> = {}): 
 }
 
 describe("buildPacketPaths", () => {
+  it("excludes location resets and invalid candidates from observation and trace paths", () => {
+    const candidates: ResolvedHop = { confidence: "ambiguous", nodes: [...hop("reset", 0, 0).nodes, ...hop("invalid", 181, 10).nodes, ...hop("valid", 0, 45).nodes] };
+    const hops = [hop("unknown", 0, 0), candidates, hop("end", -75, 0)];
+    const ordinary = buildPacketPaths(detail([obs(1, hops)]));
+    const trace = buildPacketPaths(detail([], { header: { payloadType: PayloadType.TRACE, routeType: 1 }, resolvedRoute: hops } as Partial<PacketDetail>));
+    for (const paths of [ordinary, trace]) {
+      expect(paths[0]!.points.map((p) => [p.lng, p.lat])).toEqual([[0, 45], [-75, 0]]);
+    }
+    expect(buildPacketPaths(detail([obs(1, [hop("unknown", 0, 0), hop("one", -75, 45)])]))).toEqual([]);
+  });
+
   it("keys each path by observerId and carries propagation, fastest first", () => {
     const d = detail([
       obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-slow", observerName: "Slow", propagationTimeMs: 900 }),

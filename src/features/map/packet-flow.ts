@@ -1,4 +1,5 @@
 import type { ResolvedHop } from "../../types/api";
+import { hasMapLocation } from "./location";
 
 // Pure helpers for drawing a packet's path — the live flow animation (modelled on MeshMapper's
 // LiveViz) and the path map share them. No maplibre import, so they stay unit-testable; the hook
@@ -24,7 +25,7 @@ export function resolvedPathNodes(resolvedPath: ResolvedHop[]): { id: string; ln
   const seen = new Set<string>();
   const out: { id: string; lng: number; lat: number }[] = [];
   for (const hop of resolvedPath) {
-    const node = hop.nodes.find((n) => n.latitude != null && n.longitude != null);
+    const node = hop.nodes.find((n) => hasMapLocation({ lat: n.latitude, lng: n.longitude }));
     if (node && !seen.has(node.id)) {
       seen.add(node.id);
       out.push({ id: node.id, lng: node.longitude!, lat: node.latitude! });

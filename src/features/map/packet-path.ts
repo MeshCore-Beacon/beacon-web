@@ -2,6 +2,7 @@ import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { PacketDetail, Observation, ResolvedHop } from "../../types/api";
 import { PayloadType } from "../../types/enums";
 import { packetChain } from "./packet-flow";
+import { hasMapLocation } from "./location";
 
 export interface PathPoint {
   id: string;
@@ -37,7 +38,7 @@ function pathPoints(hops: ResolvedHop[]): PathPoint[] {
   const seen = new Set<string>();
   const out: PathPoint[] = [];
   for (const hop of hops) {
-    const node = hop.nodes.find((n) => n.latitude != null && n.longitude != null);
+    const node = hop.nodes.find((n) => hasMapLocation({ lat: n.latitude, lng: n.longitude }));
     if (node && !seen.has(node.id)) {
       seen.add(node.id);
       out.push({ id: node.id, name: node.name, lng: node.longitude!, lat: node.latitude! });

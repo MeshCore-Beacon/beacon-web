@@ -64,10 +64,15 @@ describe("nodesToFeatureCollection", () => {
     expect(fc.features.map((f) => f.properties.id)).toEqual(["c"]);
   });
 
-  it("keeps nodes at the 0/0 coordinate (0 is a valid coordinate)", () => {
-    const fc = nodesToFeatureCollection([node({ id: "z", lat: 0, lng: 0 })]);
-    expect(fc.features).toHaveLength(1);
-    expect(fc.features[0]!.geometry.coordinates).toEqual([0, 0]);
+  it("omits location resets and unusable coordinates", () => {
+    const positions = [[0, 0], [-0, 0], [NaN, 10], [10, Infinity], [91, 20], [-91, 20], [10, 181], [10, -181]];
+    expect(nodesToFeatureCollection(positions.map(([lat, lng], i) => node({ id: String(i), lat, lng }))).features).toEqual([]);
+  });
+
+  it("keeps valid equator, prime-meridian and boundary locations", () => {
+    const positions = [[0, -75], [45, 0], [90, 180], [-90, -180]];
+    const fc = nodesToFeatureCollection(positions.map(([lat, lng], i) => node({ id: String(i), lat, lng })));
+    expect(fc.features.map((f) => f.geometry.coordinates)).toEqual([[-75, 0], [0, 45], [180, 90], [-180, -90]]);
   });
 
   it("passes decimal coordinates through untouched (api/nodes.go sends *float64 degrees)", () => {
@@ -113,6 +118,17 @@ describe("buildNeighborEdges", () => {
     const selfRef = node({ id: "a", lat: 45, lng: -75, neighborIds: ["a", "b"] });
     const fc = buildNeighborEdges([selfRef, b], "on", null);
     expect(fc.features).toHaveLength(1); // a<->b only, not a<->a
+  });
+
+  it("omits both directions of neighbour edges to reset or invalid locations", () => {
+    const valid = node({ id: "a", neighborIds: ["reset", "invalid"] });
+    const reset = node({ id: "reset", lat: 0, lng: 0, neighborIds: ["a"] });
+    const invalid = node({ id: "invalid", lat: 91, lng: 10, neighborIds: ["a"] });
+    for (const mode of ["on", "selected"] as const) {
+      expect(buildNeighborEdges([valid, reset, invalid], mode, "a").features).toEqual([]);
+    }
+    expect(neighborFocusIds([valid, reset, invalid], "a")).toBeNull();
+    expect(neighborFocusIds([valid, reset, invalid], "reset")).toBeNull();
   });
 });
 
@@ -199,6 +215,12 @@ describe("buildFocusedNeighborEdges", () => {
       nb({ id: "c", lat: 47, lng: -77, observationCount: 5 }),
     ], NOW);
     expect(fc.features.map((f) => f.properties.obs)).toEqual([5]);
+  });
+
+  it("omits reset and invalid locations from focused edges", () => {
+    const candidates = [nb({ id: "reset", lat: 0, lng: 0 }), nb({ id: "invalid", lat: 10, lng: Infinity }), nb({ id: "valid", lat: 0, lng: 15 })];
+    expect(buildFocusedNeighborEdges(sel, candidates, NOW).features.map((f) => f.geometry.coordinates)).toEqual([[[-75, 45], [15, 0]]]);
+    expect(buildFocusedNeighborEdges(node({ lat: 0, lng: 0 }), [nb({})], NOW).features).toEqual([]);
   });
 });
 

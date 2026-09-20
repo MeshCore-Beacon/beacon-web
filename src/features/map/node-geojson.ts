@@ -1,5 +1,6 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { NodeSummary, NodeNeighbor } from "../nodes/types";
+import { hasMapLocation } from "./location";
 
 // Build the maplibre GeoJSON source from the nodes API response. Properties stay primitive because
 // clustering serializes them, and there's no maplibre import, so this stays unit-testable.
@@ -16,8 +17,7 @@ export function nodesToFeatureCollection(
 ): FeatureCollection<Point, NodeFeatureProps> {
   const features: Feature<Point, NodeFeatureProps>[] = [];
   for (const n of nodes) {
-    // != null keeps 0 (a valid coordinate) while dropping null/undefined
-    if (n.lat == null || n.lng == null) continue;
+    if (!hasMapLocation(n)) continue;
     features.push({
       type: "Feature",
       // GeoJSON/maplibre order is [lng, lat]; the API sends decimal degrees as-is
@@ -52,13 +52,13 @@ export function buildNeighborEdges(
 ): FeatureCollection<LineString, NeighborEdgeProps> {
   const located = new Map<string, NodeSummary>();
   for (const n of nodes) {
-    if (n.lat != null && n.lng != null) located.set(n.id, n);
+    if (hasMapLocation(n)) located.set(n.id, n);
   }
 
   const seen = new Set<string>();
   const features: Feature<LineString, NeighborEdgeProps>[] = [];
   for (const n of nodes) {
-    if (n.lat == null || n.lng == null || !n.neighborIds) continue;
+    if (!hasMapLocation(n) || !n.neighborIds) continue;
     for (const otherId of n.neighborIds) {
       if (otherId === n.id) continue; // a node listing itself would draw a zero-length edge
       const other = located.get(otherId);
@@ -89,12 +89,12 @@ export function buildFocusedNeighborEdges(
   now: number = Date.now(),
 ): FeatureCollection<LineString, NeighborEdgeProps> {
   const empty: FeatureCollection<LineString, NeighborEdgeProps> = { type: "FeatureCollection", features: [] };
-  if (!selected || selected.lat == null || selected.lng == null) return empty;
+  if (!hasMapLocation(selected)) return empty;
   const from: [number, number] = [selected.lng, selected.lat];
 
   const byId = new Map<string, { lng: number; lat: number; obs: number; lastSeen: number }>();
   for (const nb of neighbors) {
-    if (nb.id === selected.id || nb.lat == null || nb.lng == null) continue;
+    if (nb.id === selected.id || !hasMapLocation(nb)) continue;
     const prev = byId.get(nb.id);
     if (prev) {
       prev.obs += nb.observationCount;
@@ -123,7 +123,7 @@ export function neighborFocusIds(nodes: NodeSummary[], selectedId: string | null
   if (!selectedId) return null;
   const located = new Map<string, NodeSummary>();
   for (const n of nodes) {
-    if (n.lat != null && n.lng != null) located.set(n.id, n);
+    if (hasMapLocation(n)) located.set(n.id, n);
   }
   const selected = located.get(selectedId);
   if (!selected) return null;

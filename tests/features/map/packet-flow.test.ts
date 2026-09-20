@@ -35,6 +35,11 @@ describe("resolvedPathNodes", () => {
   it("skips hops with no located candidate", () => {
     expect(resolvedPathNodes([{ confidence: "ambiguous", nodes: [{ id: "x", publicKey: "pk" }] }])).toEqual([]);
   });
+
+  it("skips reset/invalid candidates and still finds a usable candidate", () => {
+    const candidates: ResolvedHop = { confidence: "ambiguous", nodes: [...hop("reset", 0, 0).nodes, ...hop("invalid", 10, 91).nodes, ...hop("valid", 0, 45).nodes] };
+    expect(resolvedPathNodes([hop("unknown", 0, 0), candidates, hop("bad", Infinity, 10)])).toEqual([{ id: "valid", lng: 0, lat: 45 }]);
+  });
 });
 
 describe("posAtHop", () => {
