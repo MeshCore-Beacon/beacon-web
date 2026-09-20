@@ -30,11 +30,11 @@ export function SignalTab({ range }: { range: StatsRange }) {
       {query.isError && <p role="alert" className="text-sm text-danger">Could not load signal data. Try refreshing or choosing a shorter time period.</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Reported receptions" value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={range} />
-        <StatCard label="Mean SNR" value={average(data?.snr.average, "dB")} accent={c.secondary} />
-        <StatCard label="Mean RSSI" value={average(data?.rssi.average, "dBm")} accent={c.green} />
+        <StatCard label="Mean SNR" value={<span className="whitespace-nowrap text-base sm:text-2xl">{average(data?.snr.average, "dB")}</span>} accent={c.secondary} />
+        <StatCard label="Mean RSSI" value={<span className="whitespace-nowrap text-base sm:text-2xl">{average(data?.rssi.average, "dBm")}</span>} accent={c.green} />
         <StatCard label="Hours with records" value={data ? `${data.hourly.length}/${hours.length}` : "—"} accent={c.warn} />
       </div>
-      <p className="text-xs leading-relaxed text-text-muted">These readings describe the last hop into an observer, not end-to-end quality or packet loss. Counts are retained receptions, not unique packets. Missing readings and zero/zero unavailable pairs are excluded; a real zero SNR remains valid. Colors distinguish values, not good/bad thresholds.</p>
+      <p className="text-xs leading-relaxed text-text-muted">Signal measured by observers on the last hop. Charts count retained receptions and use UTC time.</p>
       {data && <p className="text-xs text-text-muted">Window: {utc(data.since)} to {utc(data.until)} UTC (end exclusive). Updates once a minute. Edge hours may be partial; blank hours do not establish an outage.</p>}
       <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
         <ChartCard title="SNR distribution · dB" option={charts.snr} height={280} isEmpty={!data?.snr.samples} {...state} />
@@ -51,7 +51,7 @@ export function SignalTab({ range }: { range: StatsRange }) {
               <tbody>{(["snr", "rssi"] as const).map((metric) => <tr key={metric} className="border-t border-border-subtle"><th scope="row" className="py-3 text-text-normal">{metric.toUpperCase()}</th><td className="text-right text-text-bright">{data[metric].samples.toLocaleString()}</td><td className="text-right text-text-muted">{(data.receptions - data[metric].samples).toLocaleString()}</td><td className="text-right text-text-muted">{(100 * data[metric].samples / data.receptions).toFixed(1)}%</td></tr>)}</tbody>
             </table>
           )}
-          <p className="mt-3 text-xs leading-relaxed text-text-muted">Each mean weights every available reception equally. Missing includes absent, unavailable and invalid readings. SNR and RSSI can have different sample counts.</p>
+          <p className="mt-3 text-xs leading-relaxed text-text-muted">Each mean weights every available reception equally. Missing includes absent, invalid and zero/zero unavailable readings; a measured zero SNR remains valid. SNR and RSSI can have different sample counts. These readings do not measure end-to-end quality or packet loss, and colors are not quality thresholds.</p>
         </Card>
       </div>
       {data && data.receptions > 0 && <details className="rounded-lg border border-border bg-bg-surface p-3.5">
