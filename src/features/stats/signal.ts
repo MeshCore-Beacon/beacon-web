@@ -57,7 +57,7 @@ export function signalCoverageOption(data: SignalStats | undefined, c: ChartColo
     animation: false,
     aria: { enabled: true, label: { description: "Available and unavailable readings for SNR and RSSI. Exact counts and percentages are in the sample availability table." } },
     grid: { left: 8, right: 12, top: 30, bottom: 12, containLabel: true },
-    legend: { textStyle: { color: c.textMuted } },
+    legend: { top: 0, textStyle: { color: c.textMuted } },
     tooltip: { trigger: "axis", renderMode: "richText", ...tooltipStyle(c) },
     xAxis: { type: "value", minInterval: 1, axisLabel: { color: c.textMuted }, splitLine: { lineStyle: { color: c.borderSubtle } } },
     yAxis: { type: "category", data: ["SNR", "RSSI"], axisLabel: { color: c.textNormal }, axisLine: { show: false }, axisTick: { show: false } },
