@@ -6,9 +6,19 @@ import type { WsManager } from "../../../src/api/ws-manager";
 
 vi.mock("../../../src/features/stats/TrafficTab", () => ({ TrafficTab: ({ range }: { range: string }) => <p>Traffic range {range}</p> }));
 vi.mock("../../../src/features/stats/SignalTab", () => ({ SignalTab: ({ range }: { range: string }) => <p>Signal range {range}</p> }));
+vi.mock("../../../src/features/stats/PathsTab", () => ({ PathsTab: ({ range }: { range: string }) => <p>Paths range {range}</p> }));
 vi.mock("../../../src/features/stats/MeshTab", () => ({ MeshTab: () => <p>Mesh charts</p> }));
 vi.mock("../../../src/features/stats/ScopesTab", () => ({ ScopesTab: () => <p>Scope charts</p> }));
 function Location() { return <output aria-label="Analytics URL">{useLocation().search}</output>; }
+
+it("opens Paths & Hashes from a shared URL and retains the region while changing range", () => {
+  render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=paths&range=24h&iata=YOW"]}><StatsOverview wsManager={{} as WsManager} /><Location /></MemoryRouter>);
+  expect(screen.getByText("Paths range 24h")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Paths & Hashes" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "30d" }));
+  expect(screen.getByText("Paths range 30d")).toBeInTheDocument();
+  expect(screen.getByLabelText("Analytics URL")).toHaveTextContent("iata=YOW");
+});
 
 it("opens Signal from a shared URL and retains regional state when changing range", () => {
   render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=signal&range=24h&iata=YOW"]}><StatsOverview wsManager={{} as WsManager} /><Location /></MemoryRouter>);

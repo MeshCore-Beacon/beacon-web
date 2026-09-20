@@ -153,7 +153,7 @@ export interface ObserverActivity {
 }
 
 // Sub-tab + time-range identifiers shared across the Stats page.
-export type StatsTab = "mesh" | "traffic" | "signal" | "scopes" | "talkers" | "clockdrift" | "observer" | "compare" | "graph";
+export type StatsTab = "mesh" | "traffic" | "signal" | "paths" | "scopes" | "talkers" | "clockdrift" | "observer" | "compare" | "graph";
 export type StatsRange = "24h" | "7d" | "30d";
 
 export const RANGE_MS: Record<StatsRange, number> = {
@@ -180,4 +180,30 @@ export interface SignalStats {
   snr: SignalMetric;
   rssi: SignalMetric;
   hourly: SignalHour[];
+}
+
+// beacon-server /stats/paths: retained receptions; the four categories partition the total.
+export interface PathHashWidth { bytes: number; receptions: number }
+export interface PathLengthBin { entries: number; receptions: number }
+export interface PathHour {
+  hour: number;
+  receptions: number;
+  oneByte: number;
+  twoByte: number;
+  threeByte: number;
+  empty: number;
+  trace: number;
+  unclassified: number;
+}
+export interface PathStats {
+  since: number;
+  until: number;
+  receptions: number;
+  hashed: number;
+  empty: number;
+  trace: number;
+  unclassified: number;
+  hashWidths: PathHashWidth[];
+  pathLengths: PathLengthBin[];
+  hourly: PathHour[];
 }

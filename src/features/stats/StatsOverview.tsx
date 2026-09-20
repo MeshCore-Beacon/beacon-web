@@ -5,6 +5,7 @@ import { StatsSubHeader } from "./StatsSubHeader";
 import { MeshTab } from "./MeshTab";
 import { TrafficTab } from "./TrafficTab";
 import { SignalTab } from "./SignalTab";
+import { PathsTab } from "./PathsTab";
 import { ScopesTab } from "./ScopesTab";
 import { TalkersTab } from "./TalkersTab";
 import { ClockDriftTab } from "./ClockDriftTab";
@@ -13,7 +14,7 @@ import { CompareObserversTab } from "./CompareObserversTab";
 import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import type { StatsRange, StatsTab } from "./types";
 
-const TABS: StatsTab[] = ["mesh", "traffic", "signal", "scopes", "talkers", "clockdrift", "observer", "compare", "graph"];
+const TABS: StatsTab[] = ["mesh", "traffic", "signal", "paths", "scopes", "talkers", "clockdrift", "observer", "compare", "graph"];
 const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
@@ -60,6 +61,7 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
         {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />}
         {tab === "traffic" && <TrafficTab range={range} />}
         {tab === "signal" && <SignalTab range={range} />}
+        {tab === "paths" && <PathsTab range={range} />}
         {tab === "scopes" && <ScopesTab />}
         {tab === "talkers" && <TalkersTab range={range} />}
         {tab === "clockdrift" && <ClockDriftTab />}

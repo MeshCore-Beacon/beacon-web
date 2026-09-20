@@ -7,6 +7,7 @@ import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../featur
 import type {
   StatsOverview,
   SignalStats,
+  PathStats,
   ObserverComparison,
   ObservationPoint,
   PayloadBreakdownItem,
@@ -312,6 +313,10 @@ export function getStatsObservations(iatas?: string[], since?: number, signal?: 
 
 export function getSignalStats(since: number, until: number, iatas?: string[], signal?: AbortSignal): Promise<SignalStats> {
   return request("/stats/signal", { since, until, iatas: iatasParam(iatas) }, signal);
+}
+
+export function getPathStats(since: number, until: number, iatas?: string[], signal?: AbortSignal): Promise<PathStats> {
+  return request("/stats/paths", { since, until, iatas: iatasParam(iatas) }, signal);
 }
 
 export function getPayloadBreakdown(iatas?: string[], since?: number): Promise<PayloadBreakdownItem[]> {
