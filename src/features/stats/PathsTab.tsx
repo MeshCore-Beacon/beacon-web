@@ -46,7 +46,7 @@ export function PathsTab({ range }: { range: StatsRange }) {
       <StatCard label="Most path entries" value={largest ?? "—"} accent={c.warn} />
     </div>
     <p className="text-xs leading-relaxed text-text-muted">Path entries reported by observers, counted per reception. Hash-width shares use nonempty hash paths.</p>
-    {data && <p className="text-xs text-text-muted">Window: {utc(data.since)} to {utc(data.until)} UTC (end exclusive). Edge hours may be partial; blank hours lack retained records.</p>}
+    {data && <p className="text-xs text-text-muted">Window: {utc(data.since)} to {utc(data.until)} UTC (end exclusive). Complete-hour snapshots refresh in the background; the current hour is excluded. Blank hours lack retained records.</p>}
     <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
       <ChartCard title="Observed hash widths" option={charts.width} height={260} isEmpty={!data?.hashed} {...state} />
       <ChartCard title="Received path entries" option={charts.lengths} height={260} isEmpty={!data || data.hashed + data.empty === 0} {...state} />

@@ -66,6 +66,13 @@ function ClockDriftIcon() {
   );
 }
 
+function PathsIcon() {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+    <circle cx="2.5" cy="3" r="1.5" /><circle cx="11.5" cy="11" r="1.5" />
+    <path d="M4 3h4a2 2 0 0 1 0 4H6a2 2 0 0 0 0 4h4" strokeLinecap="round" />
+  </svg>;
+}
+
 function GraphIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
@@ -83,7 +90,7 @@ const TAB_OPTIONS = [
   { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
   { value: "traffic", label: "Traffic", icon: <TrafficIcon /> },
   { value: "signal", label: "RF / Signal", icon: <SignalIcon /> },
-  { value: "paths", label: "Paths & Hashes", icon: <GraphIcon /> },
+  { value: "paths", label: "Paths & Hashes", icon: <PathsIcon /> },
   { value: "scopes", label: "Scopes", icon: <ScopesIcon /> },
   { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
