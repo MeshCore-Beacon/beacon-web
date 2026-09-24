@@ -1,7 +1,10 @@
 # Translating Beacon
 
 The header language picker starts in English and saves the selected language in
-this browser. French is the first additional language. This first slice covers
+this browser. Its trigger and panel use the same dropdown styling as the region
+control. Open it with Enter/Space, Tab to a language and activate that button;
+Escape closes it and returns focus to the trigger. French is the first
+additional language. This first slice covers
 desktop/mobile navigation, the region and theme controls, connection/retry
 labels and lazy-page loading text. Detailed feature pages, chart labels, general
 dialogs and data formatting remain follow-up work; selecting French does not

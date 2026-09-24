@@ -46,8 +46,9 @@ describe("AppShell", () => {
     const onTabChange = vi.fn();
     renderShell(onTabChange);
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), { target: { value: "fr" } });
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Langue" })).toHaveValue("fr"));
+    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Langue: Français" })).toHaveAttribute("aria-expanded", "false"));
     expect(screen.getAllByRole("tab", { name: "Paquets" })[0]).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("EN DIRECT")).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("fr");
@@ -107,7 +108,8 @@ describe("region picker filter", () => {
 
   it("searches the translated all-regions label and retains raw IATA values", async () => {
     renderShell();
-    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), { target: { value: "fr" } });
+    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
     fireEvent.click(await screen.findByRole("button", { name: /RÉGION/ }));
     await screen.findByText("Western Canada");
     const input = screen.getByRole("textbox", { name: "Filtrer par IATA ou nom…" });
