@@ -6,7 +6,7 @@ control. Open it with Enter/Space, Tab to a language and activate that button;
 Escape closes it and returns focus to the trigger. French is the first
 additional language. Current coverage includes desktop/mobile navigation,
 region/theme controls, connection/retry labels, lazy-page loading, shared
-analytics section/range controls and chart states, and the RF / Signal page
+analytics section/range controls and chart states, and RF / Signal and Paths & Hashes
 (headings, legends, descriptive chart labels, explanations and exact tables).
 Other feature pages and general dialogs remain follow-up work. Measurement units
 and existing UTC/date/number formatting, including automatic chart time labels,
@@ -50,7 +50,7 @@ does not change date/time/number formatting or measurement units. HTML language
 and direction follow the selected catalog; a future right-to-left translation
 also needs layout review before being offered to users.
 
-Signal chart helpers receive `t` explicitly, and their memoized options depend on
+Signal and path chart helpers receive `t` explicitly, and their memoized options depend on
 `t` so labels redraw when the language changes. Keep numerical series, null gaps,
 half-open bin bounds and query keys unchanged. Use the real catalogs in tests;
 check that a language-only change reuses the same cached request.
