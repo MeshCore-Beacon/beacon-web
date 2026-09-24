@@ -39,7 +39,75 @@
       "failed": "Échec du chargement",
       "noMatches": "Aucun résultat"
     },
-    "theme": { "label": "Thème" },
-    "common": { "loading": "Chargement…" }
+    "theme": {
+      "label": "Thème"
+    },
+    "common": {
+      "loading": "Chargement…",
+      "loadFailed": "Échec du chargement",
+      "noData": "Aucune donnée",
+      "dataUnavailable": "Données indisponibles"
+    },
+    "stats": {
+      "section": "Section des statistiques",
+      "mobileSection": "Section",
+      "timeRange": "Période",
+      "tabs": {
+        "mesh": "Réseau",
+        "traffic": "Trafic",
+        "signal": "RF / Signal",
+        "paths": "Chemins et hachages",
+        "scopes": "Scopes",
+        "talkers": "Émetteurs",
+        "clockdrift": "Dérive d’horloge",
+        "observer": "Observateur",
+        "compare": "Comparer les observateurs",
+        "graph": "Graphe des voisins"
+      },
+      "ranges": {
+        "24h": "24 h",
+        "7d": "7 j",
+        "30d": "30 j"
+      }
+    },
+    "signal": {
+      "title": "RF / Signal",
+      "subtitle": "Le signal des réceptions déclarées.",
+      "refresh": "Actualiser le signal",
+      "error": "Impossible de charger les données du signal. Réessayez ou choisissez une période plus courte.",
+      "receptions": "Réceptions déclarées",
+      "meanSnr": "SNR moyen",
+      "meanRssi": "RSSI moyen",
+      "hoursWithRecords": "Heures documentées",
+      "measurement": "Signal mesuré par les observateurs sur le dernier saut. Les graphiques comptent les réceptions conservées et utilisent l’heure UTC.",
+      "window": "Période : {{since}} à {{until}} UTC (fin exclue). Les instantanés d’heures complètes sont actualisés en arrière-plan ; l’heure en cours est exclue. Les heures vides ne prouvent pas une panne.",
+      "histogramTitle": "Distribution du {{metric}} · {{unit}}",
+      "meanTitle": "Moyenne horaire du {{metric}} · {{unit}}",
+      "availability": "Disponibilité des échantillons",
+      "averagesTitle": "Ce que les moyennes incluent",
+      "loading": "Chargement du signal…",
+      "empty": "Aucune réception conservée dans cette période.",
+      "availabilityTable": "Disponibilité des échantillons du signal",
+      "metric": "Mesure",
+      "samples": "Échantillons",
+      "missing": "Manquants",
+      "share": "Part",
+      "averagesHelp": "Chaque moyenne accorde le même poids à chaque réception disponible. Les valeurs manquantes incluent les mesures absentes, invalides et les couples zéro/zéro indisponibles ; un SNR mesuré à zéro reste valide. Le SNR et le RSSI peuvent avoir des nombres d’échantillons différents. Ces mesures ne représentent ni la qualité de bout en bout ni la perte de paquets, et les couleurs ne sont pas des seuils de qualité.",
+      "details": "Valeurs exactes des histogrammes et par heure",
+      "histogramTable": "Histogramme {{metric}}",
+      "binsHelp": "Les classes incluent la borne inférieure et excluent la borne supérieure. Les classes extrêmes incluent toutes les valeurs au-delà de la plage affichée. Les moyennes horaires ci-dessous sont arrondies à une décimale.",
+      "hourlyTable": "Valeurs horaires du signal",
+      "utcHour": "Heure UTC",
+      "receptionsColumn": "Réceptions",
+      "metricSamples": "Échantillons {{metric}}",
+      "meanUnit": "Moyenne {{unit}}",
+      "binInterval": "{{lower}} à < {{upper}}",
+      "histogramDescription": "Distribution du {{metric}} en {{unit}}. Les bornes exactes des classes et leurs effectifs figurent ci-dessous.",
+      "trendDescription": "Moyenne horaire du {{metric}} en {{unit}}, UTC. Les mesures manquantes restent des lacunes. Les valeurs exactes figurent dans le tableau horaire.",
+      "coverageDescription": "Mesures disponibles et indisponibles du SNR et du RSSI. Les effectifs et pourcentages exacts figurent dans le tableau de disponibilité des échantillons.",
+      "available": "Disponibles",
+      "unavailable": "Indisponibles",
+      "noSample": "Aucun échantillon"
+    }
   }
 }

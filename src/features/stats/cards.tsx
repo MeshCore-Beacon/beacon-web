@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { EChart } from "./EChart";
 import type { EChartsOption } from "./echarts-setup";
 
@@ -60,7 +61,7 @@ export function StatCard({
     <div className="rounded-lg border border-border bg-bg-surface px-3.5 py-3">
       <div className="flex items-center justify-between">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
-        {sublabel && <span className="font-mono text-[9px] text-text-dim">{sublabel}</span>}
+        {sublabel && <span className="shrink-0 whitespace-nowrap font-mono text-[9px] text-text-dim">{sublabel}</span>}
       </div>
       <div className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-text-bright">{value}</div>
       {spark ? <Sparkline values={spark} color={accent} /> : <div className="mt-1.5 h-[20px]" />}
@@ -96,15 +97,16 @@ export function ChartCard({
   onEvents?: Record<string, (params: unknown) => void>;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Card title={title} right={right} className={className}>
       <div style={{ height }}>
         {isError ? (
-          <Centered>Failed to load</Centered>
+          <Centered>{t("common.loadFailed")}</Centered>
         ) : isLoading ? (
-          <Centered>Loading…</Centered>
+          <Centered>{t("common.loading")}</Centered>
         ) : isEmpty ? (
-          <Centered>No data</Centered>
+          <Centered>{t("common.noData")}</Centered>
         ) : (
           <EChart option={option} onEvents={onEvents} />
         )}

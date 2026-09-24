@@ -38,7 +38,75 @@
       "failed": "Failed to load",
       "noMatches": "No matches"
     },
-    "theme": { "label": "Theme" },
-    "common": { "loading": "Loading…" }
+    "theme": {
+      "label": "Theme"
+    },
+    "common": {
+      "loading": "Loading…",
+      "loadFailed": "Failed to load",
+      "noData": "No data",
+      "dataUnavailable": "Data unavailable"
+    },
+    "stats": {
+      "section": "Stats section",
+      "mobileSection": "Section",
+      "timeRange": "Time range",
+      "tabs": {
+        "mesh": "Mesh",
+        "traffic": "Traffic",
+        "signal": "RF / Signal",
+        "paths": "Paths & Hashes",
+        "scopes": "Scopes",
+        "talkers": "Talkers",
+        "clockdrift": "Clock Drift",
+        "observer": "Observer",
+        "compare": "Compare observers",
+        "graph": "Neighbour Graph"
+      },
+      "ranges": {
+        "24h": "24h",
+        "7d": "7d",
+        "30d": "30d"
+      }
+    },
+    "signal": {
+      "title": "RF / Signal",
+      "subtitle": "The signal behind reported receptions.",
+      "refresh": "Refresh signal",
+      "error": "Could not load signal data. Try refreshing or choosing a shorter time period.",
+      "receptions": "Reported receptions",
+      "meanSnr": "Mean SNR",
+      "meanRssi": "Mean RSSI",
+      "hoursWithRecords": "Hours with records",
+      "measurement": "Signal measured by observers on the last hop. Charts count retained receptions and use UTC time.",
+      "window": "Window: {{since}} to {{until}} UTC (end exclusive). Complete-hour snapshots refresh in the background; the current hour is excluded. Blank hours do not establish an outage.",
+      "histogramTitle": "{{metric}} distribution · {{unit}}",
+      "meanTitle": "Hourly mean {{metric}} · {{unit}}",
+      "availability": "Sample availability",
+      "averagesTitle": "What the averages include",
+      "loading": "Loading signal…",
+      "empty": "No retained receptions in this window.",
+      "availabilityTable": "Signal sample availability",
+      "metric": "Metric",
+      "samples": "Samples",
+      "missing": "Missing",
+      "share": "Share",
+      "averagesHelp": "Each mean weights every available reception equally. Missing includes absent, invalid and zero/zero unavailable readings; a measured zero SNR remains valid. SNR and RSSI can have different sample counts. These readings do not measure end-to-end quality or packet loss, and colors are not quality thresholds.",
+      "details": "Exact histogram and hourly values",
+      "histogramTable": "{{metric}} histogram",
+      "binsHelp": "Bins include the lower bound and exclude the upper bound. The outer bins include all values beyond the display range. Hourly means below are rounded to one decimal place.",
+      "hourlyTable": "Hourly signal values",
+      "utcHour": "UTC hour",
+      "receptionsColumn": "Receptions",
+      "metricSamples": "{{metric}} samples",
+      "meanUnit": "Mean {{unit}}",
+      "binInterval": "{{lower}} to < {{upper}}",
+      "histogramDescription": "{{metric}} distribution in {{unit}}. Exact bin boundaries and counts follow below.",
+      "trendDescription": "Hourly mean {{metric}} in {{unit}}, UTC. Missing readings remain gaps. Exact values are in the hourly table.",
+      "coverageDescription": "Available and unavailable readings for SNR and RSSI. Exact counts and percentages are in the sample availability table.",
+      "available": "Available",
+      "unavailable": "Unavailable",
+      "noSample": "No sample"
+    }
   }
 }

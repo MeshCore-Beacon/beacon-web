@@ -1,4 +1,5 @@
 import { Segmented } from "./Segmented";
+import { useTranslation } from "react-i18next";
 import { SelectDropdown } from "../../components/SelectDropdown";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import type { StatsRange, StatsTab } from "./types";
@@ -87,26 +88,19 @@ function GraphIcon() {
 }
 
 const TAB_OPTIONS = [
-  { value: "mesh", label: "Mesh", icon: <MeshIcon /> },
-  { value: "traffic", label: "Traffic", icon: <TrafficIcon /> },
-  { value: "signal", label: "RF / Signal", icon: <SignalIcon /> },
-  { value: "paths", label: "Paths & Hashes", icon: <PathsIcon /> },
-  { value: "scopes", label: "Scopes", icon: <ScopesIcon /> },
-  { value: "talkers", label: "Talkers", icon: <TalkersIcon /> },
-  { value: "clockdrift", label: "Clock Drift", icon: <ClockDriftIcon /> },
-  { value: "observer", label: "Observer", icon: <ObserverIcon /> },
-  { value: "compare", label: "Compare observers", icon: <CompareIcon /> },
-  { value: "graph", label: "Neighbour Graph", icon: <GraphIcon /> },
+  { value: "mesh", icon: <MeshIcon /> },
+  { value: "traffic", icon: <TrafficIcon /> },
+  { value: "signal", icon: <SignalIcon /> },
+  { value: "paths", icon: <PathsIcon /> },
+  { value: "scopes", icon: <ScopesIcon /> },
+  { value: "talkers", icon: <TalkersIcon /> },
+  { value: "clockdrift", icon: <ClockDriftIcon /> },
+  { value: "observer", icon: <ObserverIcon /> },
+  { value: "compare", icon: <CompareIcon /> },
+  { value: "graph", icon: <GraphIcon /> },
 ];
 
-// Same sections, minus icons, for the mobile dropdown (which is text-only). Scales with TAB_OPTIONS.
-const TAB_SELECT_OPTIONS = TAB_OPTIONS.map(({ value, label }) => ({ value, label }));
-
-const RANGE_OPTIONS = [
-  { value: "24h", label: "24h" },
-  { value: "7d", label: "7d" },
-  { value: "30d", label: "30d" },
-];
+const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 interface Props {
   tab: StatsTab;
@@ -116,26 +110,29 @@ interface Props {
 }
 
 export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const tabOptions = TAB_OPTIONS.map((option) => ({ ...option, label: t(`stats.tabs.${option.value}`) }));
+  const rangeOptions = RANGES.map((value) => ({ value, label: t(`stats.ranges.${value}`) }));
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
       {/* pills don't scale on a phone as sections grow — swap to a compact dropdown there */}
       {isMobile ? (
         <SelectDropdown
-          label="Section"
+          label={t("stats.mobileSection")}
           hideAll
           align="left"
-          options={TAB_SELECT_OPTIONS}
+          options={tabOptions}
           value={tab}
           onChange={(v) => onTabChange(v as StatsTab)}
         />
       ) : (
         <div className="min-w-0 max-w-full overflow-x-auto">
           <Segmented
-            options={TAB_OPTIONS}
+            options={tabOptions}
             value={tab}
             onChange={(v) => onTabChange(v as StatsTab)}
-            ariaLabel="Stats section"
+            ariaLabel={t("stats.section")}
             size="md"
           />
         </div>
@@ -144,10 +141,10 @@ export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props
       {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && tab !== "scopes" && (
         <Segmented
           className="shrink-0"
-          options={RANGE_OPTIONS}
+          options={rangeOptions}
           value={range}
           onChange={(v) => onRangeChange(v as StatsRange)}
-          ariaLabel="Time range"
+          ariaLabel={t("stats.timeRange")}
         />
       )}
     </div>
