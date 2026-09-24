@@ -1,0 +1,44 @@
+{
+  "name": "English",
+  "translation": {
+    "language": {
+      "label": "Language",
+      "help": "Choose a language. Some pages still use English."
+    },
+    "tabs": {
+      "Packets": "Packets",
+      "Channels": "Channels",
+      "Map": "Map",
+      "Nodes": "Nodes",
+      "Observers": "Observers",
+      "Routes": "Routes",
+      "Traces": "Traces",
+      "Analytics": "Analytics"
+    },
+    "navigation": {
+      "primary": "Primary",
+      "more": "More",
+      "moreTabs": "More tabs"
+    },
+    "connection": {
+      "live": "LIVE",
+      "stale": "STALE {{age}}",
+      "offline": "OFFLINE",
+      "rateLimited": "RATE LIMITED {{seconds}}s"
+    },
+    "region": {
+      "label": "REGION",
+      "allShort": "ALL",
+      "allRegions": "All Regions",
+      "group": "Regions",
+      "count_one": "{{count}} region",
+      "count_other": "{{count}} regions",
+      "iataCount": "{{count}} IATA",
+      "filter": "Filter IATA or name…",
+      "failed": "Failed to load",
+      "noMatches": "No matches"
+    },
+    "theme": { "label": "Theme" },
+    "common": { "loading": "Loading…" }
+  }
+}

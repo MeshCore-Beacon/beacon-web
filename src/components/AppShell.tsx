@@ -1,4 +1,6 @@
 import { type ReactNode, useState, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { useQuery } from "@tanstack/react-query";
 import { useRegionSelection, useRegions } from "../hooks/useRegion";
@@ -8,6 +10,7 @@ import { useRateLimit } from "../hooks/useRateLimit";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
 import { BottomNav } from "./BottomNav";
+import { LanguagePicker } from "./LanguagePicker";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL } from "../lib/constants";
@@ -16,6 +19,7 @@ import type { WsManager } from "../api/ws-manager";
 // header widgets: WS status, region picker, theme picker
 
 function LiveBadge({ wsManager }: { wsManager: WsManager }) {
+  const { t } = useTranslation();
   const { status } = useWsStatus(wsManager);
   const [staleStr, setStaleStr] = useState("");
 
@@ -34,7 +38,7 @@ function LiveBadge({ wsManager }: { wsManager: WsManager }) {
     return (
       <div className="flex items-center gap-1.5 font-mono text-[11px] text-green bg-green/8 border border-green/15 px-2 py-0.5 rounded-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-        LIVE
+        {t("connection.live")}
       </div>
     );
   }
@@ -42,20 +46,21 @@ function LiveBadge({ wsManager }: { wsManager: WsManager }) {
   if (status === "connecting") {
     return (
       <div className="flex items-center gap-1.5 font-mono text-[11px] text-warn bg-warn/7 border border-warn/15 px-2 py-0.5 rounded-sm">
-        STALE {staleStr}
+        {t("connection.stale", { age: staleStr })}
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-1.5 font-mono text-[11px] text-danger bg-danger/8 border border-danger/15 px-2 py-0.5 rounded-sm">
-      OFFLINE
+      {t("connection.offline")}
     </div>
   );
 }
 
 // Shown while the API is throttling us; the countdown tells users the blank tables are temporary.
 function RateLimitBadge() {
+  const { t } = useTranslation();
   const until = useRateLimit();
   const [remaining, setRemaining] = useState(0);
 
@@ -74,7 +79,7 @@ function RateLimitBadge() {
 
   return (
     <div role="status" className="flex items-center gap-1.5 font-mono text-[11px] text-warn bg-warn/7 border border-warn/15 px-2 py-0.5 rounded-sm">
-      RATE LIMITED {remaining}s
+      {t("connection.rateLimited", { seconds: remaining })}
     </div>
   );
 }
@@ -95,14 +100,14 @@ function CheckBox({ checked }: { checked: boolean }) {
 }
 
 // Compact header summary of the active selection, e.g. "ALL", "YVR, YYJ", "2 regions", "1 region · 3 IATA".
-function regionSummaryLabel(selection: RegionSelection): string {
-  if (isAllRegions(selection)) return "ALL";
+function regionSummaryLabel(selection: RegionSelection, t: TFunction): string {
+  if (isAllRegions(selection)) return t("region.allShort");
   const parts: string[] = [];
   if (selection.regions.length > 0) {
-    parts.push(`${selection.regions.length} region${selection.regions.length > 1 ? "s" : ""}`);
+    parts.push(t("region.count", { count: selection.regions.length }));
   }
   if (selection.iatas.length > 0) {
-    parts.push(selection.iatas.length <= 2 ? selection.iatas.join(", ") : `${selection.iatas.length} IATA`);
+    parts.push(selection.iatas.length <= 2 ? selection.iatas.join(", ") : t("region.iataCount", { count: selection.iatas.length }));
   }
   return parts.join(" · ");
 }
@@ -110,6 +115,7 @@ function regionSummaryLabel(selection: RegionSelection): string {
 // Grouped multi-select: regions (each expands to its member IATAs) on top, then individual IATAs.
 // Toggling keeps the dropdown open so several can be picked; "All Regions" clears the selection.
 function RegionSelector() {
+  const { t } = useTranslation();
   const { selection } = useRegionSelection();
 
   return (
@@ -122,8 +128,8 @@ function RegionSelector() {
           className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-3 py-1 text-text-bright font-mono text-xs font-semibold hover:border-text-dim/30 transition-colors"
           onClick={toggle}
         >
-          <span className="text-text-muted font-normal text-[11px]">REGION</span>
-          {regionSummaryLabel(selection)}
+          <span className="text-text-muted font-normal text-[11px]">{t("region.label")}</span>
+          {regionSummaryLabel(selection, t)}
           <span className="text-text-dim text-[11px]">▾</span>
         </button>
       )}
@@ -135,6 +141,7 @@ function RegionSelector() {
 
 // Split out from RegionSelector so the filter query lives and dies with the open panel.
 function RegionSelectorPanel() {
+  const { t } = useTranslation();
   const { selection, setSelection } = useRegionSelection();
   const { regions } = useRegions();
   const [query, setQuery] = useState("");
@@ -193,7 +200,7 @@ function RegionSelectorPanel() {
     );
   }, [iatas, q]);
 
-  const showAll = !q || "all regions".includes(q);
+  const showAll = !q || t("region.allRegions").toLowerCase().includes(q);
   const showIataGroup = !iatas || shownIatas.length > 0; // keep the group while loading/failed
   const hasRowsAbove = showAll || shownRegions.length > 0;
 
@@ -213,7 +220,8 @@ function RegionSelectorPanel() {
               setQuery("");
             }
           }}
-          placeholder="Filter IATA or name…"
+          aria-label={t("region.filter")}
+          placeholder={t("region.filter")}
           className="w-full text-[16px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
         />
       </div>
@@ -230,14 +238,14 @@ function RegionSelectorPanel() {
         >
           {/* spacer matching the checkbox column so ALL/code/name align with the rows below */}
           <span className="w-3 shrink-0" aria-hidden="true" />
-          <span className="font-semibold text-primary w-8 shrink-0">ALL</span>
-          <span className="text-text-dim">All Regions</span>
+          <span className="font-semibold text-primary min-w-8 shrink-0">{t("region.allShort")}</span>
+          <span className="text-text-dim">{t("region.allRegions")}</span>
         </button>
       )}
 
       {shownRegions.length > 0 && (
         <>
-          <div className="px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim">Regions</div>
+          <div className="px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim">{t("region.group")}</div>
           {shownRegions.map(({ region, matched }) => {
             const checked = selection.regions.includes(region.slug);
             return (
@@ -282,21 +290,22 @@ function RegionSelectorPanel() {
               );
             })
           ) : iatasError ? (
-            <div className="px-3 py-1.5 text-[11px] font-mono text-text-dim">Failed to load</div>
+            <div className="px-3 py-1.5 text-[11px] font-mono text-text-dim">{t("region.failed")}</div>
           ) : (
-            <div className="px-3 py-1.5 text-[11px] font-mono text-text-dim">Loading…</div>
+            <div className="px-3 py-1.5 text-[11px] font-mono text-text-dim">{t("common.loading")}</div>
           )}
         </>
       )}
 
       {!hasRowsAbove && !showIataGroup && (
-        <div className="px-3 py-2 text-[11px] font-mono text-text-dim">No matches</div>
+        <div className="px-3 py-2 text-[11px] font-mono text-text-dim">{t("region.noMatches")}</div>
       )}
     </>
   );
 }
 
 function ThemePicker() {
+  const { t } = useTranslation();
   const { themeId, themes, setThemeId } = useTheme();
   const current = themes.find((t) => t.id === themeId);
   const list = selectableThemes(themes, ENABLED_THEME_IDS);
@@ -306,6 +315,7 @@ function ThemePicker() {
       renderTrigger={({ toggle }) => (
         <button
           type="button"
+          aria-label={t("theme.label")}
           className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-2 py-1 text-text-muted font-mono text-[11px] hover:text-text-normal hover:border-text-dim transition-colors"
           onClick={toggle}
         >
@@ -356,13 +366,15 @@ interface AppShellProps {
 }
 
 export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShellProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col h-dvh">
       <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 min-h-[42px] md:flex md:gap-3 md:px-4 bg-bg-surface border-b border-border shrink-0">
         <BeaconWordmark iconSize={22} textClassName="text-sm truncate" className="min-w-0" />
-        <div className="col-span-2 row-start-2 flex items-center justify-between gap-1.5 min-w-0 md:ml-auto md:justify-start md:gap-3">
+        <div className="col-span-2 row-start-2 flex flex-wrap items-center justify-between gap-1.5 min-w-0 md:ml-auto md:flex-nowrap md:justify-start md:gap-3">
           <RegionSelector />
           <ThemePicker />
+          <LanguagePicker />
         </div>
         <div className="col-start-2 row-start-1 flex items-center gap-1.5 md:gap-3">
           <LiveBadge wsManager={wsManager} />
@@ -395,7 +407,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
             }`}
             onClick={() => onTabChange(tab)}
           >
-            {tab}
+            {t(`tabs.${tab}`, { defaultValue: tab })}
           </button>
         ))}
       </nav>

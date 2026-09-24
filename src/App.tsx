@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RegionProvider, useRegion, useRegionSelection } from "./hooks/useRegion";
 import {
@@ -141,6 +142,11 @@ export function SelectionResetOnRegion({ onRegionChange }: { onRegionChange: () 
 }
 
 // tab state and region init
+
+function TabLoading({ tab }: { tab: string }) {
+  const { t } = useTranslation();
+  return <EmptyState title={t(`tabs.${tab}`, { defaultValue: tab })} subtitle={t("common.loading")} />;
+}
 
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -309,7 +315,7 @@ function AppInner() {
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="relative flex flex-1 min-h-0">
           <div key={activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
-            <Suspense fallback={<EmptyState title={activeTab} subtitle="Loading…" />}>
+            <Suspense fallback={<TabLoading tab={activeTab} />}>
               {tabContent[activeTab]}
             </Suspense>
           </div>

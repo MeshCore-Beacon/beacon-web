@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+import i18n from "../src/i18n";
 
 // jsdom doesn't implement matchMedia. Provide a default stub so components that read media queries
 // mount as "desktop" by default — a hover-capable pointer, not below the mobile width. Individual
@@ -20,6 +21,7 @@ if (!window.matchMedia) {
   }));
 }
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  await i18n.changeLanguage("en");
 });
