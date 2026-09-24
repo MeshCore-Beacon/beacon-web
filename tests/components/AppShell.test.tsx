@@ -21,12 +21,12 @@ const wsManager = {
   getLastEventTimestamp: () => Date.now(),
 } as unknown as WsManager;
 
-function renderShell() {
+function renderShell(onTabChange: (tab: string) => void = () => {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <RegionProvider defaultSelection={ALL_REGIONS}>
-        <AppShell activeTab="Packets" onTabChange={() => {}} wsManager={wsManager}>
+        <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={wsManager}>
           <div />
         </AppShell>
       </RegionProvider>
@@ -41,6 +41,23 @@ beforeEach(() => {
 });
 
 describe("AppShell", () => {
+  it("switches navigation to French while preserving tab identifiers and the active view", async () => {
+    vi.mocked(getIatas).mockResolvedValue([]);
+    const onTabChange = vi.fn();
+    renderShell(onTabChange);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), { target: { value: "fr" } });
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Langue" })).toHaveValue("fr"));
+    expect(screen.getAllByRole("tab", { name: "Paquets" })[0]).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("EN DIRECT")).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("fr");
+    expect(localStorage.getItem("beacon-language")).toBe("fr");
+    expect(onTabChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByRole("tab", { name: "Carte" })[0]!);
+    expect(onTabChange).toHaveBeenCalledWith("Map");
+  });
+
   it("footer shows the package.json version", () => {
     vi.mocked(getIatas).mockResolvedValue([]);
     renderShell();
@@ -86,6 +103,21 @@ describe("region picker filter", () => {
     vi.mocked(getIatas).mockResolvedValue(IATAS);
     vi.mocked(getRegions).mockResolvedValue(REGIONS.map(({ id, slug, name }) => ({ id, slug, name })));
     vi.mocked(getRegion).mockImplementation(async (id: number) => REGIONS.find((r) => r.id === id)!);
+  });
+
+  it("searches the translated all-regions label and retains raw IATA values", async () => {
+    renderShell();
+    fireEvent.change(screen.getByRole("combobox", { name: "Language" }), { target: { value: "fr" } });
+    fireEvent.click(await screen.findByRole("button", { name: /RÉGION/ }));
+    await screen.findByText("Western Canada");
+    const input = screen.getByRole("textbox", { name: "Filtrer par IATA ou nom…" });
+    fireEvent.change(input, { target: { value: "toutes" } });
+    expect(screen.getByText("Toutes les régions")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "yvr" } });
+    expect(screen.queryByText("Toutes les régions")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Vancouver International/ }));
+    expect(screen.getByRole("button", { name: /RÉGION\s*YVR/ })).toBeInTheDocument();
   });
 
   it("focuses the filter input when the picker opens", async () => {

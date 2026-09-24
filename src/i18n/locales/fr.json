@@ -1,0 +1,45 @@
+{
+  "name": "Français",
+  "translation": {
+    "language": {
+      "label": "Langue",
+      "help": "Choisissez une langue. Certaines pages restent en anglais."
+    },
+    "tabs": {
+      "Packets": "Paquets",
+      "Channels": "Canaux",
+      "Map": "Carte",
+      "Nodes": "Nœuds",
+      "Observers": "Observateurs",
+      "Routes": "Routes",
+      "Traces": "Traces",
+      "Analytics": "Analyses"
+    },
+    "navigation": {
+      "primary": "Navigation principale",
+      "more": "Plus",
+      "moreTabs": "Autres onglets"
+    },
+    "connection": {
+      "live": "EN DIRECT",
+      "stale": "EN RETARD {{age}}",
+      "offline": "HORS LIGNE",
+      "rateLimited": "RÉESSAI DANS {{seconds}} s"
+    },
+    "region": {
+      "label": "RÉGION",
+      "allShort": "TOUT",
+      "allRegions": "Toutes les régions",
+      "group": "Régions",
+      "count_one": "{{count}} région",
+      "count_many": "{{count}} régions",
+      "count_other": "{{count}} régions",
+      "iataCount": "{{count}} IATA",
+      "filter": "Filtrer par IATA ou nom…",
+      "failed": "Échec du chargement",
+      "noMatches": "Aucun résultat"
+    },
+    "theme": { "label": "Thème" },
+    "common": { "loading": "Chargement…" }
+  }
+}

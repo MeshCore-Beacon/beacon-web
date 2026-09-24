@@ -82,6 +82,9 @@ because the root `tsconfig.json` has `files: []`.
 
 ## Tests
 
+For UI text, follow the [translation guide](docs/translations.md). Add English
+catalog keys and translate display labels without changing route/data identifiers.
+
 - **Practice TDD for bugfixes and features** — write the failing test first,
   watch it fail, then implement.
 - Tests live in a top-level `tests/` tree that mirrors `src/` (e.g.
