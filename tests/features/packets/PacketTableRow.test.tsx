@@ -23,9 +23,9 @@ const observer = (
 };
 
 describe("PacketTableRow", () => {
-  it("keeps endpoints visible alongside a payload summary", () => {
-    render(<PacketTableRow packet={pkt({ summary: "Packet summary", latestObserver: observer({ resolvedSource: node("Source node"), resolvedDestination: node("Destination node") }) })} expanded={false} onToggle={() => {}} />);
-    expect(screen.getByText("Packet summary")).toBeInTheDocument();
+  it("prefers endpoints over a payload summary", () => {
+    render(<PacketTableRow packet={pkt({ payloadType: 2, summary: "Packet summary", latestObserver: observer({ resolvedSource: node("Source node"), resolvedDestination: node("Destination node") }) })} expanded={false} onToggle={() => {}} />);
+    expect(screen.queryByText("Packet summary")).not.toBeInTheDocument();
     expect(screen.getByText("Source node")).toBeInTheDocument();
     expect(screen.getByText("Destination node")).toBeInTheDocument();
   });

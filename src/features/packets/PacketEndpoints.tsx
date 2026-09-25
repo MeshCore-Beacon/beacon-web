@@ -1,5 +1,5 @@
 import type { PacketSummary } from "../../types/api";
-import type { PathConfidence } from "../../types/enums";
+import { PayloadType, type PathConfidence } from "../../types/enums";
 import { buildPathSummary, type PathChip } from "./path-summary";
 
 // Same three-state vocabulary PathData uses in the analyzer.
@@ -21,7 +21,7 @@ function Chip({ chip }: { chip: PathChip }) {
     );
   }
   return (
-    <span className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[chip.confidence]}`}>
+    <span className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[chip.confidence]}`} title={chip.label}>
       {chip.label}
     </span>
   );
@@ -30,12 +30,21 @@ function Chip({ chip }: { chip: PathChip }) {
 const Na = () => <span className="text-text-dim">n/a</span>;
 
 // The packet's logical endpoints. beacon-server resolves these on the WS feed only and leaves them
-// nil on the REST list, so scrollback rows read n/a — as do payload types with no addressed
-// endpoint at all (GRP_TXT/GRP_DATA/TRACE).
+// nil on the REST list; there the server's summary (advert name, trace tag, ack checksum) stands in.
 export function PacketEndpoints({ packet }: { packet: PacketSummary }) {
   const { source, destination } = buildPathSummary(packet);
-  // One n/a for the pair reads better than "n/a → n/a" on every historical row.
-  if (!source && !destination) return <Na />;
+
+  // An advert is the node announcing itself, so its name is the whole story — no destination.
+  if (packet.payloadType === PayloadType.ADVERT) {
+    const self = source ?? (packet.summary ? { kind: "node" as const, label: packet.summary, confidence: "high" as const } : null);
+    return self ? <Chip chip={self} /> : <Na />;
+  }
+
+  if (!source && !destination) {
+    return packet.summary
+      ? <span className="block truncate font-mono text-[10px] text-text-muted tracking-wider" title={packet.summary}>{packet.summary}</span>
+      : <Na />;
+  }
 
   return (
     <span className="flex items-center gap-x-1 min-w-0">
