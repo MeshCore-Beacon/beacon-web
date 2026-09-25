@@ -220,6 +220,9 @@
       "ahead": "ahead",
       "behind": "behind",
       "empty": "No repeaters out of sync"
+    },
+    "timestamp": {
+      "ago": "{{duration}} ago"
     }
   }
 }

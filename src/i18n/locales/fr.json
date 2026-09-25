@@ -224,6 +224,9 @@
       "ahead": "en avance",
       "behind": "en retard",
       "empty": "Aucun répéteur désynchronisé"
+    },
+    "timestamp": {
+      "ago": "il y a {{duration}}"
     }
   }
 }

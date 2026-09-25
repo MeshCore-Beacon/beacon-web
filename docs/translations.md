@@ -8,7 +8,8 @@ additional language. Current coverage includes desktop/mobile navigation,
 region/theme controls, connection/retry labels, lazy-page loading, shared
 analytics section/range controls and chart states, and Traffic, RF / Signal, Paths & Hashes, Scopes and Clock Drift
 (headings, legends, descriptive chart labels, explanations and exact tables).
-Other feature pages and general dialogs remain follow-up work. Measurement units
+Shared Timestamp labels and their relative tooltips also follow the selected
+language. Other feature pages and general dialogs remain follow-up work. Measurement units
 and existing UTC/date/number formatting, including automatic chart time labels,
 are unchanged; selecting French does not mean every screen is translated yet.
 
@@ -59,8 +60,12 @@ and unassigned areas; its heatmap tooltip uses the raw count for plural selectio
 and the existing formatted value for display. Scope names and search values stay
 unchanged; only the chart remainder label and interface text are translated.
 Clock Drift also supplies translated direction labels to the shared formatter;
-its signs, magnitude, units and rounding remain unchanged. The shared Timestamp
-component (including relative "ago" wording) is still a follow-up.
+its signs, magnitude, units and rounding remain unchanged. Shared Timestamp uses
+the whole `timestamp.ago` phrase with `{{duration}}`, so French can put "il y a"
+before the duration. Compact `s/m/h/d` units, flooring, future-time clamping,
+local absolute timestamps and optional milliseconds are unchanged. Its existing
+shared ticker keeps relative text fresh in either language. Per-page relative
+phrases that bypass Timestamp and broader date/number formatting remain follow-ups.
 
 For translated sortable tables, give each `Column` a stable `id` and use
 `defaultSort={{ id: "drift", direction: "desc" }}` (for example). The visible
