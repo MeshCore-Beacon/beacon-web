@@ -210,6 +210,16 @@
       "groupingHelp": "Charts show the largest 12 scopes plus any remainder. The table keeps all matching scopes.",
       "other": "Other scopes",
       "chartDescription": "Counts by transport scope. Exact values for all matching scopes are listed in the table."
+    },
+    "clockDrift": {
+      "caption": "Repeaters & room servers out of sync · worst first",
+      "node": "Node",
+      "drift": "Drift",
+      "checked": "Checked",
+      "inSync": "in sync",
+      "ahead": "ahead",
+      "behind": "behind",
+      "empty": "No repeaters out of sync"
     }
   }
 }

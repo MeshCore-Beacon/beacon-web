@@ -111,6 +111,16 @@ describe("formatPropagation", () => {
 });
 
 describe("formatClockDrift", () => {
+  it("accepts translated direction labels without changing signs, magnitude or rounding", () => {
+    const labels = { inSync: "synchronisé", ahead: "en avance", behind: "en retard" };
+    expect(formatClockDrift(0, labels)).toBe("synchronisé");
+    expect(formatClockDrift(42, labels)).toBe("+42s en avance");
+    expect(formatClockDrift(-45, labels)).toBe("-45s en retard");
+    expect(formatClockDrift(432, labels)).toBe("+7m 12s en avance");
+    expect(formatClockDrift(-3670, labels)).toBe("-1h 1m en retard");
+    expect(formatClockDrift(3600, labels)).toBe("+1h 0m en avance");
+  });
+
   it("labels a zero drift as in sync", () => {
     expect(formatClockDrift(0)).toBe("in sync");
   });

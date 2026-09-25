@@ -214,6 +214,16 @@
       "groupingHelp": "Les graphiques affichent les 12 scopes les plus importants et regroupent le reste. Le tableau conserve tous les scopes correspondants.",
       "other": "Autres scopes",
       "chartDescription": "Effectifs par scope de transport. Les valeurs exactes de tous les scopes correspondants figurent dans le tableau."
+    },
+    "clockDrift": {
+      "caption": "Répéteurs et serveurs de salon désynchronisés · écart maximal en premier",
+      "node": "Nœud",
+      "drift": "Dérive",
+      "checked": "Vérifié",
+      "inSync": "synchronisé",
+      "ahead": "en avance",
+      "behind": "en retard",
+      "empty": "Aucun répéteur désynchronisé"
     }
   }
 }

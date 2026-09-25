@@ -4,6 +4,7 @@ import { SkeletonRows } from "./SkeletonRows";
 import { useIsMobile } from "../hooks/useMediaQuery";
 
 export interface Column<T> {
+  id?: string; // stable identity for translated headers; defaults to the header text
   header: string;
   cell: (row: T) => ReactNode;
   className?: string; // extra classes applied to the <td>
@@ -20,7 +21,7 @@ interface DataTableProps<T> {
   onSelect: (key: string | null) => void;
   isLoading?: boolean;
   emptyLabel: string;
-  defaultSort?: { header: string; direction?: SortDirection };
+  defaultSort?: ({ id: string } | { header: string }) & { direction?: SortDirection };
   // called when the scroll position nears the bottom, for on-demand paging (omit = no infinite scroll)
   onEndReached?: () => void;
   // when set, rows render as stacked cards below the md breakpoint instead of a table; sort UI lives
@@ -35,22 +36,22 @@ const END_REACHED_THRESHOLD_PX = 200;
 
 export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort, onEndReached, renderCard }: DataTableProps<T>) {
   const asCards = useIsMobile() && !!renderCard;
-  const [sort, setSort] = useState<{ header: string; direction: SortDirection }>(() => ({
-    header: defaultSort?.header ?? "",
+  const [sort, setSort] = useState<{ id: string; direction: SortDirection }>(() => ({
+    id: defaultSort ? ("id" in defaultSort ? defaultSort.id : columns.find((col) => col.header === defaultSort.header)?.id ?? defaultSort.header) : "",
     direction: defaultSort?.direction ?? "asc",
   }));
 
-  function toggleSort(header: string) {
+  function toggleSort(id: string) {
     setSort((prev) =>
-      prev.header === header
-        ? { header, direction: prev.direction === "asc" ? "desc" : "asc" }
-        : { header, direction: "asc" },
+      prev.id === id
+        ? { id, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { id, direction: "asc" },
     );
   }
 
   const sortedRows = useMemo(() => {
     if (!rows) return rows;
-    const col = columns.find((c) => c.header === sort.header && c.sortValue);
+    const col = columns.find((c) => (c.id ?? c.header) === sort.id && c.sortValue);
     if (!col?.sortValue) return rows;
     const getValue = col.sortValue;
     const dir = sort.direction === "asc" ? 1 : -1;
@@ -117,15 +118,16 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
           <thead className="sticky top-0 bg-bg-surface z-10">
             <tr className="text-text-muted text-[11px] uppercase tracking-wider border-b border-border">
               {columns.map((col) => {
+                const id = col.id ?? col.header;
                 if (!col.sortValue) {
-                  return <th key={col.header} className="text-left px-4 py-2 font-medium">{col.header}</th>;
+                  return <th key={id} className="text-left px-4 py-2 font-medium">{col.header}</th>;
                 }
-                const active = sort.header === col.header;
+                const active = sort.id === id;
                 return (
-                  <th key={col.header} className="text-left px-4 py-2 font-medium">
+                  <th key={id} className="text-left px-4 py-2 font-medium">
                     <button
                       type="button"
-                      onClick={() => toggleSort(col.header)}
+                      onClick={() => toggleSort(id)}
                       className="flex items-center gap-1 cursor-pointer hover:text-text-normal transition-colors"
                     >
                       {col.header}
@@ -153,7 +155,7 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
                   onClick={() => onSelect(isSelected ? null : key)}
                 >
                   {columns.map((col) => (
-                    <td key={col.header} className={`px-4 py-2 ${col.className ?? ""}`}>{col.cell(row)}</td>
+                    <td key={col.id ?? col.header} className={`px-4 py-2 ${col.className ?? ""}`}>{col.cell(row)}</td>
                   ))}
                 </tr>
               );
