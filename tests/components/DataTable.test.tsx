@@ -2,6 +2,31 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { DataTable, type Column } from "../../src/components/DataTable";
 
+it("keeps a stable column's default sort and focused button when its label changes", () => {
+  const data = [{ id: "a" }, { id: "b" }];
+  const translatedColumns = (header: string): Column<Row>[] => [{ id: "identity", header, cell: (r) => r.id, sortValue: (r) => r.id }];
+  const view = (header: string) => <DataTable columns={translatedColumns(header)} rows={data} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" defaultSort={{ id: "identity", direction: "desc" }} />;
+  const { container, rerender } = render(view("ID"));
+  const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+  expect(order()).toEqual(["b", "a"]);
+  const button = screen.getByRole("button", { name: /^ID\s*▼$/ });
+  button.focus();
+  rerender(view("Identifiant"));
+  expect(order()).toEqual(["b", "a"]);
+  expect(screen.getByRole("button", { name: /^Identifiant\s*▼$/ })).toBe(button);
+  expect(button).toHaveFocus();
+  fireEvent.click(button);
+  expect(order()).toEqual(["a", "b"]);
+});
+
+it("retains header-based default and user sorting for callers without column IDs", () => {
+  const { container } = render(<DataTable columns={[{ header: "ID", cell: (r: Row) => r.id, sortValue: (r) => r.id }]} rows={rows} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" defaultSort={{ header: "ID", direction: "desc" }} />);
+  const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+  expect(order()).toEqual(["b", "a"]);
+  fireEvent.click(screen.getByRole("button", { name: /^ID\s*▼$/ }));
+  expect(order()).toEqual(["a", "b"]);
+});
+
 interface Row {
   id: string;
 }

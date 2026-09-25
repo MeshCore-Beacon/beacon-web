@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { ScopeStats } from "./types";
 import { leaderboardOption } from "./chartOptions";
 import { tooltipStyle, type ChartColors } from "./chartTheme";
@@ -14,12 +15,12 @@ export function scopeSummary(rows: ScopeStats[]) {
   }), { active: 0, packets: 0, memberships: 0, nodes: 0 });
 }
 
-export function scopeChartOption(rows: ScopeStats[], metric: ScopeMetric, colors: ChartColors): EChartsOption {
+export function scopeChartOption(rows: ScopeStats[], metric: ScopeMetric, colors: ChartColors, t: TFunction): EChartsOption {
   const indices = new Map(rows.map((row) => row.name).sort().map((name, index) => [name, index]));
   const ranked = rows.map((row) => ({ name: row.name, value: row[metric], color: colors.series[(indices.get(row.name) ?? 0) % colors.series.length] ?? colors.primary }))
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   const shown = ranked.slice(0, 12);
-  if (ranked.length > 12) shown.push({ name: "Other scopes", value: ranked.slice(12).reduce((sum, row) => sum + row.value, 0), color: colors.textDim });
+  if (ranked.length > 12) shown.push({ name: t("scopes.other"), value: ranked.slice(12).reduce((sum, row) => sum + row.value, 0), color: colors.textDim });
   return { ...leaderboardOption(shown, colors, 126), tooltip: { trigger: "item", renderMode: "richText", ...tooltipStyle(colors) },
-    aria: { enabled: true, label: { description: "Counts by transport scope. Exact values for all matching scopes are listed in the table." } } };
+    aria: { enabled: true, label: { description: t("scopes.chartDescription") } } };
 }

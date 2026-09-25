@@ -4,11 +4,14 @@ The header language picker starts in English and saves the selected language in
 this browser. Its trigger and panel use the same dropdown styling as the region
 control. Open it with Enter/Space, Tab to a language and activate that button;
 Escape closes it and returns focus to the trigger. French is the first
-additional language. This first slice covers
-desktop/mobile navigation, the region and theme controls, connection/retry
-labels and lazy-page loading text. Detailed feature pages, chart labels, general
-dialogs and data formatting remain follow-up work; selecting French does not
-mean every page is translated yet.
+additional language. Current coverage includes desktop/mobile navigation,
+region/theme controls, connection/retry labels, lazy-page loading, shared
+analytics section/range controls and chart states, and Traffic, RF / Signal, Paths & Hashes, Scopes and Clock Drift
+(headings, legends, descriptive chart labels, explanations and exact tables).
+Shared Timestamp labels and their relative tooltips also follow the selected
+language. Other feature pages and general dialogs remain follow-up work. Measurement units
+and existing UTC/date/number formatting, including automatic chart time labels,
+are unchanged; selecting French does not mean every screen is translated yet.
 
 ## Add a language
 
@@ -47,6 +50,27 @@ Names and packet contents come from the network and remain unchanged. This slice
 does not change date/time/number formatting or measurement units. HTML language
 and direction follow the selected catalog; a future right-to-left translation
 also needs layout review before being offered to users.
+
+Traffic, signal, path and scope chart helpers receive `t` explicitly, and their memoized options depend on
+`t` so labels redraw when the language changes. Keep numerical series, null gaps,
+half-open bin bounds and query keys unchanged. Use the real catalogs in tests;
+check that a language-only change reuses the same cached request. Traffic keeps
+IATA/model identifiers unchanged and translates only display labels for grouped
+and unassigned areas; its heatmap tooltip uses the raw count for plural selection
+and the existing formatted value for display. Scope names and search values stay
+unchanged; only the chart remainder label and interface text are translated.
+Clock Drift also supplies translated direction labels to the shared formatter;
+its signs, magnitude, units and rounding remain unchanged. Shared Timestamp uses
+the whole `timestamp.ago` phrase with `{{duration}}`, so French can put "il y a"
+before the duration. Compact `s/m/h/d` units, flooring, future-time clamping,
+local absolute timestamps and optional milliseconds are unchanged. Its existing
+shared ticker keeps relative text fresh in either language. Per-page relative
+phrases that bypass Timestamp and broader date/number formatting remain follow-ups.
+
+For translated sortable tables, give each `Column` a stable `id` and use
+`defaultSort={{ id: "drift", direction: "desc" }}` (for example). The visible
+`header` can then change language without losing sorting or focus. Existing
+header-based callers remain supported.
 
 Run `npm run build`, `npm run lint` and `npm test`. Test saved/unknown language
 preferences, English fallback and switching without losing the selected view.
