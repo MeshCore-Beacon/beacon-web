@@ -186,6 +186,34 @@
       "heatmapTooltip_one": "{{day}} {{hour}}:00 UTC\n{{value}} réception",
       "heatmapTooltip_many": "{{day}} {{hour}}:00 UTC\n{{value}} réceptions",
       "heatmapTooltip_other": "{{day}} {{hour}}:00 UTC\n{{value}} réceptions"
+    },
+    "scopes": {
+      "title": "Scopes de transport",
+      "subtitle": "Données conservées et appartenances pour la région sélectionnée.",
+      "refresh": "Actualiser les scopes",
+      "search": "Rechercher un scope",
+      "error": "Impossible de charger les scopes. Réessayez.",
+      "active": "Scopes avec données",
+      "scopedPackets": "Paquets avec scope",
+      "memberships": "Appartenances d’observateurs",
+      "defaultNodes": "Nœuds du scope par défaut",
+      "measurement": "Un observateur peut figurer dans plusieurs scopes. Les effectifs globaux d’observateurs incluent les appartenances enregistrées ; les effectifs régionaux utilisent les réceptions conservées associées aux scopes. Les nœuds sont comptés dans leur scope par défaut. Ces effectifs sont calculés sans période sélectionnée.",
+      "packetsTitle": "Paquets par scope",
+      "membershipsTitle": "Appartenances d’observateurs par scope",
+      "countsTitle": "Effectifs des scopes",
+      "visibleCount_one": "{{visible}} sur {{count}} scope",
+      "visibleCount_many": "{{visible}} sur {{count}} scopes",
+      "visibleCount_other": "{{visible}} sur {{count}} scopes",
+      "loading": "Chargement des scopes…",
+      "noMatches": "Aucun scope ne correspond à cette recherche.",
+      "empty": "Aucune donnée de scope disponible.",
+      "scope": "Scope",
+      "packets": "Paquets",
+      "observers": "Observateurs",
+      "nodes": "Nœuds",
+      "groupingHelp": "Les graphiques affichent les 12 scopes les plus importants et regroupent le reste. Le tableau conserve tous les scopes correspondants.",
+      "other": "Autres scopes",
+      "chartDescription": "Effectifs par scope de transport. Les valeurs exactes de tous les scopes correspondants figurent dans le tableau."
     }
   }
 }

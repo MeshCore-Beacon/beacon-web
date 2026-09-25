@@ -183,6 +183,33 @@
       "fewer": "Fewer",
       "heatmapTooltip_one": "{{day}} {{hour}}:00 UTC\n{{value}} reception",
       "heatmapTooltip_other": "{{day}} {{hour}}:00 UTC\n{{value}} receptions"
+    },
+    "scopes": {
+      "title": "Transport scopes",
+      "subtitle": "Retained data and memberships for the selected region.",
+      "refresh": "Refresh scopes",
+      "search": "Find a scope",
+      "error": "Could not load scopes. Try refreshing.",
+      "active": "Scopes with data",
+      "scopedPackets": "Scoped packets",
+      "memberships": "Observer memberships",
+      "defaultNodes": "Default-scope nodes",
+      "measurement": "An observer can appear in more than one scope. Global observer counts include stored memberships; regional counts use retained scoped receptions. Nodes are counted in their default scope. These counts have no selected time window.",
+      "packetsTitle": "Packets by scope",
+      "membershipsTitle": "Observer memberships by scope",
+      "countsTitle": "Scope counts",
+      "visibleCount_one": "{{visible}} of {{count}} scope",
+      "visibleCount_other": "{{visible}} of {{count}} scopes",
+      "loading": "Loading scopes…",
+      "noMatches": "No scopes match this search.",
+      "empty": "No scope data available.",
+      "scope": "Scope",
+      "packets": "Packets",
+      "observers": "Observers",
+      "nodes": "Nodes",
+      "groupingHelp": "Charts show the largest 12 scopes plus any remainder. The table keeps all matching scopes.",
+      "other": "Other scopes",
+      "chartDescription": "Counts by transport scope. Exact values for all matching scopes are listed in the table."
     }
   }
 }
