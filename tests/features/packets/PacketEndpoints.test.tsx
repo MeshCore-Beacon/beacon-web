@@ -64,4 +64,24 @@ describe("PacketEndpoints", () => {
     }))} />);
     expect(screen.getByText("?")).toBeInTheDocument();
   });
+
+  it("shows an advert as its single source node with no destination", () => {
+    const advert = { ...pkt(obs({ resolvedSource: { confidence: "high", nodes: [{ id: "s", publicKey: "aa", name: "Fuzz HQ" }] } })), payloadType: 4, summary: "Fuzz HQ" };
+    render(<PacketEndpoints packet={advert} />);
+    expect(screen.getAllByText("Fuzz HQ")).toHaveLength(1);
+    expect(screen.queryByText("→")).not.toBeInTheDocument();
+    expect(screen.queryByText("n/a")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the summary name for an advert with no resolved source", () => {
+    render(<PacketEndpoints packet={{ ...pkt(obs()), payloadType: 4, summary: "Fuzz HQ" }} />);
+    expect(screen.getByText("Fuzz HQ").className).toContain("text-green");
+    expect(screen.queryByText("n/a")).not.toBeInTheDocument();
+  });
+
+  it("replaces n/a with the summary when there are no endpoints", () => {
+    render(<PacketEndpoints packet={{ ...pkt(obs()), payloadType: 9, summary: "TRACE 2ca2a79c" }} />);
+    expect(screen.getByText("TRACE 2ca2a79c").className).toContain("text-text-muted");
+    expect(screen.queryByText("n/a")).not.toBeInTheDocument();
+  });
 });
