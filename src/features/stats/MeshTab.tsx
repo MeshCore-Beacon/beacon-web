@@ -9,6 +9,11 @@ import { aggregatePresets, formatPreset, payloadBarItems } from "./transforms";
 import type { WsManager } from "../../api/ws-manager";
 import type { ObservationPoint, StatsRange } from "./types";
 
+// Keep unavailable values in the cache, but do not display them under the current filters.
+function readyData<T>(query: { data: T | undefined; isSuccess: boolean; isPlaceholderData: boolean }) {
+  return query.isSuccess && !query.isPlaceholderData ? query.data : undefined;
+}
+
 // The observations endpoint returns one row per hour+iata; collapse to one row per hour (a no-op for a
 // single selected region). uniquePackets / activeObservers summed across iatas are approximate.
 function aggregateByHour(points: ObservationPoint[]) {
@@ -44,30 +49,40 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const scopes = useScopes();
   const nodeTypes = useNodeTypes();
 
-  const obs = useMemo(() => aggregateByHour(observations.data ?? []), [observations.data]);
+  const ov = readyData(overview);
+  const observationsData = readyData(observations);
+  const overviewObsData = readyData(overviewObs);
+  const payloadData = readyData(payload);
+  const topNodesData = readyData(topNodes);
+  const topObserversData = readyData(topObservers);
+  const radioPresetsData = readyData(radioPresets);
+  const scopesData = readyData(scopes);
+  const nodeTypesData = readyData(nodeTypes);
+
+  const obs = useMemo(() => aggregateByHour(observationsData ?? []), [observationsData]);
   const obsOption = useMemo(() => observationsAreaOption(obs, colors), [obs, colors]);
 
   const nodeRows = useMemo(
     () =>
-      (topNodes.data ?? []).map((n) => ({
+      (topNodesData ?? []).map((n) => ({
         name: n.nodeName ?? n.nodeId.slice(0, 8),
         value: n.observationCount,
         color: nodeTypeColor(n.nodeTypeName, colors),
       })),
-    [topNodes.data, colors],
+    [topNodesData, colors],
   );
   const nodesOption = useMemo(() => leaderboardOption(nodeRows, colors), [nodeRows, colors]);
 
-  const payloadItems = useMemo(() => payloadBarItems(payload.data ?? []), [payload.data]);
+  const payloadItems = useMemo(() => payloadBarItems(payloadData ?? []), [payloadData]);
   const payloadTotal = useMemo(() => payloadItems.reduce((a, p) => a + p.value, 0), [payloadItems]);
   const payloadOption = useMemo(() => typeBarOption(payloadItems, colors), [payloadItems, colors]);
 
   const observerRows = useMemo(
-    () => (topObservers.data ?? []).map((o) => ({ name: o.displayName ?? o.observerId.slice(0, 8), value: o.observationCount, color: colors.secondary })),
-    [topObservers.data, colors],
+    () => (topObserversData ?? []).map((o) => ({ name: o.displayName ?? o.observerId.slice(0, 8), value: o.observationCount, color: colors.secondary })),
+    [topObserversData, colors],
   );
   const observersOption = useMemo(() => leaderboardOption(observerRows, colors), [observerRows, colors]);
-  const observerIds = useMemo(() => (topObservers.data ?? []).map((o) => o.observerId), [topObservers.data]);
+  const observerIds = useMemo(() => (topObserversData ?? []).map((o) => o.observerId), [topObserversData]);
   const observerEvents = useMemo(
     () => ({
       click: (params: unknown) => {
@@ -80,68 +95,66 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
 
   const typeRows = useMemo(
     () =>
-      [...(nodeTypes.data ?? [])]
+      [...(nodeTypesData ?? [])]
         .sort((a, b) => b.count - a.count)
         .map((t) => ({ name: t.nodeTypeName, value: t.count, color: nodeTypeColor(t.nodeTypeName, colors) })),
-    [nodeTypes.data, colors],
+    [nodeTypesData, colors],
   );
   const typeTotal = useMemo(() => typeRows.reduce((a, t) => a + t.value, 0), [typeRows]);
   const typesOption = useMemo(() => donutOption(typeRows, colors, formatCount(typeTotal), "NODES"), [typeRows, colors, typeTotal]);
 
   const presetRows = useMemo(
-    () => aggregatePresets(radioPresets.data ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), nodes: r.nodes, observers: r.observers })),
-    [radioPresets.data],
+    () => aggregatePresets(radioPresetsData ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), nodes: r.nodes, observers: r.observers })),
+    [radioPresetsData],
   );
   const presetsOption = useMemo(() => presetBarsOption(presetRows, colors), [presetRows, colors]);
 
   const scopeRows = useMemo(
-    () => [...(scopes.data ?? [])].sort((a, b) => b.packetCount - a.packetCount),
-    [scopes.data],
+    () => [...(scopesData ?? [])].sort((a, b) => b.packetCount - a.packetCount),
+    [scopesData],
   );
 
-  const kpiObs = useMemo(() => aggregateByHour(overviewObs.data ?? []), [overviewObs.data]);
+  const kpiObs = useMemo(() => aggregateByHour(overviewObsData ?? []), [overviewObsData]);
   const obsSpark = useMemo(() => kpiObs.slice(-24).map((p) => p.observationCount), [kpiObs]);
   const observerSpark = useMemo(() => kpiObs.slice(-24).map((p) => p.activeObservers), [kpiObs]);
 
-  const ov = overview.data;
-  const kpiLoading = overview.isLoading;
   // top-row KPIs are the overview endpoint's fixed 24h snapshot; range only drives the charts below
   const ovWindow = `${ov?.windowHours ?? 24}h`;
 
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-3.5 px-4 py-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total packets" sublabel={ovWindow} accent="var(--color-primary)" value={kpiLoading ? "—" : formatCount(ov?.totalPackets)} />
-        <StatCard label="Observations" sublabel={ovWindow} accent="var(--color-green)" value={kpiLoading ? "—" : formatCount(ov?.totalObservations)} spark={obsSpark} />
-        <StatCard label="Active observers" sublabel={ovWindow} accent="var(--color-secondary)" value={kpiLoading ? "—" : (ov?.activeObservers ?? "—")} spark={observerSpark} />
-        <StatCard label="Active IATAs" sublabel={ovWindow} accent="var(--color-warn)" value={kpiLoading ? "—" : (ov?.activeIatas ?? "—")} />
+        <StatCard label="Total packets" sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.totalPackets)} />
+        <StatCard label="Observations" sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.totalObservations)} spark={obsSpark} />
+        <StatCard label="Active observers" sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.activeObservers ?? "—"} spark={observerSpark} />
+        <StatCard label="Active IATAs" sublabel={ovWindow} accent="var(--color-warn)" value={ov?.activeIatas ?? "—"} />
       </div>
 
       <ChartCard
         title={<>Observations · {range}</>}
         height={200}
         option={obsOption}
-        isLoading={observations.isLoading}
+        isLoading={observations.isPending || observations.isPlaceholderData}
         isError={observations.isError}
         isEmpty={obs.length === 0}
       />
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* range-driven charts lead the grid; the all-time ones follow below */}
-        <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isLoading} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
+        <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
         <ChartCard
           title={<>Payload types · {range}</>}
-          right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadTotal)} obs</span>}
+          right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadData === undefined ? undefined : payloadTotal)} obs</span>}
           height={208}
           option={payloadOption}
-          isLoading={payload.isLoading}
+          isLoading={payload.isPending || payload.isPlaceholderData}
           isError={payload.isError}
           isEmpty={payloadItems.length === 0}
         />
         {/* counts are all-time; the server's 7d filter only prunes the roster to recently-heard nodes */}
-        <ChartCard title="Top nodes · all time" height={208} option={nodesOption} isLoading={topNodes.isLoading} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
-        <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isLoading} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
-        <ChartCard title="Radio presets · all time" height={208} option={presetsOption} isLoading={radioPresets.isLoading} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
+        <ChartCard title="Top nodes · all time" height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
+        <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isPending || nodeTypes.isPlaceholderData} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
+        <ChartCard title="Radio presets · all time" height={208} option={presetsOption} isLoading={radioPresets.isPending || radioPresets.isPlaceholderData} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
         <Card title={<>Scopes · selected region · retained data</>}>
           {scopes.isError ? (
