@@ -26,7 +26,10 @@ export function TalkersTab({ range }: TalkersTabProps) {
   const topAdvertisers = useTopAdvertisers(range, 20);
   const topTalkers = useTopTalkers(range, 20);
 
-  const advertisers = topAdvertisers.data ?? [];
+  const advertisersLoading = topAdvertisers.isPending || topAdvertisers.isLoading || topAdvertisers.isPlaceholderData;
+  const talkersLoading = topTalkers.isPending || topTalkers.isLoading || topTalkers.isPlaceholderData;
+  const talkersUnavailable = talkersLoading || topTalkers.isError;
+  const advertisers = advertisersLoading || topAdvertisers.isError ? [] : (topAdvertisers.data ?? []);
 
   const advertiserColumns = useMemo<Column<TopAdvertiser>[]>(() => {
     const windowMs = RANGE_MS[range];
@@ -56,8 +59,8 @@ export function TalkersTab({ range }: TalkersTabProps) {
   }, [range]);
 
   const talkerRows = useMemo(
-    () => (topTalkers.data ?? []).map((t) => ({ name: t.senderName, value: t.messageCount, color: colors.secondary })),
-    [topTalkers.data, colors],
+    () => (talkersUnavailable ? [] : (topTalkers.data ?? [])).map((t) => ({ name: t.senderName, value: t.messageCount, color: colors.secondary })),
+    [topTalkers.data, colors, talkersUnavailable],
   );
   const talkersOption = useMemo(() => leaderboardOption(talkerRows, colors), [talkerRows, colors]);
 
@@ -71,7 +74,7 @@ export function TalkersTab({ range }: TalkersTabProps) {
             rowKey={(a) => a.nodeId}
             selectedKey={null}
             onSelect={() => {}}
-            isLoading={topAdvertisers.isLoading}
+            isLoading={advertisersLoading}
             emptyLabel={topAdvertisers.isError ? "Failed to load" : "No advertisers"}
           />
         </div>
@@ -81,7 +84,7 @@ export function TalkersTab({ range }: TalkersTabProps) {
         right={<span className="font-mono text-[10px] text-text-muted">by name</span>}
         height={leaderboardHeight(talkerRows.length)}
         option={talkersOption}
-        isLoading={topTalkers.isLoading}
+        isLoading={talkersLoading}
         isError={topTalkers.isError}
         isEmpty={talkerRows.length === 0}
       />
