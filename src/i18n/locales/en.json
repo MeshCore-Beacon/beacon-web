@@ -153,6 +153,36 @@
       "lengthDescription": "Received path entries per reception. Zero means an empty ordinary path. Trace and unclassified records are excluded. Exact counts follow in the table.",
       "entries": "Path entries",
       "trendDescription": "Hourly receptions carrying nonempty 1, 2 or 3-byte hash paths, UTC. Absent hours remain gaps. Exact values follow in the hourly table."
+    },
+    "traffic": {
+      "subtitle": "When and where observers report receptions.",
+      "refresh": "Refresh traffic",
+      "error": "Could not load traffic. Try refreshing.",
+      "receptions": "Reported receptions",
+      "reportingIatas": "Reporting IATAs",
+      "busiestHour": "Busiest hour",
+      "hoursWithRecords": "Hours with records",
+      "measurement": "Counts are reported receptions, not unique packets. Blank hours have no retained hourly record; they do not establish an outage. Times are UTC and the latest hour may be partial.",
+      "trendTitle": "Reception trend by IATA",
+      "hourlyRecords": "Available hourly records",
+      "hourlyTitle": "Hourly activity · {{range}}",
+      "shareTitle": "Reception share",
+      "byIata": "Receptions by IATA",
+      "loading": "Loading traffic…",
+      "empty": "No retained receptions in this window.",
+      "receptionsColumn": "Receptions",
+      "share": "Share",
+      "groupingHelp": "Charts group smaller areas into “Other IATAs”; this table keeps every area.",
+      "receptionsCenter": "RECEPTIONS",
+      "shareDescription": "Reception share by IATA. Exact counts and percentages follow in the table.",
+      "unassigned": "Unassigned",
+      "otherIatas": "Other IATAs",
+      "trendDescription": "Hourly reported receptions by IATA. Gaps mean no retained hourly record. Exact totals follow in the data table.",
+      "heatmapDescription": "Activity heatmap by UTC day and hour. Brighter cells indicate more reported receptions; blank cells have no retained record.",
+      "more": "More",
+      "fewer": "Fewer",
+      "heatmapTooltip_one": "{{day}} {{hour}}:00 UTC\n{{value}} reception",
+      "heatmapTooltip_other": "{{day}} {{hour}}:00 UTC\n{{value}} receptions"
     }
   }
 }

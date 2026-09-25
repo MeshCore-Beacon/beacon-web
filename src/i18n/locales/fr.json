@@ -155,6 +155,37 @@
       "lengthDescription": "Entrées de chemin reçues par réception. Zéro indique un chemin ordinaire vide. Les traces et les enregistrements non classés sont exclus. Les effectifs exacts figurent dans le tableau.",
       "entries": "Entrées du chemin",
       "trendDescription": "Réceptions horaires portant des chemins non vides avec des hachages de 1, 2 ou 3 octets, UTC. Les heures absentes restent des lacunes. Les valeurs exactes figurent dans le tableau horaire."
+    },
+    "traffic": {
+      "subtitle": "Quand et où les observateurs déclarent des réceptions.",
+      "refresh": "Actualiser le trafic",
+      "error": "Impossible de charger le trafic. Réessayez.",
+      "receptions": "Réceptions déclarées",
+      "reportingIatas": "IATA actifs",
+      "busiestHour": "Pic horaire",
+      "hoursWithRecords": "Heures documentées",
+      "measurement": "Les effectifs comptent les réceptions déclarées, pas les paquets uniques. Les heures vides n’ont pas de données horaires conservées ; elles ne prouvent pas une panne. Les horaires utilisent l’heure UTC et la dernière heure peut être partielle.",
+      "trendTitle": "Évolution des réceptions par IATA",
+      "hourlyRecords": "Données horaires disponibles",
+      "hourlyTitle": "Activité horaire · {{range}}",
+      "shareTitle": "Part des réceptions",
+      "byIata": "Réceptions par IATA",
+      "loading": "Chargement du trafic…",
+      "empty": "Aucune réception conservée dans cette période.",
+      "receptionsColumn": "Réceptions",
+      "share": "Part",
+      "groupingHelp": "Les graphiques regroupent les zones moins actives dans « Autres IATA » ; ce tableau conserve toutes les zones.",
+      "receptionsCenter": "RÉCEPTIONS",
+      "shareDescription": "Part des réceptions par IATA. Les effectifs et pourcentages exacts figurent dans le tableau.",
+      "unassigned": "Non attribué",
+      "otherIatas": "Autres IATA",
+      "trendDescription": "Réceptions horaires déclarées par IATA. Les lacunes indiquent l’absence de données horaires conservées. Les totaux exacts figurent dans le tableau.",
+      "heatmapDescription": "Carte thermique de l’activité par jour et heure UTC. Les cellules plus lumineuses indiquent davantage de réceptions déclarées ; les cellules vides n’ont pas de données conservées.",
+      "more": "Plus",
+      "fewer": "Moins",
+      "heatmapTooltip_one": "{{day}} {{hour}}:00 UTC\n{{value}} réception",
+      "heatmapTooltip_many": "{{day}} {{hour}}:00 UTC\n{{value}} réceptions",
+      "heatmapTooltip_other": "{{day}} {{hour}}:00 UTC\n{{value}} réceptions"
     }
   }
 }

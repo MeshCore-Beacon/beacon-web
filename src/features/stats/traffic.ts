@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { EChartsOption } from "./echarts-setup";
 import { tooltipStyle, type ChartColors } from "./chartTheme";
 import { RANGE_MS, type ObservationPoint, type StatsRange } from "./types";
@@ -48,13 +49,17 @@ export function trafficModel(points: ObservationPoint[], range: StatsRange, asOf
 
 export type TrafficModel = ReturnType<typeof trafficModel>;
 
-export function trafficTrendOption(model: TrafficModel, c: ChartColors): EChartsOption {
+export function trafficAreaLabel(name: string, t: TFunction): string {
+  return name === "Unassigned" ? t("traffic.unassigned") : name === "Other IATAs" ? t("traffic.otherIatas") : name;
+}
+
+export function trafficTrendOption(model: TrafficModel, c: ChartColors, t: TFunction): EChartsOption {
   const present = model.hours.filter((hour) => hour.total !== null);
   const first = present[0]?.hour;
   const last = present.at(-1)?.hour;
   return {
     animation: false, useUTC: true, backgroundColor: "transparent",
-    aria: { enabled: true, label: { description: "Hourly reported receptions by IATA. Gaps mean no retained hourly record. Exact totals follow in the data table." } },
+    aria: { enabled: true, label: { description: t("traffic.trendDescription") } },
     grid: { left: 54, right: 18, top: 42, bottom: 28 },
     tooltip: { trigger: "axis", renderMode: "richText", ...tooltipStyle(c) },
     legend: { type: "scroll", top: 0, left: 0, right: 0, textStyle: { color: c.textNormal, fontSize: 10 }, inactiveColor: c.textDim },
@@ -62,7 +67,7 @@ export function trafficTrendOption(model: TrafficModel, c: ChartColors): ECharts
       axisLabel: { color: c.textMuted, fontSize: 10, hideOverlap: true }, axisLine: { lineStyle: { color: c.border } }, splitLine: { show: false } },
     yAxis: { type: "value", minInterval: 1, axisLabel: { color: c.textMuted, fontSize: 10 }, splitLine: { lineStyle: { color: c.border, opacity: 0.4 } } },
     series: model.series.map((series, index) => ({
-      name: series.name, type: "line", stack: "receptions", connectNulls: false, smooth: false,
+      name: trafficAreaLabel(series.name, t), type: "line", stack: "receptions", connectNulls: false, smooth: false,
       symbol: "circle", symbolSize: 5, showSymbol: present.length <= 2,
       data: model.hours.map((hour, i) => [hour.hour, series.values[i]]),
       lineStyle: { color: c.series[index], width: 1.5 }, itemStyle: { color: c.series[index] }, areaStyle: { color: c.series[index], opacity: 0.45 },
@@ -70,21 +75,21 @@ export function trafficTrendOption(model: TrafficModel, c: ChartColors): ECharts
   };
 }
 
-export function trafficHeatmapOption(model: TrafficModel, c: ChartColors): EChartsOption {
+export function trafficHeatmapOption(model: TrafficModel, c: ChartColors, t: TFunction): EChartsOption {
   return {
     animation: false, backgroundColor: "transparent",
-    aria: { enabled: true, label: { description: "Activity heatmap by UTC day and hour. Brighter cells indicate more reported receptions; blank cells have no retained record." } },
+    aria: { enabled: true, label: { description: t("traffic.heatmapDescription") } },
     grid: { left: 58, right: 14, top: 8, bottom: 62 },
     tooltip: { trigger: "item", renderMode: "richText", ...tooltipStyle(c), formatter: (item: { value: unknown }) => {
       const value = item.value as [number, number, number];
-      return `${model.days[value[1]]} ${String(value[0]).padStart(2, "0")}:00 UTC\n${value[2].toLocaleString()} receptions`;
+      return t("traffic.heatmapTooltip", { day: model.days[value[1]], hour: String(value[0]).padStart(2, "0"), count: value[2], value: value[2].toLocaleString() });
     } },
     xAxis: { type: "category", data: Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")),
       axisLabel: { color: c.textMuted, fontSize: 9, interval: 2 }, axisTick: { show: false }, axisLine: { show: false }, splitArea: { show: true, areaStyle: { color: [c.bgRaised, c.bgSurface] } } },
     yAxis: { type: "category", data: model.days, inverse: true, axisTick: { show: false }, axisLine: { show: false },
       axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 9, formatter: (day: string) => day.slice(5) } },
     visualMap: { min: 0, max: Math.max(1, model.peak?.total ?? 0), calculable: false, orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 130,
-      text: ["More", "Fewer"], textStyle: { color: c.textMuted, fontSize: 10 }, inRange: { color: [c.primaryDim, c.primary, c.secondary, c.green, c.warn] } },
-    series: [{ name: "Receptions", type: "heatmap", data: model.heatmap, itemStyle: { borderColor: c.bgSurface, borderWidth: 1 }, emphasis: { itemStyle: { borderColor: c.textBright, borderWidth: 1 } } }],
+      text: [t("traffic.more"), t("traffic.fewer")], textStyle: { color: c.textMuted, fontSize: 10 }, inRange: { color: [c.primaryDim, c.primary, c.secondary, c.green, c.warn] } },
+    series: [{ name: t("traffic.receptionsColumn"), type: "heatmap", data: model.heatmap, itemStyle: { borderColor: c.bgSurface, borderWidth: 1 }, emphasis: { itemStyle: { borderColor: c.textBright, borderWidth: 1 } } }],
   };
 }
