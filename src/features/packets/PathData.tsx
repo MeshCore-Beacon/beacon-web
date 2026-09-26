@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useId, useRef, useState, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useHasHover } from "../../hooks/useMediaQuery";
 import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
@@ -17,13 +17,15 @@ function nodeLabel(node: ResolvedNode): string {
 }
 
 // Portals to <body> so the drawer's overflow doesn't clip it; a close delay bridges the mouse gap.
-function HopPopover({ hop, onViewNode, showSnr = true, children }: {
+export function HopPopover({ hop, onViewNode, showSnr = true, focusable = false, children }: {
   hop: ResolvedHop | undefined;
   onViewNode?: (nodeId: string) => void;
   showSnr?: boolean;
+  focusable?: boolean;
   children: ReactNode;
 }) {
   const hasHover = useHasHover();
+  const tooltipId = useId();
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -93,8 +95,20 @@ function HopPopover({ hop, onViewNode, showSnr = true, children }: {
       ref={ref}
       onMouseEnter={hasHover ? open : undefined}
       onMouseLeave={hasHover ? scheduleClose : undefined}
-      onClick={hasHover ? undefined : toggle}
-      className="inline-flex"
+      onClick={hasHover ? (focusable ? (e) => { e.stopPropagation(); open(); } : undefined) : toggle}
+      role={focusable ? "button" : undefined}
+      tabIndex={focusable ? 0 : undefined}
+      aria-expanded={focusable ? !!anchor : undefined}
+      aria-describedby={focusable && anchor ? tooltipId : undefined}
+      onFocus={focusable && hasHover ? open : undefined}
+      onBlur={focusable ? (e) => {
+        if (!e.currentTarget.contains(e.relatedTarget) && !tipRef.current?.contains(e.relatedTarget)) setAnchor(null);
+      } : undefined}
+      onKeyDown={focusable ? (e) => {
+        if (e.key === "Escape") { e.stopPropagation(); setAnchor(null); }
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); open(); }
+      } : undefined}
+      className="inline-flex min-w-0 max-w-full"
     >
       {children}
       {anchor &&
@@ -102,6 +116,7 @@ function HopPopover({ hop, onViewNode, showSnr = true, children }: {
           <span
             ref={tipRef}
             role="tooltip"
+            id={tooltipId}
             style={{ left: pos.left, top: pos.top }}
             onMouseEnter={hasHover && clickable ? open : undefined}
             onMouseLeave={hasHover && clickable ? scheduleClose : undefined}

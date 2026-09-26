@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { PacketEndpoints } from "../../../src/features/packets/PacketEndpoints";
 import type { LatestObserver, PacketSummary } from "../../../src/types/api";
 
@@ -12,6 +12,16 @@ const pkt = (observer?: LatestObserver): PacketSummary => ({
 const obs = (over: Partial<LatestObserver> = {}): LatestObserver => ({
   id: "o1", iata: "YVR", pathLength: { raw: "00", hashSize: 1, hopCount: 0 }, ...over,
 });
+
+afterEach(() => vi.restoreAllMocks());
+
+const ambiguousSource = {
+  confidence: "ambiguous" as const,
+  nodes: [
+    { id: "source-a", name: "Alpha", publicKey: "aa010203" },
+    { id: "source-b", name: "Beta", publicKey: "aa040506" },
+  ],
+};
 
 describe("PacketEndpoints", () => {
   it("renders a single n/a when there is no observer at all", () => {
@@ -83,5 +93,47 @@ describe("PacketEndpoints", () => {
     render(<PacketEndpoints packet={{ ...pkt(obs()), payloadType: 9, summary: "TRACE 2ca2a79c" }} />);
     expect(screen.getByText("TRACE 2ca2a79c").className).toContain("text-text-muted");
     expect(screen.queryByText("n/a")).not.toBeInTheDocument();
+  });
+
+  it("shows all ambiguous candidates on hover, with an additional-match count", () => {
+    render(<PacketEndpoints packet={pkt(obs({ resolvedSource: ambiguousSource }))} />);
+    const trigger = screen.getByRole("button", { name: "Alpha +1" });
+    fireEvent.mouseEnter(trigger);
+    const tip = screen.getByRole("tooltip");
+    expect(within(tip).getByText("Alpha")).toBeInTheDocument();
+    expect(within(tip).getByText("Beta")).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-describedby", tip.id);
+    expect(within(tip).queryByText(/SNR/)).not.toBeInTheDocument();
+  });
+
+  it("opens candidates from the keyboard and closes with Escape without selecting the packet", () => {
+    const select = vi.fn();
+    render(<div onClick={select} onKeyDown={select}><PacketEndpoints packet={pkt(obs({ resolvedSource: ambiguousSource }))} /></div>);
+    const trigger = screen.getByRole("button", { name: "Alpha +1" });
+    fireEvent.focus(trigger);
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    fireEvent.keyDown(trigger, { key: "Escape" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+    expect(select).not.toHaveBeenCalled();
+    fireEvent.blur(trigger, { relatedTarget: document.body });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("opens all candidates on touch without activating the packet row", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: false, media: query, onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn() }));
+    const select = vi.fn();
+    render(<div onClick={select}><PacketEndpoints packet={pkt(obs({ resolvedDestination: ambiguousSource }))} /></div>);
+    fireEvent.click(screen.getByRole("button", { name: "Alpha +1" }));
+    expect(within(screen.getByRole("tooltip")).getByText("Beta")).toBeInTheDocument();
+    expect(select).not.toHaveBeenCalled();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("renders resolved endpoints without requiring physical path metadata", () => {
+    render(<PacketEndpoints packet={pkt(obs({ pathLength: undefined, resolvedSource: { confidence: "high", nodes: [{ id: "s", name: "Source", publicKey: "aa" }] } }))} />);
+    expect(screen.getByText("Source")).toBeInTheDocument();
   });
 });
