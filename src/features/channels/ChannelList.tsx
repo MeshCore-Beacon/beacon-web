@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery, useIsFetching, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { isRateLimited } from "../../api/rate-limit";
-import { MAX_INFINITE_PAGES } from "../../lib/constants";
+import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
 import { useRegion } from "../../hooks/useRegion";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useWsChannelMessageHandler } from "../../hooks/useWsHandlers";
@@ -20,6 +20,14 @@ interface ChannelListProps {
   onAnalyze: (hash: string | null) => void;
 }
 
+function appendMessages(old: InfiniteData<CursorPage<ChannelMessage>> | undefined, messages: ChannelMessage[]) {
+  if (!old) return old;
+  const known = new Set(old.pages.flatMap((page) => page.items.map((message) => message.packetHash)));
+  const added = messages.filter((message) => !known.has(message.packetHash));
+  if (!added.length) return old;
+  return { ...old, pages: old.pages.map((page, index) => index === 0 ? { ...page, items: [...page.items, ...added] } : page) };
+}
+
 export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const { iatas, regionKey } = useRegion();
   const isMobile = useIsMobile();
@@ -27,20 +35,42 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const [selection, setSelection] = useState<ChannelSummary | null>(null);
   const selectedId = selection?.id ?? null;
   const [heardCounts, setHeardCounts] = useState<Record<string, number>>({});
+  const [messageScope, setMessageScope] = useState("");
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [keyFilter, setKeyFilter] = useState<ChannelKeyFilter>("");
   const [hashtagFilter, setHashtagFilter] = useState<ChannelHashtagFilter>("");
   const queryClient = useQueryClient();
   const refreshPending = useRef(false);
+  const pendingMessages = useRef(new Map<string, ChannelMessage>());
+  const messagesOverflowed = useRef(false);
+  const messageKey = useMemo(() => ["channel-messages", selectedId, regionKey, messageScope], [selectedId, regionKey, messageScope]);
+  const messageFetching = useIsFetching({ queryKey: messageKey, exact: true });
+
+  useEffect(() => {
+    if (messageFetching) return;
+    if (messagesOverflowed.current && !isRateLimited()) {
+      messagesOverflowed.current = false;
+      pendingMessages.current.clear();
+      void queryClient.resetQueries({ queryKey: messageKey, exact: true });
+    } else if (pendingMessages.current.size && queryClient.getQueryData(messageKey)) {
+      // Merge live arrivals after history settles so its older snapshot cannot erase them.
+      const queued = [...pendingMessages.current.values()];
+      pendingMessages.current.clear();
+      queryClient.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(messageKey, (old) => appendMessages(old, queued));
+    }
+  }, [messageFetching, messageKey, queryClient]);
 
   const prevRegion = useRef(regionKey);
   useEffect(() => {
     if (prevRegion.current !== regionKey) {
       prevRegion.current = regionKey;
       refreshPending.current = false;
+      pendingMessages.current.clear();
+      messagesOverflowed.current = false;
       setSelection(null);
       setHeardCounts({});
+      setMessageScope("");
       setSearch("");
       setKeyFilter("");
       setHashtagFilter("");
@@ -74,9 +104,17 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   }, [data]);
 
   const handleSelect = useCallback((id: number) => {
+    pendingMessages.current.clear();
+    messagesOverflowed.current = false;
     setSelection(channels.find((ch) => ch.id === id) ?? null);
     setHeardCounts({});
   }, [channels]);
+
+  const handleScopeChange = useCallback((scope: string) => {
+    pendingMessages.current.clear();
+    messagesOverflowed.current = false;
+    setMessageScope(scope);
+  }, []);
 
   // "Public" pinned first, then named channels, then unnamed by most recent
   const sortedChannels = useMemo(
@@ -104,7 +142,8 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       const key = ["channels", regionKey];
       const cached = queryClient.getQueryData<InfiniteData<ChannelPage>>(key);
       const cachedChannels = cached?.pages.flatMap((p) => p.items) ?? [];
-      const known = cachedChannels.find((ch) => ch.channelHash === data.channelHash);
+      const matchesChannel = (ch: ChannelSummary) => data.channelId !== undefined ? ch.id === data.channelId : ch.channelHash === data.channelHash;
+      const known = cachedChannels.find(matchesChannel);
       if (known) {
         // Display timestamps may change; the server's page cursors must not.
         queryClient.setQueryData<InfiniteData<ChannelPage>>(key, (old) => old && ({
@@ -119,25 +158,25 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       }
 
       const selected = cachedChannels.find((ch) => ch.id === selectedId) ?? selection;
-      if (selected && data.channelHash === selected.channelHash) {
-        // same message, multiple observer paths — count the reach
+      if (selected && matchesChannel(selected) && (!messageScope || data.scope === messageScope)) {
+        if (queryClient.isFetching({ queryKey: messageKey, exact: true }) || !queryClient.getQueryData(messageKey)) {
+          if (pendingMessages.current.size >= LIVE_BUFFER_CAP && !pendingMessages.current.has(data.packetHash)) {
+            messagesOverflowed.current = true;
+          } else pendingMessages.current.set(data.packetHash, data);
+        }
+        // A repeated WS delivery is not another observer; retained counts remain authoritative.
         setHeardCounts((prev) => ({
           ...prev,
-          [data.packetHash]: (prev[data.packetHash] ?? 0) + 1,
+          [data.packetHash]: Math.max(prev[data.packetHash] ?? 0, data.observationCount ?? 1),
         }));
         // append to the newest InfiniteData page; MessagePanel re-sorts by sentAt, so the page is arbitrary
         queryClient.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(
-          ["channel-messages", selectedId, regionKey],
-          (old) => {
-            if (!old) return old;
-            if (old.pages.some((p) => p.items.some((msg) => msg.packetHash === data.packetHash))) return old;
-            const pages = old.pages.map((p, i) => (i === 0 ? { ...p, items: [...p.items, data] } : p));
-            return { ...old, pages };
-          },
+          messageKey,
+          (old) => appendMessages(old, [data]),
         );
       }
     },
-    [queryClient, selectedId, selection, regionKey],
+    [queryClient, selectedId, selection, regionKey, messageScope, messageKey],
   );
 
   useWsChannelMessageHandler(wsManager, handleChannelMessage);
@@ -193,6 +232,8 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
             heardCounts={heardCounts}
             iatas={iatas}
             regionKey={regionKey}
+            scope={messageScope}
+            onScopeChange={handleScopeChange}
             onAnalyze={onAnalyze}
             onBack={isMobile ? () => setSelection(null) : undefined}
           />

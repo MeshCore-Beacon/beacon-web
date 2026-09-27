@@ -15,6 +15,11 @@ locations in both languages. Packet bytes, identifiers and routing values stay u
 and existing UTC/date/number formatting, including automatic chart time labels,
 are unchanged; selecting French does not mean every screen is translated yet.
 
+The channel message panel also translates scope labels, evidence help, retained-history/key
+availability states, pagination and packet-inspection actions. Scope names, hashes and message
+bodies remain unchanged. The channel directory and its existing search controls are separate
+translation follow-ups.
+
 ## Add a language
 
 1. Copy `src/i18n/locales/en.json` to a language-tag filename such as `de.json`.

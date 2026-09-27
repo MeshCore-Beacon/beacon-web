@@ -383,6 +383,32 @@
       "brief": "Prefix matches, not confirmed physical routes. Raw reports may expire.",
       "definition": "How these reports are matched and counted",
       "close": "Close route reports"
+    },
+    "channelMessages": {
+      "select": "Select a channel",
+      "back": "Back to channels",
+      "hash": "hash: {{hash}}",
+      "keyKnown": "key known",
+      "noKey": "no key",
+      "hashtag": "hashtag",
+      "keyMissing": "No decryption key is configured for this channel.",
+      "scope": "Transport scope",
+      "allScopes": "All scopes",
+      "aboutScopes": "About scope labels",
+      "scopeHelp": "Labels describe the first recorded packet, not the channel key. Other receptions may differ; inspect the packet for its reports. Only retained messages are shown.",
+      "unscoped": "No transport scope",
+      "unknownScope": "Unresolved scope",
+      "unavailableScope": "Scope unavailable",
+      "inspect": "Inspect packet from {{sender}}",
+      "packet": "Packet",
+      "loading": "Loading messages…",
+      "loadingOlder": "Loading older messages… ({{count}} shown)",
+      "loadOlder": "Load older messages",
+      "empty": "No retained messages for this channel.",
+      "emptyScope": "No retained messages match {{scope}}.",
+      "emptyNoKey": "No decrypted messages are available without a known channel key.",
+      "error": "Could not load messages.",
+      "retry": "Retry"
     }
   }
 }

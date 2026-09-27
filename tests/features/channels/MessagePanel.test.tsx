@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MessagePanel } from "../../../src/features/channels/MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "../../../src/features/channels/types";
 
-// live WS messages have no id — mirror that runtime shape in the page data
+// Older live WS messages have no id — preserve that compatible runtime shape.
 const restMsg: ChannelMessage = {
   id: 1,
   packetHash: "ph-rest",
@@ -40,6 +40,7 @@ const multiLineMsg: ChannelMessage = {
 };
 
 vi.mock("../../../src/api/client", () => ({
+  getScopes: vi.fn(async () => []),
   getChannelMessagesPage: vi.fn(() =>
     Promise.resolve({ items: [restMsg, liveMsgA, liveMsgB, multiLineMsg], nextCursor: null, hasMore: false }),
   ),

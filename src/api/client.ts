@@ -142,14 +142,16 @@ export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?
 // a CursorPage so MessagePanel can load older history on demand via useInfiniteQuery.
 export async function getChannelMessagesPage(
   channelId: number,
-  params?: { iatas?: string[]; cursor?: number; limit?: number },
+  params?: { iatas?: string[]; cursor?: number; limit?: number; scope?: string },
 ): Promise<CursorPage<ChannelMessage>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
-  const page = await request<{ items: ChannelMessage[] }>(`/channels/${channelId}/messages`, {
+  const page = await request<{ items: ChannelMessage[]; nextCursor?: number | null; hasMore?: boolean }>(`/channels/${channelId}/messages`, {
     iatas: iatasParam(params?.iatas),
     cursor: params?.cursor,
     limit,
+    scope: params?.scope || undefined,
   });
+  if (typeof page.hasMore === "boolean") return { items: page.items, nextCursor: page.nextCursor ?? null, hasMore: page.hasMore };
   return toCursorPage(page.items, limit, (m) => m.id);
 }
 
