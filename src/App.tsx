@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { BrowserRouter, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, useSearchParams, type Location } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RegionProvider, useRegion, useRegionSelection } from "./hooks/useRegion";
@@ -18,15 +18,11 @@ import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
-import { PacketAnalyzerOverlay } from "./features/packets/PacketAnalyzerOverlay";
-import { PacketPathMapModal } from "./features/map/PacketPathMapModal";
 import { NodeTable } from "./features/nodes/NodeTable";
 import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
-import { NodeDetailOverlay } from "./features/nodes/NodeDetailOverlay";
+import { InvestigationPanel, type Investigation, type InvestigationTarget } from "./features/InvestigationPanels";
 import { ObserverPage } from "./features/observers/ObserverPage";
-import { ObserverDetailPanel } from "./features/observers/ObserverDetailPanel";
 import { observerDestination } from "./features/observers/observer-navigation";
-import { ModalOverlay } from "./components/ModalOverlay";
 import { RouteTable } from "./features/routes/RouteTable";
 import { TraceList } from "./features/traces/TraceList";
 import { ChannelList } from "./features/channels/ChannelList";
@@ -92,13 +88,14 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 // history.
 function RegionUrlSync() {
   const { selection } = useRegionSelection();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const next = selectionToParams(selection, searchParams);
     if (next.toString() === searchParams.toString()) return;
-    setSearchParams(next, { replace: true });
-  }, [selection, searchParams, setSearchParams]);
+    setSearchParams(next, { replace: true, state: location.state });
+  }, [selection, searchParams, setSearchParams, location.state]);
 
   return null;
 }
@@ -151,10 +148,14 @@ function TabLoading({ tab }: { tab: string }) {
   return <EmptyState title={t(`tabs.${tab}`, { defaultValue: tab })} subtitle={t("common.loading")} />;
 }
 
-function AppInner() {
+function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }: {
+  observerVisit?: Location; onObserverDashboard: (id: string) => void;
+  onReturn: () => void; onExitVisit: () => void;
+}) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
+  const location = useLocation();
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
@@ -169,37 +170,39 @@ function AppInner() {
   const analyzerHash = searchParams.get("analyze") === "1" ? searchParams.get("hash") : null;
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => searchParams.get("node"));
-  // lifted (like selectedNodeId) so a node's "View observer" link can select it before the tab mounts
-  const [quickObserverId, setQuickObserverId] = useState<string | null>(null);
   useEffect(() => {
     if (legacyObserver) setSearchParams(observerDestination(searchParams, searchParams.get("observerId")), { replace: true });
   }, [legacyObserver, searchParams, setSearchParams]);
-  // node detail shown as a modal over the packet analyzer (e.g. clicking a resolved path hop)
-  const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
-  // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
-  const [overlayPacket, setOverlayPacket] = useState<{ hash: string; observationId?: number } | null>(null);
-  const overlayPacketHash = overlayPacket?.hash ?? null;
-  const setOverlayPacketHash = useCallback((hash: string | null, observationId?: number) => setOverlayPacket(hash ? { hash, observationId } : null), []);
-  // packet path popup shown as a modal over the analyzer drawer/overlay ("View path on map")
-  const [pathMapDetail, setPathMapDetail] = useState<PacketDetail | null>(null);
-  // Frozen together: the restore must fetch the hash the link asked for, even if the user clicks a
-  // different row before it resolves.
+  const [panels, setPanels] = useState<Investigation[]>([]);
+  const scene = JSON.stringify([activeTab, searchParams.get("route"), searchParams.get("hash"), searchParams.get("node"), searchParams.get("observer"), searchParams.get("analyze")]);
+  const [panelScene, setPanelScene] = useState(scene);
+  // Browser Back to another entity ends its panels; dashboard visits freeze this location instead.
+  if (panelScene !== scene) { setPanelScene(scene); setPanels([]); }
+  const dashboardFocus = useRef<HTMLElement | null>(null);
+  const openPanel = useCallback((target: InvestigationTarget) => {
+    const key = target.kind === "packet" ? `packet:${target.hash.toLowerCase()}:${target.observationId ?? ""}` : target.kind === "path" ? `path:${target.detail.packetHash.toLowerCase()}:${target.selectedKey ?? "all"}` : `${target.kind}:${target.id}`;
+    setPanels(previous => {
+      const existing = previous.findIndex(panel => panel.key === key);
+      return existing < 0 ? [...previous, { key, target }] : previous.slice(0, existing + 1);
+    });
+  }, [setPanels]);
+  const viewNode = useCallback((id: string) => openPanel({ kind: "node", id }), [openPanel]);
+  const viewObserver = useCallback((id: string) => openPanel({ kind: "observer", id }), [openPanel]);
+  const viewPacket = useCallback((hash: string, observationId?: number) => openPanel({ kind: "packet", hash, observationId }), [openPanel]);
+  const handleViewPath = useCallback((detail: PacketDetail, key?: string) => openPanel({ kind: "path", detail, selectedKey: key }), [openPanel]);
   const [pathLink] = useState(() => ({ path: searchParams.get("path"), hash: searchParams.get("hash") }));
-  const [pathMapInitialKey, setPathMapInitialKey] = useState<string | null>(null);
-
   const { data: analyzerDetail, isLoading: analyzerLoading } = usePacketDetail(analyzerHash);
-  const { data: overlayPacketDetail, isLoading: overlayPacketLoading } = usePacketDetail(overlayPacketHash);
 
-  const handlePathLinkRestore = useCallback((detail: PacketDetail, key: string) => {
-    setPathMapDetail(detail);
-    setPathMapInitialKey(key);
-  }, []);
+  useEffect(() => {
+    if (!observerVisit && dashboardFocus.current?.isConnected) dashboardFocus.current.focus();
+  }, [observerVisit]);
 
-  // Reuse the fetched detail; a report action can isolate its observer's path.
-  const handleViewPath = useCallback((detail: PacketDetail, key?: string) => {
-    setPathMapDetail(detail);
-    setPathMapInitialKey(key ?? null);
-  }, []);
+  const closePanel = (index: number) => {
+    setPanels(previous => previous.slice(0, index));
+    if (panels[index]?.target.kind === "path" && searchParams.has("path")) setSearchParams(previous => {
+      const next = new URLSearchParams(previous); next.delete("path"); return next;
+    }, { replace: true });
+  };
 
   const selectObservation = useCallback((id: number | null) => {
     setSelectedObservationId(id);
@@ -221,15 +224,14 @@ function AppInner() {
   }, [setSearchParams]);
 
   const handleTabChange = (tab: string) => {
-    setOverlayNodeId(null);
-    setOverlayPacketHash(null);
-    setPathMapDetail(null);
+    setPanels([]);
+    dashboardFocus.current = null;
+    onExitVisit();
     // On mobile a detail panel (and the analyzer) fills the screen, so leaving its tab must close it;
     // desktop side panels persist across tabs. Cross-nav (onViewObserver) re-sets its selection after this.
     if (isMobile) {
       setSelectedObservationId(null);
       setSelectedNodeId(null);
-      setQuickObserverId(null);
     }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -250,11 +252,10 @@ function AppInner() {
 
   const clearSelection = useCallback(() => {
     setSelectedNodeId(null);
-    setOverlayNodeId(null);
-    setOverlayPacketHash(null);
-    setQuickObserverId(null);
-    setPathMapDetail(null);
-  }, [setOverlayPacketHash]);
+    setPanels([]);
+    dashboardFocus.current = null;
+    onExitVisit();
+  }, [onExitVisit, setSelectedNodeId, setPanels]);
 
   // Closing a detail panel drops its deep-link param so a reload can't reopen it (mirrors the packet
   // analyzer's ?analyze cleanup). Selecting a different node/observer doesn't touch the URL — the panel's
@@ -270,21 +271,12 @@ function AppInner() {
   const handleCloseNode = useCallback(() => {
     setSelectedNodeId(null);
     dropSelectionParam("node");
-  }, [dropSelectionParam]);
+  }, [dropSelectionParam, setSelectedNodeId]);
 
-  // Jump from an observer's detail panel to its telemetry on the Stats tab (Stats → Observer, preselected).
-  const handleViewObserverStats = useCallback(
-    (id: string) => {
-      setOverlayNodeId(null);
-      setOverlayPacketHash(null);
-      setQuickObserverId(null);
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        return observerDestination(next, id);
-      });
-    },
-    [setSearchParams, setOverlayPacketHash],
-  );
+  const handleViewObserverStats = useCallback((id: string) => {
+    dashboardFocus.current = document.activeElement as HTMLElement | null;
+    onObserverDashboard(id);
+  }, [onObserverDashboard]);
 
   useEffect(() => {
     // Region slugs can't be expanded yet (region details load async) — connect with the directly
@@ -306,10 +298,10 @@ function AppInner() {
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
     Observers: <ObserverPage wsManager={wsManager} />,
-    Routes: <RouteTable onAnalyzePacket={setOverlayPacketHash} onViewObserver={setQuickObserverId} onViewNode={setOverlayNodeId} />,
+    Routes: <RouteTable onAnalyzePacket={viewPacket} onViewObserver={viewObserver} onViewNode={viewNode} />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
-    Traces: <TraceList onAnalyze={setOverlayPacketHash} onViewNode={setOverlayNodeId} />,
+    Traces: <TraceList onAnalyze={hash => { if (hash) viewPacket(hash); }} onViewNode={viewNode} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
     Analytics: <StatsOverview wsManager={wsManager} />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
@@ -318,16 +310,16 @@ function AppInner() {
   return (
     <RegionProvider defaultSelection={initialSelection}>
       <RegionWatcher wsManager={wsManager} />
-      <RegionUrlSync />
+      <Routes location={observerVisit ?? location}><Route path="*" element={<RegionUrlSync />} /></Routes>
       <SelectionResetOnRegion onRegionChange={clearSelection} />
       <PathLinkRestore
         initialPath={pathLink.path}
         hash={pathLink.hash}
         analyzerDetail={analyzerDetail}
-        onRestore={handlePathLinkRestore}
+        onRestore={handleViewPath}
       />
-      <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
-        <div className="relative flex flex-1 min-h-0">
+      <AppShell activeTab={observerVisit ? "Observers" : activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
+        <div hidden={!!observerVisit} className={`${observerVisit ? "hidden" : "flex"} relative flex-1 min-h-0`}>
           <div key={activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
             <Suspense fallback={<TabLoading tab={activeTab} />}>
               {tabContent[activeTab]}
@@ -340,8 +332,8 @@ function AppInner() {
               selectedObservationId={selectedObservationId}
               onSelectObservation={selectObservation}
               onClose={() => handleAnalyze(null)}
-              onViewNode={setOverlayNodeId}
-              onViewObserver={setQuickObserverId}
+              onViewNode={viewNode}
+              onViewObserver={viewObserver}
               onViewPath={(key) => { if (analyzerDetail) handleViewPath(analyzerDetail, key); }}
             />
           )}
@@ -349,55 +341,33 @@ function AppInner() {
             <NodeDetailPanel
               nodeId={selectedNodeId}
               onClose={handleCloseNode}
-              onViewObserver={(observerId) => {
-                setQuickObserverId(observerId);
-              }}
+              onViewObserver={viewObserver}
               onViewNode={setSelectedNodeId}
-              onAnalyzePacket={setOverlayPacketHash}
+              onAnalyzePacket={viewPacket}
             />
           )}
-          {overlayNodeId && (
-            <NodeDetailOverlay
-              nodeId={overlayNodeId}
-              inactive={!!quickObserverId || !!overlayPacketHash || !!pathMapDetail}
-              onClose={() => setOverlayNodeId(null)}
-              onViewObserver={(observerId) => {
-                setQuickObserverId(observerId);
-              }}
-              onViewNode={setOverlayNodeId}
-            />
-          )}
-          {overlayPacketHash && (
-            <PacketAnalyzerOverlay
-              key={`${overlayPacketHash}:${overlayPacket?.observationId ?? ""}`}
-              initialObservationId={overlayPacket?.observationId}
-              detail={overlayPacketDetail}
-              loading={overlayPacketLoading}
-              onClose={() => setOverlayPacketHash(null)}
-              onViewObserver={(observerId) => {
-                setQuickObserverId(observerId);
-              }}
-              onViewPath={(key) => { if (overlayPacketDetail) handleViewPath(overlayPacketDetail, key); }}
-              inactive={!!pathMapDetail || !!quickObserverId}
-            />
-          )}
-          {quickObserverId && <ModalOverlay label={t("tabs.Observers")} onClose={() => setQuickObserverId(null)}>
-            <ObserverDetailPanel observerId={quickObserverId} onClose={() => setQuickObserverId(null)} onViewStats={handleViewObserverStats} onAnalyzePacket={hash => { setQuickObserverId(null); setOverlayPacketHash(hash); }} />
-          </ModalOverlay>}
-          {pathMapDetail && (
-            <PacketPathMapModal
-              detail={pathMapDetail}
-              initialSelectedKey={pathMapInitialKey}
-              onClose={() => {
-                setPathMapDetail(null);
-                setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete("path"); return n; }, { replace: true });
-              }}
-            />
-          )}
+          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onObserverDashboard={handleViewObserverStats} />)}
         </div>
+        {observerVisit && <Routes location={observerVisit}><Route path="*" element={<ObserverPage wsManager={wsManager} onReturn={onReturn} returnLabel={t(`tabs.${activeTab}`)} />} /></Routes>}
       </AppShell>
     </RegionProvider>
   );
+}
+
+// A dashboard visit keeps one originating screen under its original location context. A reload has
+// no in-memory origin, so copied/canonical dashboard URLs remain standalone destinations.
+function AppNavigation() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [origin, setOrigin] = useState<Location | null>(null);
+  const visiting = origin != null && location.state?.beaconObserverReturnKey === origin.key && new URLSearchParams(location.search).get("tab") === "Observers";
+  if (origin && !visiting && location.key !== origin.key) setOrigin(null);
+  const exitVisit = useCallback(() => setOrigin(null), []);
+  const openDashboard = (id: string) => {
+    setOrigin(location);
+    navigate({ search: "?" + observerDestination(new URLSearchParams(location.search), id).toString() }, { state: { beaconObserverReturnKey: location.key } });
+  };
+  return <Routes location={visiting ? origin : location}><Route path="*" element={<AppInner observerVisit={visiting ? location : undefined} onObserverDashboard={openDashboard} onReturn={() => navigate(-1)} onExitVisit={exitVisit} />} /></Routes>;
 }
 
 export function App() {
@@ -406,7 +376,7 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <SplashScreen />
-          <AppInner />
+          <AppNavigation />
         </ThemeProvider>
       </QueryClientProvider>
     </BrowserRouter>

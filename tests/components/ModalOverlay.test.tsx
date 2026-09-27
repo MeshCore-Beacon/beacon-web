@@ -12,6 +12,24 @@ function renderOverlay(onClose: () => void) {
 }
 
 describe("ModalOverlay", () => {
+  it("handles Escape in the active dialog without reaching underlying window handlers", () => {
+    const close = vi.fn(); const parent = vi.fn();
+    window.addEventListener("keydown", parent);
+    try {
+      const dialog = renderOverlay(close);
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      expect(close).toHaveBeenCalledOnce();
+      expect(parent).not.toHaveBeenCalled();
+    } finally { window.removeEventListener("keydown", parent); }
+  });
+  it("does not dismiss an inactive layer", () => {
+    const close = vi.fn();
+    render(<ModalOverlay label="Covered" onClose={close} inactive><p>Covered content</p></ModalOverlay>);
+    const dialog = screen.getByRole("dialog", { hidden: true });
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(close).not.toHaveBeenCalled();
+    expect(dialog).toHaveAttribute("aria-hidden", "true");
+  });
   it("closes when a click starts and ends on the backdrop", () => {
     const onClose = vi.fn();
     const backdrop = renderOverlay(onClose);

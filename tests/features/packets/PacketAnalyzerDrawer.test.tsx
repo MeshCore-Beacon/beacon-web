@@ -12,6 +12,13 @@ function LocationProbe() {
 }
 
 describe("PacketAnalyzerDrawer close", () => {
+  it("leaves the originating packet URL unchanged when used in an overlay", () => {
+    const onClose = vi.fn();
+    render(<MemoryRouter initialEntries={["/?tab=Packets&hash=origin&analyze=1&observation=7"]}><PacketAnalyzerDrawer detail={undefined} selectedObservationId={null} onClose={onClose} syncUrl={false} /><LocationProbe /></MemoryRouter>);
+    fireEvent.click(screen.getByLabelText("Close analyzer"));
+    expect(screen.getByTestId("search")).toHaveTextContent("hash=origin&analyze=1&observation=7");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
   it("removes ?analyze but keeps ?hash, and calls onClose", () => {
     const onClose = vi.fn();
     render(

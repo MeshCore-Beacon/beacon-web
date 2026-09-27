@@ -101,7 +101,10 @@ describe("ObserverDetailPanel adverts", () => {
 
     const { onAnalyzePacket } = renderPanel();
 
-    fireEvent.click(await screen.findByText("Node Alpha"));
-    expect(onAnalyzePacket).toHaveBeenCalledWith("hash-1");
+    const row = await screen.findByRole("button", { name: /Node Alpha/ });
+    expect(row.tagName).toBe("BUTTON");
+    row.focus();
+    fireEvent.click(row);
+    expect(onAnalyzePacket).toHaveBeenCalledWith("hash-1", 1);
   });
 });

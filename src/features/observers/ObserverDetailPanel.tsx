@@ -16,9 +16,11 @@ import { ScopeTag } from "../../components/ScopeTag";
 
 function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick?: () => void }) {
   const level = snrLevel(advert.snr);
+  const Tag = onClick ? "button" : "div";
   return (
-    <div
-      className={`bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
+    <Tag
+      type={onClick ? "button" : undefined}
+      className={`w-full text-left bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-center gap-2 text-[11px] mb-1.5">
@@ -42,7 +44,7 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick?: (
           <span className="font-medium text-text-normal">{advert.hopCount ?? "—"}</span>
         </div>
       </div>
-    </div>
+    </Tag>
   );
 }
 
@@ -102,7 +104,7 @@ function RadioSection({ observer, noiseFloor }: { observer: Observer; noiseFloor
 interface ObserverDetailPanelProps {
   observerId: string;
   onClose: () => void;
-  onAnalyzePacket?: (hash: string) => void;
+  onAnalyzePacket?: (hash: string, observationId: number) => void;
   onViewStats?: (observerId: string) => void;
 }
 
@@ -128,6 +130,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
     <DetailPanel
       title="Observer Detail"
       onClose={onClose}
+      closeLabel={t("investigation.closeObserver")}
       headerAction={<CopyLinkButton params={{ tab: "Observers", observer: observerId }} ariaLabel="Copy observer link" />}
       isLoading={isLoading}
       notFound={!observer}
@@ -248,7 +251,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
                     <AdvertRow
                       key={a.id}
                       advert={a}
-                      onClick={onAnalyzePacket ? () => onAnalyzePacket(a.packetHash) : undefined}
+                      onClick={onAnalyzePacket ? () => onAnalyzePacket(a.packetHash, a.id) : undefined}
                     />
                   ))}
                 </div>

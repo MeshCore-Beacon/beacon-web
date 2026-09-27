@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PacketDetail } from "../../types/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
@@ -30,10 +30,11 @@ function Row({ active, color, label, meta, onClick }: {
   );
 }
 
-export function PacketPathMapModal({ detail, onClose, initialSelectedKey }: {
+export function PacketPathMapModal({ detail, onClose, initialSelectedKey, inactive = false }: {
   detail: PacketDetail;
   onClose: () => void;
   initialSelectedKey?: string | null;
+  inactive?: boolean;
 }) {
   const { t } = useTranslation();
   const paths = useMemo(() => buildPacketPaths(detail), [detail]);
@@ -43,22 +44,14 @@ export function PacketPathMapModal({ detail, onClose, initialSelectedKey }: {
   const unavailable = selectedKey != null && !paths.some(p => p.key === selectedKey);
   const styleId = useMemo(() => localStorage.getItem(MAP_STYLE_STORAGE_KEY) ?? DEFAULT_STYLE_ID, []);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <ModalOverlay label={t("investigation.mapDialog")} onClose={onClose}>
+    <ModalOverlay label={t("investigation.mapDialog")} onClose={onClose} inactive={inactive}>
       <div className="h-full w-full md:w-[860px] md:max-w-[92vw] bg-bg-surface flex flex-col">
         <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
           <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{t("investigation.mapTitle")}</span>
           <div className="flex items-center gap-1.5">
             <CopyLinkButton
-              params={() => ({ tab: "Packets", hash: detail.packetHash, path: selectedKey ?? "all", analyze: null, observation: null })}
+              params={() => ({ tab: "Packets", hash: detail.packetHash, path: selectedKey ?? "all", analyze: null, observation: null, node: null, observer: null, observerId: null, statsTab: null, compareWith: null, compareUntil: null, route: null, routeIata: null, routeRange: null, routeSince: null, routeUntil: null })}
               label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("investigation.copyPath")}
             />
             <CloseButton onClose={onClose} label={t("investigation.closeMap")} className="-mr-1" />

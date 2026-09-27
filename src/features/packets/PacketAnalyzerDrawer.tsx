@@ -40,11 +40,12 @@ interface PacketAnalyzerDrawerProps {
   onViewObserver?: (id: string) => void;
   loading?: boolean;
   requireSelectedObservation?: boolean;
+  syncUrl?: boolean;
 }
 
 // side panel (full-screen on mobile) showing packet structure and payload breakdown
 
-export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, onViewPath, onViewObserver, loading, requireSelectedObservation = false }: PacketAnalyzerDrawerProps) {
+export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, onViewPath, onViewObserver, loading, requireSelectedObservation = false, syncUrl = true }: PacketAnalyzerDrawerProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
 
@@ -53,15 +54,15 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
 
   // drop ?analyze so a reload doesn't reopen the drawer; ?hash stays, leaving the row expanded
   const handleClose = useCallback(() => {
-    setSearchParams((p) => {
+    if (syncUrl) setSearchParams((p) => {
       const n = new URLSearchParams(p);
       n.delete("analyze");
       return n;
     }, { replace: true });
     onClose();
-  }, [setSearchParams, onClose]);
+  }, [setSearchParams, onClose, syncUrl]);
 
-  const urlMatches = detail != null && searchParams.get("hash")?.toLowerCase() === detail.packetHash.toLowerCase();
+  const urlMatches = syncUrl && detail != null && searchParams.get("hash")?.toLowerCase() === detail.packetHash.toLowerCase();
   const selectionParams = requireSelectedObservation && selectedObservationId != null ? new URLSearchParams({ observation: String(selectedObservationId) }) : urlMatches ? searchParams : new URLSearchParams();
   const { selected: selectedObs, unavailable } = reportSelection(detail?.observations ?? [], selectionParams, selectedObservationId);
   const selectReport = (id: number) => {

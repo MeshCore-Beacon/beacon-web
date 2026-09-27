@@ -286,7 +286,8 @@
       "recording": "Loading observer…",
       "hour": "hour",
       "day": "day",
-      "trafficUnknown": "Packet freshness unavailable"
+      "trafficUnknown": "Packet freshness unavailable",
+      "returnTo": "Back to {{page}}"
     },
     "observerCompare": {
       "open": "Compare with…",
@@ -348,7 +349,10 @@
       "last": "Last",
       "span": "Reported span",
       "showAll": "Show all {{count}} path groups",
-      "fewer": "Show fewer paths"
+      "fewer": "Show fewer paths",
+      "nodeDialog": "Node detail",
+      "packetDialog": "Packet analyzer",
+      "closeObserver": "Close observer details"
     },
     "routeEvidence": {
       "title": "Retained reports",

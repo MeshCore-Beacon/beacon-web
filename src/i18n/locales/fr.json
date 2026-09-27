@@ -290,7 +290,8 @@
       "recording": "Chargement de l’observateur…",
       "hour": "heure",
       "day": "jour",
-      "trafficUnknown": "Fraîcheur des paquets inconnue"
+      "trafficUnknown": "Fraîcheur des paquets inconnue",
+      "returnTo": "Retour à « {{page}} »"
     },
     "observerCompare": {
       "open": "Comparer avec…",
@@ -352,7 +353,10 @@
       "last": "Dernier",
       "span": "Intervalle signalé",
       "showAll": "Afficher les {{count}} groupes de trajets",
-      "fewer": "Afficher moins de trajets"
+      "fewer": "Afficher moins de trajets",
+      "nodeDialog": "Détails du nœud",
+      "packetDialog": "Analyseur de paquets",
+      "closeObserver": "Fermer les détails de l’observateur"
     },
     "routeEvidence": {
       "title": "Rapports conservés",
