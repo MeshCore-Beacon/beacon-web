@@ -319,7 +319,9 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
         onRestore={handleViewPath}
       />
       <AppShell activeTab={observerVisit ? "Observers" : activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
-        <div hidden={!!observerVisit} className={`${observerVisit ? "hidden" : "flex"} relative flex-1 min-h-0`}>
+        <div className="relative flex flex-1 min-h-0 min-w-0">
+        {/* Preserve measurable geometry: display:none makes virtualized lists lose their offset. */}
+        <div aria-hidden={observerVisit ? true : undefined} inert={!!observerVisit} className={`${observerVisit ? "invisible absolute inset-0 pointer-events-none" : "relative"} flex flex-1 min-h-0 min-w-0`}>
           <div key={activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
             <Suspense fallback={<TabLoading tab={activeTab} />}>
               {tabContent[activeTab]}
@@ -349,6 +351,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
           {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onObserverDashboard={handleViewObserverStats} />)}
         </div>
         {observerVisit && <Routes location={observerVisit}><Route path="*" element={<ObserverPage wsManager={wsManager} onReturn={onReturn} returnLabel={t(`tabs.${activeTab}`)} />} /></Routes>}
+        </div>
       </AppShell>
     </RegionProvider>
   );
