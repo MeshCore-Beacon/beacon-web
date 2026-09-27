@@ -22,12 +22,13 @@ const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRan
 
 interface StatsOverviewProps {
   wsManager: WsManager;
+  onObserverDashboard?: (id: string) => void;
 }
 
 // Stats page shell: an analytics sub-header and range over the active
 // sub-tab. Sub-tab, range, and selected observer live in the URL (?statsTab/?range/?observerId) so the
 // view is shareable; replace:true keeps it out of history. Queries are cached, so switching is instant.
-export function StatsOverview({ wsManager }: StatsOverviewProps) {
+export function StatsOverview({ wsManager, onObserverDashboard }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
   const tab = asTab(params.get("statsTab"));
   const range = asRange(params.get("range"));
@@ -51,7 +52,10 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
 
   const handleTab = useCallback((t: StatsTab) => patch({ statsTab: t }), [patch]);
   const handleRange = useCallback((r: StatsRange) => patch({ range: r }), [patch]);
-  const handleSelectObserver = useCallback((id: string) => setParams(observerDestination(params, id)), [params, setParams]);
+  const handleSelectObserver = useCallback((id: string) => {
+    if (onObserverDashboard) onObserverDashboard(id);
+    else setParams(observerDestination(params, id));
+  }, [onObserverDashboard, params, setParams]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { formatCount } from "../../lib/formatters";
 import { useChartColors, nodeTypeColor } from "./chartTheme";
 import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
@@ -35,6 +36,7 @@ interface MeshTabProps {
 }
 
 export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
+  const { t } = useTranslation();
   const colors = useChartColors();
   useLiveOverview(wsManager);
   const overview = useStatsOverview();
@@ -141,7 +143,17 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* range-driven charts lead the grid; the all-time ones follow below */}
-        <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
+        <div className="min-w-0">
+          <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
+          {observerRows.length > 0 && <details className="mt-2 text-sm">
+            <summary className="cursor-pointer text-primary">{t("investigation.observerList")}</summary>
+            <ul className="mt-1 space-y-1">{observerRows.map((row, index) => <li key={observerIds[index]}>
+              <button type="button" className="flex min-h-9 w-full justify-between gap-3 rounded border border-border px-2 py-1 text-left text-text-normal hover:bg-bg-raised" onClick={() => observerEvents.click({ dataIndex: index })}>
+                <span className="truncate">{row.name}</span><span className="tabular-nums">{formatCount(row.value)}</span>
+              </button>
+            </li>)}</ul>
+          </details>}
+        </div>
         <ChartCard
           title={<>Payload types · {range}</>}
           right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadData === undefined ? undefined : payloadTotal)} obs</span>}

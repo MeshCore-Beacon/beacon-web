@@ -274,7 +274,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
   }, [dropSelectionParam, setSelectedNodeId]);
 
   const handleViewObserverStats = useCallback((id: string) => {
-    dashboardFocus.current = document.activeElement as HTMLElement | null;
+    dashboardFocus.current = document.activeElement !== document.body ? document.activeElement as HTMLElement | null : null;
     onObserverDashboard(id);
   }, [onObserverDashboard]);
 
@@ -303,7 +303,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
     Traces: <TraceList onAnalyze={hash => { if (hash) viewPacket(hash); }} onViewNode={viewNode} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
-    Analytics: <StatsOverview wsManager={wsManager} />,
+    Analytics: <StatsOverview wsManager={wsManager} onObserverDashboard={handleViewObserverStats} />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
   };
 

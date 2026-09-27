@@ -353,7 +353,8 @@
       "fewer": "Show fewer paths",
       "nodeDialog": "Node detail",
       "packetDialog": "Packet analyzer",
-      "closeObserver": "Close observer details"
+      "closeObserver": "Close observer details",
+      "observerList": "Inspect an observer"
     },
     "routeEvidence": {
       "title": "Retained reports",

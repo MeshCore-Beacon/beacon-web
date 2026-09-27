@@ -44,6 +44,16 @@ function mount(range: StatsRange = "24h") {
 }
 async function loaded() { await waitFor(() => expect(screen.getAllByTestId("chart")).toHaveLength(6)); await screen.findByText("#old"); }
 
+it("offers an observer button alongside the canvas leaderboard", async () => {
+  const { onSelectObserver } = mount(); await loaded();
+  fireEvent.click(screen.getByText("Inspect an observer"));
+  const button = screen.getByRole("button", { name: /^Old observer/ });
+  button.focus();
+  expect(button).toHaveFocus();
+  fireEvent.click(button);
+  expect(onSelectObserver).toHaveBeenCalledWith("observer-id");
+});
+
 it("hides all previous-region values and sparklines until their own requests resolve", async () => {
   const { rerender, container } = mount(); await loaded();
   const next = deferred<StatsOverview>();

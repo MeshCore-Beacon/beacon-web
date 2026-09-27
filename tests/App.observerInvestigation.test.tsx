@@ -21,7 +21,20 @@ vi.mock("../src/features/routes/RouteTable", () => ({ RouteTable: ({ onViewObser
   return <div data-testid="route-origin"><input aria-label="Route filter" value={filter} onChange={e => setFilter(e.target.value)} /><output data-testid="origin-url">{params.toString()}</output><div data-testid="route-scroll" style={{ height: 80, overflow: "auto" }}><div style={{ height: 1000 }}>Routes</div></div><button onClick={() => onViewObserver("o1")}>Route observer</button><button onClick={() => onAnalyzePacket("aa", 7)}>Route packet</button><button onClick={() => onViewNode("n1")}>Route node</button></div>;
 } }));
 vi.mock("../src/features/observers/ObserverTable", () => ({ ObserverTable: () => <p>Observer directory</p> }));
+vi.mock("../src/features/stats/MeshTab", () => ({ MeshTab: ({ onSelectObserver }: { onSelectObserver: (id: string) => void }) => {
+  const [value, setValue] = useState("");
+  return <><input aria-label="Analytics local state" value={value} onChange={e => setValue(e.target.value)} /><button onClick={() => onSelectObserver("o1")}>Leaderboard observer</button></>;
+} }));
 vi.mock("../src/features/stats/ObserverTab", () => ({ ObserverTab: ({ selectedObserverId, range }: { selectedObserverId: string; range: string }) => <h1>Dashboard {selectedObserverId} {range}</h1> }));
+// Exercise the real analytics shell without loading charts unrelated to its observer action.
+vi.mock("../src/features/stats/TrafficTab", () => ({ TrafficTab: () => null }));
+vi.mock("../src/features/stats/SignalTab", () => ({ SignalTab: () => null }));
+vi.mock("../src/features/stats/PathsTab", () => ({ PathsTab: () => null }));
+vi.mock("../src/features/stats/ScopesTab", () => ({ ScopesTab: () => null }));
+vi.mock("../src/features/stats/TalkersTab", () => ({ TalkersTab: () => null }));
+vi.mock("../src/features/stats/ClockDriftTab", () => ({ ClockDriftTab: () => null }));
+vi.mock("../src/features/stats/CompareObserversTab", () => ({ CompareObserversTab: () => null }));
+vi.mock("../src/features/stats/NeighbourGraphTab", () => ({ NeighbourGraphTab: () => null }));
 vi.mock("../src/features/observers/ObserverDetailPanel", () => ({ ObserverDetailPanel: ({ observerId, onClose, onViewStats, onAnalyzePacket }: { observerId: string; onClose: () => void; onViewStats: (id: string) => void; onAnalyzePacket: (hash: string) => void }) => <><h2>Observer {observerId}</h2><button onClick={onClose}>Close observer</button><button onClick={() => onViewStats(observerId)}>Open dashboard</button><button onClick={() => onAnalyzePacket("bb")}>Advert packet</button></> }));
 vi.mock("../src/features/nodes/NodeDetailPanel", () => ({ NodeDetailPanel: ({ nodeId, onClose, onViewObserver }: { nodeId: string; onClose: () => void; onViewObserver: (id: string) => void }) => <><h2>Node {nodeId}</h2><button onClick={onClose}>Close node</button><button onClick={() => onViewObserver("o1")}>Node observer</button></> }));
 vi.mock("../src/features/packets/usePacketDetail", () => ({ usePacketDetail: (hash: string | null) => ({ data: hash ? { packetHash: hash, observations: [], header: { payloadType: 1 } } as unknown as PacketDetail : undefined, isLoading: false }) }));
@@ -89,6 +102,18 @@ describe("observer investigation return", () => {
     await act(async () => { window.history.forward(); });
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1");
     await browserBack(); expect(screen.getByLabelText("Route filter")).toHaveValue("keep");
+  });
+  it("uses the same return flow for the Analytics observer leaderboard", async () => {
+    await import("../src/features/stats/StatsOverview");
+    window.history.replaceState({}, "", "/?tab=Analytics&statsTab=mesh&range=24h");
+    render(<App />);
+    fireEvent.change(await screen.findByLabelText("Analytics local state"), { target: { value: "keep analytics" } });
+    click("Leaderboard observer");
+    expect(await screen.findByRole("button", { name: "Back to Analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 24h");
+    click("Back to Analytics");
+    await waitFor(() => expect(window.location.search).toContain("statsTab=mesh"));
+    expect(screen.getByLabelText("Analytics local state")).toHaveValue("keep analytics");
   });
   it("does not invent a return destination for a reloaded/shared dashboard", async () => {
     window.history.replaceState({ usr: { beaconObserverReturnKey: "old" } }, "", "/?tab=Observers&observer=o2&range=24h");
