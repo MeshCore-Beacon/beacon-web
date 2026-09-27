@@ -66,9 +66,13 @@ describe("PacketPathMapModal", () => {
     expect(screen.getByTestId("mini-map")).toHaveTextContent("obs-bravo");
   });
 
-  it("falls back to All when initialSelectedKey isn't a known path", () => {
+  it("does not silently substitute all paths for an unavailable selected path", () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} initialSelectedKey="nope" />);
+    expect(screen.getByTestId("mini-map")).toHaveTextContent("nope");
+    expect(screen.getByRole("status")).toHaveTextContent("selected path cannot be mapped");
+    fireEvent.click(screen.getByText("All paths"));
     expect(screen.getByTestId("mini-map")).toHaveTextContent("all");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("renders a copy-link button", () => {

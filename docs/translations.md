@@ -9,7 +9,9 @@ region/theme controls, connection/retry labels, lazy-page loading, shared
 analytics section/range controls and chart states, and Traffic, RF / Signal, Paths & Hashes, Scopes and Clock Drift
 (headings, legends, descriptive chart labels, explanations and exact tables).
 Shared Timestamp labels and their relative tooltips also follow the selected
-language. Other feature pages and general dialogs remain follow-up work. Measurement units
+language. Packet reception-evidence controls and path-map controls explain retained
+reports, intended TRACE routes, unavailable selections and ambiguous/missing map
+locations in both languages. Packet bytes, identifiers and routing values stay unchanged. Other feature pages and general dialogs remain follow-up work. Measurement units
 and existing UTC/date/number formatting, including automatic chart time labels,
 are unchanged; selecting French does not mean every screen is translated yet.
 

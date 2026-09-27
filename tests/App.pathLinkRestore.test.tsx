@@ -20,6 +20,13 @@ beforeEach(() => getPacketDetail.mockReset());
 const detail = { packetHash: "AA11", observations: [] } as unknown as PacketDetail;
 
 describe("PathLinkRestore", () => {
+  it("never restores a different packet while the shared packet is still loading", async () => {
+    getPacketDetail.mockResolvedValue(detail);
+    const onRestore = vi.fn();
+    render(<PathLinkRestore initialPath="obs-alpha" hash="AA11" analyzerDetail={{ ...detail, packetHash: "BB22" }} onRestore={onRestore} />, { wrapper });
+    await waitFor(() => expect(onRestore).toHaveBeenCalledWith(detail, "obs-alpha"));
+    expect(onRestore).toHaveBeenCalledTimes(1);
+  });
   // Regression: PacketPathMapModal's Copy Link strips ?analyze, so a copied path link carries ?hash
   // without it — the popup can't rely on the analyzer drawer's fetch and needs its own.
   it("restores the path popup from ?hash&?path alone, with no ?analyze", async () => {

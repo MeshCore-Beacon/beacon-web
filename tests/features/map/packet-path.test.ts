@@ -26,9 +26,9 @@ describe("buildPacketPaths", () => {
     const hops = [hop("unknown", 0, 0), candidates, hop("end", -75, 0)];
     const ordinary = buildPacketPaths(detail([obs(1, hops)]));
     const trace = buildPacketPaths(detail([], { header: { payloadType: PayloadType.TRACE, routeType: 1 }, resolvedRoute: hops } as Partial<PacketDetail>));
-    for (const paths of [ordinary, trace]) {
-      expect(paths[0]!.points.map((p) => [p.lng, p.lat])).toEqual([[0, 45], [-75, 0]]);
-    }
+    expect(ordinary).toEqual([]); expect(trace).toEqual([]);
+    const valid = buildPacketPaths(detail([obs(1, [hop("start", 0, 45), hop("end", -75, 0)])]));
+    expect(valid[0].points.map(p => [p.lng, p.lat])).toEqual([[0, 45], [-75, 0]]);
     expect(buildPacketPaths(detail([obs(1, [hop("unknown", 0, 0), hop("one", -75, 45)])]))).toEqual([]);
   });
 
@@ -144,19 +144,18 @@ describe("buildPacketPaths", () => {
     expect(buildPacketPaths(d)).toEqual([]);
   });
 
-  it("uses the first located candidate for an ambiguous relay hop", () => {
+  it("does not turn the only located candidate into a resolved identity", () => {
     const multi: ResolvedHop = {
       confidence: "ambiguous",
       nodes: [
         { id: "unlocated", publicKey: "p0" }, // no coords — skipped
-        { id: "located", publicKey: "p1", longitude: -78, latitude: 44 }, // first with coords — used
+        { id: "located", publicKey: "p1", longitude: -78, latitude: 44 }, // location does not disambiguate identity
       ],
     };
     const d = detail([
       obs(1, [multi, hop("relay2", -77, 45)], { observerId: "obs-1", propagationTimeMs: 100 }),
     ]);
-    const [path] = buildPacketPaths(d);
-    expect(path!.points.map((p) => p.id)).toEqual(["located", "relay2"]);
+    expect(buildPacketPaths(d)).toEqual([]);
   });
 
   it("omits observations that resolve to fewer than 2 located hops", () => {

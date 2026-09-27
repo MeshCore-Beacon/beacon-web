@@ -117,11 +117,11 @@ export function PathLinkRestore({ initialPath, hash, analyzerDetail, onRestore }
   const handledRef = useRef(false);
 
   useEffect(() => {
-    const detail = analyzerDetail ?? pathLinkDetail;
+    const detail = analyzerDetail?.packetHash.toLowerCase() === hash?.toLowerCase() ? analyzerDetail : pathLinkDetail;
     if (!initialPath || !detail || handledRef.current) return;
     handledRef.current = true;
     onRestore(detail, initialPath);
-  }, [initialPath, analyzerDetail, pathLinkDetail, onRestore]);
+  }, [initialPath, hash, analyzerDetail, pathLinkDetail, onRestore]);
 
   return null;
 }
@@ -193,17 +193,17 @@ function AppInner() {
     setPathMapInitialKey(key);
   }, []);
 
-  // "View path on map" from anywhere that already holds a detail — no key, so the modal picks its own
-  const handleViewPath = useCallback((detail: PacketDetail) => {
+  // Reuse the fetched detail; a report action can isolate its observer's path.
+  const handleViewPath = useCallback((detail: PacketDetail, key?: string) => {
     setPathMapDetail(detail);
-    setPathMapInitialKey(null);
+    setPathMapInitialKey(key ?? null);
   }, []);
 
   const handleAnalyze = useCallback((hash: string | null) => {
     // No reset: observation ids are globally unique, so a pick inside an expanded row survives into the drawer.
     setSearchParams((p) => {
       const n = new URLSearchParams(p);
-      if (hash) { n.set("hash", hash); n.set("analyze", "1"); n.delete("path"); }
+      if (hash) { if (n.get("hash") !== hash) n.delete("observation"); n.set("hash", hash); n.set("analyze", "1"); n.delete("path"); }
       else n.delete("analyze");
       return n;
     }, { replace: true });
@@ -329,7 +329,8 @@ function AppInner() {
               onSelectObservation={setSelectedObservationId}
               onClose={() => handleAnalyze(null)}
               onViewNode={setOverlayNodeId}
-              onViewPath={() => { if (analyzerDetail) handleViewPath(analyzerDetail); }}
+              onViewObserver={setQuickObserverId}
+              onViewPath={(key) => { if (analyzerDetail) handleViewPath(analyzerDetail, key); }}
             />
           )}
           {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
@@ -362,7 +363,7 @@ function AppInner() {
               onViewObserver={(observerId) => {
                 setQuickObserverId(observerId);
               }}
-              onViewPath={() => { if (overlayPacketDetail) handleViewPath(overlayPacketDetail); }}
+              onViewPath={(key) => { if (overlayPacketDetail) handleViewPath(overlayPacketDetail, key); }}
               inactive={!!pathMapDetail || !!quickObserverId}
             />
           )}

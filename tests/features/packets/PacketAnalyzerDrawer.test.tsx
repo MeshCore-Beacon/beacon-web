@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import i18n from "../../../src/i18n";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { PacketAnalyzerDrawer } from "../../../src/features/packets/PacketAnalyzerDrawer";
 import type { PacketDetail } from "../../../src/types/api";
@@ -27,6 +28,39 @@ describe("PacketAnalyzerDrawer close", () => {
     expect(search).not.toContain("analyze=");
     expect(search).toContain("hash=abc123"); // row stays expanded
     expect(search).toContain("tab=Packets"); // other params survive
+  });
+});
+
+describe("packet reception evidence", () => {
+  const reports = () => {
+    const d = makeDetail([hop("a", -79, 43), hop("b", -75, 45)]);
+    d.observations[0].pathBytes = "aabb";
+    d.observations[0].observerName = "Alpha";
+    d.observations.push({ ...d.observations[0], id: 2, observerId: "beta", observerName: "Beta" });
+    return d;
+  };
+  it("restores a shared report and targets its observer and map", () => {
+    const onViewObserver = vi.fn(); const onViewPath = vi.fn();
+    render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=2&q=keep"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewObserver={onViewObserver} onViewPath={onViewPath} /><LocationProbe /></MemoryRouter>);
+    const section = screen.getByRole("region", { name: "Reception evidence" });
+    fireEvent.click(within(section).getByText("Path 1"));
+    const beta = within(section).getByText(/Beta/).closest("li")!;
+    expect(within(beta).getByRole("button", { name: "Inspect report" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta");
+    fireEvent.click(within(beta).getByRole("button", { name: "Map report" })); expect(onViewPath).toHaveBeenCalledWith("beta");
+    expect(screen.getByTestId("search")).toHaveTextContent("observation=2"); expect(screen.getByTestId("search")).toHaveTextContent("q=keep");
+  });
+  it("reports an expired selection without quietly showing another report", () => {
+    render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=99"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
+    expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
+  });
+  it("explains TRACE and missing-report semantics in French", async () => {
+    const d = reports(); d.header.payloadType = PayloadType.TRACE; d.observations = [];
+    await i18n.changeLanguage("fr");
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByRole("region", { name: "Rapports de réception" })).toHaveTextContent("itinéraire prévu");
+    expect(screen.getByText("Aucun rapport conservé pour ce paquet.")).toBeInTheDocument();
   });
 });
 

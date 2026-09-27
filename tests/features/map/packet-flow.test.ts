@@ -27,18 +27,20 @@ describe("packetChain", () => {
 });
 
 describe("resolvedPathNodes", () => {
-  it("returns each hop's first located node as {id,lng,lat}, deduped, in order", () => {
+  it("suppresses an animation when a gap would invent a link", () => {
     const path: ResolvedHop[] = [hop("a", -75, 45), { confidence: "none", nodes: [] }, hop("a", -75, 45), hop("b", -76, 46)];
-    expect(resolvedPathNodes(path)).toEqual([{ id: "a", lng: -75, lat: 45 }, { id: "b", lng: -76, lat: 46 }]);
+    expect(resolvedPathNodes(path)).toEqual([]);
+    expect(resolvedPathNodes([hop("a", -75, 45), hop("a", -75, 45), hop("b", -76, 46)])).toEqual([{ id: "a", lng: -75, lat: 45 }, { id: "b", lng: -76, lat: 46 }]);
   });
 
   it("skips hops with no located candidate", () => {
     expect(resolvedPathNodes([{ confidence: "ambiguous", nodes: [{ id: "x", publicKey: "pk" }] }])).toEqual([]);
   });
 
-  it("skips reset/invalid candidates and still finds a usable candidate", () => {
+  it("rejects reset/invalid and ambiguous locations while accepting valid zero axes", () => {
     const candidates: ResolvedHop = { confidence: "ambiguous", nodes: [...hop("reset", 0, 0).nodes, ...hop("invalid", 10, 91).nodes, ...hop("valid", 0, 45).nodes] };
-    expect(resolvedPathNodes([hop("unknown", 0, 0), candidates, hop("bad", Infinity, 10)])).toEqual([{ id: "valid", lng: 0, lat: 45 }]);
+    expect(resolvedPathNodes([hop("unknown", 0, 0), candidates, hop("bad", Infinity, 10)])).toEqual([]);
+    expect(resolvedPathNodes([hop("valid", 0, 45)])).toEqual([{ id: "valid", lng: 0, lat: 45 }]);
   });
 });
 

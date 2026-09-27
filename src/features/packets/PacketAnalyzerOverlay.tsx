@@ -11,7 +11,7 @@ export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver
   loading?: boolean;
   onClose: () => void;
   onViewObserver: (observerId: string) => void;
-  onViewPath?: () => void;
+  onViewPath?: (key?: string) => void;
   inactive?: boolean;
 }) {
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
@@ -37,6 +37,7 @@ export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver
           onSelectObservation={setSelectedObservationId}
           onClose={onClose}
           onViewNode={setViewNodeId}
+          onViewObserver={onViewObserver}
           onViewPath={onViewPath}
         />
       </ModalOverlay>

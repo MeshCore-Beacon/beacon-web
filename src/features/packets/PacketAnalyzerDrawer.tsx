@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CloseButton } from "../../components/CloseButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import type { PacketDetail } from "../../types/api";
@@ -15,6 +16,8 @@ import { PayloadBreakdown } from "./payload-renderers";
 import { ObservationCard } from "./ObservationCard";
 import { PathData } from "./PathData";
 import { buildPacketPaths } from "../map/packet-path";
+import { PacketInvestigation } from "./PacketInvestigation";
+import { reportSelection } from "./packet-investigation";
 
 function decodePayloadHex(encoded: string): string | null {
   try {
@@ -33,16 +36,19 @@ interface PacketAnalyzerDrawerProps {
   onClose: () => void;
   onSelectObservation?: (id: number) => void;
   onViewNode?: (nodeId: string) => void;
-  onViewPath?: () => void;
+  onViewPath?: (key?: string) => void;
+  onViewObserver?: (id: string) => void;
   loading?: boolean;
 }
 
 // side panel (full-screen on mobile) showing packet structure and payload breakdown
 
-export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, onViewPath, loading }: PacketAnalyzerDrawerProps) {
-  const [, setSearchParams] = useSearchParams();
+export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, onSelectObservation, onViewNode, onViewPath, onViewObserver, loading }: PacketAnalyzerDrawerProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation();
 
   const hasPath = useMemo(() => (detail ? buildPacketPaths(detail).length > 0 : false), [detail]);
+  const observerCount = new Set(detail?.observations.map(o => o.observerId)).size;
 
   // drop ?analyze so a reload doesn't reopen the drawer; ?hash stays, leaving the row expanded
   const handleClose = useCallback(() => {
@@ -54,11 +60,14 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
     onClose();
   }, [setSearchParams, onClose]);
 
-  const selectedObs = detail?.observations.find((o) => o.id === selectedObservationId)
-    ?? detail?.observations[0]
-    ?? null;
+  const urlMatches = detail != null && searchParams.get("hash")?.toLowerCase() === detail.packetHash.toLowerCase();
+  const { selected: selectedObs, unavailable } = reportSelection(detail?.observations ?? [], urlMatches ? searchParams : new URLSearchParams(), selectedObservationId);
+  const selectReport = (id: number) => {
+    if (urlMatches) setSearchParams(prev => { const next = new URLSearchParams(prev); next.set("observation", String(id)); return next; }, { replace: true });
+    onSelectObservation?.(id);
+  };
 
-  const rawHex = detail ? buildObservationFrame(detail, selectedObs) : "";
+  const rawHex = detail && !unavailable ? buildObservationFrame(detail, selectedObs) : "";
   const totalBytes = rawHex.length / 2;
 
   const fieldRanges = detail
@@ -72,7 +81,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">Packet Analyzer</span>
         <div className="flex items-center gap-1.5">
-          {detail && <CopyLinkButton params={{ tab: "Packets", hash: detail.packetHash, analyze: "1" }} ariaLabel="Copy packet link" />}
+          {detail && <CopyLinkButton params={() => ({ tab: "Packets", hash: detail.packetHash, analyze: "1", path: null, node: null, observer: null, observerId: null, statsTab: null, compareWith: null, compareUntil: null, observation: selectedObs ? String(selectedObs.id) : null })} label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("investigation.copyPacket")} />}
           <CloseButton onClose={handleClose} label="Close analyzer" className="-mr-1" />
         </div>
       </div>
@@ -99,39 +108,42 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 </Badge>
                 {detail.scope && <ScopeTag>{detail.scope}</ScopeTag>}
                 <Tooltip
-                  label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                  label={t("investigation.reportedBy", { count: observerCount })}
                   className="ml-auto"
                 >
                   <span
                     className="font-mono text-[13px] text-primary font-semibold bg-primary/6 px-1.5 rounded-sm"
-                    aria-label={`Heard by ${detail.observations.length} observer${detail.observations.length === 1 ? "" : "s"}`}
+                    aria-label={t("investigation.reportedBy", { count: observerCount })}
                   >
-                    ×{detail.observations.length}
+                    ×{observerCount}
                   </span>
                 </Tooltip>
               </div>
               <div className="flex items-center gap-3 text-[13px] font-mono">
-                <span><span className="text-text-dim">First </span><Timestamp value={detail.firstHeardAt} className="text-text-normal" /></span>
+                <span><span className="text-text-dim">{t("investigation.first")} </span><Timestamp value={detail.firstHeardAt} className="text-text-normal" /></span>
                 <span className="text-[6px] text-border" aria-hidden>·</span>
-                <span><span className="text-text-dim">Last </span><Timestamp value={detail.lastHeardAt} className="text-text-normal" /></span>
+                <span><span className="text-text-dim">{t("investigation.last")} </span><Timestamp value={detail.lastHeardAt} className="text-text-normal" /></span>
                 <span className="text-[6px] text-border" aria-hidden>·</span>
-                <span><span className="text-text-dim">Propagation </span><span className="text-text-normal">{formatPropagation(detail.firstToLastMs)}</span></span>
+                <span><span className="text-text-dim">{t("investigation.span")} </span><span className="text-text-normal">{formatPropagation(detail.firstToLastMs)}</span></span>
               </div>
             </DrawerSection>
+
+            {unavailable && <p role="alert" className="px-3 py-2 text-sm text-warn">{t("investigation.unavailableReport")}</p>}
+            <PacketInvestigation detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} />
 
             <div className="px-3 py-2 border-b border-border-subtle">
               <button
                 type="button"
-                onClick={onViewPath}
+                onClick={() => onViewPath?.()}
                 disabled={!hasPath || !onViewPath}
-                title={hasPath ? undefined : "No resolved path to map"}
+                title={hasPath ? undefined : t("investigation.unmappable")}
                 className="w-full flex items-center justify-center gap-1.5 rounded border border-border bg-bg-base px-3 py-1.5 text-[13px] font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
                   <path d="M9 5l-6 2v12l6-2 6 2 6-2V5l-6 2-6-2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
                   <path d="M9 5v12M15 7v12" stroke="currentColor" strokeWidth="1.4" />
                 </svg>
-                View path on map
+                {t("investigation.viewAll")}
               </button>
             </div>
 
@@ -149,7 +161,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                       key={obs.id}
                       observation={obs}
                       selected={selectedObs?.id === obs.id}
-                      onClick={onSelectObservation ? () => onSelectObservation(obs.id) : undefined}
+                      onClick={() => selectReport(obs.id)}
                       onViewNode={onViewNode}
                       isTrace={detail.header.payloadType === PayloadType.TRACE}
                     />

@@ -1,14 +1,14 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { PacketDetail, Observation, ResolvedHop } from "../../types/api";
 import { PayloadType } from "../../types/enums";
-import { packetChain } from "./packet-flow";
-import { hasMapLocation } from "./location";
+import { packetChain, locatedHopNode } from "./packet-flow";
 
 export interface PathPoint {
   id: string;
   name?: string;
   lng: number;
   lat: number;
+  breakBefore?: boolean;
 }
 
 export interface PacketPath {
@@ -32,17 +32,19 @@ export const PATH_COLORS: string[] = [
   "#a78bfa", // violet
 ];
 
-// The located nodes on a resolved path — first candidate per hop that has coords, deduped by id, in
-// order. Modelled on resolvedPathNodes() in packet-flow.ts, but keeps each node's name for labels.
+// Keep known locations, but break lines at ambiguous/unlocated hops instead of inventing a link.
 function pathPoints(hops: ResolvedHop[]): PathPoint[] {
   const seen = new Set<string>();
   const out: PathPoint[] = [];
+  let gap = false;
   for (const hop of hops) {
-    const node = hop.nodes.find((n) => hasMapLocation({ lat: n.latitude, lng: n.longitude }));
-    if (node && !seen.has(node.id)) {
+    const node = locatedHopNode(hop);
+    if (!node) { gap = true; continue; }
+    if (!seen.has(node.id)) {
       seen.add(node.id);
-      out.push({ id: node.id, name: node.name, lng: node.longitude!, lat: node.latitude! });
-    }
+      out.push({ id: node.id, name: node.name, lng: node.longitude!, lat: node.latitude!, ...(gap && out.length ? { breakBefore: true } : {}) });
+      gap = false;
+    } else if (out.at(-1)?.id !== node.id) gap = true;
   }
   return out;
 }
@@ -66,7 +68,7 @@ export function buildPacketPaths(detail: PacketDetail): PacketPath[] {
   // lines would just duplicate the single "Trace route" below — draw only that one for traces.
   if (!isTrace) {
     for (const obs of detail.observations) {
-      // full chain: source → relay hops → destination; missing/unlocated hops drop out in pathPoints.
+      // Full chain: source → relay hops → destination, with gaps retained by pathPoints.
       const chain = packetChain(obs.resolvedSource, obs.resolvedPath, obs.resolvedDestination);
       add(obs.observerId, observerLabel(obs), obs.propagationTimeMs, pathPoints(chain));
     }
@@ -105,11 +107,16 @@ export function packetPathsToFeatures(
   const bounds: [number, number][] = [];
 
   for (const path of shown) {
-    lines.push({
-      type: "Feature",
-      properties: { key: path.key, color: path.color },
-      geometry: { type: "LineString", coordinates: path.points.map((p) => [p.lng, p.lat]) },
-    });
+    let segment: [number, number][] = [];
+    const finishSegment = () => {
+      if (segment.length > 1) lines.push({ type: "Feature", properties: { key: path.key, color: path.color }, geometry: { type: "LineString", coordinates: segment } });
+      segment = [];
+    };
+    for (const point of path.points) {
+      if (point.breakBefore) finishSegment();
+      segment.push([point.lng, point.lat]);
+    }
+    finishSegment();
     path.points.forEach((pt, i) => {
       const endpoint = i === 0 ? "start" : i === path.points.length - 1 ? "end" : "mid";
       points.push({

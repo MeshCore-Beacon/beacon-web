@@ -8,8 +8,8 @@ import { hasMapLocation } from "./location";
 // The full chain for one observation: source → relay hops → destination. Both maps plot one marker
 // per hop, so an ambiguous endpoint (a 1-byte prefix matching several candidate nodes) would force
 // us to guess which node actually sent or received the packet — only plot endpoints the backend
-// resolved unambiguously. Relay hops carry no such gate; they fall back to their first located
-// candidate. WS types the endpoints nullable where REST leaves them optional, hence both here.
+// resolved unambiguously. Rendering also checks relay confidence and location. WS types the
+// endpoints nullable where REST leaves them optional, hence both here.
 export function packetChain(
   source: ResolvedHop | null | undefined,
   path: ResolvedHop[],
@@ -19,14 +19,20 @@ export function packetChain(
   return [confident(source), ...path, confident(destination)].filter((hop): hop is ResolvedHop => hop != null);
 }
 
-// The located nodes on a packet's resolved path — first candidate per hop, deduped by id. The dot
-// rides these coords and flashes each node as it crosses.
+export function locatedHopNode(hop: ResolvedHop) {
+  if (hop.confidence !== "high" || hop.nodes.length !== 1) return undefined;
+  const node = hop.nodes[0]!;
+  return hasMapLocation({ lat: node.latitude, lng: node.longitude }) ? node : undefined;
+}
+
+// Animate only a completely located, unambiguous chain; skipping a hop would invent a link.
 export function resolvedPathNodes(resolvedPath: ResolvedHop[]): { id: string; lng: number; lat: number }[] {
   const seen = new Set<string>();
   const out: { id: string; lng: number; lat: number }[] = [];
   for (const hop of resolvedPath) {
-    const node = hop.nodes.find((n) => hasMapLocation({ lat: n.latitude, lng: n.longitude }));
-    if (node && !seen.has(node.id)) {
+    const node = locatedHopNode(hop);
+    if (!node) return [];
+    if (!seen.has(node.id)) {
       seen.add(node.id);
       out.push({ id: node.id, lng: node.longitude!, lat: node.latitude! });
     }

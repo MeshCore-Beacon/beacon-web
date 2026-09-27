@@ -87,6 +87,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
     const next = expandedHash === hash ? null : hash;
     setSearchParams((p) => {
       const n = new URLSearchParams(p);
+      n.delete("observation");
       if (next) n.set("hash", next); else n.delete("hash");
       return n;
     }, { replace: true });
