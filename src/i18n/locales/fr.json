@@ -322,7 +322,7 @@
       "reports_other": "{{count}} rapports conservés",
       "observers_one": "{{count}} observateur déclarant",
       "observers_other": "{{count}} observateurs déclarants",
-      "pathNote": "Les rapports sont regroupés par préfixes enregistrés et largeur d’empreinte. Des préfixes égaux ne prouvent pas un même trajet physique; examinez les identités candidates de chaque rapport.",
+      "pathNote": "Regroupement par préfixes et largeur d’empreinte, pas par trajets physiques confirmés. Examinez les identités candidates de chaque rapport.",
       "traceNote": "Les entrées TRACE décrivent l’itinéraire prévu, pas un trajet de réception mesuré. Examinez les mesures de trace séparément.",
       "empty": "Aucun rapport conservé pour ce paquet.",
       "path": "Trajet {{number}}",
@@ -350,7 +350,9 @@
       "reportedBy_other": "Signalé par {{count}} observateurs",
       "first": "Premier",
       "last": "Dernier",
-      "span": "Intervalle signalé"
+      "span": "Intervalle signalé",
+      "showAll": "Afficher les {{count}} groupes de trajets",
+      "fewer": "Afficher moins de trajets"
     }
   }
 }

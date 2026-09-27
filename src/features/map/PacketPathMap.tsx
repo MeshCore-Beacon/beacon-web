@@ -111,7 +111,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     if (!map.getLayer(NODE_LABEL_LAYER)) {
       map.addLayer({
         id: NODE_LABEL_LAYER, type: "symbol", source: NODE_SOURCE,
-        layout: { "text-field": ["get", "label"], "text-size": 11, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true },
+        layout: { "text-field": ["get", "label"], "text-font": ["Noto Sans Regular"], "text-size": 11, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true },
         paint: {
           "text-color": paletteVar("--palette-text-bright", "#e5e7eb"),
           "text-halo-color": paletteVar("--palette-bg-base", "#0a0a0a"),

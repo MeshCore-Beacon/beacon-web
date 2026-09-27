@@ -318,7 +318,7 @@
       "reports_other": "{{count}} retained reports",
       "observers_one": "{{count}} reporting observer",
       "observers_other": "{{count}} reporting observers",
-      "pathNote": "Reports are grouped by recorded path prefixes and hash width. Equal prefixes do not prove the same physical route; inspect each report for its candidate identities.",
+      "pathNote": "Grouped by path prefixes and hash width, not confirmed physical routes. Inspect each report for candidate identities.",
       "traceNote": "TRACE entries describe the intended route, not a measured reception path. Inspect the trace readings separately.",
       "empty": "No retained reports for this packet.",
       "path": "Path {{number}}",
@@ -346,7 +346,9 @@
       "reportedBy_other": "Reported by {{count}} observers",
       "first": "First",
       "last": "Last",
-      "span": "Reported span"
+      "span": "Reported span",
+      "showAll": "Show all {{count}} path groups",
+      "fewer": "Show fewer paths"
     }
   }
 }

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
 import type { PacketDetail } from "../../types/api";
@@ -17,13 +17,15 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
   const mapped = useMemo(() => new Set(buildPacketPaths(detail).map(p => p.key)), [detail]);
   const observerCount = new Set(detail.observations.map(o => o.observerId)).size;
   const isTrace = detail.header.payloadType === PayloadType.TRACE;
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? groups : groups.filter((group, index) => index < 3 || group.reports.some(o => o.id === selectedId));
   return <section aria-label={t("investigation.title")} className="space-y-3 border-b border-border-subtle px-3 py-3">
     <h2 className="text-sm font-semibold text-text-bright">{t("investigation.title")}</h2>
     <p className="text-xs text-text-normal">{t("investigation.reports", { count: detail.observations.length })} · {t("investigation.observers", { count: observerCount })}</p>
     <p className="text-xs leading-relaxed text-text-muted">{t(isTrace ? "investigation.traceNote" : "investigation.pathNote")}</p>
-    {groups.length === 0 ? <p role="status" className="text-sm text-text-muted">{t("investigation.empty")}</p> : groups.map((group, i) => <details key={group.key} className="rounded border border-border bg-bg-base p-2">
+    {groups.length === 0 ? <p role="status" className="text-sm text-text-muted">{t("investigation.empty")}</p> : visible.map(group => <details key={group.key} open={group.reports.some(o => o.id === selectedId)} className="rounded border border-border bg-bg-base p-2">
       <summary className="cursor-pointer text-xs text-text-normal">
-        {t(group.kind === "empty" ? "investigation.noEntries" : group.kind === "unavailable" ? "investigation.unavailablePath" : isTrace ? "investigation.tracePath" : "investigation.path", { number: i + 1 })}
+        {t(group.kind === "empty" ? "investigation.noEntries" : group.kind === "unavailable" ? "investigation.unavailablePath" : isTrace ? "investigation.tracePath" : "investigation.path", { number: groups.indexOf(group) + 1 })}
         <span className="ml-2 text-text-muted">({t("investigation.reports", { count: group.reports.length })})</span>
         {group.hashes.length > 0 && <code className="mt-1 block break-all text-primary">{group.hashes.join(" → ")}</code>}
       </summary>
@@ -41,6 +43,7 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
         </li>;
       })}</ul>
     </details>)}
+    {groups.length > 3 && <button type="button" className={actionClass} onClick={() => setShowAll(value => !value)}>{t(showAll ? "investigation.fewer" : "investigation.showAll", { count: groups.length })}</button>}
     <p className="text-xs leading-relaxed text-text-muted">{t("investigation.retention")}</p>
   </section>;
 }

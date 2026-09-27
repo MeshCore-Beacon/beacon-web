@@ -43,7 +43,7 @@ describe("packet reception evidence", () => {
     const onViewObserver = vi.fn(); const onViewPath = vi.fn();
     render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=2&q=keep"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewObserver={onViewObserver} onViewPath={onViewPath} /><LocationProbe /></MemoryRouter>);
     const section = screen.getByRole("region", { name: "Reception evidence" });
-    fireEvent.click(within(section).getByText("Path 1"));
+    expect(within(section).getByText("Path 1").closest("details")).toHaveAttribute("open");
     const beta = within(section).getByText(/Beta/).closest("li")!;
     expect(within(beta).getByRole("button", { name: "Inspect report" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta");
@@ -61,6 +61,16 @@ describe("packet reception evidence", () => {
     render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
     expect(screen.getByRole("region", { name: "Rapports de réception" })).toHaveTextContent("itinéraire prévu");
     expect(screen.getByText("Aucun rapport conservé pour ce paquet.")).toBeInTheDocument();
+  });
+  it("keeps a later selected path visible while bounding the initial list", () => {
+    const d = reports();
+    d.observations = Array.from({ length: 12 }, (_, i) => ({ ...d.observations[0], id: i + 1, observerId: `observer-${i}`, pathBytes: i.toString(16).padStart(4, "0") }));
+    render(<MemoryRouter initialEntries={["/?hash=abcdef12&analyze=1&observation=12"]}><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const section = screen.getByRole("region", { name: "Reception evidence" });
+    expect(within(section).getByText("Path 12").closest("details")).toHaveAttribute("open");
+    expect(within(section).queryByText("Path 4")).not.toBeInTheDocument();
+    fireEvent.click(within(section).getByRole("button", { name: "Show all 12 path groups" }));
+    expect(within(section).getByText("Path 4")).toBeInTheDocument();
   });
 });
 

@@ -129,7 +129,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
             </DrawerSection>
 
             {unavailable && <p role="alert" className="px-3 py-2 text-sm text-warn">{t("investigation.unavailableReport")}</p>}
-            <PacketInvestigation detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} />
+            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} />
 
             <div className="px-3 py-2 border-b border-border-subtle">
               <button
