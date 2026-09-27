@@ -55,7 +55,7 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
     {(id || onReturn) && <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
       {onReturn && <button ref={returnButton} type="button" aria-label={t("observerPage.returnTo", { page: returnLabel })} onClick={onReturn} className="min-h-11 text-sm text-primary">← {t("observerPage.returnTo", { page: returnLabel })}</button>}
       {id && <>
-        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary">← {t("observerPage.back")}</button>
+        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
         <CopyButton value={share.toString()} label={t("observerPage.copyLink")} copiedLabel={t("observerPage.copied")} />
         <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className="min-h-11 text-sm text-primary">{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
         <label className="ml-auto flex items-center gap-2 text-sm text-text-muted">{t("observerPage.range")}

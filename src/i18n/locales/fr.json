@@ -291,7 +291,8 @@
       "hour": "heure",
       "day": "jour",
       "trafficUnknown": "Fraîcheur des paquets inconnue",
-      "returnTo": "Retour à « {{page}} »"
+      "returnTo": "Retour à « {{page}} »",
+      "directory": "Tous les observateurs"
     },
     "observerCompare": {
       "open": "Comparer avec…",

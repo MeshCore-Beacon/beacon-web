@@ -287,7 +287,8 @@
       "hour": "hour",
       "day": "day",
       "trafficUnknown": "Packet freshness unavailable",
-      "returnTo": "Back to {{page}}"
+      "returnTo": "Back to {{page}}",
+      "directory": "All observers"
     },
     "observerCompare": {
       "open": "Compare with…",
