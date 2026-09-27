@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { CopyButton } from "../../components/CopyButton";
 import { ObserverTable } from "./ObserverTable";
 import { observerDestination, observerRange } from "./observer-navigation";
 import type { WsManager } from "../../api/ws-manager";
@@ -10,16 +11,20 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
   const [params, setParams] = useSearchParams();
   const { t } = useTranslation();
   const id = params.get("observer");
+  const [directoryVisited, setDirectoryVisited] = useState(!id);
+  if (!id && !directoryVisited) setDirectoryVisited(true);
+  const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
   const range = observerRange(params.get("range"));
   const select = (observer: string | null) => setParams(observerDestination(params, observer, range));
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col">
     {/* Keep the directory mounted so Back restores filters, sorting and scroll. */}
-    <div className={id ? "hidden" : "flex min-h-0 flex-1"} aria-hidden={id ? true : undefined}>
+    {directoryVisited && <div className={id ? "hidden" : "flex min-h-0 flex-1"} aria-hidden={id ? true : undefined}>
       <ObserverTable wsManager={wsManager} selectedObserverId={null} onSelectObserver={select} />
-    </div>
+    </div>}
     {id && <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
         <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary">← {t("observerPage.back")}</button>
+        <CopyButton value={share.toString()} label={t("observerPage.copyLink")} copiedLabel={t("observerPage.copied")} />
         <label className="ml-auto flex items-center gap-2 text-sm text-text-muted">{t("observerPage.range")}
           <select aria-label={t("observerPage.range")} value={range} onChange={e => setParams(observerDestination(params, id, observerRange(e.target.value)))} className="min-h-11 rounded border border-border bg-bg-raised px-3 text-text-normal">
             <option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option>

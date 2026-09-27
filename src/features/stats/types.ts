@@ -144,7 +144,19 @@ export interface ActivityRadio {
   preambleSymbols: number | null;
 }
 
+export interface ObserverActivitySummary {
+  recordedPackets: number;
+  lastCompleteHour: number;
+  lastCompleteHourStart: number;
+  lastCompleteHourEnd: number;
+  latestRecordedAt: number | null;
+}
 export interface ObserverActivity {
+  windowStart?: number;
+  windowEnd?: number;
+  generatedAt?: number;
+  source?: "raw" | "hourly";
+  summary?: ObserverActivitySummary;
   range: string;
   interval: string;
   radio: ActivityRadio | null;

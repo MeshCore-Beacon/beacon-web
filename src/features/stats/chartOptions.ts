@@ -371,18 +371,18 @@ function metricLineOption(
   };
 }
 
-export const batteryOption = (p: TelemetryPoint[], c: ChartColors) =>
-  metricLineOption(p, c, { name: "Battery V", color: c.primary, accessor: (x) => (x.batteryMv == null ? null : +(x.batteryMv / 1000).toFixed(3)) });
+export const batteryOption = (p: TelemetryPoint[], c: ChartColors, name = "Battery V") =>
+  metricLineOption(p, c, { name, color: c.primary, accessor: (x) => (x.batteryMv == null ? null : +(x.batteryMv / 1000).toFixed(3)) });
 
-export const noiseFloorOption = (p: TelemetryPoint[], c: ChartColors) =>
-  metricLineOption(p, c, { name: "Noise dBm", color: c.warn, accessor: (x) => x.noiseFloorDb });
+export const noiseFloorOption = (p: TelemetryPoint[], c: ChartColors, name = "Noise dBm") =>
+  metricLineOption(p, c, { name, color: c.warn, accessor: (x) => x.noiseFloorDb });
 
-export const queueOption = (p: TelemetryPoint[], c: ChartColors) =>
-  metricLineOption(p, c, { name: "Queue", color: c.secondary, accessor: (x) => x.queueLength, area: true });
+export const queueOption = (p: TelemetryPoint[], c: ChartColors, name = "Queue") =>
+  metricLineOption(p, c, { name, color: c.secondary, accessor: (x) => x.queueLength, area: true });
 
 // receiveErrors is a cumulative counter in raw points, a per-bucket delta in bucketed ones
-export const receiveErrorsOption = (p: TelemetryPoint[], c: ChartColors, bucketed: boolean) =>
-  metricLineOption(p, c, { name: "Recv errors", color: c.danger, accessor: (x) => x.receiveErrors, delta: !bucketed, area: true });
+export const receiveErrorsOption = (p: TelemetryPoint[], c: ChartColors, bucketed: boolean, name = "Recv errors") =>
+  metricLineOption(p, c, { name, color: c.danger, accessor: (x) => x.receiveErrors, delta: !bucketed, area: true });
 
 // ---- Observer activity (what it heard) ----
 
@@ -425,7 +425,7 @@ export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: 
   };
 }
 
-export function heardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow): EChartsOption {
+export function heardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow, name = "Heard"): EChartsOption {
   return {
     animation: false,
     backgroundColor: "transparent",
@@ -435,7 +435,7 @@ export function heardOption(points: ActivityPoint[], c: ChartColors, w: TimeWind
     yAxis: valueAxis(c, { minInterval: 1 }),
     series: [
       {
-        name: "Heard",
+        name,
         type: "line",
         symbol: "none",
         data: points.map((p) => [p.t, p.observations]),
@@ -449,18 +449,18 @@ export function heardOption(points: ActivityPoint[], c: ChartColors, w: TimeWind
 
 const dbLabel = (v: unknown) => (typeof v === "number" ? `${v} dB` : "—");
 
-export function snrHeardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow): EChartsOption {
+export function snrHeardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow, labels = { average: "Avg", minimum: "Min" }): EChartsOption {
   return {
     animation: false,
     backgroundColor: "transparent",
     grid: { left: 54, right: 14, top: 24, bottom: 22 },
-    legend: { data: ["Avg", "Min"], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },
+    legend: { data: [labels.average, labels.minimum], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },
     tooltip: { trigger: "axis", ...tooltipStyle(c), valueFormatter: dbLabel },
     xAxis: windowAxis(c, w),
     yAxis: valueAxis(c, { scale: true, axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 10, formatter: "{value} dB" } }),
     series: [
-      { name: "Avg", type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrAvg]), lineStyle: { width: 1.8, color: c.secondary }, itemStyle: { color: c.secondary } },
-      { name: "Min", type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrMin]), lineStyle: { width: 1, color: c.textMuted, type: "dashed" }, itemStyle: { color: c.textMuted } },
+      { name: labels.average, type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrAvg]), lineStyle: { width: 1.8, color: c.secondary }, itemStyle: { color: c.secondary } },
+      { name: labels.minimum, type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrMin]), lineStyle: { width: 1, color: c.textMuted, type: "dashed" }, itemStyle: { color: c.textMuted } },
     ],
   };
 }

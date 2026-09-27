@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getObserver, getObserverTelemetry, getObserverActivity, isNotFound } from "../../api/client";
 import type { StatsRange } from "./types";
 
@@ -50,7 +50,6 @@ export function useObserverActivity(observerId: string | null, range: StatsRange
     queryFn: () => getObserverActivity(observerId!, params.range, params.interval),
     enabled: !!observerId,
     staleTime: 30_000,
-    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     refetchInterval: (query) => activityRefetchInterval(query.state.error),
   });
@@ -63,7 +62,6 @@ export function useObserverTelemetry(observerId: string | null, range: StatsRang
     queryFn: () => getObserverTelemetry(observerId!, RANGE_PARAM[range], interval),
     enabled: !!observerId,
     staleTime: 30_000,
-    placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
   });
 }

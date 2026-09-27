@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ObserverTab } from "../../../src/features/stats/ObserverTab";
+import i18n from "../../../src/i18n";
 import { ApiError } from "../../../src/api/client";
 import type { Observer } from "../../../src/features/observers/types";
 import type { ObserverActivity, ObserverTelemetry, TelemetryPoint } from "../../../src/features/stats/types";
@@ -93,6 +94,7 @@ function renderTab() {
 }
 
 beforeEach(() => {
+  observer.brokers = [];
   telemetryResult.data = telemetry;
   telemetryResult.isLoading = false;
   telemetryResult.isError = false;
@@ -105,7 +107,7 @@ beforeEach(() => {
 });
 
 describe("ObserverTab", () => {
-  it("shows the latest reported RX and TX airtime as percent in the header", () => {
+  it("shows the latest reported RX and TX airtime as percent beside the airtime chart", () => {
     renderTab();
     // +54 s RX and +36 s TX over the hour between the two reports
     expect(screen.getByText(/RX 1\.5%/)).toBeInTheDocument();
@@ -115,9 +117,9 @@ describe("ObserverTab", () => {
   it("renders the heard charts when the server has activity for the observer", () => {
     renderTab();
     expect(screen.getByText(/channel busy/i)).toBeInTheDocument();
-    expect(screen.getByText(/heard per 15 min/i)).toBeInTheDocument();
-    expect(screen.getByText(/snr heard/i)).toBeInTheDocument();
-    expect(screen.getByText(/payload types heard/i)).toBeInTheDocument();
+    expect(screen.getByText(/recorded packets per 15 min/i)).toBeInTheDocument();
+    expect(screen.getByText(/received signal/i)).toBeInTheDocument();
+    expect(screen.getByText(/packet-type mix/i)).toBeInTheDocument();
   });
 
   it("names the radio settings the busy percent assumes, in the same form as the header", () => {
@@ -147,14 +149,36 @@ describe("ObserverTab", () => {
     activityResult.dataUpdatedAt = 0;
     renderTab();
     expect(screen.getAllByText("Loading…").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/no packets heard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no packets recorded/i)).not.toBeInTheDocument();
     expect(screen.queryByText("910.525 MHz · SF7 · 62.5 kHz · CR 4/5")).toBeInTheDocument(); // header only
   });
 
   it("shows one empty card instead of flat charts when nothing was heard", () => {
     activityResult.data = { ...activity, payloadTypes: [], points: [] };
     renderTab();
-    expect(screen.getByText(/no packets heard/i)).toBeInTheDocument();
+    expect(screen.getByText(/no packets recorded/i)).toBeInTheDocument();
     expect(screen.queryByText(/channel busy/i)).not.toBeInTheDocument();
   });
+});
+
+
+describe("Observer dashboard hierarchy",()=>{
+ it("uses period metrics rather than the legacy presence counter",()=>{
+  activityResult.data={...activity,windowStart:Date.now()-86400000,windowEnd:Date.now(),generatedAt:Date.now(),source:"raw",summary:{recordedPackets:9,lastCompleteHour:2,lastCompleteHourStart:Date.now()-7200000,lastCompleteHourEnd:Date.now()-3600000,latestRecordedAt:Date.now()-60000}};
+  renderTab();const cards=screen.getByRole("list",{name:"Observer metrics"});
+  expect(within(cards).getByText("9")).toBeInTheDocument();expect(within(cards).getAllByRole("listitem")).toHaveLength(6);expect(within(cards).queryByText("12")).not.toBeInTheDocument();
+  expect(screen.getByText("Recorded packets per 15 min").compareDocumentPosition(screen.getByText(/Airtime TX/)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ });
+ it("does not invent zero packet metrics on an older server",()=>{
+  renderTab();expect(screen.getByText(/Packet summary unavailable/)).toBeInTheDocument();
+ });
+ it("provides French monitoring labels",async()=>{
+  await i18n.changeLanguage("fr");renderTab();expect(screen.getByText("Paquets enregistrés")).toBeInTheDocument();expect(screen.getByText("Détails de l’appareil")).toBeInTheDocument();
+ });
+});
+
+it("distinguishes packet arrivals from last deduplicated record and status freshness",()=>{
+ const now=Date.now();observer.brokers=[{name:"one",lastSeenAt:now,lastPacketAt:now}];
+ activityResult.data={...activity,summary:{recordedPackets:9,lastCompleteHour:2,lastCompleteHourStart:now-7200000,lastCompleteHourEnd:now-3600000,latestRecordedAt:now-3600000}};
+ renderTab();expect(screen.getByText("Recent packet traffic")).toBeInTheDocument();
 });
