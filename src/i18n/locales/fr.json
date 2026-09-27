@@ -227,6 +227,12 @@
     },
     "timestamp": {
       "ago": "il y a {{duration}}"
+    },
+    "observerPage": {
+      "back": "Retour aux observateurs",
+      "range": "Période",
+      "open": "Ouvrir le tableau de bord",
+      "legacy": "Ancien compteur de présence"
     }
   }
 }

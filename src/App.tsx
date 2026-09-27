@@ -23,7 +23,10 @@ import { PacketPathMapModal } from "./features/map/PacketPathMapModal";
 import { NodeTable } from "./features/nodes/NodeTable";
 import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
 import { NodeDetailOverlay } from "./features/nodes/NodeDetailOverlay";
-import { ObserverTable } from "./features/observers/ObserverTable";
+import { ObserverPage } from "./features/observers/ObserverPage";
+import { ObserverDetailPanel } from "./features/observers/ObserverDetailPanel";
+import { observerDestination } from "./features/observers/observer-navigation";
+import { ModalOverlay } from "./components/ModalOverlay";
 import { RouteTable } from "./features/routes/RouteTable";
 import { TraceList } from "./features/traces/TraceList";
 import { ChannelList } from "./features/channels/ChannelList";
@@ -149,13 +152,15 @@ function TabLoading({ tab }: { tab: string }) {
 }
 
 function AppInner() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
   const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
-  const activeTab = ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS[0] ?? "Packets");
+  const legacyObserver = tabParam === "Analytics" && searchParams.get("statsTab") === "observer";
+  const activeTab = legacyObserver ? "Observers" : ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS[0] ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 
@@ -165,7 +170,10 @@ function AppInner() {
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => searchParams.get("node"));
   // lifted (like selectedNodeId) so a node's "View observer" link can select it before the tab mounts
-  const [selectedObserverId, setSelectedObserverId] = useState<string | null>(() => searchParams.get("observer"));
+  const [quickObserverId, setQuickObserverId] = useState<string | null>(null);
+  useEffect(() => {
+    if (legacyObserver) setSearchParams(observerDestination(searchParams, searchParams.get("observerId")), { replace: true });
+  }, [legacyObserver, searchParams, setSearchParams]);
   // node detail shown as a modal over the packet analyzer (e.g. clicking a resolved path hop)
   const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
@@ -210,15 +218,16 @@ function AppInner() {
     if (isMobile) {
       setSelectedObservationId(null);
       setSelectedNodeId(null);
-      setSelectedObserverId(null);
+      setQuickObserverId(null);
     }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
+      if (tab !== "Observers") next.delete("observer");
       // stats sub-state shouldn't haunt the URL on other tabs
-      if (tab !== "Analytics") {
+      if (tab !== "Analytics" && tab !== "Observers") {
         next.delete("statsTab");
         next.delete("observerId");
         next.delete("range");
@@ -231,7 +240,7 @@ function AppInner() {
     setSelectedNodeId(null);
     setOverlayNodeId(null);
     setOverlayPacketHash(null);
-    setSelectedObserverId(null);
+    setQuickObserverId(null);
     setPathMapDetail(null);
   }, []);
 
@@ -251,22 +260,15 @@ function AppInner() {
     dropSelectionParam("node");
   }, [dropSelectionParam]);
 
-  const handleSelectObserver = useCallback((id: string | null) => {
-    setSelectedObserverId(id);
-    if (id === null) dropSelectionParam("observer");
-  }, [dropSelectionParam]);
-
   // Jump from an observer's detail panel to its telemetry on the Stats tab (Stats → Observer, preselected).
   const handleViewObserverStats = useCallback(
     (id: string) => {
       setOverlayNodeId(null);
       setOverlayPacketHash(null);
+      setQuickObserverId(null);
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set("tab", "Analytics");
-        next.set("statsTab", "observer");
-        next.set("observerId", id);
-        return next;
+        return observerDestination(next, id);
       });
     },
     [setSearchParams],
@@ -291,7 +293,7 @@ function AppInner() {
       />
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverTable wsManager={wsManager} selectedObserverId={selectedObserverId} onSelectObserver={handleSelectObserver} onAnalyzePacket={setOverlayPacketHash} onViewStats={handleViewObserverStats} />,
+    Observers: <ObserverPage wsManager={wsManager} />,
     Routes: <RouteTable />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
@@ -335,8 +337,7 @@ function AppInner() {
               nodeId={selectedNodeId}
               onClose={handleCloseNode}
               onViewObserver={(observerId) => {
-                handleTabChange("Observers");
-                setSelectedObserverId(observerId);
+                setQuickObserverId(observerId);
               }}
               onViewNode={setSelectedNodeId}
               onAnalyzePacket={setOverlayPacketHash}
@@ -347,8 +348,7 @@ function AppInner() {
               nodeId={overlayNodeId}
               onClose={() => setOverlayNodeId(null)}
               onViewObserver={(observerId) => {
-                handleTabChange("Observers");
-                setSelectedObserverId(observerId);
+                setQuickObserverId(observerId);
               }}
               onViewNode={setOverlayNodeId}
             />
@@ -359,13 +359,15 @@ function AppInner() {
               loading={overlayPacketLoading}
               onClose={() => setOverlayPacketHash(null)}
               onViewObserver={(observerId) => {
-                handleTabChange("Observers");
-                setSelectedObserverId(observerId);
+                setQuickObserverId(observerId);
               }}
               onViewPath={() => { if (overlayPacketDetail) handleViewPath(overlayPacketDetail); }}
               inactive={!!pathMapDetail}
             />
           )}
+          {quickObserverId && <ModalOverlay label={t("tabs.Observers")} onClose={() => setQuickObserverId(null)}>
+            <ObserverDetailPanel observerId={quickObserverId} onClose={() => setQuickObserverId(null)} onViewStats={handleViewObserverStats} onAnalyzePacket={setOverlayPacketHash} />
+          </ModalOverlay>}
           {pathMapDetail && (
             <PacketPathMapModal
               detail={pathMapDetail}

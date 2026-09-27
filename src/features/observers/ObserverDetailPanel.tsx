@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Observer, AdvertObservation } from "./types";
 import { useQuery } from "@tanstack/react-query";
 import { getObserver, getObserverAdverts } from "../../api/client";
@@ -106,6 +107,7 @@ interface ObserverDetailPanelProps {
 }
 
 export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onViewStats }: ObserverDetailPanelProps) {
+  const { t } = useTranslation();
   const { data: observer, isLoading } = useQuery({
     queryKey: ["observer", observerId],
     queryFn: () => getObserver(observerId),
@@ -155,7 +157,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
                 <CopyButton value={observer.publicKey} ariaLabel="Copy public key" className="shrink-0" />
               </div>
               <div className="flex items-center gap-3 font-mono text-[13px]">
-                <Field label="Observations" value={observer.observationCount.toLocaleString()} />
+                <Field label={t("observerPage.legacy")} value={observer.observationCount.toLocaleString()} />
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 {observer.observerType && <Badge variant="default">{observer.observerType}</Badge>}
@@ -173,7 +175,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
                     <path d="M4 20V4M4 20h16M8 16v-4M13 16V8M18 16v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Statistics
+                  {t("observerPage.open")}
                 </button>
               )}
             </Section>

@@ -223,6 +223,12 @@
     },
     "timestamp": {
       "ago": "{{duration}} ago"
+    },
+    "observerPage": {
+      "back": "Back to observers",
+      "range": "Time range",
+      "open": "Open observer dashboard",
+      "legacy": "Legacy presence count"
     }
   }
 }
