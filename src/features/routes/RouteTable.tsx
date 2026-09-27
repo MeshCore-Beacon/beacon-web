@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { RouteEvidencePanel, type RouteActions } from "./RouteEvidencePanel";
 import { getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getIatas } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
@@ -140,19 +142,26 @@ function directedPairs(iatas: string[]): [string, string][] {
   return pairs;
 }
 
-export function RouteTable() {
+export function RouteTable(actions: RouteActions) {
   const { iatas, regionKey } = useRegion();
-
+  const [params, setParams] = useSearchParams();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  const pathKey = params.get("route"), routeIata = params.get("routeIata");
+  const closeRoute = useCallback(() => {
+    setSelectedKey(null);
+    setParams(previous => { const next = new URLSearchParams(previous); for (const key of ["route", "routeIata", "routeRange", "routeSince", "routeUntil"]) next.delete(key); return next; }, { replace: true });
+  }, [setParams]);
+
 
   // drop the selection when the region changes — the selected route may not be in the new region
   const prevRegion = useRef(regionKey);
   useEffect(() => {
     if (prevRegion.current !== regionKey) {
       prevRegion.current = regionKey;
-      setSelectedKey(null);
+      closeRoute();
     }
-  }, [regionKey]);
+  }, [regionKey, closeRoute]);
 
   // path search form: source→dest hashes, scoped to a multi-select of IATAs. One IATA → within-IATA
   // /routes/search; two+ → /routes/cross across the directed pairs. Hashes + ≥1 IATA required.
@@ -223,6 +232,18 @@ export function RouteTable() {
     [rows, selectedKey],
   );
 
+  const selectRoute = (id: string | null) => {
+    if (id === null) { closeRoute(); return; }
+    const route = rows?.find(row => String(row.id) === id);
+    if (route?.pathKey) {
+      setSelectedKey(null);
+      setParams(previous => { const next = new URLSearchParams(previous); next.set("route", route.pathKey!); next.set("routeIata", route.iata); next.delete("routeSince"); next.delete("routeUntil"); return next; });
+    } else {
+      closeRoute();
+      setSelectedKey(id);
+    }
+  };
+
   // A multi-IATA region filters globally-paged rows client-side, so the filtered list can be too
   // short to ever trigger scroll paging — or empty, with the region's routes deeper in the cursor
   // stream. Keep pulling pages until there's a screenful or the cap says the region is just sparse.
@@ -238,12 +259,12 @@ export function RouteTable() {
   const submitSearch = useCallback(() => {
     if (!from.trim() || !to.trim() || searchIatas.length < 1) return;
     setSearch({ from: from.trim(), to: to.trim(), iatas: searchIatas });
-    setSelectedKey(null);
-  }, [from, to, searchIatas]);
+    closeRoute();
+  }, [from, to, searchIatas, closeRoute]);
   const clearSearch = useCallback(() => {
     setSearch(null);
-    setSelectedKey(null);
-  }, []);
+    closeRoute();
+  }, [closeRoute]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") submitSearch();
@@ -316,8 +337,8 @@ export function RouteTable() {
               columns={COLUMNS}
               rows={rows}
               rowKey={(r) => String(r.id)}
-              selectedKey={selectedKey}
-              onSelect={setSelectedKey}
+              selectedKey={pathKey ? String(rows?.find(row => row.pathKey === pathKey && row.iata === routeIata)?.id ?? "") : selectedKey}
+              onSelect={selectRoute}
               isLoading={search ? searchLoading : listLoading}
               emptyLabel={search ? "No matching routes" : "No routes"}
               defaultSort={{ header: "Last seen", direction: "desc" }}
@@ -329,7 +350,7 @@ export function RouteTable() {
             )}
           </div>
         )}
-        {selectedRoute && (
+        {pathKey && routeIata ? <RouteEvidencePanel iata={routeIata} pathKey={pathKey} onClose={closeRoute} {...actions} /> : selectedRoute && (
           <RouteDetailPanel route={selectedRoute} onClose={() => setSelectedKey(null)} />
         )}
       </div>

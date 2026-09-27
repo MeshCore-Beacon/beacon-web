@@ -6,15 +6,16 @@ import { ModalOverlay } from "../../components/ModalOverlay";
 
 // Packet analyzer floated over a node detail panel (mirror of NodeDetailOverlay). The node detail it
 // can stack on top gets no onAnalyzePacket, so the overlay chain stops there instead of recursing.
-export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver, onViewPath, inactive = false }: {
+export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver, onViewPath, inactive = false, initialObservationId }: {
   detail: PacketDetail | undefined;
   loading?: boolean;
   onClose: () => void;
   onViewObserver: (observerId: string) => void;
   onViewPath?: (key?: string) => void;
   inactive?: boolean;
+  initialObservationId?: number;
 }) {
-  const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
+  const [selectedObservationId, setSelectedObservationId] = useState<number | null>(initialObservationId ?? null);
   const [viewNodeId, setViewNodeId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export function PacketAnalyzerOverlay({ detail, loading, onClose, onViewObserver
           detail={detail}
           loading={loading}
           selectedObservationId={selectedObservationId}
+          requireSelectedObservation={initialObservationId !== undefined}
           onSelectObservation={setSelectedObservationId}
           onClose={onClose}
           onViewNode={setViewNodeId}

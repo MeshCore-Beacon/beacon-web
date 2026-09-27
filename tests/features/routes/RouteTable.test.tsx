@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { RouteTable } from "../../../src/features/routes/RouteTable";
+import { MemoryRouter } from "react-router-dom";
 import { RegionProvider } from "../../../src/hooks/useRegion";
 import { ALL_REGIONS } from "../../../src/hooks/region-selection";
 import {
@@ -34,7 +35,7 @@ function renderTable(selection = ALL_REGIONS) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <RegionProvider defaultSelection={selection}>{children}</RegionProvider>
+      <MemoryRouter><RegionProvider defaultSelection={selection}>{children}</RegionProvider></MemoryRouter>
     </QueryClientProvider>
   );
   render(<RouteTable />, { wrapper });

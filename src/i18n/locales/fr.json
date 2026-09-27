@@ -353,6 +353,30 @@
       "span": "Intervalle signalé",
       "showAll": "Afficher les {{count}} groupes de trajets",
       "fewer": "Afficher moins de trajets"
+    },
+    "routeEvidence": {
+      "title": "Rapports conservés",
+      "window": "Période",
+      "day": "24 heures",
+      "week": "7 jours",
+      "month": "30 jours",
+      "shared": "Période partagée",
+      "invalid": "Période partagée invalide. Choisissez une période pour continuer.",
+      "loading": "Chargement des rapports conservés…",
+      "missing": "Le trajet enregistré ou l’API des rapports est indisponible sur ce serveur.",
+      "error": "Impossible de charger les rapports conservés. Réessayez.",
+      "retry": "Réessayer",
+      "savedPath": "Trajet complet enregistré",
+      "match": "Correspond à la séquence complète des préfixes enregistrés, avec {{width}} octet(s) par saut. Les autres tailles, les sous-trajets, TRACE et les rapports non classés sont exclus.",
+      "caution": "Des octets identiques ne prouvent pas un même trajet physique. Les noms des sauts correspondent aux identités enregistrées ; consultez chaque paquet pour voir ses correspondances possibles.",
+      "retention": "Il s’agit de rapports conservés, et non de paquets distincts ni du total historique du trajet. Les rapports peuvent expirer alors que le trajet reste enregistré. La fin de période UTC affichée ci-dessus est exclusive.",
+      "reports_one": "{{count}} rapport chargé",
+      "reports_other": "{{count}} rapports chargés",
+      "unavailable": "Les préfixes enregistrés ne permettent pas de rechercher les rapports conservés.",
+      "empty": "Aucun rapport conservé ne correspond à ces préfixes dans cette période. L’historique a pu expirer ou utiliser une autre taille de préfixe.",
+      "more": "Charger plus de rapports",
+      "cap": "Affichage limité à 500 rapports. Choisissez une période plus courte pour affiner la recherche.",
+      "legacy": "Les liens vers les rapports conservés nécessitent un serveur fournissant des clés de trajet stables."
     }
   }
 }

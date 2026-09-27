@@ -1,6 +1,6 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
-import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
+import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
@@ -185,6 +185,10 @@ export async function getKnownRoutesPage(
     limit,
   });
   return toCursorPage(items, limit, (r) => r.lastSeen);
+}
+
+export function getRouteEvidence(iata: string, pathKey: string, params: { range?: string; since?: number; until?: number; pageCursor?: string; limit?: number }, signal?: AbortSignal): Promise<RouteEvidence> {
+  return request(`/routes/${encodeURIComponent(iata)}/${encodeURIComponent(pathKey)}/observations`, params, signal);
 }
 
 // Search known routes for a path between two node hash prefixes within a single IATA. All three params

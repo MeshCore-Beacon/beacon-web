@@ -55,6 +55,11 @@ describe("packet reception evidence", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
     expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
   });
+  it("keeps route evidence selections strict without requiring packet URL state", () => {
+    render(<MemoryRouter initialEntries={["/?tab=Routes&route=keep"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={99} requireSelectedObservation onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
+    expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
+  });
   it("explains TRACE and missing-report semantics in French", async () => {
     const d = reports(); d.header.payloadType = PayloadType.TRACE; d.observations = [];
     await i18n.changeLanguage("fr");

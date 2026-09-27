@@ -3,6 +3,7 @@ import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
 import { ResolvedHopBlock } from "../packets/PathData";
 import type { KnownRoute, ResolvedHop } from "../../types/api";
+import { useTranslation } from "react-i18next";
 
 // Detail for a selected known route. The /routes list already carries the full hops, so this takes the
 // route object directly — no extra fetch. Hops reuse the packet path renderer's block (high-confidence
@@ -13,9 +14,11 @@ interface RouteDetailPanelProps {
 }
 
 export function RouteDetailPanel({ route, onClose }: RouteDetailPanelProps) {
+  const { t } = useTranslation();
   return (
     <DetailPanel title="Route Detail" onClose={onClose}>
       <Section title="Summary" first>
+        {!route.pathKey && <p className="mb-2 text-xs text-text-muted">{t("routeEvidence.legacy")}</p>}
         <div className="flex items-center gap-3 font-mono text-[13px]">
           <Badge variant="default">{route.iata}</Badge>
           <Field label="Hops" value={route.hopCount} />

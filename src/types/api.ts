@@ -157,12 +157,39 @@ export interface RouteHop {
 
 export interface KnownRoute {
   id: number;
+  pathKey?: string; // stable full-route identity; absent on older servers
   iata: string;
   hopCount: number;
   hops: RouteHop[];
   firstSeen: number; // epoch ms
   lastSeen: number; // epoch ms
   observationCount: number;
+}
+
+export interface RouteObservation {
+  id: number;
+  packetHash: string;
+  observerId: string;
+  observerName?: string;
+  heardAt: number;
+  payloadType: number;
+  payloadTypeName: string;
+  rssi?: number;
+  snr?: number;
+}
+
+export interface RouteEvidence {
+  route: KnownRoute;
+  windowStart: number;
+  windowEnd: number;
+  generatedAt: number;
+  matchType: "saved_path_prefixes";
+  matchAvailable: boolean;
+  hashSize?: number;
+  pathBytes?: string;
+  items: RouteObservation[];
+  hasMore: boolean;
+  nextPageCursor?: string;
 }
 
 // the boundary hop in a cross-IATA route: the link from the last node in the source IATA to the

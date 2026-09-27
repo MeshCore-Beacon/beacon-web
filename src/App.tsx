@@ -177,7 +177,9 @@ function AppInner() {
   // node detail shown as a modal over the packet analyzer (e.g. clicking a resolved path hop)
   const [overlayNodeId, setOverlayNodeId] = useState<string | null>(null);
   // packet analyzer shown as a modal over the node panel (clicking a node's observation row)
-  const [overlayPacketHash, setOverlayPacketHash] = useState<string | null>(null);
+  const [overlayPacket, setOverlayPacket] = useState<{ hash: string; observationId?: number } | null>(null);
+  const overlayPacketHash = overlayPacket?.hash ?? null;
+  const setOverlayPacketHash = useCallback((hash: string | null, observationId?: number) => setOverlayPacket(hash ? { hash, observationId } : null), []);
   // packet path popup shown as a modal over the analyzer drawer/overlay ("View path on map")
   const [pathMapDetail, setPathMapDetail] = useState<PacketDetail | null>(null);
   // Frozen together: the restore must fetch the hash the link asked for, even if the user clicks a
@@ -251,7 +253,7 @@ function AppInner() {
     setOverlayPacketHash(null);
     setQuickObserverId(null);
     setPathMapDetail(null);
-  }, []);
+  }, [setOverlayPacketHash]);
 
   // Closing a detail panel drops its deep-link param so a reload can't reopen it (mirrors the packet
   // analyzer's ?analyze cleanup). Selecting a different node/observer doesn't touch the URL — the panel's
@@ -280,7 +282,7 @@ function AppInner() {
         return observerDestination(next, id);
       });
     },
-    [setSearchParams],
+    [setSearchParams, setOverlayPacketHash],
   );
 
   useEffect(() => {
@@ -303,7 +305,7 @@ function AppInner() {
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
     Observers: <ObserverPage wsManager={wsManager} />,
-    Routes: <RouteTable />,
+    Routes: <RouteTable onAnalyzePacket={setOverlayPacketHash} onViewObserver={setQuickObserverId} onViewNode={setOverlayNodeId} />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
     Traces: <TraceList onAnalyze={setOverlayPacketHash} onViewNode={setOverlayNodeId} />,
@@ -366,6 +368,8 @@ function AppInner() {
           )}
           {overlayPacketHash && (
             <PacketAnalyzerOverlay
+              key={`${overlayPacketHash}:${overlayPacket?.observationId ?? ""}`}
+              initialObservationId={overlayPacket?.observationId}
               detail={overlayPacketDetail}
               loading={overlayPacketLoading}
               onClose={() => setOverlayPacketHash(null)}
