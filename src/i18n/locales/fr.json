@@ -376,7 +376,11 @@
       "empty": "Aucun rapport conservé ne correspond à ces préfixes dans cette période. L’historique a pu expirer ou utiliser une autre taille de préfixe.",
       "more": "Charger plus de rapports",
       "cap": "Affichage limité à 500 rapports. Choisissez une période plus courte pour affiner la recherche.",
-      "legacy": "Les liens vers les rapports conservés nécessitent un serveur fournissant des clés de trajet stables."
+      "legacy": "Les liens vers les rapports conservés nécessitent un serveur fournissant des clés de trajet stables.",
+      "width": "Préfixes enregistrés · {{width}} octet(s) par saut",
+      "brief": "Préfixes correspondants, pas des trajets physiques confirmés. Les rapports bruts peuvent expirer.",
+      "definition": "Correspondance et comptage des rapports",
+      "close": "Fermer les rapports du trajet"
     }
   }
 }

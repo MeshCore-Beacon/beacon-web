@@ -372,7 +372,11 @@
       "empty": "No retained reports match this saved prefix sequence in this window. History may have expired or used a different prefix width.",
       "more": "Load more reports",
       "cap": "Showing up to 500 reports. Choose a shorter window to narrow the investigation.",
-      "legacy": "Retained report links need a server that supplies stable route keys."
+      "legacy": "Retained report links need a server that supplies stable route keys.",
+      "width": "Saved prefixes · {{width}} byte(s) per hop",
+      "brief": "Prefix matches, not confirmed physical routes. Raw reports may expire.",
+      "definition": "How these reports are matched and counted",
+      "close": "Close route reports"
     }
   }
 }

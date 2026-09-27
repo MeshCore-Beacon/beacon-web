@@ -37,6 +37,7 @@ function MinimizeButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 interface DetailPanelProps {
   title: string;
   onClose: () => void;
+  closeLabel?: string;
   // mobile-only: adds a minimize toggle that collapses to a bottom bar without deselecting, so the
   // map underneath (and its neighbor lines) stays visible. No effect at md+ (the panel is a sidebar).
   collapsible?: boolean;
@@ -49,7 +50,7 @@ interface DetailPanelProps {
   children: ReactNode;
 }
 
-export function DetailPanel({ title, onClose, collapsible, isLoading, notFound, notFoundIcon, notFoundLabel = "Not found", headerAction, children }: DetailPanelProps) {
+export function DetailPanel({ title, onClose, closeLabel = "Close detail panel", collapsible, isLoading, notFound, notFoundIcon, notFoundLabel = "Not found", headerAction, children }: DetailPanelProps) {
   const [collapsed, setCollapsed] = useState(false);
   // collapse only touches the mobile overlay: shrink to a bottom bar and hide the body. The md:*
   // classes below always win at desktop width, so a lingering collapsed state never hides the sidebar.
@@ -62,7 +63,7 @@ export function DetailPanel({ title, onClose, collapsible, isLoading, notFound, 
           {headerAction}
           <div className="flex items-center gap-0.5">
             {collapsible && <MinimizeButton collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />}
-            <CloseButton onClose={onClose} label="Close detail panel" />
+            <CloseButton onClose={onClose} label={closeLabel} />
           </div>
         </div>
       </div>

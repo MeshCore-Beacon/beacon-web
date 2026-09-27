@@ -254,6 +254,7 @@ export function RouteTable(actions: RouteActions) {
     loadMore();
   }, [search, serverIata, iatas, hasMore, isPaging, rows, loadedCount, loadMore]);
 
+  const panelOpen = Boolean(pathKey && routeIata || selectedRoute);
   const canSearch = !!(from.trim() && to.trim() && searchIatas.length >= 1);
   // clear any selection when the visible list changes out from under it (search submit/clear)
   const submitSearch = useCallback(() => {
@@ -271,9 +272,9 @@ export function RouteTable(actions: RouteActions) {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col flex-1 min-h-0 min-w-0">
       {/* stacks into two rows on mobile (the inputs would otherwise wrap around the arrow); one row at md+ */}
-      <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0">
+      <div className={`${panelOpen ? "hidden md:flex" : "flex"} flex-col md:flex-row md:flex-wrap md:items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0`}>
         <div className="flex items-center gap-1.5">
           <span className="text-text-muted text-[11px] uppercase tracking-wider mr-1 shrink-0">Find path</span>
           <input
@@ -332,7 +333,7 @@ export function RouteTable(actions: RouteActions) {
             )}
           </div>
         ) : (
-          <div className="relative flex-1 min-w-0 flex flex-col min-h-0">
+          <div className={`relative flex-1 min-w-0 ${panelOpen ? "hidden md:flex" : "flex"} flex-col min-h-0`}>
             <DataTable
               columns={COLUMNS}
               rows={rows}
