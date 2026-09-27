@@ -225,8 +225,15 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
   return request(`/traces/${tag}`);
 }
 
-export function getObserver(observerId: string): Promise<Observer> {
-  return request(`/observers/${observerId}`);
+export async function getObserver(observerId: string): Promise<Observer> {
+  const observer = await request<Observer>(`/observers/${observerId}`);
+  // Older servers marshal the stored JSON byte slice as base64 instead of an object.
+  let metadata: unknown = observer.statusMetadata;
+  if (typeof metadata === "string") {
+    try { metadata = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(metadata), c => c.charCodeAt(0)))); }
+    catch { metadata = undefined; }
+  }
+  return { ...observer, statusMetadata: metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata as Record<string, unknown> : undefined };
 }
 
 export function getObserverAdverts(
@@ -368,8 +375,8 @@ export function getObserverTelemetry(
   return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
 }
 
-export function getObserverActivity(observerId: string, range: string, interval: string): Promise<ObserverActivity> {
-  return request(`/observers/${observerId}/activity`, { range, interval });
+export function getObserverActivity(observerId: string, range: string, interval: string, until?: number): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval, until });
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.

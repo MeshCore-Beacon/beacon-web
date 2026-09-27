@@ -23,6 +23,7 @@ export function useObserver(observerId: string | null) {
     queryFn: () => getObserver(observerId!),
     enabled: !!observerId,
     staleTime: 30_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
 }
@@ -43,11 +44,11 @@ export function activityRefetchInterval(error: unknown): number | false {
   return isNotFound(error) ? false : 60_000;
 }
 
-export function useObserverActivity(observerId: string | null, range: StatsRange) {
+export function useObserverActivity(observerId: string | null, range: StatsRange, until?: number) {
   const params = activityParamsFor(range);
   return useQuery({
-    queryKey: ["observer-activity", observerId, range],
-    queryFn: () => getObserverActivity(observerId!, params.range, params.interval),
+    queryKey: ["observer-activity", observerId, range, until],
+    queryFn: () => getObserverActivity(observerId!, params.range, params.interval, until),
     enabled: !!observerId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,

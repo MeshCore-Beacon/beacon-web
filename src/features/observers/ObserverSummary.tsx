@@ -10,15 +10,15 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
-  const lastArrival = Math.max(0, ...observer.brokers.map(b => b.lastPacketAt || 0));
+  const lastArrival = Math.max(summary?.latestRecordedAt ?? 0, ...observer.brokers.map(b => b.lastPacketAt || 0));
   const trafficKnown = !!summary && lastArrival > 0;
   const trafficFresh = trafficKnown && now - lastArrival < 300_000;
   const stats = observer.statusMetadata?.stats;
   const reportedNoise = stats && typeof stats === "object" && "noise_floor" in stats && typeof stats.noise_floor === "number" && Number.isFinite(stats.noise_floor) ? stats.noise_floor : null;
   const noise = reportedNoise ?? points.at(-1)?.noiseFloorDb;
   const cards = [
-    ["records", summary?.recordedPackets.toLocaleString() ?? "—"],
-    ["lastHour", summary?.lastCompleteHour.toLocaleString() ?? "—"],
+    ["records", summary?.recordedPackets.toLocaleString(i18n.resolvedLanguage) ?? "—"],
+    ["lastHour", summary?.lastCompleteHour.toLocaleString(i18n.resolvedLanguage) ?? "—"],
     ["lastPacket", summary?.latestRecordedAt != null ? <Timestamp value={summary.latestRecordedAt} /> : "—"],
     ["battery", observer.batteryLevel != null ? formatBattery(observer.batteryLevel) : "—"],
     ["uptime", observer.uptimeSeconds != null ? formatUptime(observer.uptimeSeconds) : "—"],

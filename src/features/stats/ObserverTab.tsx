@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { EmptyState } from "../../components/EmptyState";
 import { formatRadioParts } from "../../lib/formatters";
 import { ObserverPicker } from "../observers/ObserverPicker";
+import { ObserverComparison } from "../observers/ObserverComparison";
 import { ObserverSummary, ObserverDeviceDetails } from "../observers/ObserverSummary";
 import { useChartColors } from "./chartTheme";
 import { activityParamsFor, useObserver, useObserverActivity, useObserverTelemetry } from "./useTelemetry";
@@ -32,16 +33,17 @@ interface ObserverTabProps {
   selectedObserverId: string | null;
   onSelectObserver: (id: string) => void;
   wsManager: WsManager;
+  comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => void };
 }
-export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsManager }: ObserverTabProps) {
+export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsManager, comparison }: ObserverTabProps) {
   const { t, i18n } = useTranslation();
   const colors = useChartColors();
   useLiveObserver(wsManager, selectedObserverId, range);
   const observer = useObserver(selectedObserverId);
   const telemetry = useObserverTelemetry(selectedObserverId, range);
-  const activity = useObserverActivity(selectedObserverId, range);
+  const activity = useObserverActivity(selectedObserverId, range, comparison?.until ?? undefined);
   const points = useMemo(() => telemetry.data?.points ?? [], [telemetry.data]);
-  // use the response's interval, not the range prop — keepPreviousData can briefly show the old range's points
+  // Use the response interval so the plotted bucket width always matches the data.
   const bucketMs =
     telemetry.data != null && telemetry.data.interval !== "1h" ? intervalToMs(telemetry.data.interval) : null;
   const bucketed = bucketMs != null;
@@ -158,6 +160,7 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
         )}
         <p>{t("observerPage.windowHelp")}</p>
       </div>
+      {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => { comparison.onRefresh(); void activity.refetch(); void observer.refetch(); }} />}
       {heardUnavailable ? (
         <Card title={t("observerPage.records")}>
           <p className="text-sm text-text-muted">{t("observerPage.summaryMissing")}</p>

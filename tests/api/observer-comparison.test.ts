@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { getObserverComparison } from "../../src/api/client";
+import { getObserverComparison, getObserverActivity, getObserver } from "../../src/api/client";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -14,4 +14,22 @@ it("sends the complete comparison scope, including an epoch-zero start, and cons
   expect(options.signal).toBe(controller.signal);
   controller.abort();
   expect(options.signal.aborted).toBe(true);
+});
+
+it("sends the shared activity anchor without altering the selected range", async () => {
+  const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ points: [] }) });
+  vi.stubGlobal("fetch", fetcher);
+  await getObserverActivity("a", "168h", "1h", 123456789);
+  expect(Object.fromEntries(new URL(fetcher.mock.calls[0][0]).searchParams)).toEqual({ range: "168h", interval: "1h", until: "123456789" });
+});
+
+it.each([ { stats: { noise_floor: -117 } }, btoa('{"stats":{"noise_floor":-117}}') ])("reads both object and legacy byte-encoded status metadata", async metadata => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "a", statusMetadata: metadata }) }));
+  expect((await getObserver("a")).statusMetadata).toEqual({ stats: { noise_floor: -117 } });
+});
+
+it.each(["not base64!", btoa('null'), btoa('[]')])("ignores malformed metadata without losing the observer", async metadata => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "a", statusMetadata: metadata }) }));
+  const observer = await getObserver("a");
+  expect(observer.id).toBe("a"); expect(observer.statusMetadata).toBeUndefined();
 });

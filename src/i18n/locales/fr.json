@@ -291,6 +291,30 @@
       "hour": "heure",
       "day": "jour",
       "trafficUnknown": "Fraîcheur des paquets inconnue"
+    },
+    "observerCompare": {
+      "open": "Comparer avec…",
+      "close": "Fermer la comparaison",
+      "title": "Comparer les observateurs",
+      "partner": "Observateur B",
+      "choose": "Choisissez un observateur à comparer",
+      "invalidObserver": "Choisissez un autre observateur avec un identifiant valide.",
+      "invalidTime": "La date de comparaison est invalide ou trop ancienne. Actualisez pour utiliser la dernière période complète.",
+      "refresh": "Actualiser les deux observateurs",
+      "unavailable": "Les résumés alignés sont indisponibles. Actualisez les deux observateurs ou mettez le serveur à jour pour prendre en charge les périodes communes.",
+      "currentNote": "Les totaux d’activité utilisent cette période commune. Les valeurs de l’appareil et la dernière heure complète décrivent les conditions actuelles; le début de l’heure est indiqué en UTC.",
+      "metrics": "Mesures de comparaison des observateurs",
+      "metric": "Mesure",
+      "activity": "Paquets enregistrés · activité alignée",
+      "overlap": "Recoupement des paquets flood conservés",
+      "retention": "L’historique des paquets bruts peut expirer avant les résumés d’activité. Le recoupement compte uniquement les paquets flood conservés dans la période commune, toutes régions confondues.",
+      "total_one": "{{count}} paquet flood distinct",
+      "total_other": "{{count}} paquets flood distincts",
+      "empty": "Aucun paquet flood conservé n’a été signalé par ces observateurs pendant cette période.",
+      "onlyA": "A seulement",
+      "both": "Les deux",
+      "onlyB": "B seulement",
+      "definition": "Chaque empreinte de paquet flood est comptée une seule fois pour les deux observateurs. Les réceptions répétées sont dédupliquées. Ce n’est pas une mesure de perte de paquets : l’expiration, les appareils hors ligne et les interruptions des courtiers affectent les rapports disponibles."
     }
   }
 }

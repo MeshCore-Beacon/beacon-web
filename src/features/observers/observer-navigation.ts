@@ -7,6 +7,6 @@ export function observerDestination(params: URLSearchParams, id: string | null, 
   next.set("tab", "Observers");
   for (const key of ["statsTab", "observerId", "node", "hash", "analyze", "path"]) next.delete(key);
   if (id) { next.set("observer", id); next.set("range", range); }
-  else { next.delete("observer"); next.delete("range"); next.delete("compareWith"); }
+  else { next.delete("observer"); next.delete("range"); next.delete("compareWith"); next.delete("compareUntil"); }
   return next;
 }

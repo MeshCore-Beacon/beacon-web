@@ -287,6 +287,30 @@
       "hour": "hour",
       "day": "day",
       "trafficUnknown": "Packet freshness unavailable"
+    },
+    "observerCompare": {
+      "open": "Compare with…",
+      "close": "Close comparison",
+      "title": "Compare observers",
+      "partner": "Observer B",
+      "choose": "Choose an observer to compare",
+      "invalidObserver": "Choose a different observer with a valid identifier.",
+      "invalidTime": "This comparison time is invalid or too old. Refresh to use the latest complete window.",
+      "refresh": "Refresh both observers",
+      "unavailable": "Aligned summaries are unavailable. Refresh both observers, or update the server to support shared windows.",
+      "currentNote": "Activity totals use this shared window. Device values and the latest complete hour describe current conditions; the hour start is shown in UTC.",
+      "metrics": "Observer comparison metrics",
+      "metric": "Metric",
+      "activity": "Recorded packets · aligned activity",
+      "overlap": "Retained flood-packet overlap",
+      "retention": "Raw packet history may expire before the longer-lived activity summaries. Overlap counts only retained flood packets in the shared window, across all regions.",
+      "total_one": "{{count}} distinct flood packet",
+      "total_other": "{{count}} distinct flood packets",
+      "empty": "No retained flood packets were reported by either observer in this window.",
+      "onlyA": "Only A",
+      "both": "Both",
+      "onlyB": "Only B",
+      "definition": "Each flood packet hash counts once across both observers. Repeat receptions are deduplicated. This is not a packet-loss measurement: expiry, offline devices and broker interruptions affect the available reports."
     }
   }
 }
