@@ -43,7 +43,7 @@ describe("PacketTableRow", () => {
     expect(onToggle).toHaveBeenCalledOnce();
   });
 
-  it("is a single line, so the row height stays constant for the virtualizer", () => {
+  it("keeps packet content inside one row button", () => {
     const { container } = render(<PacketTableRow packet={pkt()} expanded={false} onToggle={() => {}} />);
     expect(container.querySelectorAll("button")).toHaveLength(1);
     expect(screen.queryByText("latest")).not.toBeInTheDocument();

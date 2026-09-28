@@ -63,7 +63,9 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
         {packet.scope && (
           <>
             <span className="text-[6px] text-border" aria-hidden>·</span>
-            <ScopeTag>{packet.scope}</ScopeTag>
+            <span className="min-w-0 max-w-full" title={packet.scope}>
+              <ScopeTag className="block truncate">{packet.scope}</ScopeTag>
+            </span>
           </>
         )}
         <span className="text-[6px] text-border" aria-hidden>·</span>

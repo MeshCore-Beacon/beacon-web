@@ -15,11 +15,12 @@ interface PacketTableRowProps {
   onToggle: () => void;
 }
 
-// Single-line table row sharing GRID_TEMPLATE with the sticky header. The observer lives in the
+// Fixed-height table row sharing GRID_TEMPLATE with the sticky header. The observer lives in the
 // expansion instead, which frees the wide column for the packet's endpoints.
 export function PacketTableRow({ packet, expanded, isFresh, onToggle }: PacketTableRowProps) {
   // ?? not ||, so a legitimate 0-hop direct packet still shows its count
   const pathLength = packet.latestObserver?.pathLength;
+  const routeName = packet.routeTypeName || "Unknown";
   const na = <span className="text-text-dim">n/a</span>;
 
   return (
@@ -36,7 +37,7 @@ export function PacketTableRow({ packet, expanded, isFresh, onToggle }: PacketTa
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="grid w-full items-center gap-x-3 px-3 py-1.5 text-left text-[11px] cursor-pointer"
+        className="grid h-9 w-full items-center gap-x-3 px-3 py-1 text-left text-[11px] cursor-pointer"
         style={{ gridTemplateColumns: GRID_TEMPLATE }}
       >
         <span className={`text-text-dim transition-transform ${expanded ? "rotate-90" : ""}`} aria-hidden>
@@ -50,9 +51,9 @@ export function PacketTableRow({ packet, expanded, isFresh, onToggle }: PacketTa
             {PAYLOAD_TYPE_NAMES[packet.payloadType as PayloadTypeValue] ?? packet.payloadTypeName}
           </Badge>
         </span>
-        <span className="font-mono text-[10px] text-text-muted uppercase tracking-wider">
-          {packet.routeTypeName || "Unknown"}
-          {packet.scope && <ScopeTag>{packet.scope}</ScopeTag>}
+        <span className="flex min-w-0 flex-col items-start gap-0.5" title={packet.scope ? `${routeName} · ${packet.scope}` : routeName}>
+          <span className="max-w-full truncate font-mono text-[10px] leading-3 text-text-muted uppercase tracking-wider">{routeName}</span>
+          {packet.scope && <ScopeTag className="max-w-full truncate leading-3">{packet.scope}</ScopeTag>}
         </span>
         <span className="font-mono text-text-muted">×{packet.observationCount}</span>
         <span className="font-mono text-text-muted">{pathLength?.hopCount ?? na}</span>

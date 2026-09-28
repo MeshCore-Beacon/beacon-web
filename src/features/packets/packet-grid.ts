@@ -4,4 +4,4 @@
 // ("HASH" vs "4AE77F09") — either silently drifts the two apart.
 // Endpoints take minmax(0,1fr) so they absorb every bit of squeeze and truncate, rather than
 // pushing IATA and Age off the edge on a narrow viewport.
-export const GRID_TEMPLATE = "1.25rem 5rem 6rem 5rem 3rem 3rem 4rem minmax(0,1fr) 3.5rem 5rem";
+export const GRID_TEMPLATE = "1.25rem 5rem 6rem 8rem 3rem 3rem 4rem minmax(0,1fr) 3.5rem 5rem";
