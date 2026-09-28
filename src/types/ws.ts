@@ -35,6 +35,9 @@ export interface WsConfigured {
   type: "configured";
   id: string;
   resolvePath: boolean;
+  // echoed by servers that support these opt-ins; we never set them
+  includeObserverKey?: boolean;
+  includeRepeats?: boolean;
 }
 
 export interface WsPacketObservation {
@@ -52,10 +55,13 @@ export interface WsPacketObservation {
       observationCount: number;
       scope?: string; // matched transport scope name; omitted when none matched
       summary?: string;
+      // later hearing over a new path, only sent to configure{includeRepeats}; observationCount is 0
+      isRepeat?: boolean;
     };
     observation: {
       observerId: string;
       observerName: string;
+      observerPublicKey?: string; // only with configure{includeObserverKey}
       iata: string;
       heardAt: number;
       rssi: number;
