@@ -275,7 +275,7 @@
       "copyLink": "Copy observer link",
       "updated": "Calculated",
       "window": "UTC window",
-      "windowHelp": "Complete buckets; gaps are missing records, not proof of an outage. Repeated deliveries of the same retained packet/observer pair count once.",
+      "windowHelp": "The latest bucket may be partial; gaps are missing records, not proof of an outage. Repeated deliveries of the same retained packet/observer pair count once.",
       "exact": "Exact activity values",
       "time": "Time (UTC)",
       "mean": "Average",

@@ -279,7 +279,7 @@
       "copyLink": "Copier le lien de l’observateur",
       "updated": "Calculé",
       "window": "Période UTC",
-      "windowHelp": "Périodes complètes ; les lacunes sont des données manquantes, pas la preuve d’une panne. Les livraisons répétées du même couple paquet/observateur conservé ne comptent qu’une fois.",
+      "windowHelp": "La dernière période peut être partielle ; les lacunes sont des données manquantes, pas la preuve d’une panne. Les livraisons répétées du même couple paquet/observateur conservé ne comptent qu’une fois.",
       "exact": "Valeurs exactes de l’activité",
       "time": "Heure (UTC)",
       "mean": "Moyenne",
