@@ -6,14 +6,28 @@ import i18n from "../../../src/i18n";
 afterEach(() => vi.restoreAllMocks());
 
 describe("translated analytics controls", () => {
+  it("limits observer periods while keeping archived analytics ranges", async () => {
+    const props = { onTabChange: vi.fn(), onRangeChange: vi.fn() };
+    const { rerender } = render(<StatsSubHeader {...props} tab="observer" range="3d" />);
+    expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "30d" })).not.toBeInTheDocument();
+    await act(() => i18n.changeLanguage("fr"));
+    fireEvent.click(screen.getByRole("button", { name: "3 j" }));
+    expect(props.onRangeChange).toHaveBeenCalledWith("3d");
+    rerender(<StatsSubHeader {...props} tab="traffic" range="3d" />);
+    expect(screen.queryByRole("button", { name: "7 j" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30 j" })).toBeInTheDocument();
+  });
+
   it("keeps section and range identifiers when labels change", async () => {
     const onTabChange = vi.fn(), onRangeChange = vi.fn();
-    render(<StatsSubHeader tab="signal" range="7d" onTabChange={onTabChange} onRangeChange={onRangeChange} />);
-    expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+    render(<StatsSubHeader tab="signal" range="3d" onTabChange={onTabChange} onRangeChange={onRangeChange} />);
+    expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     await act(() => i18n.changeLanguage("fr"));
     expect(screen.getByRole("group", { name: "Section des statistiques" })).toBeInTheDocument();
     const range = screen.getByRole("group", { name: "Période" });
-    expect(within(range).getByRole("button", { name: "7 j" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(range).getByRole("button", { name: "3 j" })).toHaveAttribute("aria-pressed", "true");
     expect(onTabChange).not.toHaveBeenCalled();
     expect(onRangeChange).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Chemins et hachages" }));

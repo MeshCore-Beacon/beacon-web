@@ -1,6 +1,6 @@
 import type { StatsRange } from "../stats/types";
 
-export const observerRange = (value: string | null): StatsRange => value === "24h" || value === "30d" ? value : "7d";
+export const observerRange = (value: string | null): StatsRange => value === "24h" ? "24h" : "3d";
 
 export function observerDestination(params: URLSearchParams, id: string | null, range = observerRange(params.get("range"))) {
   const next = new URLSearchParams(params);

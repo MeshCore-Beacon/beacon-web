@@ -26,6 +26,19 @@ function mount(url = "/?tab=Routes") {
 }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(getRouteEvidence).mockResolvedValue(page); });
 describe("retained route evidence", () => {
+  it("normalizes an old month link to 72 hours and offers only retained periods", async () => {
+    mount("/?routeRange=30d");
+    await screen.findByText("Garden");
+    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { range: "72h", limit: 50 }, expect.anything());
+    expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "7 days" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "30 days" })).not.toBeInTheDocument();
+  });
+  it("does not request a shared raw-evidence period longer than three days", async () => {
+    mount("/?routeSince=1700000000000&routeUntil=1700345600000");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(getRouteEvidence).not.toHaveBeenCalled();
+  });
   it("opens the exact report and observer, names the saved route, and pins cursor pages", async () => {
     mount();
     await screen.findByText("Garden");
@@ -51,9 +64,9 @@ describe("retained route evidence", () => {
     await screen.findByText("Garden");
     expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { since: 1700000000000, until: 1700086400000, limit: 50 }, expect.anything());
     expect(screen.getByText("Shared time window")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "7 days" }));
-    await waitFor(() => expect(getRouteEvidence).toHaveBeenLastCalledWith("YOW", key, { range: "168h", limit: 50 }, expect.anything()));
-    expect(screen.getByText(/routeRange=7d/)).not.toHaveTextContent("routeSince");
+    fireEvent.click(screen.getByRole("button", { name: "3d" }));
+    await waitFor(() => expect(getRouteEvidence).toHaveBeenLastCalledWith("YOW", key, { range: "72h", limit: 50 }, expect.anything()));
+    expect(screen.getByText(/routeRange=3d/)).not.toHaveTextContent("routeSince");
   });
   it("does not replace an invalid shared window with an unrelated default", async () => {
     mount("/?routeSince=bad");

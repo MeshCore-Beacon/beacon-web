@@ -5,6 +5,7 @@ import type { StatsRange } from "./types";
 // Go time.ParseDuration strings the telemetry endpoint expects, per selected range.
 const RANGE_PARAM: Record<StatsRange, string> = {
   "24h": "24h",
+  "3d": "72h",
   "7d": "168h",
   "30d": "720h",
 };
@@ -13,6 +14,7 @@ const RANGE_PARAM: Record<StatsRange, string> = {
 // charts don't drown in points.
 const INTERVAL_PARAM: Record<StatsRange, string> = {
   "24h": "1h",
+  "3d": "1h",
   "7d": "6h",
   "30d": "24h",
 };
@@ -31,6 +33,7 @@ export function useObserver(observerId: string | null, poll = false) {
 // Bucket per range: a quiet hour stays visible at 24h, the longer windows stay under ~200 points.
 const ACTIVITY_INTERVAL: Record<StatsRange, string> = {
   "24h": "15m",
+  "3d": "1h",
   "7d": "1h",
   "30d": "6h",
 };

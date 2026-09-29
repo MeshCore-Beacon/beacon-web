@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { WsManager } from "../../api/ws-manager";
 import { StatsSubHeader } from "./StatsSubHeader";
 import { MeshTab } from "./MeshTab";
@@ -15,10 +16,10 @@ import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import type { StatsRange, StatsTab } from "./types";
 
 const TABS: StatsTab[] = ["mesh", "traffic", "signal", "paths", "scopes", "talkers", "clockdrift", "compare", "graph"];
-const RANGES: StatsRange[] = ["24h", "7d", "30d"];
+const RANGES: StatsRange[] = ["24h", "3d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
-const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRange) ? (v as StatsRange) : "7d");
+const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRange) ? (v as StatsRange) : "3d");
 
 interface StatsOverviewProps {
   wsManager: WsManager;
@@ -30,6 +31,7 @@ interface StatsOverviewProps {
 // view is shareable; replace:true keeps it out of history. Queries are cached, so switching is instant.
 export function StatsOverview({ wsManager, onObserverDashboard }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
+  const { t } = useTranslation();
   const tab = asTab(params.get("statsTab"));
   const range = asRange(params.get("range"));
 
@@ -61,6 +63,7 @@ export function StatsOverview({ wsManager, onObserverDashboard }: StatsOverviewP
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} />
       <div className="min-h-0 flex-1 overflow-y-auto">
+        {["mesh", "traffic", "signal", "paths", "talkers"].includes(tab) && <p className="px-4 pt-3 text-xs text-text-muted">{t("stats.archiveHelp")}</p>}
         {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />}
         {tab === "traffic" && <TrafficTab range={range} />}
         {tab === "signal" && <SignalTab range={range} />}

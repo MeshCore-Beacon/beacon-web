@@ -66,8 +66,10 @@
       "ranges": {
         "24h": "24h",
         "7d": "7d",
-        "30d": "30d"
-      }
+        "30d": "30d",
+        "3d": "3d"
+      },
+      "archiveHelp": "Hourly analytics keep summaries for up to 30 days. Packet details and overlap use retained raw records; older summary history accumulates after archiving is enabled."
     },
     "signal": {
       "title": "RF / Signal",
@@ -312,7 +314,9 @@
       "onlyA": "Only A",
       "both": "Both",
       "onlyB": "Only B",
-      "definition": "Each flood packet hash counts once across both observers. Repeat receptions are deduplicated. This is not a packet-loss measurement: expiry, offline devices and broker interruptions affect the available reports."
+      "definition": "Each flood packet hash counts once across both observers. Repeat receptions are deduplicated. This is not a packet-loss measurement: expiry, offline devices and broker interruptions affect the available reports.",
+      "windowLimit": "Choose a period of 3 days or less for retained packet records.",
+      "retainedWindow": "Packet details and overlap use retained raw records, with a maximum 3-day window."
     },
     "investigation": {
       "title": "Reception evidence",

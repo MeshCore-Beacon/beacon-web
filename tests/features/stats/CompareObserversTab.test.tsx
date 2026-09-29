@@ -35,6 +35,17 @@ beforeEach(() => {
 });
 
 describe("observer comparison", () => {
+  it("rejects a raw packet comparison beyond three days", async () => {
+    mount();
+    await screen.findAllByRole("option", { name: /Rooftop/ });
+    fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: a } });
+    fireEvent.change(screen.getByLabelText("Observer B"), { target: { value: b } });
+    fireEvent.change(screen.getByLabelText("Start (local time)"), { target: { value: "2026-01-01T00:00" } });
+    fireEvent.change(screen.getByLabelText("End (local time)"), { target: { value: "2026-01-05T00:00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Compare" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("3 days or less");
+    expect(getObserverComparison).not.toHaveBeenCalled();
+  });
   it("waits for Compare, sends explicit dates and region, and puts the selection in the URL", async () => {
     mount();
     await screen.findAllByRole("option", { name: /Rooftop/ });
@@ -42,11 +53,11 @@ describe("observer comparison", () => {
     fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: a } });
     fireEvent.change(screen.getByLabelText("Observer B"), { target: { value: b } });
     fireEvent.change(screen.getByLabelText("Start (local time)"), { target: { value: "2026-01-01T00:00" } });
-    fireEvent.change(screen.getByLabelText("End (local time)"), { target: { value: "2026-02-15T00:00" } });
+    fireEvent.change(screen.getByLabelText("End (local time)"), { target: { value: "2026-01-03T00:00" } });
     expect(getObserverComparison).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Compare" }));
     await waitFor(() => expect(getObserverComparison).toHaveBeenCalledWith(["YVR"], {
-      observerA: a, observerB: b, since: new Date("2026-01-01T00:00").getTime(), until: new Date("2026-02-15T00:00").getTime(),
+      observerA: a, observerB: b, since: new Date("2026-01-01T00:00").getTime(), until: new Date("2026-01-03T00:00").getTime(),
     }, expect.any(AbortSignal)));
     expect(screen.getByLabelText("Current URL").textContent).toContain(`compareA=${a}`);
   });

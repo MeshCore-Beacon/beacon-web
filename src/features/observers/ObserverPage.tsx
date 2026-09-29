@@ -26,9 +26,10 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
   const validAnchor = params.getAll("compareUntil").length <= 1 && Number.isSafeInteger(anchor) && anchor > now - 30 * 86_400_000 && anchor <= Math.max(now, actionTime);
   const until = validAnchor ? anchor : null;
   if (!id && !directoryVisited) setDirectoryVisited(true);
-  const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
-  if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
   const range = observerRange(params.get("range"));
+  const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
+  if (id) share.searchParams.set("range", range);
+  if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
   const select = (observer: string | null) => setParams(observerDestination(params, observer, range), visitOptions);
   const compare = (observer: string) => {
     const clickedAt = Date.now();
@@ -60,7 +61,7 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
         <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className="min-h-11 text-sm text-primary">{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
         <label className="ml-auto flex items-center gap-2 text-sm text-text-muted">{t("observerPage.range")}
           <select aria-label={t("observerPage.range")} value={range} onChange={e => setParams(observerDestination(params, id, observerRange(e.target.value)), visitOptions)} className="min-h-11 rounded border border-border bg-bg-raised px-3 text-text-normal">
-            <option value="24h">24h</option><option value="7d">7d</option><option value="30d">30d</option>
+            <option value="24h">{t("stats.ranges.24h")}</option><option value="3d">{t("stats.ranges.3d")}</option>
           </select>
         </label>
       </>}

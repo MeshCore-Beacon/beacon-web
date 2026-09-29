@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { getObserver, getObserverComparison, getObserversPage } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { Card } from "./cards";
@@ -16,6 +17,7 @@ function validation(value: Selection): string | null {
   if (!Number.isSafeInteger(value.since) || !Number.isSafeInteger(value.until) || value.since < 0 || value.until <= value.since || value.until > 253402300799999) {
     return "Choose a valid start and a later end time.";
   }
+  if (value.until - value.since > 3 * 86_400_000) return "observerCompare.windowLimit";
   return null;
 }
 
@@ -61,6 +63,7 @@ function ObserverSelect({ label, value, onChange }: { label: string; value: stri
 }
 
 function ComparisonForm({ initial, onCompare }: { initial: Selection | null; onCompare: (value: Selection) => void }) {
+  const { t } = useTranslation();
   const [a, setA] = useState(initial?.observerA ?? "");
   const [b, setB] = useState(initial?.observerB ?? "");
   const [since, setSince] = useState(() => localTime(initial?.since ?? Math.floor((Date.now() - 86_400_000) / 60_000) * 60_000));
@@ -85,13 +88,14 @@ function ComparisonForm({ initial, onCompare }: { initial: Selection | null; onC
           <input type="datetime-local" step="0.001" value={until} onChange={(e) => setUntil(e.target.value)} className={fieldClass} />
         </label>
       </div>
-      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+      {error && <p role="alert" className="text-sm text-danger">{t(error, { defaultValue: error })}</p>}
       <button type="submit" className="rounded border border-primary-dim bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">Compare</button>
     </form>
   );
 }
 
 export function CompareObserversTab() {
+  const { t } = useTranslation();
   const { iatas, regionKey } = useRegion();
   const [params, setParams] = useSearchParams();
   const keys = ["compareA", "compareB", "compareSince", "compareUntil"];
@@ -137,7 +141,7 @@ export function CompareObserversTab() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4">
       <Card title="Compare observers">
-        <p className="mb-4 text-sm text-text-muted">Compare distinct flood packets reported by two observers over any retained time period.</p>
+        <p className="mb-4 text-sm text-text-muted">{t("observerCompare.retainedWindow")}</p>
         {supplied && !valid && <p role="alert" className="mb-3 text-sm text-danger">This comparison link has invalid or missing values. Choose observers and dates below.</p>}
         <ComparisonForm key={keys.map((key) => params.get(key)).join("|")} initial={selection} onCompare={compare} />
       </Card>

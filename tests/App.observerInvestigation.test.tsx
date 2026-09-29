@@ -81,10 +81,10 @@ describe("observer investigation return", () => {
     fireEvent.change(screen.getByLabelText("Route filter"), { target: { value: "roof" } });
     screen.getByTestId("route-scroll").scrollTop = 180;
     click("Route observer"); click("Open dashboard");
-    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 7d");
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 3d");
     expect(window.location.search).toContain("tab=Observers&observer=o1");
     expect(screen.getByTestId("origin-url")).toHaveTextContent("route=full-route");
-    fireEvent.change(screen.getByRole("combobox", { name: "Time range" }), { target: { value: "30d" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time range" }), { target: { value: "24h" } });
     click("Compare with…");
     expect(window.location.search).toContain("compareWith=");
     click("Back to Routes");

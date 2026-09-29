@@ -65,7 +65,7 @@ describe("Observer destination", () => {
     view();
     fireEvent.change(screen.getByLabelText("Directory search"), { target: { value: "roof" } });
     fireEvent.click(screen.getByText("Open A"));
-    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-a 7d");
+    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-a 3d");
     expect(screen.getByRole("status").textContent).toContain("observer=observer-a");
     expect(screen.getByRole("status").textContent).toContain("iata=YOW");
     fireEvent.click(screen.getByText("Browser back"));
@@ -76,7 +76,8 @@ describe("Observer destination", () => {
   });
   it("restores a deep link and has a directory return without prior history", async () => {
     view("?tab=Observers&observer=observer-b&range=30d");
-    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-b 30d");
+    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-b 3d");
+    expect(screen.getAllByRole("option").map(option => option.getAttribute("value"))).toEqual(["24h", "3d"]);
     fireEvent.click(screen.getByRole("button", { name: /Back to observers/ }));
     expect(screen.getByLabelText("Directory search")).toBeVisible();
   });
