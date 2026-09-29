@@ -150,9 +150,13 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   <button
                     type="button"
                     onClick={() => onViewOnMap(node.lat!, node.lng!)}
-                    className="mt-2 block font-mono text-[11px] text-primary hover:underline"
+                    className="mt-2 w-full flex items-center justify-center gap-1.5 rounded border border-border bg-bg-base px-3 py-1.5 text-[13px] font-mono text-text-normal hover:bg-text-normal/3 transition-colors"
                   >
-                    View on map →
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path d="M9 5l-6 2v12l6-2 6 2 6-2V5l-6 2-6-2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                      <path d="M9 5v12M15 7v12" stroke="currentColor" strokeWidth="1.4" />
+                    </svg>
+                    View on map
                   </button>
                 )}
               </Section>
