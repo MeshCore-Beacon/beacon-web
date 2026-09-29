@@ -369,6 +369,15 @@ function AppInner() {
                 setSelectedObserverId(observerId);
               }}
               onViewNode={setOverlayNodeId}
+              onViewOnMap={(lat, lng) => {
+                // handleViewOnMap bypasses handleTabChange (see its own comment), so the overlay
+                // won't be cleared as a side effect here the way onViewObserver's handleTabChange
+                // call clears it above — close it and promote the node into the shared selection
+                // explicitly, so NodeDetailPanel (not this overlay) is what reopens on the Map tab.
+                handleViewOnMap(lat, lng);
+                setSelectedNodeId(overlayNodeId);
+                setOverlayNodeId(null);
+              }}
             />
           )}
           {overlayPacketHash && (
