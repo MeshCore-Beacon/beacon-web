@@ -256,6 +256,23 @@ function AppInner() {
     if (id === null) dropSelectionParam("observer");
   }, [dropSelectionParam]);
 
+  // Jump from a node's detail panel to its location on the Map tab, framed close on that node.
+  // Bypasses handleTabChange (like handleViewObserverStats) so selectedNodeId survives the switch on
+  // mobile too — the point of this action is to keep the same node's panel open, now over the map.
+  const handleViewOnMap = useCallback(
+    (lat: number, lng: number) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", "Map");
+        next.set("lat", lat.toFixed(5));
+        next.set("lng", lng.toFixed(5));
+        next.set("zoom", "14");
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
   // Jump from an observer's detail panel to its telemetry on the Stats tab (Stats → Observer, preselected).
   const handleViewObserverStats = useCallback(
     (id: string) => {
@@ -340,6 +357,7 @@ function AppInner() {
               }}
               onViewNode={setSelectedNodeId}
               onAnalyzePacket={setOverlayPacketHash}
+              onViewOnMap={handleViewOnMap}
             />
           )}
           {overlayNodeId && (
