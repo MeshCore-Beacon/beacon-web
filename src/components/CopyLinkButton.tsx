@@ -10,16 +10,19 @@ export function CopyLinkButton({
   label = "Copy Link",
   copiedLabel = "Copied",
   ariaLabel,
+  preserveParams,
 }: {
   params: Record<string, string> | (() => Record<string, string | null>);
   label?: string;
   copiedLabel?: string;
   ariaLabel?: string;
+  preserveParams?: readonly string[];
 }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
     const url = new URL(window.location.href);
+    if (preserveParams) for (const key of [...url.searchParams.keys()]) if (!preserveParams.includes(key)) url.searchParams.delete(key);
     const resolved = typeof params === "function" ? params() : params;
     for (const [key, value] of Object.entries(resolved)) {
       if (value === null) url.searchParams.delete(key);
@@ -28,7 +31,7 @@ export function CopyLinkButton({
     navigator.clipboard.writeText(url.toString());
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-  }, [params]);
+  }, [params, preserveParams]);
 
   return (
     <button

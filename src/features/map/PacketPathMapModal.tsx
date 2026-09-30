@@ -51,7 +51,8 @@ export function PacketPathMapModal({ detail, onClose, initialSelectedKey, inacti
           <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{t("investigation.mapTitle")}</span>
           <div className="flex items-center gap-1.5">
             <CopyLinkButton
-              params={() => ({ tab: "Packets", hash: detail.packetHash, path: selectedKey ?? "all", analyze: null, observation: null, node: null, observer: null, observerId: null, statsTab: null, compareWith: null, compareUntil: null, route: null, routeIata: null, routeRange: null, routeSince: null, routeUntil: null })}
+              preserveParams={["regions", "iata", "region"]}
+              params={() => ({ tab: "Packets", hash: detail.packetHash, path: selectedKey ?? "all" })}
               label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("investigation.copyPath")}
             />
             <CloseButton onClose={onClose} label={t("investigation.closeMap")} className="-mr-1" />

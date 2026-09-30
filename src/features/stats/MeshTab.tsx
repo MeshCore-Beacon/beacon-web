@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { formatCount } from "../../lib/formatters";
 import { useChartColors, nodeTypeColor } from "./chartTheme";
 import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
@@ -36,7 +35,6 @@ interface MeshTabProps {
 }
 
 export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
-  const { t } = useTranslation();
   const colors = useChartColors();
   useLiveOverview(wsManager);
   const overview = useStatsOverview();
@@ -145,14 +143,6 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
         {/* range-driven charts lead the grid; the all-time ones follow below */}
         <div className="min-w-0">
           <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
-          {observerRows.length > 0 && <details className="mt-2 text-sm">
-            <summary className="cursor-pointer text-primary">{t("investigation.observerList")}</summary>
-            <ul className="mt-1 space-y-1">{observerRows.map((row, index) => <li key={observerIds[index]}>
-              <button type="button" className="flex min-h-9 w-full justify-between gap-3 rounded border border-border px-2 py-1 text-left text-text-normal hover:bg-bg-raised" onClick={() => observerEvents.click({ dataIndex: index })}>
-                <span className="truncate">{row.name}</span><span className="tabular-nums">{formatCount(row.value)}</span>
-              </button>
-            </li>)}</ul>
-          </details>}
         </div>
         <ChartCard
           title={<>Payload types · {range}</>}

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MeshTab } from "../../../src/features/stats/MeshTab";
 import { getStatsOverview, getStatsObservations, getPayloadBreakdown, getTopNodes, getTopObservers, getRadioPresets, getStatsScopes, getStatsNodeTypes } from "../../../src/api/client";
@@ -44,15 +44,6 @@ function mount(range: StatsRange = "24h") {
 }
 async function loaded() { await waitFor(() => expect(screen.getAllByTestId("chart")).toHaveLength(6)); await screen.findByText("#old"); }
 
-it("offers an observer button alongside the canvas leaderboard", async () => {
-  const { onSelectObserver } = mount(); await loaded();
-  fireEvent.click(screen.getByText("Inspect an observer"));
-  const button = screen.getByRole("button", { name: /^Old observer/ });
-  button.focus();
-  expect(button).toHaveFocus();
-  fireEvent.click(button);
-  expect(onSelectObserver).toHaveBeenCalledWith("observer-id");
-});
 
 it("hides all previous-region values and sparklines until their own requests resolve", async () => {
   const { rerender, container } = mount(); await loaded();

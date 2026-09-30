@@ -23,27 +23,27 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick?: (
       className={`w-full text-left bg-bg-base border border-border rounded px-3 py-2 border-l-2 border-l-primary ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
       onClick={onClick}
     >
-      <div className="flex items-center gap-2 text-[11px] mb-1.5">
+      <span className="flex items-center gap-2 text-[11px] mb-1.5">
         <span className={`font-mono font-semibold tracking-wider truncate ${advert.nodeName ? "text-primary" : "text-text-dim italic"}`}>
           {advert.nodeName ?? (advert.nodePublicKey ? formatHex(advert.nodePublicKey) : "unknown")}
         </span>
         <IataChip>{advert.iata}</IataChip>
         <Timestamp value={advert.heardAt} className="text-text-dim ml-auto font-mono text-[11px]" />
-      </div>
-      <div className="flex gap-5 font-mono text-xs">
-        <div className="flex flex-col">
+      </span>
+      <span className="flex gap-5 font-mono text-xs">
+        <span className="flex flex-col">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">SNR</span>
           <span className={`font-medium ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal"}`}>{formatSnr(advert.snr)}</span>
-        </div>
-        <div className="flex flex-col">
+        </span>
+        <span className="flex flex-col">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">RSSI</span>
           <span className={`font-medium ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal"}`}>{advert.rssi ?? "—"}</span>
-        </div>
-        <div className="flex flex-col">
+        </span>
+        <span className="flex flex-col">
           <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">Hops</span>
           <span className="font-medium text-text-normal">{advert.hopCount ?? "—"}</span>
-        </div>
-      </div>
+        </span>
+      </span>
     </Tag>
   );
 }

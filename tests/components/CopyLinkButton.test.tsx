@@ -73,3 +73,11 @@ describe("CopyLinkButton", () => {
     expect(copied.searchParams.get("tab")).toBe("Map");
   });
 });
+
+it("retains only an explicit allowlist when building a focused investigation link", () => {
+  window.history.replaceState({}, "", "/?regions=ontario&futureFilter=wrong&observer=old&tab=Routes");
+  render(<CopyLinkButton preserveParams={["regions", "iata"]} params={{ tab: "Packets", hash: "abc", path: "all" }} />);
+  fireEvent.click(screen.getByRole("button"));
+  const copied = new URL(writeText.mock.calls[0][0]);
+  expect(Object.fromEntries(copied.searchParams)).toEqual({ regions: "ontario", tab: "Packets", hash: "abc", path: "all" });
+});
