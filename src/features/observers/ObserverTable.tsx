@@ -180,7 +180,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   useWsObserverStatusHandler(wsManager, handleObserverStatus);
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex flex-col flex-1 min-w-0">
         {compact ? <div className="p-2"><SearchBar value={search} onChange={setSearch} fields={[{ value: "name", label: "Name" }]} field="name" onFieldChange={setSearchField} hideField inputLabel={t("observerPage.sidebarSearch")} /></div> : <ObserverFilterBar
           search={search}
