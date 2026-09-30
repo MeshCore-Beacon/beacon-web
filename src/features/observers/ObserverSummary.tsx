@@ -7,7 +7,7 @@ import type { Observer } from "./types";
 import type { ObserverActivity, TelemetryPoint } from "../stats/types";
 
 export function ObserverSummary({ observer, activity, points, pending = false }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean }) {
-  const { t } = useTranslation(); const now = useTick();
+  const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
   const lastArrival = Math.max(0, ...observer.brokers.map(b => b.lastPacketAt || 0));
