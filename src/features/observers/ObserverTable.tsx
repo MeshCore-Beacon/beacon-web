@@ -74,7 +74,11 @@ const COLUMNS: Column<ObserverSummary>[] = [
   },
 ];
 
-const COMPACT_COLUMNS = [COLUMNS[0]!];
+const COMPACT_COLUMNS: Column<ObserverSummary>[] = [{
+  ...COLUMNS[0]!,
+  className: "max-w-0",
+  cell: (obs) => <button type="button" className="block min-h-7 w-full min-w-0 text-left" title={obs.displayName ?? formatHex(obs.id)}>{COLUMNS[0]!.cell(obs)}</button>,
+}];
 
 function renderObserverCard(obs: ObserverSummary) {
   const status = deriveObserverStatus(obs);
