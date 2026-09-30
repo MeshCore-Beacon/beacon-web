@@ -83,10 +83,23 @@ describe("observer identity panel", () => {
     expect(writeText).toHaveBeenCalledWith(full.publicKey);
   });
 
-  it("shows observer actions on the name row", () => {
-    render(<ObserverSummary observer={full} points={[]} actions={<button>Compare with…</button>} />);
-    const row = screen.getByRole("heading", { level: 1 }).parentElement!;
-    expect(within(row).getByRole("button", { name: "Compare with…" })).toBeInTheDocument();
+  it("stacks observer actions in their own column of the header panel", () => {
+    render(<ObserverSummary observer={full} points={[]} actions={<><button>Copy link</button><button>Compare with…</button></>} />);
+    const panel = screen.getByRole("region", { name: "Roof" });
+    const column = within(panel).getByRole("button", { name: "Compare with…" }).parentElement!;
+    expect(column).toContainElement(within(panel).getByRole("button", { name: "Copy link" }));
+    expect(column).not.toContainElement(screen.getByRole("heading", { level: 1 }));
+    expect(column).toHaveClass("sm:flex-col");
+  });
+
+  it("labels each detail", () => {
+    render(<ObserverSummary observer={full} points={[]} />);
+    const panel = screen.getByRole("region", { name: "Roof" });
+    const term = (label: string) => within(panel).getByText(label, { selector: "dt" }).nextElementSibling!;
+    expect(term("Device")).toHaveTextContent("Heltec V3");
+    expect(term("Public key")).toHaveTextContent("04ebc137…b839a29");
+    expect(term("Brokers")).toHaveTextContent("mqtt1");
+    expect(term("First seen")).toHaveTextContent("1d ago");
   });
 
   it("keeps a client version that adds information", () => {

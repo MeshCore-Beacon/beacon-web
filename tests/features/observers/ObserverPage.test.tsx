@@ -93,7 +93,7 @@ describe("Observer destination", () => {
     await screen.findByRole("heading");
     const header = screen.getByTestId("header-actions");
     expect(within(header).getByRole("button", { name: "Compare with…" })).toBeInTheDocument();
-    expect(within(header).getByRole("button", { name: "Copy observer link" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Copy observer link" })).toHaveTextContent("Copy link");
     expect(within(header).queryByRole("button", { name: /Back to observers/ })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Compare with…" })).toHaveLength(1);
   });

@@ -17,6 +17,8 @@ function Measure({ text }: { text: string }) {
     /\d/.test(part) ? <span key={i}>{part}</span> : <span key={i} className="text-sm font-semibold text-text-muted">{part}</span>)}</>;
 }
 
+const DT = "text-[11px] text-text-dim";
+
 export function ObserverSummary({ observer, activity, points, pending = false, actions }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode }) {
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
@@ -59,36 +61,48 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
     },
   ];
   return <>
-    <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-lg border border-border bg-bg-surface px-3.5 py-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-        <h1 id={headingId} className="min-w-0 break-words text-lg font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
-        <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
-        </span>
-        <IataChip>{observer.iata}</IataChip>
-        {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
-      </div>
-      {device.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 font-mono text-[12px] text-text-normal">
-          {device.map(([label, value]) => <Tooltip key={label} label={label}><span className="rounded-sm bg-bg-raised px-1.5 py-0.5">{value}</span></Tooltip>)}
+    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface px-3.5 py-3 sm:flex-row sm:items-start">
+      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <h1 id={headingId} className="min-w-0 break-words text-lg font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
+          <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
+          </span>
+          <IataChip>{observer.iata}</IataChip>
         </div>
-      )}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-text-muted">
-        {observer.publicKey && <span className="inline-flex items-center gap-2">
-          <Tooltip label={observer.publicKey}><code className="text-text-normal">{observer.publicKey.slice(0, 8)}…{observer.publicKey.slice(-7)}</code></Tooltip>
-          <CopyButton value={observer.publicKey} label={t("observerPage.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyKey")} />
-        </span>}
-        {(observer.brokers ?? []).map((b) => (
-          <Tooltip key={b.name} label={`${t("observerPage.packetArrival")}: ${b.lastPacketAt > 0 ? ago(b.lastPacketAt) : "—"}`}>
-            <span className="inline-flex items-center gap-1.5">
-              <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${now - b.lastSeenAt < 300_000 ? "bg-green" : "bg-warn"}`} />
-              <span className="text-text-normal">{b.name}</span>
-              <Timestamp value={b.lastSeenAt} />
-            </span>
-          </Tooltip>
-        ))}
-        <span>{t("observerPage.firstSeen")} {observer.firstSeen ? <Timestamp value={observer.firstSeen} className="text-text-normal" /> : "—"}</span>
+        <dl className="grid grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5 font-mono text-[12px]">
+          {device.length > 0 && <>
+            <dt className={DT}>{t("observerPage.deviceInfo")}</dt>
+            <dd className="flex flex-wrap gap-1.5 text-text-normal">
+              {device.map(([label, value]) => <Tooltip key={label} label={label}><span className="rounded-sm bg-bg-raised px-1.5 py-0.5">{value}</span></Tooltip>)}
+            </dd>
+          </>}
+          {observer.publicKey && <>
+            <dt className={DT}>{t("observerPage.publicKey")}</dt>
+            <dd className="flex items-center gap-2">
+              <Tooltip label={observer.publicKey}><code className="text-text-normal">{observer.publicKey.slice(0, 8)}…{observer.publicKey.slice(-7)}</code></Tooltip>
+              <CopyButton value={observer.publicKey} label={t("observerPage.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyKey")} />
+            </dd>
+          </>}
+          {(observer.brokers ?? []).length > 0 && <>
+            <dt className={DT}>{t("observerPage.brokers")}</dt>
+            <dd className="flex flex-wrap items-center gap-x-4 gap-y-1 text-text-muted">
+              {[...observer.brokers].sort((x, y) => x.name.localeCompare(y.name, undefined, { numeric: true })).map((b) => (
+                <Tooltip key={b.name} label={`${t("observerPage.packetArrival")}: ${b.lastPacketAt > 0 ? ago(b.lastPacketAt) : "—"}`}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${now - b.lastSeenAt < 300_000 ? "bg-green" : "bg-warn"}`} />
+                    <span className="text-text-normal">{b.name}</span>
+                    <Timestamp value={b.lastSeenAt} />
+                  </span>
+                </Tooltip>
+              ))}
+            </dd>
+          </>}
+          <dt className={DT}>{t("observerPage.firstSeen")}</dt>
+          <dd className="text-text-normal">{observer.firstSeen ? <Timestamp value={observer.firstSeen} /> : "—"}</dd>
+        </dl>
       </div>
+      {actions && <div className="flex shrink-0 flex-row flex-wrap gap-2 sm:w-40 sm:flex-col sm:items-stretch">{actions}</div>}
     </section>
     <ul role="list" aria-label={t("observerPage.metrics")} className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
       {cards.map(({ key, label, value, title }) => {

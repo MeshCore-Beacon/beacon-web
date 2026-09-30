@@ -324,7 +324,10 @@
       "copyKey": "Copier la clé publique",
       "sort": "Trier les observateurs",
       "sortActivity": "Activité",
-      "sortName": "Nom"
+      "sortName": "Nom",
+      "deviceInfo": "Appareil",
+      "brokers": "Courtiers",
+      "copyLinkShort": "Copier le lien"
     },
     "observerCompare": {
       "open": "Comparer avec…",

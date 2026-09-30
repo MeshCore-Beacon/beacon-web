@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Tooltip } from "../../components/Tooltip";
+import { CopyButton } from "../../components/CopyButton";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { useTick } from "../../hooks/useTick";
 import { ObserverTable } from "./ObserverTable";
@@ -10,24 +10,6 @@ import { observerDestination, observerRange } from "./observer-navigation";
 import { Segmented } from "../stats/Segmented";
 import type { WsManager } from "../../api/ws-manager";
 const ObserverTab = lazy(() => import("../stats/ObserverTab").then(m => ({ default: m.ObserverTab })));
-
-function CopyLinkIcon({ value, label, copiedLabel }: { value: string; label: string; copiedLabel: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Tooltip label={copied ? copiedLabel : label}>
-      <button
-        type="button"
-        aria-label={label}
-        onClick={() => { void navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-        className={`flex h-7 w-7 items-center justify-center rounded border transition-colors ${copied ? "border-green/40 text-green" : "border-border text-text-muted hover:border-text-dim hover:text-text-bright"}`}
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-          {copied ? <path d="m3.5 8.5 3 3 6-7" /> : <><path d="M6.5 9.5a3 3 0 0 0 4.2 0l2-2a3 3 0 0 0-4.2-4.2l-.8.8" /><path d="M9.5 6.5a3 3 0 0 0-4.2 0l-2 2a3 3 0 0 0 4.2 4.2l.8-.8" /></>}
-        </svg>
-      </button>
-    </Tooltip>
-  );
-}
 
 const NAV_CHIP = "inline-flex items-center gap-1.5 rounded-sm border border-border bg-bg-raised px-2 py-0.5 font-mono text-[11px] text-text-normal transition-colors hover:border-text-dim hover:text-text-bright";
 
@@ -96,8 +78,8 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
       <div className="min-h-0 flex-1 overflow-auto">
         <Suspense fallback={<p role="status" className="p-4">{t("common.loading")}</p>}>
           <ObserverTab range={range} selectedObserverId={id} onSelectObserver={select} wsManager={wsManager} actions={<>
-            <CopyLinkIcon value={share.toString()} label={t("observerPage.copyLink")} copiedLabel={t("observerPage.copied")} />
-            <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className={ACTION_BUTTON_CLASS}>{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
+            <CopyButton value={share.toString()} label={t("observerPage.copyLinkShort")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyLink")} className="justify-center py-1" />
+            <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className={`${ACTION_BUTTON_CLASS} text-center`}>{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
           </>} comparison={comparing ? { id: params.getAll("compareWith").length === 1 ? params.get("compareWith") ?? "" : "invalid", until, onSelect: compare, onRefresh: refreshCompare } : undefined} />
         </Suspense>
       </div>

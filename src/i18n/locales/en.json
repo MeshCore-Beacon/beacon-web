@@ -320,7 +320,10 @@
       "copyKey": "Copy public key",
       "sort": "Sort observers",
       "sortActivity": "Activity",
-      "sortName": "Name"
+      "sortName": "Name",
+      "deviceInfo": "Device",
+      "brokers": "Brokers",
+      "copyLinkShort": "Copy link"
     },
     "observerCompare": {
       "open": "Compare with…",
