@@ -97,8 +97,8 @@ export function getPackets(
   });
 }
 
-export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
-  return request(`/packets/${packetHash}`);
+export function getPacketDetail(packetHash: string, signal?: AbortSignal): Promise<PacketDetail> {
+  return request(`/packets/${packetHash}`, undefined, signal);
 }
 
 export function getIatas(): Promise<IataCode[]> {
@@ -266,6 +266,7 @@ export function getNodesPage(
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
   },
+  signal?: AbortSignal,
 ): Promise<CursorPage<NodeSummary>> {
   return request("/nodes", {
     iatas: iatasParam(iatas),
@@ -277,7 +278,7 @@ export function getNodesPage(
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
-  });
+  }, signal);
 }
 
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.
@@ -296,18 +297,19 @@ export function getObserversPage(
   });
 }
 
-export function getNode(nodeId: string): Promise<Node> {
-  return request(`/nodes/${nodeId}`);
+export function getNode(nodeId: string, signal?: AbortSignal): Promise<Node> {
+  return request(`/nodes/${nodeId}`, undefined, signal);
 }
 
 export function getNodeObservations(
   nodeId: string,
   params?: { cursor?: number; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<NodeObservation>> {
   return request(`/nodes/${nodeId}/observations`, {
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
-  });
+  }, signal);
 }
 
 export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {

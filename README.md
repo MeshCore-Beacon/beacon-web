@@ -8,6 +8,10 @@ Real-time LoRa mesh packet analyzer. Desktop-first, dark-mode-primary, dense inf
 
 Built with React 19, TypeScript, Tailwind CSS 4, TanStack Query, and TanStack Virtual.
 
+[My Atlas](docs/my-atlas.md) provides saved node cards with compact reception activity
+bars, received-signal meters, and expandable observer evidence. Selections persist
+in the visitor's browser; English and French are supported.
+
 ## Deployment
 
 ### 1. Copy the `docker/` folder to your server

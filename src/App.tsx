@@ -39,6 +39,7 @@ const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ defau
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
 const StatsOverview = lazy(() => import("./features/stats/StatsOverview").then((m) => ({ default: m.StatsOverview })));
+const MyAtlasPage = lazy(() => import("./features/atlas/MyAtlasPage").then((m) => ({ default: m.MyAtlasPage })));
 
 // global singletons
 
@@ -287,6 +288,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
   }, []);
 
   const tabContent: Record<string, React.ReactNode> = {
+    MyAtlas: <MyAtlasPage active={!observerVisit} onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}
