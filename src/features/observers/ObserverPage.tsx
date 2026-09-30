@@ -18,14 +18,12 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
   const { t } = useTranslation();
   const now = useTick(60_000);
   const id = params.get("observer");
-  const [directoryVisited, setDirectoryVisited] = useState(!id);
   const [actionTime, setActionTime] = useState(() => Date.now());
   const hourAt = (time: number) => Math.floor(time / 3_600_000) * 3_600_000;
   const comparing = params.has("compareWith");
   const anchor = params.has("compareUntil") ? Number(params.get("compareUntil")) : hourAt(actionTime);
   const validAnchor = params.getAll("compareUntil").length <= 1 && Number.isSafeInteger(anchor) && anchor > now - 30 * 86_400_000 && anchor <= Math.max(now, actionTime);
   const until = validAnchor ? anchor : null;
-  if (!id && !directoryVisited) setDirectoryVisited(true);
   const range = observerRange(params.get("range"));
   const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
   if (id) share.searchParams.set("range", range);
@@ -57,7 +55,7 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
     {(id || onReturn) && <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
       {onReturn && <button ref={returnButton} type="button" aria-label={t("observerPage.returnTo", { page: returnLabel })} onClick={onReturn} className="min-h-11 text-sm text-primary">← {t("observerPage.returnTo", { page: returnLabel })}</button>}
       {id && <>
-        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
+        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary md:hidden">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
         <CopyButton value={share.toString()} label={t("observerPage.copyLink")} copiedLabel={t("observerPage.copied")} />
         <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className="min-h-11 text-sm text-primary">{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
         <label className="ml-auto flex items-center gap-2 text-sm text-text-muted">{t("observerPage.range")}
@@ -67,16 +65,17 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
         </label>
       </>}
     </div>}
-    {/* Keep the directory mounted so Back restores filters, sorting and scroll. */}
-    {directoryVisited && <div className={id ? "hidden" : "flex min-h-0 flex-1"} aria-hidden={id ? true : undefined}>
-      <ObserverTable wsManager={wsManager} selectedObserverId={null} onSelectObserver={select} />
-    </div>}
-    {id && <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1">
+      <aside aria-label={t("tabs.Observers")} className={id ? "hidden min-h-0 w-64 shrink-0 border-r border-border md:flex" : "flex min-h-0 min-w-0 flex-1"}>
+        <ObserverTable wsManager={wsManager} compact={!!id} selectedObserverId={id} onSelectObserver={select} />
+      </aside>
+    {id && <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-auto">
         <Suspense fallback={<p role="status" className="p-4">{t("common.loading")}</p>}>
           <ObserverTab range={range} selectedObserverId={id} onSelectObserver={select} wsManager={wsManager} comparison={comparing ? { id: params.getAll("compareWith").length === 1 ? params.get("compareWith") ?? "" : "invalid", until, onSelect: compare, onRefresh: refreshCompare } : undefined} />
         </Suspense>
       </div>
     </div>}
+    </div>
   </div>;
 }

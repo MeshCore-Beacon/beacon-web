@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState } from "../../components/EmptyState";
 import { formatRadioParts } from "../../lib/formatters";
-import { ObserverPicker } from "../observers/ObserverPicker";
 import { ObserverComparison } from "../observers/ObserverComparison";
 import { ObserverSummary, ObserverDeviceDetails } from "../observers/ObserverSummary";
 import { useChartColors } from "./chartTheme";
@@ -35,8 +34,8 @@ interface ObserverTabProps {
   wsManager: WsManager;
   comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => number };
 }
-export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsManager, comparison }: ObserverTabProps) {
-  const { t, i18n } = useTranslation();
+export function ObserverTab({ range, selectedObserverId, wsManager, comparison }: ObserverTabProps) {
+  const { t } = useTranslation();
   const colors = useChartColors();
   useLiveObserver(wsManager, selectedObserverId, range);
   const observer = useObserver(selectedObserverId, true);
@@ -136,8 +135,6 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
         {t("observerPage.recording")}
       </p>
     );
-  const date = (value: number) =>
-    new Date(value).toLocaleString(i18n.resolvedLanguage, { timeZone: "UTC", dateStyle: "short", timeStyle: "short" });
   return (
     <section className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 p-4">
       <ObserverSummary
@@ -146,20 +143,6 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
         points={points}
         pending={heardLoading || (!heardData && activity.isError)}
       />
-      <ObserverPicker
-        id={selectedObserverId}
-        name={observer.data.displayName ?? selectedObserverId.slice(0, 8)}
-        onSelect={onSelectObserver}
-      />
-      <div className="space-y-1 text-xs leading-relaxed text-text-muted">
-        <p>{t("observerPage.scopeNote")}</p>
-        {heardData?.windowStart != null && heardData.windowEnd != null && (
-          <p>
-            {t("observerPage.window")}: {date(heardData.windowStart)} – {date(heardData.windowEnd)}
-          </p>
-        )}
-        <p>{t("observerPage.windowHelp")}</p>
-      </div>
       {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => {
         const nextUntil = comparison.onRefresh();
         void observer.refetch();
@@ -206,33 +189,6 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
             <button className="min-h-11 text-sm text-primary" onClick={() => void activity.refetch()}>
               {t("observerPage.retry")}
             </button>
-          )}
-          {heardData && (
-            <details className="rounded-lg border border-border bg-bg-surface p-4 text-sm">
-              <summary className="cursor-pointer text-text-normal">{t("observerPage.exact")}</summary>
-              <div className="mt-3 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr>
-                      <th className="p-2">{t("observerPage.time")}</th>
-                      <th className="p-2">{t("observerPage.packets")}</th>
-                      <th className="p-2">SNR (dB)</th>
-                      <th className="p-2">RSSI (dBm)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {heardData.points.map((p) => (
-                      <tr key={p.t} className="border-t border-border">
-                        <td className="p-2">{date(p.t)}</td>
-                        <td className="p-2 tabular-nums">{p.observations.toLocaleString()}</td>
-                        <td className="p-2">{p.snrAvg?.toFixed(1) ?? "—"}</td>
-                        <td className="p-2">{p.rssiAvg?.toFixed(1) ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
           )}
         </>
       )}

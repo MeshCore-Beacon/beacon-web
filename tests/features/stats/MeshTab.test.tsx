@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 afterEach(() => { clients.splice(0).forEach((client) => client.clear()); });
 
-function card(title: string) { return screen.getByText(title).parentElement!.parentElement!; }
+function card(title: string) { return title === "Scopes · selected region · retained data" ? screen.getByText("Scopes", { exact: true }).closest("details")! : screen.getByText(title).parentElement!.parentElement!; }
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((done) => { resolve = done; });
@@ -153,4 +153,13 @@ it("distinguishes initial loading from successful empty results and zero totals"
   await screen.findByText("0 obs");
   expect(screen.getAllByText("No data")).toHaveLength(7);
   expect(within(card("Total packets")).getByText("0")).toBeInTheDocument();
+});
+
+it("keeps the scope list collapsed until requested", async () => {
+  mount(); await loaded();
+  const scopeList = screen.getByText("Scopes", { exact: true }).closest("details")!;
+  expect(scopeList).not.toHaveAttribute("open");
+  fireEvent.click(screen.getByText("Scopes", { exact: true }));
+  expect(scopeList).toHaveAttribute("open");
+  expect(within(scopeList).getByText("#old")).toBeVisible();
 });

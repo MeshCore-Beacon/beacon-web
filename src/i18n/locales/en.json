@@ -290,7 +290,8 @@
       "day": "day",
       "trafficUnknown": "Packet freshness unavailable",
       "returnTo": "Back to {{page}}",
-      "directory": "All observers"
+      "directory": "All observers",
+      "sidebarSearch": "Search observers"
     },
     "observerCompare": {
       "open": "Compare with…",

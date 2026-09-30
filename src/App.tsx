@@ -161,7 +161,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
   const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
   const legacyObserver = tabParam === "Analytics" && searchParams.get("statsTab") === "observer";
-  const activeTab = legacyObserver ? "Observers" : ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS[0] ?? "Packets");
+  const activeTab = legacyObserver ? "Observers" : ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS.includes("Packets") ? "Packets" : ENABLED_TABS[0] ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 

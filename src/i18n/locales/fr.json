@@ -294,7 +294,8 @@
       "day": "jour",
       "trafficUnknown": "Fraîcheur des paquets inconnue",
       "returnTo": "Retour à « {{page}} »",
-      "directory": "Tous les observateurs"
+      "directory": "Tous les observateurs",
+      "sidebarSearch": "Rechercher les observateurs"
     },
     "observerCompare": {
       "open": "Comparer avec…",

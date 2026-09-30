@@ -10,9 +10,6 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
-  const lastArrival = Math.max(summary?.latestRecordedAt ?? 0, ...observer.brokers.map(b => b.lastPacketAt || 0));
-  const trafficKnown = !!summary && lastArrival > 0;
-  const trafficFresh = trafficKnown && now - lastArrival < 300_000;
   const stats = observer.statusMetadata?.stats;
   const reportedNoise = stats && typeof stats === "object" && "noise_floor" in stats && typeof stats.noise_floor === "number" && Number.isFinite(stats.noise_floor) ? stats.noise_floor : null;
   const noise = reportedNoise ?? points.at(-1)?.noiseFloorDb;
@@ -28,8 +25,9 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0"><h1 className="break-words text-2xl font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
-          <span className={`rounded px-2 py-1 ${trafficFresh ? "bg-green/10 text-green" : "bg-bg-raised text-text-muted"}`}>{t(`observerPage.${!trafficKnown ? "trafficUnknown" : trafficFresh ? "trafficRecent" : "trafficQuiet"}`)}</span>
-          <span className={`rounded px-2 py-1 ${statusFresh ? "bg-green/10 text-green" : "bg-warn/10 text-warn"}`}>{t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)}</span>
+          <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
+          </span>
           <span className="rounded bg-primary/10 px-2 py-1 text-primary">{observer.iata}</span>
         </div>
       </div>

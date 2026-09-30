@@ -202,7 +202,6 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
       <div className="px-3 py-2 border-b border-border-subtle text-xs text-text-muted space-y-2">
         {onScopeChange && <SelectDropdown label={t("channelMessages.scope")} value={scope} onChange={onScopeChange}
           allLabel={t("channelMessages.allScopes")} options={scopeNames.map((name) => ({ value: name, label: name }))} align="left" />}
-        <details><summary className="cursor-pointer">{t("channelMessages.aboutScopes")}</summary><p className="mt-1">{t("channelMessages.scopeHelp")}</p></details>
       </div>
       {isError && <div role="alert" className="px-3 py-2 text-xs text-danger">{t("channelMessages.error")} <button type="button" disabled={isFetching} className="underline cursor-pointer" onClick={() => void refetch()}>{t("channelMessages.retry")}</button></div>}
 

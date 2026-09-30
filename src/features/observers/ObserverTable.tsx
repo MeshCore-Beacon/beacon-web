@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getObserversPage, getBrokers } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
@@ -23,6 +24,7 @@ import type { WsObserverStatus } from "../../types/ws";
 const observerId = (o: ObserverSummary) => o.id; // stable id accessor for the paged hook's dedup
 
 interface ObserverTableProps {
+  compact?: boolean;
   wsManager: WsManager;
   selectedObserverId: string | null;
   onSelectObserver: (id: string | null) => void;
@@ -95,7 +97,8 @@ function renderObserverCard(obs: ObserverSummary) {
   );
 }
 
-export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver, onAnalyzePacket, onViewStats }: ObserverTableProps) {
+export function ObserverTable({ compact = false, wsManager, selectedObserverId, onSelectObserver, onAnalyzePacket, onViewStats }: ObserverTableProps) {
+  const { t } = useTranslation();
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -164,11 +167,11 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
         patchInfinitePages(old, (items) => patchObserverSummary(items, data) ?? items),
       );
       // refresh detail panel if it's showing this observer
-      if (selectedObserverId === data.observerId) {
+      if (!compact && selectedObserverId === data.observerId) {
         queryClient.invalidateQueries({ queryKey: ["observer", data.observerId] });
       }
     },
-    [queryClient, queryKey, selectedObserverId],
+    [queryClient, queryKey, selectedObserverId, compact],
   );
 
   useWsObserverStatusHandler(wsManager, handleObserverStatus);
@@ -176,7 +179,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
   return (
     <div className="flex flex-1 min-h-0">
       <div className="relative flex flex-col flex-1 min-w-0">
-        <ObserverFilterBar
+        {compact ? <input type="search" aria-label={t("observerPage.sidebarSearch")} placeholder={t("observerPage.sidebarSearch")} value={search} onChange={event => setSearch(event.target.value)} className="m-2 min-h-11 min-w-0 rounded border border-border bg-bg-base px-3 text-sm" /> : <ObserverFilterBar
           search={search}
           onSearchChange={setSearch}
           searchField={searchField}
@@ -192,14 +195,14 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
-        />
+        />}
 
         <DataTable
-          columns={COLUMNS}
+          columns={compact ? [COLUMNS[0]!] : COLUMNS}
           rows={displayObservers}
           rowKey={(o) => o.id}
           selectedKey={selectedObserverId}
-          onSelect={onSelectObserver}
+          onSelect={id => { if (!compact || id !== null) onSelectObserver(id); }}
           isLoading={isLoading}
           emptyLabel="No observers"
           defaultSort={{ header: "Name" }}
@@ -208,7 +211,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="observers" position="bottom-3 right-3" />
       </div>
 
-      {selectedObserverId && (
+      {selectedObserverId && !compact && (
         <ObserverDetailPanel
           observerId={selectedObserverId}
           onClose={() => onSelectObserver(null)}

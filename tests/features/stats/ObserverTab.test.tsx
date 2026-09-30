@@ -206,7 +206,7 @@ describe("Observer dashboard hierarchy", () => {
   });
 });
 
-it("distinguishes packet arrivals from last deduplicated record and status freshness", () => {
+it("keeps packet metrics without the removed traffic text badge", () => {
   const now = Date.now();
   observer.brokers = [{ name: "one", lastSeenAt: now, lastPacketAt: now }];
   activityResult.data = {
@@ -220,5 +220,14 @@ it("distinguishes packet arrivals from last deduplicated record and status fresh
     },
   };
   renderTab();
-  expect(screen.getByText("Recent packet traffic")).toBeInTheDocument();
+  expect(screen.queryByText("Recent packet traffic")).not.toBeInTheDocument();
+  expect(within(screen.getByRole("list", { name: "Observer metrics" })).getByText("9")).toBeInTheDocument();
+});
+
+it("omits the duplicate observer picker and marked explanatory sections", () => {
+  renderTab();
+  expect(screen.queryByRole("searchbox", { name: "Find an observer" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("combobox", { name: "Choose an observer" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Exact activity values")).not.toBeInTheDocument();
+  expect(screen.queryByText(/History for this observer across all received regions/)).not.toBeInTheDocument();
 });
