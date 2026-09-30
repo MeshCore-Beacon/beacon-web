@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { App } from "../src/App";
@@ -16,7 +16,11 @@ vi.mock("../src/features/packets/PacketAnalyzerOverlay", () => ({ PacketAnalyzer
 
 vi.mock("../src/features/packets/PacketAnalyzerDrawer", () => ({ PacketAnalyzerDrawer: ({ detail, onViewObserver }: { detail?: { packetHash: string }; onViewObserver: (id: string) => void }) => <><h1>{detail?.packetHash}</h1><button onClick={() => onViewObserver("observer")}>Packet observer</button></> }));
 
-beforeEach(() => { window.history.replaceState({}, "", "/?tab=Nodes&node=node-a"); });
+beforeEach(() => {
+  window.history.replaceState({}, "", "/?tab=Nodes&node=node-a");
+  vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} });
+});
+afterEach(() => vi.unstubAllGlobals());
 
 describe("quick observer investigation", () => {
   it("closes the quick observer before opening its advert analyzer", () => {

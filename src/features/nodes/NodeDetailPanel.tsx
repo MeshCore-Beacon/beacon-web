@@ -73,9 +73,10 @@ interface NodeDetailPanelProps {
   onViewObserver: (observerId: string) => void;
   onViewNode?: (nodeId: string) => void;
   onAnalyzePacket?: (hash: string) => void;
+  onViewOnMap?: (lat: number, lng: number) => void;
 }
 
-export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket, onViewOnMap }: NodeDetailPanelProps) {
   const { data: node, isLoading } = useQuery({
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
@@ -145,6 +146,15 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   {node.lng != null && <Field label="Lng" value={node.lng.toFixed(5)} />}
                   {node.locationSource && <Field label="Source" value={node.locationSource} />}
                 </div>
+                {hasLocation && onViewOnMap && (
+                  <button
+                    type="button"
+                    onClick={() => onViewOnMap(node.lat!, node.lng!)}
+                    className="mt-2 block font-mono text-[11px] text-primary hover:underline"
+                  >
+                    View on map
+                  </button>
+                )}
               </Section>
             )}
 

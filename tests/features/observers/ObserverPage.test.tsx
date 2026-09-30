@@ -65,7 +65,7 @@ describe("Observer destination", () => {
     view();
     fireEvent.change(screen.getByLabelText("Directory search"), { target: { value: "roof" } });
     fireEvent.click(screen.getByText("Open A"));
-    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-a 3d");
+    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-a 7d");
     expect(screen.getByRole("status").textContent).toContain("observer=observer-a");
     expect(screen.getByRole("status").textContent).toContain("iata=YOW");
     fireEvent.click(screen.getByText("Browser back"));
@@ -76,10 +76,15 @@ describe("Observer destination", () => {
   });
   it("restores a deep link and has a directory return without prior history", async () => {
     view("?tab=Observers&observer=observer-b&range=30d");
-    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-b 3d");
-    expect(screen.getAllByRole("option").map(option => option.getAttribute("value"))).toEqual(["24h", "3d"]);
+    expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-b 30d");
+    expect(screen.getAllByRole("option").map(option => option.getAttribute("value"))).toEqual(["24h", "7d", "30d"]);
     fireEvent.click(screen.getByRole("button", { name: /Back to observers/ }));
     expect(screen.getByLabelText("Directory search")).toBeVisible();
+  });
+  it("keeps the directory return on desktop, where the sidebar can't deselect", async () => {
+    view("?tab=Observers&observer=observer-a&range=7d");
+    await screen.findByRole("heading");
+    expect(screen.getByRole("button", { name: /Back to observers/ }).className).not.toMatch(/\bmd:hidden\b/);
   });
 });
 
@@ -106,6 +111,10 @@ it("rejects duplicate, malformed and future comparison anchors", async () => {
   const viewResult = view("?tab=Observers&observer=observer-a&compareWith=observer-b&compareUntil=bad");
   expect(await screen.findByTestId("comparison-until")).toHaveTextContent("null");
   viewResult.unmount();
-  view("?tab=Observers&observer=observer-a&compareWith=observer-b&compareUntil=" + (Date.now() + 86400000));
+  const future = view("?tab=Observers&observer=observer-a&compareWith=observer-b&compareUntil=" + (Date.now() + 86400000));
+  expect(await screen.findByTestId("comparison-until")).toHaveTextContent("null");
+  future.unmount();
+  const hour = Math.floor(Date.now() / 3_600_000) * 3_600_000 - 3_600_000;
+  view(`?tab=Observers&observer=observer-a&compareWith=observer-b&compareUntil=${hour}&compareUntil=${hour}`);
   expect(await screen.findByTestId("comparison-until")).toHaveTextContent("null");
 });

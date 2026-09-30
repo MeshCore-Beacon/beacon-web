@@ -114,6 +114,12 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   const [typeFilter, setTypeFilter] = useState("");
   const [brokerFilter, setBrokerFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
+  // the compact sidebar only has a name search, so the directory's other filters sit out until it returns
+  const status = compact ? "" : statusFilter;
+  const type = compact ? "" : typeFilter;
+  const broker = compact ? "" : brokerFilter;
+  const scope = compact ? "" : scopeFilter;
+  const field = compact ? "name" : searchField;
 
   useTick(); // keep recency-derived status badges fresh
 
@@ -130,8 +136,8 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   );
 
   const queryKey = useMemo(
-    () => ["observers", regionKey, statusFilter, typeFilter, brokerFilter, search, searchField],
-    [regionKey, statusFilter, typeFilter, brokerFilter, search, searchField],
+    () => ["observers", regionKey, status, type, broker, search, field],
+    [regionKey, status, type, broker, search, field],
   );
 
   // page the region's observers 50 at a time (filters stay server-side, in the query key); rows
@@ -141,10 +147,10 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
     queryFn: (cursor) =>
       getObserversPage(iatas, {
         cursor,
-        status: statusFilter || undefined,
-        type: typeFilter || undefined,
-        broker: brokerFilter || undefined,
-        name: searchField === "name" ? search || undefined : undefined,
+        status: status || undefined,
+        type: type || undefined,
+        broker: broker || undefined,
+        name: field === "name" ? search || undefined : undefined,
       }),
     getId: observerId,
     keepPrevious: true,
@@ -162,8 +168,8 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   const scopeOptions = useScopes();
 
   const displayObservers = useMemo(
-    () => (scopeFilter ? observers.filter((o) => o.scopes?.includes(scopeFilter)) : observers),
-    [observers, scopeFilter],
+    () => (scope ? observers.filter((o) => o.scopes?.includes(scope)) : observers),
+    [observers, scope],
   );
 
   // patch the live status into the paged cache (mirrors NodeTable). A brand-new observer not on any

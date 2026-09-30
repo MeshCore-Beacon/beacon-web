@@ -102,7 +102,7 @@ describe("PacketEndpoints", () => {
     const tip = screen.getByRole("tooltip");
     expect(within(tip).getByText("Alpha")).toBeInTheDocument();
     expect(within(tip).getByText("Beta")).toBeInTheDocument();
-    expect(trigger).toHaveAttribute("title", "Alpha, Beta");
+    expect(screen.getByText("Alpha +1")).toHaveAttribute("title", "Alpha, Beta");
     expect(within(tip).queryByText(/SNR/)).not.toBeInTheDocument();
   });
 
@@ -111,7 +111,7 @@ describe("PacketEndpoints", () => {
     expect(screen.getAllByRole("button")).toHaveLength(1);
     const chip = screen.getByText("Alpha +1").parentElement!;
     expect(chip).not.toHaveAttribute("tabindex");
-    expect(chip).toHaveAttribute("title", "Alpha, Beta");
+    expect(screen.getByText("Alpha +1")).toHaveAttribute("title", "Alpha, Beta");
   });
 
   it("opens all candidates on touch without activating the packet row", () => {

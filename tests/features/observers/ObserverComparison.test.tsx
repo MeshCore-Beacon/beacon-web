@@ -11,7 +11,7 @@ const A = "11111111-1111-1111-1111-111111111111";
 const B = "22222222-2222-2222-2222-222222222222";
 const until = Math.floor(Date.now() / 3_600_000) * 3_600_000;
 const observer = { id: A, displayName: "Roof A", brokers: [], iata: "YOW" } as unknown as Observer;
-const activity: ObserverActivity = { range: "72h", interval: "1h", windowStart: until - 259_200_000, windowEnd: until, generatedAt: until, source: "hourly", radio: null, payloadTypes: [], points: [], summary: { recordedPackets: 19, lastCompleteHour: 1, lastCompleteHourStart: until - 3_600_000, lastCompleteHourEnd: until, latestRecordedAt: null } };
+const activity: ObserverActivity = { range: "168h", interval: "1h", windowStart: until - 604_800_000, windowEnd: until, generatedAt: until, source: "hourly", radio: null, payloadTypes: [], points: [], summary: { recordedPackets: 19, lastCompleteHour: 1, lastCompleteHourStart: until - 3_600_000, lastCompleteHourEnd: until, latestRecordedAt: null } };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => ({ regionKey: "YOW", iatas: ["YOW"] }) }));
 vi.mock("../../../src/features/stats/EChart", () => ({ EChart: ({ option }: { option: unknown }) => <output data-testid="chart">{JSON.stringify(option)}</output> }));
 vi.mock("../../../src/api/client", async original => ({
@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 function view(id = B, data = activity, anchor: number | null = until) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const props = { observerA: observer, activityA: data, range: "3d" as const, observerBId: id, until: anchor, onSelect: vi.fn(), onRefresh: vi.fn(() => anchor ?? until) };
+  const props = { observerA: observer, activityA: data, range: "7d" as const, observerBId: id, until: anchor, onSelect: vi.fn(), onRefresh: vi.fn(() => anchor ?? until) };
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   return { ...render(<ObserverComparison {...props} />, { wrapper }), props };
 }
@@ -35,7 +35,7 @@ it("aligns activity and retained overlap to the primary observer's effective win
   view();
   expect(await screen.findByText("23")).toBeInTheDocument();
   expect(screen.getByText("19")).toBeInTheDocument();
-  expect(getObserverActivity).toHaveBeenCalledWith(B, "72h", "1h", until);
+  expect(getObserverActivity).toHaveBeenCalledWith(B, "168h", "1h", until);
   expect(getObserverComparison).toHaveBeenCalledWith(undefined, { observerA: A, observerB: B, since: activity.windowStart, until }, expect.any(AbortSignal));
   expect(screen.getByText("Retained flood-packet overlap")).toBeInTheDocument();
   expect(screen.getByText(/Raw packet history may expire/)).toBeInTheDocument();

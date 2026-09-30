@@ -90,7 +90,7 @@ const TAB_OPTIONS = [
   { value: "graph", icon: <GraphIcon /> },
 ];
 
-const RANGES: StatsRange[] = ["24h", "3d", "30d"];
+const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 interface Props {
   tab: StatsTab;

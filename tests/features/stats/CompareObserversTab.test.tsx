@@ -35,7 +35,7 @@ beforeEach(() => {
 });
 
 describe("observer comparison", () => {
-  it("rejects a raw packet comparison beyond three days", async () => {
+  it("accepts a comparison longer than three days", async () => {
     mount();
     await screen.findAllByRole("option", { name: /Rooftop/ });
     fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: a } });
@@ -43,8 +43,8 @@ describe("observer comparison", () => {
     fireEvent.change(screen.getByLabelText("Start (local time)"), { target: { value: "2026-01-01T00:00" } });
     fireEvent.change(screen.getByLabelText("End (local time)"), { target: { value: "2026-01-05T00:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Compare" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("3 days or less");
-    expect(getObserverComparison).not.toHaveBeenCalled();
+    await waitFor(() => expect(getObserverComparison).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
   it("waits for Compare, sends explicit dates and region, and puts the selection in the URL", async () => {
     mount();

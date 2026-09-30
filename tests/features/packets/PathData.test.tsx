@@ -42,6 +42,13 @@ describe("ResolvedHopBlock per-hop SNR", () => {
   });
 });
 
+describe("ResolvedHopBlock tooltip", () => {
+  it("relies on its popover rather than a native title", () => {
+    const { container } = render(<ResolvedHopBlock hop={singleHop} label="ABC1" />);
+    expect(container.querySelector("[title]")).toBeNull();
+  });
+});
+
 describe("ResolvedHopBlock (desktop)", () => {
   it("opens the node directly when the single-match block is clicked", () => {
     setMobile(false);

@@ -26,16 +26,26 @@ function mount(url = "/?tab=Routes") {
 }
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(getRouteEvidence).mockResolvedValue(page); });
 describe("retained route evidence", () => {
-  it("normalizes an old month link to 72 hours and offers only retained periods", async () => {
+  it("keeps a shared month link and offers every period the server serves", async () => {
     mount("/?routeRange=30d");
     await screen.findByText("Garden");
-    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { range: "72h", limit: 50 }, expect.anything());
-    expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByRole("button", { name: "7 days" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "30 days" })).not.toBeInTheDocument();
+    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { range: "720h", limit: 50 }, expect.anything());
+    expect(screen.getByRole("button", { name: "30d" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "24h" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "7d" })).toBeInTheDocument();
   });
-  it("does not request a shared raw-evidence period longer than three days", async () => {
-    mount("/?routeSince=1700000000000&routeUntil=1700345600000");
+  it("falls back to 24h for a retired 3d link", async () => {
+    mount("/?routeRange=3d");
+    await screen.findByText("Garden");
+    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { range: "24h", limit: 50 }, expect.anything());
+  });
+  it("requests a shared five-day window", async () => {
+    mount("/?routeSince=1700000000000&routeUntil=1700432000000");
+    await screen.findByText("Garden");
+    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { since: 1700000000000, until: 1700432000000, limit: 50 }, expect.anything());
+  });
+  it("does not request a shared period longer than thirty days", async () => {
+    mount("/?routeSince=1700000000000&routeUntil=1702678400001");
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(getRouteEvidence).not.toHaveBeenCalled();
   });
@@ -64,9 +74,9 @@ describe("retained route evidence", () => {
     await screen.findByText("Garden");
     expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { since: 1700000000000, until: 1700086400000, limit: 50 }, expect.anything());
     expect(screen.getByText("Shared time window")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "3d" }));
-    await waitFor(() => expect(getRouteEvidence).toHaveBeenLastCalledWith("YOW", key, { range: "72h", limit: 50 }, expect.anything()));
-    expect(screen.getByText(/routeRange=3d/)).not.toHaveTextContent("routeSince");
+    fireEvent.click(screen.getByRole("button", { name: "7d" }));
+    await waitFor(() => expect(getRouteEvidence).toHaveBeenLastCalledWith("YOW", key, { range: "168h", limit: 50 }, expect.anything()));
+    expect(screen.getByText(/routeRange=7d/)).not.toHaveTextContent("routeSince");
   });
   it("does not replace an invalid shared window with an unrelated default", async () => {
     mount("/?routeSince=bad");

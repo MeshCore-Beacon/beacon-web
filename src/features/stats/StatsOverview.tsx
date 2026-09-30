@@ -15,19 +15,18 @@ import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import type { StatsRange, StatsTab } from "./types";
 
 const TABS: StatsTab[] = ["mesh", "traffic", "signal", "paths", "scopes", "talkers", "clockdrift", "compare", "graph"];
-const RANGES: StatsRange[] = ["24h", "3d", "30d"];
+const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
-const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRange) ? (v as StatsRange) : "3d");
+const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRange) ? (v as StatsRange) : "7d");
 
 interface StatsOverviewProps {
   wsManager: WsManager;
   onObserverDashboard?: (id: string) => void;
 }
 
-// Stats page shell: an analytics sub-header and range over the active
-// sub-tab. Sub-tab, range, and selected observer live in the URL (?statsTab/?range/?observerId) so the
-// view is shareable; replace:true keeps it out of history. Queries are cached, so switching is instant.
+// Stats page shell: an analytics sub-header and range over the active sub-tab. Sub-tab and range live in
+// the URL (?statsTab/?range) so the view is shareable; replace:true keeps it out of history.
 export function StatsOverview({ wsManager, onObserverDashboard }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
   const tab = asTab(params.get("statsTab"));

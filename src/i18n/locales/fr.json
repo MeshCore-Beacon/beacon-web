@@ -67,10 +67,8 @@
       "ranges": {
         "24h": "24 h",
         "7d": "7 j",
-        "30d": "30 j",
-        "3d": "3 j"
-      },
-      "archiveHelp": "Les statistiques horaires conservent des résumés jusqu’à 30 jours. Les détails et les recoupements utilisent les paquets bruts conservés ; l’historique s’accumule après l’activation de l’archivage."
+        "30d": "30 j"
+      }
     },
     "signal": {
       "title": "RF / Signal",
@@ -247,12 +245,9 @@
       "choose": "Choisir un observateur",
       "searchHelp": "Recherchez par nom pour trouver les observateurs au-delà des 50 premiers résultats.",
       "summaryMissing": "Résumé des paquets indisponible sur ce serveur. Les graphiques restent disponibles.",
-      "trafficRecent": "Trafic de paquets récent",
-      "trafficQuiet": "Aucun paquet récent enregistré",
       "statusRecent": "État récent",
       "statusStale": "État périmé",
       "statusMissing": "Aucun rapport d’état",
-      "scopeNote": "Historique de cet observateur, toutes régions de réception confondues.",
       "activity": "Paquets enregistrés par {{interval}}",
       "mix": "Répartition des types",
       "signal": "Signal reçu",
@@ -274,15 +269,11 @@
       "publicKey": "Clé publique",
       "copy": "Copier",
       "copied": "Copié",
-      "broker": "Courtier",
       "presence": "Dernier contact",
       "packetArrival": "Réception de paquet",
       "firstSeen": "Première réception",
       "copyLink": "Copier le lien de l’observateur",
-      "updated": "Calculé",
       "window": "Période UTC",
-      "windowHelp": "La dernière période peut être partielle ; les lacunes sont des données manquantes, pas la preuve d’une panne. Les livraisons répétées du même couple paquet/observateur conservé ne comptent qu’une fois.",
-      "exact": "Valeurs exactes de l’activité",
       "time": "Heure (UTC)",
       "mean": "Moyenne",
       "minimum": "Minimum",
@@ -292,7 +283,6 @@
       "recording": "Chargement de l’observateur…",
       "hour": "heure",
       "day": "jour",
-      "trafficUnknown": "Fraîcheur des paquets inconnue",
       "returnTo": "Retour à « {{page}} »",
       "directory": "Tous les observateurs",
       "sidebarSearch": "Rechercher les observateurs"
@@ -320,8 +310,7 @@
       "both": "Les deux",
       "onlyB": "B seulement",
       "definition": "Chaque empreinte de paquet flood est comptée une seule fois pour les deux observateurs. Les réceptions répétées sont dédupliquées. Ce n’est pas une mesure de perte de paquets : l’expiration, les appareils hors ligne et les interruptions des courtiers affectent les rapports disponibles.",
-      "windowLimit": "Choisissez une période de 3 jours ou moins pour les paquets conservés.",
-      "retainedWindow": "Les détails et les recoupements utilisent les paquets bruts conservés, sur une période maximale de 3 jours."
+      "retainedWindow": "Les détails et les recoupements utilisent les paquets bruts conservés : une période plus ancienne que la rétention du serveur sera incomplète."
     },
     "investigation": {
       "title": "Rapports de réception",
@@ -362,15 +351,11 @@
       "fewer": "Afficher moins de trajets",
       "nodeDialog": "Détails du nœud",
       "packetDialog": "Analyseur de paquets",
-      "closeObserver": "Fermer les détails de l’observateur",
-      "observerList": "Examiner un observateur"
+      "closeObserver": "Fermer les détails de l’observateur"
     },
     "routeEvidence": {
       "title": "Rapports conservés",
       "window": "Période",
-      "day": "24 heures",
-      "week": "7 jours",
-      "month": "30 jours",
       "shared": "Période partagée",
       "invalid": "Période partagée invalide. Choisissez une période pour continuer.",
       "loading": "Chargement des rapports conservés…",
@@ -403,8 +388,6 @@
       "keyMissing": "Aucune clé de déchiffrement n’est configurée pour ce canal.",
       "scope": "Portée de transport",
       "allScopes": "Toutes les portées",
-      "aboutScopes": "À propos des portées",
-      "scopeHelp": "Les étiquettes décrivent le premier paquet enregistré, pas la clé du canal. D’autres réceptions peuvent différer ; inspectez le paquet pour consulter ses observations. Seuls les messages conservés sont affichés.",
       "unscoped": "Sans portée de transport",
       "unknownScope": "Portée non résolue",
       "unavailableScope": "Portée indisponible",

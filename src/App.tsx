@@ -223,7 +223,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
     }, { replace: true });
   }, [setSearchParams]);
 
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = (tab: string, mapFocus?: { lat: number; lng: number }) => {
     setPanels([]);
     dashboardFocus.current = null;
     onExitVisit();
@@ -240,6 +240,13 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
       if (tab !== "Observers") next.delete("observer");
+      // lat/lng/zoom only seed the map on mount, so they'd re-frame it on every later visit
+      if (tab !== "Map" || mapFocus) for (const key of ["lat", "lng", "zoom"]) next.delete(key);
+      if (mapFocus) {
+        next.set("lat", mapFocus.lat.toFixed(5));
+        next.set("lng", mapFocus.lng.toFixed(5));
+        next.set("zoom", "14");
+      }
       // stats sub-state shouldn't haunt the URL on other tabs
       if (tab !== "Analytics" && tab !== "Observers") {
         next.delete("statsTab");
@@ -248,6 +255,11 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
       }
       return next;
     });
+  };
+
+  const handleViewOnMap = (nodeId: string, lat: number, lng: number) => {
+    handleTabChange("Map", { lat, lng });
+    if (!isMobile) setSelectedNodeId(nodeId);
   };
 
   const clearSelection = useCallback(() => {
@@ -346,9 +358,10 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
               onViewObserver={viewObserver}
               onViewNode={setSelectedNodeId}
               onAnalyzePacket={viewPacket}
+              onViewOnMap={activeTab === "Map" ? undefined : (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng)}
             />
           )}
-          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onObserverDashboard={handleViewObserverStats} />)}
+          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onObserverDashboard={handleViewObserverStats} onViewOnMap={activeTab === "Map" ? undefined : handleViewOnMap} />)}
         </div>
         {observerVisit && <Routes location={observerVisit}><Route path="*" element={<ObserverPage wsManager={wsManager} onReturn={onReturn} returnLabel={t(`tabs.${activeTab}`)} />} /></Routes>}
         </div>

@@ -20,9 +20,10 @@ export interface Investigation {
 }
 
 // Each panel stays mounted underneath the next one so its selection, scroll and trigger survive.
-export function InvestigationPanel({ target, inactive, onClose, onOpen, onObserverDashboard }: {
+export function InvestigationPanel({ target, inactive, onClose, onOpen, onObserverDashboard, onViewOnMap }: {
   target: InvestigationTarget; inactive: boolean; onClose: () => void;
   onOpen: (target: InvestigationTarget) => void; onObserverDashboard: (id: string) => void;
+  onViewOnMap?: (nodeId: string, lat: number, lng: number) => void;
 }) {
   const { t } = useTranslation();
   const { data: detail, isLoading } = usePacketDetail(target.kind === "packet" ? target.hash : null);
@@ -35,7 +36,7 @@ export function InvestigationPanel({ target, inactive, onClose, onOpen, onObserv
     {target.kind === "observer" ? (
       <ObserverDetailPanel observerId={target.id} onClose={onClose} onViewStats={onObserverDashboard} onAnalyzePacket={packet} />
     ) : target.kind === "node" ? (
-      <NodeDetailPanel nodeId={target.id} onClose={onClose} onViewObserver={observer} onViewNode={node} onAnalyzePacket={packet} />
+      <NodeDetailPanel nodeId={target.id} onClose={onClose} onViewObserver={observer} onViewNode={node} onAnalyzePacket={packet} onViewOnMap={onViewOnMap && ((lat, lng) => onViewOnMap(target.id, lat, lng))} />
     ) : (
       <PacketAnalyzerDrawer
         detail={detail} loading={isLoading} selectedObservationId={selected} onSelectObservation={setSelected}

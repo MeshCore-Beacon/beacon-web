@@ -125,3 +125,35 @@ describe("NodeDetailPanel clock drift", () => {
     expect(screen.queryByText(/Clock drift/i)).not.toBeInTheDocument();
   });
 });
+
+describe("NodeDetailPanel View on map", () => {
+  function renderWithMap(onViewOnMap?: (lat: number, lng: number) => void) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <NodeDetailPanel nodeId="node-self" onClose={vi.fn()} onViewObserver={vi.fn()} onViewOnMap={onViewOnMap} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("sends the node's coordinates", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 45.42153, lng: -75.69719 });
+    const onViewOnMap = vi.fn();
+    renderWithMap(onViewOnMap);
+    fireEvent.click(await screen.findByRole("button", { name: "View on map" }));
+    expect(onViewOnMap).toHaveBeenCalledWith(45.42153, -75.69719);
+  });
+
+  it("is not offered for a node without a location", async () => {
+    renderWithMap(vi.fn());
+    await screen.findByText("Self Node");
+    expect(screen.queryByRole("button", { name: "View on map" })).not.toBeInTheDocument();
+  });
+
+  it("is not offered when the caller has no map to open", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 45.42153, lng: -75.69719 });
+    renderWithMap();
+    await screen.findByText("Self Node");
+    expect(screen.queryByRole("button", { name: "View on map" })).not.toBeInTheDocument();
+  });
+});

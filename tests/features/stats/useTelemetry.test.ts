@@ -5,7 +5,6 @@ import { ApiError } from "../../../src/api/client";
 describe("activityParamsFor", () => {
   it("pairs each stats range with the bucket the charts are sized for", () => {
     expect(activityParamsFor("24h")).toEqual({ range: "24h", interval: "15m" });
-    expect(activityParamsFor("3d")).toEqual({ range: "72h", interval: "1h" });
     expect(activityParamsFor("7d")).toEqual({ range: "168h", interval: "1h" });
     expect(activityParamsFor("30d")).toEqual({ range: "720h", interval: "6h" });
   });

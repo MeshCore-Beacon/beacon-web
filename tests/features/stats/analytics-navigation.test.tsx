@@ -11,11 +11,14 @@ vi.mock("../../../src/features/stats/MeshTab", () => ({ MeshTab: () => <p>Mesh c
 vi.mock("../../../src/features/stats/ScopesTab", () => ({ ScopesTab: () => <p>Scope charts</p> }));
 function Location() { return <output aria-label="Analytics URL">{useLocation().search}</output>; }
 
-it("normalizes old seven-day links without the removed retention banner", () => {
-  render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=signal&range=7d"]}><StatsOverview wsManager={{} as WsManager} /></MemoryRouter>);
-  expect(screen.getByText("Signal range 3d")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
-  expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+it("keeps seven-day links and falls back from retired 3d links", () => {
+  const { unmount } = render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=signal&range=7d"]}><StatsOverview wsManager={{} as WsManager} /></MemoryRouter>);
+  expect(screen.getByText("Signal range 7d")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.queryByRole("button", { name: "3d" })).not.toBeInTheDocument();
+  unmount();
+  render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=signal&range=3d"]}><StatsOverview wsManager={{} as WsManager} /></MemoryRouter>);
+  expect(screen.getByText("Signal range 7d")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "30d" })).toBeInTheDocument();
   expect(screen.queryByText(/Hourly analytics keep summaries for up to 30 days/)).not.toBeInTheDocument();
 });
@@ -33,8 +36,8 @@ it("opens Signal from a shared URL and retains regional state when changing rang
   render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=signal&range=24h&iata=YOW"]}><StatsOverview wsManager={{} as WsManager} /><Location /></MemoryRouter>);
   expect(screen.getByText("Signal range 24h")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "RF / Signal" })).toHaveAttribute("aria-pressed", "true");
-  fireEvent.click(screen.getByRole("button", { name: "3d" }));
-  expect(screen.getByText("Signal range 3d")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "7d" }));
+  expect(screen.getByText("Signal range 7d")).toBeInTheDocument();
   expect(screen.getByLabelText("Analytics URL")).toHaveTextContent("iata=YOW");
 });
 

@@ -153,29 +153,29 @@ describe("channel scope evidence", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("No transport scope")).not.toBeInTheDocument();
   });
-});
 
-it("preserves the newest/live page after more than twenty older pages", async () => {
-  vi.mocked(getChannelMessagesPage).mockImplementation(async (_id, params) => {
-    const index = params?.cursor ?? 0;
-    return page(
-      [
-        {
-          ...base,
-          id: 1000 - index,
-          packetHash: `history-${index}`,
-          content: `History ${index}`,
-          sentAt: 1000 - index,
-        },
-      ],
-      index + 1,
-    );
+  it("preserves the newest/live page after more than twenty older pages", async () => {
+    vi.mocked(getChannelMessagesPage).mockImplementation(async (_id, params) => {
+      const index = params?.cursor ?? 0;
+      return page(
+        [
+          {
+            ...base,
+            id: 1000 - index,
+            packetHash: `history-${index}`,
+            content: `History ${index}`,
+            sentAt: 1000 - index,
+          },
+        ],
+        index + 1,
+      );
+    });
+    show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
+    await screen.findByText("History 0");
+    for (let index = 1; index <= 21; index++) {
+      fireEvent.click(screen.getByRole("button", { name: /Load older/ }));
+      await screen.findByText(`History ${index}`);
+    }
+    expect(screen.getByText("History 0")).toBeInTheDocument();
   });
-  show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
-  await screen.findByText("History 0");
-  for (let index = 1; index <= 21; index++) {
-    fireEvent.click(screen.getByRole("button", { name: /Load older/ }));
-    await screen.findByText(`History ${index}`);
-  }
-  expect(screen.getByText("History 0")).toBeInTheDocument();
 });

@@ -55,12 +55,12 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
     {(id || onReturn) && <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
       {onReturn && <button ref={returnButton} type="button" aria-label={t("observerPage.returnTo", { page: returnLabel })} onClick={onReturn} className="min-h-11 text-sm text-primary">← {t("observerPage.returnTo", { page: returnLabel })}</button>}
       {id && <>
-        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary md:hidden">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
+        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
         <CopyButton value={share.toString()} label={t("observerPage.copyLink")} copiedLabel={t("observerPage.copied")} />
         <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className="min-h-11 text-sm text-primary">{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
         <label className="ml-auto flex items-center gap-2 text-sm text-text-muted">{t("observerPage.range")}
           <select aria-label={t("observerPage.range")} value={range} onChange={e => setParams(observerDestination(params, id, observerRange(e.target.value)), visitOptions)} className="min-h-11 rounded border border-border bg-bg-raised px-3 text-text-normal">
-            <option value="24h">{t("stats.ranges.24h")}</option><option value="3d">{t("stats.ranges.3d")}</option>
+            <option value="24h">{t("stats.ranges.24h")}</option><option value="7d">{t("stats.ranges.7d")}</option><option value="30d">{t("stats.ranges.30d")}</option>
           </select>
         </label>
       </>}

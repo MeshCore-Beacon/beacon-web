@@ -94,7 +94,6 @@ export function HopPopover({ hop, onViewNode, showSnr = true, children }: {
       onMouseEnter={hasHover ? open : undefined}
       onMouseLeave={hasHover ? scheduleClose : undefined}
       onClick={hasHover ? undefined : toggle}
-      title={nodes.map(nodeLabel).join(", ") || "No Path Resolutions Available"}
       className="inline-flex min-w-0 max-w-full"
     >
       {children}

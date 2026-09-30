@@ -17,7 +17,6 @@ function validation(value: Selection): string | null {
   if (!Number.isSafeInteger(value.since) || !Number.isSafeInteger(value.until) || value.since < 0 || value.until <= value.since || value.until > 253402300799999) {
     return "Choose a valid start and a later end time.";
   }
-  if (value.until - value.since > 3 * 86_400_000) return "observerCompare.windowLimit";
   return null;
 }
 

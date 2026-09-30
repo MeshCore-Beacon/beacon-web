@@ -204,30 +204,30 @@ describe("Observer dashboard hierarchy", () => {
     expect(screen.getByText("Paquets enregistrés")).toBeInTheDocument();
     expect(screen.getByText("Détails de l’appareil")).toBeInTheDocument();
   });
-});
 
-it("keeps packet metrics without the removed traffic text badge", () => {
-  const now = Date.now();
-  observer.brokers = [{ name: "one", lastSeenAt: now, lastPacketAt: now }];
-  activityResult.data = {
-    ...activity,
-    summary: {
-      recordedPackets: 9,
-      lastCompleteHour: 2,
-      lastCompleteHourStart: now - 7200000,
-      lastCompleteHourEnd: now - 3600000,
-      latestRecordedAt: now - 3600000,
-    },
-  };
-  renderTab();
-  expect(screen.queryByText("Recent packet traffic")).not.toBeInTheDocument();
-  expect(within(screen.getByRole("list", { name: "Observer metrics" })).getByText("9")).toBeInTheDocument();
-});
+  it("keeps packet metrics without the removed traffic text badge", () => {
+    const now = Date.now();
+    observer.brokers = [{ name: "one", lastSeenAt: now, lastPacketAt: now }];
+    activityResult.data = {
+      ...activity,
+      summary: {
+        recordedPackets: 9,
+        lastCompleteHour: 2,
+        lastCompleteHourStart: now - 7200000,
+        lastCompleteHourEnd: now - 3600000,
+        latestRecordedAt: now - 3600000,
+      },
+    };
+    renderTab();
+    expect(screen.queryByText("Recent packet traffic")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Observer metrics" })).getByText("9")).toBeInTheDocument();
+  });
 
-it("omits the duplicate observer picker and marked explanatory sections", () => {
-  renderTab();
-  expect(screen.queryByRole("searchbox", { name: "Find an observer" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("combobox", { name: "Choose an observer" })).not.toBeInTheDocument();
-  expect(screen.queryByText("Exact activity values")).not.toBeInTheDocument();
-  expect(screen.queryByText(/History for this observer across all received regions/)).not.toBeInTheDocument();
+  it("omits the duplicate observer picker and marked explanatory sections", () => {
+    renderTab();
+    expect(screen.queryByRole("searchbox", { name: "Find an observer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Choose an observer" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Exact activity values")).not.toBeInTheDocument();
+    expect(screen.queryByText(/History for this observer across all received regions/)).not.toBeInTheDocument();
+  });
 });

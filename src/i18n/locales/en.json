@@ -66,10 +66,8 @@
       "ranges": {
         "24h": "24h",
         "7d": "7d",
-        "30d": "30d",
-        "3d": "3d"
-      },
-      "archiveHelp": "Hourly analytics keep summaries for up to 30 days. Packet details and overlap use retained raw records; older summary history accumulates after archiving is enabled."
+        "30d": "30d"
+      }
     },
     "signal": {
       "title": "RF / Signal",
@@ -243,12 +241,9 @@
       "choose": "Choose an observer",
       "searchHelp": "Search by name to find observers outside the first 50 results.",
       "summaryMissing": "Packet summary unavailable on this server. Charts remain available.",
-      "trafficRecent": "Recent packet traffic",
-      "trafficQuiet": "No recent recorded packets",
       "statusRecent": "Recent status",
       "statusStale": "Status is stale",
       "statusMissing": "No status report",
-      "scopeNote": "History for this observer across all received regions.",
       "activity": "Recorded packets per {{interval}}",
       "mix": "Packet-type mix",
       "signal": "Received signal",
@@ -270,15 +265,11 @@
       "publicKey": "Public key",
       "copy": "Copy",
       "copied": "Copied",
-      "broker": "Broker",
       "presence": "Last contact",
       "packetArrival": "Packet arrival",
       "firstSeen": "First seen",
       "copyLink": "Copy observer link",
-      "updated": "Calculated",
       "window": "UTC window",
-      "windowHelp": "The latest bucket may be partial; gaps are missing records, not proof of an outage. Repeated deliveries of the same retained packet/observer pair count once.",
-      "exact": "Exact activity values",
       "time": "Time (UTC)",
       "mean": "Average",
       "minimum": "Minimum",
@@ -288,7 +279,6 @@
       "recording": "Loading observer…",
       "hour": "hour",
       "day": "day",
-      "trafficUnknown": "Packet freshness unavailable",
       "returnTo": "Back to {{page}}",
       "directory": "All observers",
       "sidebarSearch": "Search observers"
@@ -316,8 +306,7 @@
       "both": "Both",
       "onlyB": "Only B",
       "definition": "Each flood packet hash counts once across both observers. Repeat receptions are deduplicated. This is not a packet-loss measurement: expiry, offline devices and broker interruptions affect the available reports.",
-      "windowLimit": "Choose a period of 3 days or less for retained packet records.",
-      "retainedWindow": "Packet details and overlap use retained raw records, with a maximum 3-day window."
+      "retainedWindow": "Packet details and overlap use retained raw records, so periods older than the server's packet retention come back incomplete."
     },
     "investigation": {
       "title": "Reception evidence",
@@ -358,15 +347,11 @@
       "fewer": "Show fewer paths",
       "nodeDialog": "Node detail",
       "packetDialog": "Packet analyzer",
-      "closeObserver": "Close observer details",
-      "observerList": "Inspect an observer"
+      "closeObserver": "Close observer details"
     },
     "routeEvidence": {
       "title": "Retained reports",
       "window": "Time window",
-      "day": "24 hours",
-      "week": "7 days",
-      "month": "30 days",
       "shared": "Shared time window",
       "invalid": "Invalid shared time window. Choose a range to continue.",
       "loading": "Loading retained reports…",
@@ -399,8 +384,6 @@
       "keyMissing": "No decryption key is configured for this channel.",
       "scope": "Transport scope",
       "allScopes": "All scopes",
-      "aboutScopes": "About scope labels",
-      "scopeHelp": "Labels describe the first recorded packet, not the channel key. Other receptions may differ; inspect the packet for its reports. Only retained messages are shown.",
       "unscoped": "No transport scope",
       "unknownScope": "Unresolved scope",
       "unavailableScope": "Scope unavailable",
