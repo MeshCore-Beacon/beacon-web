@@ -67,7 +67,7 @@ vi.mock("../../../src/features/packets/PacketVirtualList", () => ({
   }) => (
     <div>
       <div data-testid="expanded">{String(expandedHash)}</div>
-      <button type="button" onClick={onOpenAnalyzer}>Open analyzer</button>
+      <button type="button" onClick={() => onOpenAnalyzer()}>Open analyzer</button>
       <button type="button" onClick={onViewPath}>View path on map</button>
       {packets.map((p) => (
         <button

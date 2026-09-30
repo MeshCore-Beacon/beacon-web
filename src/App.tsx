@@ -208,11 +208,11 @@ function AppInner() {
     }, { replace: true });
   }, [setSearchParams]);
 
-  const handleAnalyze = useCallback((hash: string | null) => {
+  const handleAnalyze = useCallback((hash: string | null, observationId?: number) => {
     // No reset: observation ids are globally unique, so a pick inside an expanded row survives into the drawer.
     setSearchParams((p) => {
       const n = new URLSearchParams(p);
-      if (hash) { if (n.get("hash") !== hash) n.delete("observation"); n.set("hash", hash); n.set("analyze", "1"); n.delete("path"); }
+      if (hash) { if (n.get("hash") !== hash) n.delete("observation"); n.set("hash", hash); n.set("analyze", "1"); n.delete("path"); if (observationId != null) n.set("observation", String(observationId)); }
       else n.delete("analyze");
       return n;
     }, { replace: true });
@@ -298,7 +298,7 @@ function AppInner() {
         onAnalyze={handleAnalyze}
         onViewPath={handleViewPath}
         selectedObservationId={selectedObservationId}
-        onSelectObservation={selectObservation}
+        onSelectObservation={setSelectedObservationId}
       />
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,

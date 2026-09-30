@@ -32,7 +32,7 @@ const ROUTE_OPTIONS = Object.entries(ROUTE_TYPE_NAMES).map(([value, label]) => (
 
 interface PacketListProps {
   wsManager: WsManager;
-  onAnalyze: (hash: string | null) => void;
+  onAnalyze: (hash: string | null, observationId?: number) => void;
   onViewPath: (detail: PacketDetail) => void;
   selectedObservationId: number | null;
   onSelectObservation: (id: number) => void;
@@ -97,8 +97,10 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   const { data: expandedDetail, isError: selectedError, error: detailError, refetch: retryDetail } = usePacketDetail(expandedHash);
   const detailStatus = detailError && "status" in detailError ? detailError.status : undefined;
 
-  const handleOpenAnalyzer = useCallback(() => {
-    if (expandedHash) onAnalyze(expandedHash);
+  const handleOpenAnalyzer = useCallback((observationId?: number) => {
+    if (!expandedHash) return;
+    if (observationId == null) onAnalyze(expandedHash);
+    else onAnalyze(expandedHash, observationId);
   }, [expandedHash, onAnalyze]);
 
   const handleViewPath = useCallback(() => {
@@ -193,7 +195,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
               ) : expandedDetail ? (
                 <>
                   <p>Selected packet is outside the loaded results.</p>
-                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={handleOpenAnalyzer}>Open analyzer</button>
+                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={() => handleOpenAnalyzer()}>Open analyzer</button>
                 </>
               ) : <p role="status">Loading selected packet…</p>}
             </div>

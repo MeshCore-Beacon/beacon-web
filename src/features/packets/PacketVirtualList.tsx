@@ -23,7 +23,7 @@ interface PacketVirtualListProps {
   expandedHash: string | null;
   onToggleExpand: (hash: string) => void;
   // only the expanded row renders an expansion, so these need no hash argument
-  onOpenAnalyzer: () => void;
+  onOpenAnalyzer: (observationId?: number) => void;
   onViewPath: () => void;
   selectedObservationId: number | null;
   onSelectObservation: (id: number) => void;

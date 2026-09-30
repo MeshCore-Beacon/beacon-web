@@ -18,7 +18,7 @@ const ACTION_BUTTON_CLASS =
 
 interface Props {
   packet: PacketSummary;
-  onOpenAnalyzer: () => void;
+  onOpenAnalyzer: (observationId?: number) => void;
   onViewPath: () => void;
   selectedObservationId: number | null;
   onSelectObservation: (id: number) => void;
@@ -43,7 +43,7 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
   const handleSelectObservation = useCallback(
     (id: number) => {
       onSelectObservation(id);
-      onOpenAnalyzer();
+      onOpenAnalyzer(id);
     },
     [onSelectObservation, onOpenAnalyzer],
   );
