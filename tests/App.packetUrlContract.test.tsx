@@ -145,7 +145,7 @@ describe("Packets deep links", () => {
     setMobile(false);
     window.history.pushState({}, "", "/?tab=Packets&hash=AA11&analyze=1&observation=1&iata=YOW&q=missing");
     render(<App />);
-    const section = await screen.findByRole("region", { name: "Reception evidence" });
+    const section = await screen.findByRole("region", { name: "Observations" });
     expect(within(section).getByText("No path entries").closest("details")).toHaveAttribute("open");
     fireEvent.click(within(section).getByRole("button", { name: "Inspect observer" }));
     fireEvent.click(await screen.findByRole("button", { name: "Open observer dashboard" }));

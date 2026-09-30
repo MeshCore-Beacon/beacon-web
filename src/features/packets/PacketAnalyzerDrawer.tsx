@@ -13,7 +13,6 @@ import { formatHex, formatPropagation } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
-import { ObservationCard } from "./ObservationCard";
 import { PathData } from "./PathData";
 import { buildPacketPaths } from "../map/packet-path";
 import { PacketInvestigation } from "./PacketInvestigation";
@@ -133,7 +132,6 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
             </DrawerSection>
 
             {unavailable && <p role="alert" className="px-3 py-2 text-sm text-warn">{t("investigation.unavailableReport")}</p>}
-            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} mappedKeys={pathKeys} observerCount={observerCount} />
 
             <div className="px-3 py-2 border-b border-border-subtle">
               <button
@@ -157,22 +155,8 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
               </DrawerSection>
             )}
 
-            {detail.observations.length >= 1 && (
-              <DrawerSection title={`Observations (${detail.observations.length})`} collapsible defaultOpen={false}>
-                <div className="flex flex-col gap-1">
-                  {detail.observations.map((obs) => (
-                    <ObservationCard
-                      key={obs.id}
-                      observation={obs}
-                      selected={selectedObs?.id === obs.id}
-                      onClick={() => selectReport(obs.id)}
-                      onViewNode={onViewNode}
-                      isTrace={detail.header.payloadType === PayloadType.TRACE}
-                    />
-                  ))}
-                </div>
-              </DrawerSection>
-            )}
+
+            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} onViewNode={onViewNode} mappedKeys={pathKeys} observerCount={observerCount} />
 
             {rawHex && (
               <DrawerSection title="Raw Packet">

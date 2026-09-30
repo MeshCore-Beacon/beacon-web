@@ -355,7 +355,7 @@
       "retainedWindow": "Les détails et les recoupements utilisent les paquets bruts conservés : une période plus ancienne que la rétention du serveur sera incomplète."
     },
     "investigation": {
-      "title": "Rapports de réception",
+      "title": "Observations",
       "reports_one": "{{count}} rapport conservé",
       "reports_other": "{{count}} rapports conservés",
       "observers_one": "{{count}} observateur déclarant",
@@ -389,11 +389,10 @@
       "first": "Premier",
       "last": "Dernier",
       "span": "Intervalle signalé",
-      "showAll": "Afficher les {{count}} groupes de trajets",
-      "fewer": "Afficher moins de trajets",
       "nodeDialog": "Détails du nœud",
       "packetDialog": "Analyseur de paquets",
-      "closeObserver": "Fermer les détails de l’observateur"
+      "closeObserver": "Fermer les détails de l’observateur",
+      "loadMore": "Afficher plus ({{count}} restants)"
     },
     "routeEvidence": {
       "title": "Rapports conservés",

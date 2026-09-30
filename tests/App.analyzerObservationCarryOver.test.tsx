@@ -133,7 +133,7 @@ describe("opening the analyzer from an expanded row", () => {
     fireEvent.click(await screen.findByText("Observer Three"));
 
     const drawer = await screen.findByTestId("packet-analyzer-drawer");
-    expect(within(drawer).getByText("Observer Three")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Inspect report: Observer Three" })).toHaveAttribute("aria-pressed", "true");
   });
 });
 
@@ -142,6 +142,6 @@ it("replaces a shared observation when another report is selected in the row", a
   render(<App />);
   fireEvent.click(await screen.findByText("Observer Two"));
   const drawer = await screen.findByTestId("packet-analyzer-drawer");
-  expect(within(drawer).getByText("Observer Two")).toBeInTheDocument();
+  expect(within(drawer).getByRole("button", { name: "Inspect report: Observer Two" })).toHaveAttribute("aria-pressed", "true");
   expect(new URLSearchParams(window.location.search).get("observation")).toBe("2");
 });

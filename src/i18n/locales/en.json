@@ -351,7 +351,7 @@
       "retainedWindow": "Packet details and overlap use retained raw records, so periods older than the server's packet retention come back incomplete."
     },
     "investigation": {
-      "title": "Reception evidence",
+      "title": "Observations",
       "reports_one": "{{count}} retained report",
       "reports_other": "{{count}} retained reports",
       "observers_one": "{{count}} reporting observer",
@@ -385,11 +385,10 @@
       "first": "First",
       "last": "Last",
       "span": "Reported span",
-      "showAll": "Show all {{count}} path groups",
-      "fewer": "Show fewer paths",
       "nodeDialog": "Node detail",
       "packetDialog": "Packet analyzer",
-      "closeObserver": "Close observer details"
+      "closeObserver": "Close observer details",
+      "loadMore": "Load more ({{count}} left)"
     },
     "routeEvidence": {
       "title": "Retained reports",
