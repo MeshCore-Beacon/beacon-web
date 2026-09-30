@@ -490,8 +490,7 @@
       "manage": "Gérer la fiche",
       "earlier": "Déplacer avant",
       "later": "Déplacer après",
-      "remove": "Retirer la fiche",
-      "storageHelp": "Enregistré dans ce navigateur sur ce site, toutes régions confondues. Aucun compte requis. Effacer les données du site supprime vos fiches."
+      "remove": "Retirer la fiche"
     }
   }
 }

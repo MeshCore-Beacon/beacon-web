@@ -56,7 +56,6 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
             {search.data?.hasMore && <p className="mt-2 text-xs">{t("atlas.refine")}</p>}
           </>}
         </div>}
-        <p className="my-2 text-xs">{t("atlas.storageHelp")}</p>
       </details>
       <p className={`text-xs ${storageFailed ? "text-warn" : "text-text-normal"}`} role="status">{t(storageFailed ? "atlas.storageFailed" : "atlas.localOnly")}</p>
       {empty ? <section className="rounded-xl border border-dashed border-border px-5 py-12 text-center"><h2 className="text-lg font-medium text-text-bright">{t("atlas.emptyTitle")}</h2><p className="mx-auto mt-2 max-w-lg text-sm">{t("atlas.emptyDescription")}</p><div aria-hidden="true" className="mx-auto mt-6 flex h-10 max-w-48 items-end justify-center gap-1 opacity-40">{[3, 5, 4, 8, 6, 10, 7, 9, 6, 11, 8, 10].map((height, index) => <span key={index} className="w-3 rounded-t bg-primary" style={{ height: height * 3 }} />)}</div></section> : <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">

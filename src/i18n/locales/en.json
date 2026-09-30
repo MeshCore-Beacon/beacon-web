@@ -486,8 +486,7 @@
       "manage": "Manage card",
       "earlier": "Move earlier",
       "later": "Move later",
-      "remove": "Remove card",
-      "storageHelp": "Saved in this browser on this site, across all regions. No account needed. Clearing site data removes your cards."
+      "remove": "Remove card"
     }
   }
 }
