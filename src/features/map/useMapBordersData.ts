@@ -25,7 +25,7 @@ export function useMapBordersData(iataCodes: string[], enabled: boolean): Border
       queryKey: ["iata-border", iata],
       queryFn: () => getIataBorder(iata),
       enabled,
-      staleTime: (query) => query.state.data ? 3_600_000 : 60_000,
+      staleTime: (query: { state: { data: unknown } }) => query.state.data ? 3_600_000 : 60_000,
     })),
   });
 
