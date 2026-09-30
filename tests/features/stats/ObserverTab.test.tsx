@@ -76,7 +76,10 @@ const point = (t: number, p: Partial<TelemetryPoint>): TelemetryPoint => ({
 const telemetry: ObserverTelemetry = {
   range: "24h",
   interval: "1h",
-  points: [point(0, { airtimeRxSecs: 100, airtimeTxSecs: 10, batteryMv: 4100 }), point(H, { airtimeRxSecs: 154, airtimeTxSecs: 46, batteryMv: 4100 })],
+  points: [
+    point(0, { airtimeRxSecs: 100, airtimeTxSecs: 10, batteryMv: 4100 }),
+    point(H, { airtimeRxSecs: 154, airtimeTxSecs: 46, batteryMv: 4100 }),
+  ],
 };
 
 const activity: ObserverActivity = {
@@ -89,8 +92,13 @@ const activity: ObserverActivity = {
 
 function renderTab() {
   const qc = new QueryClient();
-  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
-  return render(<ObserverTab range="24h" selectedObserverId="obs-1" onSelectObserver={() => {}} wsManager={{} as WsManager} />, { wrapper });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+  return render(
+    <ObserverTab range="24h" selectedObserverId="obs-1" onSelectObserver={() => {}} wsManager={{} as WsManager} />,
+    { wrapper },
+  );
 }
 
 beforeEach(() => {
@@ -143,14 +151,13 @@ describe("ObserverTab", () => {
     expect(screen.queryByText(/RX 0%/)).not.toBeInTheDocument();
   });
 
-  it("shows the heard cards as loading while the previous selection's data is only a placeholder", () => {
-    activityResult.data = { ...activity, points: [] };
-    activityResult.isPlaceholderData = true;
-    activityResult.dataUpdatedAt = 0;
+  it("keeps the last successful activity visible after a failed poll", () => {
+    activityResult.isError = true;
+    activityResult.error = new Error("temporary failure");
     renderTab();
-    expect(screen.getAllByText("Loading…").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/no packets recorded/i)).not.toBeInTheDocument();
-    expect(screen.queryByText("910.525 MHz · SF7 · 62.5 kHz · CR 4/5")).toBeInTheDocument(); // header only
+    expect(screen.getByText(/recorded packets per 15 min/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Failed to load/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("shows one empty card instead of flat charts when nothing was heard", () => {
@@ -161,24 +168,57 @@ describe("ObserverTab", () => {
   });
 });
 
-
-describe("Observer dashboard hierarchy",()=>{
- it("uses period metrics rather than the legacy presence counter",()=>{
-  activityResult.data={...activity,windowStart:Date.now()-86400000,windowEnd:Date.now(),generatedAt:Date.now(),source:"raw",summary:{recordedPackets:9,lastCompleteHour:2,lastCompleteHourStart:Date.now()-7200000,lastCompleteHourEnd:Date.now()-3600000,latestRecordedAt:Date.now()-60000}};
-  renderTab();const cards=screen.getByRole("list",{name:"Observer metrics"});
-  expect(within(cards).getByText("9")).toBeInTheDocument();expect(within(cards).getAllByRole("listitem")).toHaveLength(6);expect(within(cards).queryByText("12")).not.toBeInTheDocument();
-  expect(screen.getByText("Recorded packets per 15 min").compareDocumentPosition(screen.getByText(/Airtime TX/)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
- });
- it("does not invent zero packet metrics on an older server",()=>{
-  renderTab();expect(screen.getByText(/Packet summary unavailable/)).toBeInTheDocument();
- });
- it("provides French monitoring labels",async()=>{
-  await i18n.changeLanguage("fr");renderTab();expect(screen.getByText("Paquets enregistrés")).toBeInTheDocument();expect(screen.getByText("Détails de l’appareil")).toBeInTheDocument();
- });
+describe("Observer dashboard hierarchy", () => {
+  it("uses period metrics rather than the legacy presence counter", () => {
+    activityResult.data = {
+      ...activity,
+      windowStart: Date.now() - 86400000,
+      windowEnd: Date.now(),
+      generatedAt: Date.now(),
+      source: "raw",
+      summary: {
+        recordedPackets: 9,
+        lastCompleteHour: 2,
+        lastCompleteHourStart: Date.now() - 7200000,
+        lastCompleteHourEnd: Date.now() - 3600000,
+        latestRecordedAt: Date.now() - 60000,
+      },
+    };
+    renderTab();
+    const cards = screen.getByRole("list", { name: "Observer metrics" });
+    expect(within(cards).getByText("9")).toBeInTheDocument();
+    expect(within(cards).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(cards).queryByText("12")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Recorded packets per 15 min").compareDocumentPosition(screen.getByText(/Airtime TX/)) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+  it("does not invent zero packet metrics on an older server", () => {
+    renderTab();
+    expect(screen.getByText(/Packet summary unavailable/)).toBeInTheDocument();
+  });
+  it("provides French monitoring labels", async () => {
+    await i18n.changeLanguage("fr");
+    renderTab();
+    expect(screen.getByText("Paquets enregistrés")).toBeInTheDocument();
+    expect(screen.getByText("Détails de l’appareil")).toBeInTheDocument();
+  });
 });
 
-it("distinguishes packet arrivals from last deduplicated record and status freshness",()=>{
- const now=Date.now();observer.brokers=[{name:"one",lastSeenAt:now,lastPacketAt:now}];
- activityResult.data={...activity,summary:{recordedPackets:9,lastCompleteHour:2,lastCompleteHourStart:now-7200000,lastCompleteHourEnd:now-3600000,latestRecordedAt:now-3600000}};
- renderTab();expect(screen.getByText("Recent packet traffic")).toBeInTheDocument();
+it("distinguishes packet arrivals from last deduplicated record and status freshness", () => {
+  const now = Date.now();
+  observer.brokers = [{ name: "one", lastSeenAt: now, lastPacketAt: now }];
+  activityResult.data = {
+    ...activity,
+    summary: {
+      recordedPackets: 9,
+      lastCompleteHour: 2,
+      lastCompleteHourStart: now - 7200000,
+      lastCompleteHourEnd: now - 3600000,
+      latestRecordedAt: now - 3600000,
+    },
+  };
+  renderTab();
+  expect(screen.getByText("Recent packet traffic")).toBeInTheDocument();
 });

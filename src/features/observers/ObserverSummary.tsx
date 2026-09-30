@@ -22,7 +22,7 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
     ["lastPacket", summary?.latestRecordedAt != null ? <Timestamp value={summary.latestRecordedAt} /> : "—"],
     ["battery", observer.batteryLevel != null ? formatBattery(observer.batteryLevel) : "—"],
     ["uptime", observer.uptimeSeconds != null ? formatUptime(observer.uptimeSeconds) : "—"],
-    ["noise", noise != null && Number.isFinite(noise) ? `${noise} dBm` : "—"],
+    ["noise", noise != null && Number.isFinite(noise) ? `${noise.toLocaleString(i18n.resolvedLanguage, { maximumFractionDigits: 1 })} dBm` : "—"],
   ] as const;
   return <>
     <div className="flex flex-wrap items-start justify-between gap-3">
