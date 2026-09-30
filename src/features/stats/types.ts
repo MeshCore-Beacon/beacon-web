@@ -165,7 +165,7 @@ export interface ObserverActivity {
 }
 
 // Sub-tab + time-range identifiers shared across the Stats page.
-export type StatsTab = "mesh" | "traffic" | "signal" | "paths" | "scopes" | "talkers" | "clockdrift" | "observer" | "compare" | "graph";
+export type StatsTab = "mesh" | "traffic" | "signal" | "paths" | "scopes" | "talkers" | "clockdrift" | "compare" | "graph";
 export type StatsRange = "24h" | "7d" | "30d";
 
 export const RANGE_MS: Record<StatsRange, number> = {

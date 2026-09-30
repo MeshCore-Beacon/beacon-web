@@ -79,7 +79,6 @@
         "scopes": "Scopes",
         "talkers": "Émetteurs",
         "clockdrift": "Dérive d’horloge",
-        "observer": "Observateur",
         "compare": "Comparer les observateurs",
         "graph": "Graphe des voisins"
       },

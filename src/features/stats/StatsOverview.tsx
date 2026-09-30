@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { WsManager } from "../../api/ws-manager";
 import { StatsSubHeader } from "./StatsSubHeader";
 import { MeshTab } from "./MeshTab";
@@ -9,12 +9,12 @@ import { PathsTab } from "./PathsTab";
 import { ScopesTab } from "./ScopesTab";
 import { TalkersTab } from "./TalkersTab";
 import { ClockDriftTab } from "./ClockDriftTab";
-import { ObserverAnalyticsTab } from "./ObserverAnalyticsTab";
 import { CompareObserversTab } from "./CompareObserversTab";
 import { NeighbourGraphTab } from "./NeighbourGraphTab";
+import { observerDestination } from "../observers/observer-navigation";
 import type { StatsRange, StatsTab } from "./types";
 
-const TABS: StatsTab[] = ["mesh", "traffic", "signal", "paths", "scopes", "talkers", "clockdrift", "observer", "compare", "graph"];
+const TABS: StatsTab[] = ["mesh", "traffic", "signal", "paths", "scopes", "talkers", "clockdrift", "compare", "graph"];
 const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
@@ -24,13 +24,14 @@ interface StatsOverviewProps {
   wsManager: WsManager;
 }
 
-// Stats page shell: an analytics sub-header and range over the active sub-tab. Sub-tab, range and the
-// selected observer live in the URL (?statsTab/?range/?observerId) so the view is shareable.
+// Stats page shell: an analytics sub-header and range over the active sub-tab. Sub-tab and range live
+// in the URL (?statsTab/?range) so the view is shareable.
 export function StatsOverview({ wsManager }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const tab = asTab(params.get("statsTab"));
   const range = asRange(params.get("range"));
-  const observerId = params.get("observerId");
+  const legacyObserver = params.get("statsTab") === "observer";
 
   const patch = useCallback(
     (updates: Record<string, string | null>) => {
@@ -51,7 +52,12 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
 
   const handleTab = useCallback((t: StatsTab) => patch({ statsTab: t }), [patch]);
   const handleRange = useCallback((r: StatsRange) => patch({ range: r }), [patch]);
-  const handleSelectObserver = useCallback((id: string) => patch({ statsTab: "observer", observerId: id }), [patch]);
+  const handleSelectObserver = useCallback((id: string) => navigate({ search: "?" + observerDestination(params, id, range).toString() }), [navigate, params, range]);
+
+  // The observer dashboard moved to the Observers tab; old ?statsTab=observer links land there.
+  useEffect(() => {
+    if (legacyObserver) navigate({ search: "?" + observerDestination(params, params.get("observerId"), range).toString() }, { replace: true });
+  }, [legacyObserver, navigate, params, range]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -64,9 +70,6 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
         {tab === "scopes" && <ScopesTab />}
         {tab === "talkers" && <TalkersTab range={range} />}
         {tab === "clockdrift" && <ClockDriftTab />}
-        {tab === "observer" && (
-          <ObserverAnalyticsTab range={range} selectedObserverId={observerId} onSelectObserver={handleSelectObserver} wsManager={wsManager} />
-        )}
         {tab === "graph" && <NeighbourGraphTab />}
         {tab === "compare" && <CompareObserversTab />}
       </div>

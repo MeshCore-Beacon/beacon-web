@@ -78,7 +78,6 @@
         "scopes": "Scopes",
         "talkers": "Talkers",
         "clockdrift": "Clock Drift",
-        "observer": "Observer",
         "compare": "Compare observers",
         "graph": "Neighbour Graph"
       },

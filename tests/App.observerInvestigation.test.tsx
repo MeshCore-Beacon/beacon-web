@@ -103,24 +103,23 @@ describe("observer investigation return", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1");
     await browserBack(); expect(screen.getByLabelText("Route filter")).toHaveValue("keep");
   });
-  it("opens the Analytics observer tab from the leaderboard", async () => {
+  it("opens the Observers dashboard from the leaderboard", async () => {
     await import("../src/features/stats/StatsOverview");
     window.history.replaceState({}, "", "/?tab=Analytics&statsTab=mesh&range=24h");
     render(<App />);
     await screen.findByRole("button", { name: "Leaderboard observer" });
     click("Leaderboard observer");
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 24h");
-    expect(window.location.search).toContain("tab=Analytics");
-    expect(window.location.search).toContain("statsTab=observer");
-    expect(window.location.search).toContain("observerId=o1");
-    expect(screen.queryByRole("button", { name: "Back to Analytics" })).not.toBeInTheDocument();
+    expect(window.location.search).toContain("tab=Observers");
+    expect(window.location.search).toContain("observer=o1");
+    expect(window.location.search).not.toContain("statsTab");
   });
-  it("keeps shared Analytics observer links in Analytics", async () => {
+  it("redirects legacy Analytics observer links to the Observers dashboard", async () => {
     window.history.replaceState({}, "", "/?tab=Analytics&statsTab=observer&observerId=o2&range=7d");
     render(<App />);
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o2 7d");
-    expect(window.location.search).toContain("statsTab=observer");
-    expect(window.location.search).not.toContain("tab=Observers");
+    expect(window.location.search).toContain("tab=Observers");
+    expect(window.location.search).not.toContain("statsTab");
   });
   it("does not invent a return destination for a reloaded/shared dashboard", async () => {
     window.history.replaceState({ usr: { beaconObserverReturnKey: "old" } }, "", "/?tab=Observers&observer=o2&range=24h");
