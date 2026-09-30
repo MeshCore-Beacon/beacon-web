@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
 import { CopyButton } from "../../components/CopyButton";
@@ -17,7 +17,7 @@ function Measure({ text }: { text: string }) {
     /\d/.test(part) ? <span key={i}>{part}</span> : <span key={i} className="text-sm font-semibold text-text-muted">{part}</span>)}</>;
 }
 
-export function ObserverSummary({ observer, activity, points, pending = false }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean }) {
+export function ObserverSummary({ observer, activity, points, pending = false, actions }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode }) {
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
@@ -66,6 +66,7 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
         </span>
         <IataChip>{observer.iata}</IataChip>
+        {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
       </div>
       {device.length > 0 && (
         <div className="flex flex-wrap gap-1.5 font-mono text-[12px] text-text-normal">

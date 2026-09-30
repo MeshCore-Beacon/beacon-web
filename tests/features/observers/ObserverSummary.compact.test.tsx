@@ -83,6 +83,12 @@ describe("observer identity panel", () => {
     expect(writeText).toHaveBeenCalledWith(full.publicKey);
   });
 
+  it("shows observer actions on the name row", () => {
+    render(<ObserverSummary observer={full} points={[]} actions={<button>Compare with…</button>} />);
+    const row = screen.getByRole("heading", { level: 1 }).parentElement!;
+    expect(within(row).getByRole("button", { name: "Compare with…" })).toBeInTheDocument();
+  });
+
   it("keeps a client version that adds information", () => {
     render(<ObserverSummary observer={{ ...full, softwareVersion: "meshcore-mqtt 2.1" }} points={[]} />);
     expect(screen.getByRole("region", { name: "Roof" })).toHaveTextContent("meshcore-mqtt 2.1");

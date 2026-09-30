@@ -70,9 +70,12 @@ describe("Observer analytics tab", () => {
   beforeEach(() => {
     vi.doMock("../../../src/features/stats/useStats", async (orig) => ({ ...(await orig<object>()), useTopObservers: () => ({ data: top, isLoading: false }) }));
     vi.doMock("../../../src/hooks/useRegion", async (orig) => ({ ...(await orig<object>()), useRegion: () => ({ iatas: null, regionKey: "*" }) }));
+    vi.doMock("../../../src/features/observers/ObserverSidebar", () => ({ ObserverSidebar: ({ onSelect }: { onSelect: (id: string) => void }) => (
+      <><input type="search" aria-label="Search observers" />{top.map((o) => <button key={o.observerId} onClick={() => onSelect(o.observerId)}>{o.displayName}</button>)}</>
+    ) }));
     vi.doMock("../../../src/features/stats/ObserverTab", () => ({ ObserverTab: ({ selectedObserverId, range }: { selectedObserverId: string | null; range: string }) => <h1>Dashboard {selectedObserverId} {range}</h1> }));
   });
-  afterEach(() => { vi.doUnmock("../../../src/features/stats/useStats"); vi.doUnmock("../../../src/hooks/useRegion"); vi.doUnmock("../../../src/features/stats/ObserverTab"); vi.resetModules(); });
+  afterEach(() => { vi.doUnmock("../../../src/features/observers/ObserverSidebar"); vi.doUnmock("../../../src/features/stats/useStats"); vi.doUnmock("../../../src/hooks/useRegion"); vi.doUnmock("../../../src/features/stats/ObserverTab"); vi.resetModules(); });
 
   it("lists observers in a sidebar, defaults to the busiest and switches on click", async () => {
     vi.resetModules();

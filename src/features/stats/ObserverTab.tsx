@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
 import { EmptyState } from "../../components/EmptyState";
@@ -35,8 +35,10 @@ interface ObserverTabProps {
   onSelectObserver: (id: string) => void;
   wsManager: WsManager;
   comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => number };
+  // observer-level controls the host page puts on the header's name row
+  actions?: ReactNode;
 }
-export function ObserverTab({ range, selectedObserverId, wsManager, comparison }: ObserverTabProps) {
+export function ObserverTab({ range, selectedObserverId, wsManager, comparison, actions }: ObserverTabProps) {
   const { t } = useTranslation();
   const colors = useChartColors();
   useLiveObserver(wsManager, selectedObserverId, range);
@@ -144,6 +146,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
         activity={heardData}
         points={points}
         pending={heardLoading || (!heardData && activity.isError)}
+        actions={actions}
       />
       {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => {
         const nextUntil = comparison.onRefresh();

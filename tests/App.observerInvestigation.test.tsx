@@ -25,7 +25,7 @@ vi.mock("../src/features/stats/MeshTab", () => ({ MeshTab: ({ onSelectObserver }
   const [value, setValue] = useState("");
   return <><input aria-label="Analytics local state" value={value} onChange={e => setValue(e.target.value)} /><button onClick={() => onSelectObserver("o1")}>Leaderboard observer</button></>;
 } }));
-vi.mock("../src/features/stats/ObserverTab", () => ({ ObserverTab: ({ selectedObserverId, range }: { selectedObserverId: string; range: string }) => <h1>Dashboard {selectedObserverId} {range}</h1> }));
+vi.mock("../src/features/stats/ObserverTab", () => ({ ObserverTab: ({ selectedObserverId, range, actions }: { selectedObserverId: string; range: string; actions?: ReactNode }) => <><h1>Dashboard {selectedObserverId} {range}</h1>{actions}</> }));
 // Exercise the real analytics shell without loading charts unrelated to its observer action.
 vi.mock("../src/features/stats/TrafficTab", () => ({ TrafficTab: () => null }));
 vi.mock("../src/features/stats/SignalTab", () => ({ SignalTab: () => null }));
@@ -126,7 +126,7 @@ describe("observer investigation return", () => {
     window.history.replaceState({ usr: { beaconObserverReturnKey: "old" } }, "", "/?tab=Observers&observer=o2&range=24h");
     render(<App />); expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o2 24h");
     expect(screen.queryByRole("button", { name: "Back to Routes" })).not.toBeInTheDocument();
-    click("← Back to observers"); expect(screen.getByText("Observer directory")).toBeInTheDocument();
+    click("Back to observers"); expect(screen.getByText("Observer directory")).toBeInTheDocument();
   });
   it("ends the retained investigation when the operator changes tabs or regions", async () => {
     render(<App />); click("Route observer"); click("Open dashboard"); await screen.findByRole("heading", { level: 1 });

@@ -17,17 +17,21 @@ vi.mock("../../../src/features/observers/ObserverTable", () => ({
     );
   },
 }));
+vi.mock("../../../src/features/observers/ObserverSidebar", () => ({ ObserverSidebar: () => <p>Observer sidebar</p> }));
 vi.mock("../../../src/features/stats/ObserverTab", () => ({
   ObserverTab: ({
     selectedObserverId,
     range,
     comparison,
+    actions,
   }: {
     selectedObserverId: string;
     range: string;
     comparison?: { until: number | null; onRefresh: () => void };
+    actions?: React.ReactNode;
   }) => (
     <>
+      <div data-testid="header-actions">{actions}</div>
       <h1>
         Dashboard {selectedObserverId} {range}
       </h1>
@@ -83,6 +87,15 @@ describe("Observer destination", () => {
     expect(options[2]).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: /Back to observers/ }));
     expect(screen.getByLabelText("Directory search")).toBeVisible();
+  });
+  it("puts observer actions in the dashboard header and keeps page controls in the top bar", async () => {
+    view("?tab=Observers&observer=observer-a&range=7d");
+    await screen.findByRole("heading");
+    const header = screen.getByTestId("header-actions");
+    expect(within(header).getByRole("button", { name: "Compare with…" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Copy observer link" })).toBeInTheDocument();
+    expect(within(header).queryByRole("button", { name: /Back to observers/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Compare with…" })).toHaveLength(1);
   });
   it("keeps the directory return on desktop, where the sidebar can't deselect", async () => {
     view("?tab=Observers&observer=observer-a&range=7d");

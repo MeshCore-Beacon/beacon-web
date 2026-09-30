@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getObserversPage, getBrokers } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
@@ -10,7 +9,6 @@ import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
 import { formatHex, formatRadio } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
 import { DataTable, type Column } from "../../components/DataTable";
-import { SearchBar } from "../../components/SearchBar";
 import { LoadingPill } from "../../components/LoadingPill";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverDetailPanel } from "./ObserverDetailPanel";
@@ -25,7 +23,6 @@ import type { WsObserverStatus } from "../../types/ws";
 const observerId = (o: ObserverSummary) => o.id; // stable id accessor for the paged hook's dedup
 
 interface ObserverTableProps {
-  compact?: boolean;
   wsManager: WsManager;
   selectedObserverId: string | null;
   onSelectObserver: (id: string | null) => void;
@@ -74,12 +71,6 @@ const COLUMNS: Column<ObserverSummary>[] = [
   },
 ];
 
-const COMPACT_COLUMNS: Column<ObserverSummary>[] = [{
-  ...COLUMNS[0]!,
-  className: "max-w-0",
-  cell: (obs) => <button type="button" className="block min-h-7 w-full min-w-0 text-left" title={obs.displayName ?? formatHex(obs.id)}>{COLUMNS[0]!.cell(obs)}</button>,
-}];
-
 function renderObserverCard(obs: ObserverSummary) {
   const status = deriveObserverStatus(obs);
   return (
@@ -104,8 +95,7 @@ function renderObserverCard(obs: ObserverSummary) {
   );
 }
 
-export function ObserverTable({ compact = false, wsManager, selectedObserverId, onSelectObserver, onAnalyzePacket, onViewStats }: ObserverTableProps) {
-  const { t } = useTranslation();
+export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver, onAnalyzePacket, onViewStats }: ObserverTableProps) {
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -114,19 +104,17 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   const [typeFilter, setTypeFilter] = useState("");
   const [brokerFilter, setBrokerFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
-  // Compact mode has only the name search, so the other filters are ignored there.
-  const status = compact ? "" : statusFilter;
-  const type = compact ? "" : typeFilter;
-  const broker = compact ? "" : brokerFilter;
-  const scope = compact ? "" : scopeFilter;
-  const field = compact ? "name" : searchField;
+  const status = statusFilter;
+  const type = typeFilter;
+  const broker = brokerFilter;
+  const scope = scopeFilter;
+  const field = searchField;
 
   useTick(); // keep recency-derived status badges fresh
 
   const { data: brokers } = useQuery({
     queryKey: ["brokers"],
     queryFn: getBrokers,
-    enabled: !compact,
     staleTime: 60_000,
   });
 
@@ -181,11 +169,11 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
         patchInfinitePages(old, (items) => patchObserverSummary(items, data) ?? items),
       );
       // refresh detail panel if it's showing this observer
-      if (!compact && selectedObserverId === data.observerId) {
+      if (selectedObserverId === data.observerId) {
         queryClient.invalidateQueries({ queryKey: ["observer", data.observerId] });
       }
     },
-    [queryClient, queryKey, selectedObserverId, compact],
+    [queryClient, queryKey, selectedObserverId],
   );
 
   useWsObserverStatusHandler(wsManager, handleObserverStatus);
@@ -193,7 +181,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   return (
     <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex flex-col flex-1 min-w-0">
-        {compact ? <div className="p-2"><SearchBar value={search} onChange={setSearch} fields={[{ value: "name", label: "Name" }]} field="name" onFieldChange={setSearchField} hideField inputLabel={t("observerPage.sidebarSearch")} /></div> : <ObserverFilterBar
+        <ObserverFilterBar
           search={search}
           onSearchChange={setSearch}
           searchField={searchField}
@@ -209,14 +197,14 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
-        />}
+        />
 
         <DataTable
-          columns={compact ? COMPACT_COLUMNS : COLUMNS}
+          columns={COLUMNS}
           rows={displayObservers}
           rowKey={(o) => o.id}
           selectedKey={selectedObserverId}
-          onSelect={id => { if (!compact || id !== null) onSelectObserver(id); }}
+          onSelect={onSelectObserver}
           isLoading={isLoading}
           emptyLabel="No observers"
           defaultSort={{ header: "Name" }}
@@ -225,7 +213,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="observers" position="bottom-3 right-3" />
       </div>
 
-      {selectedObserverId && !compact && (
+      {selectedObserverId && (
         <ObserverDetailPanel
           observerId={selectedObserverId}
           onClose={() => onSelectObserver(null)}

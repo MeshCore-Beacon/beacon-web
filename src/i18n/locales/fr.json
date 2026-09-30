@@ -321,7 +321,10 @@
       "none": "Aucun observateur",
       "hourWindow": "Paquets {{start}}–{{end}} h UTC",
       "lastNoise": "Dernier bruit de fond",
-      "copyKey": "Copier la clé publique"
+      "copyKey": "Copier la clé publique",
+      "sort": "Trier les observateurs",
+      "sortActivity": "Activité",
+      "sortName": "Nom"
     },
     "observerCompare": {
       "open": "Comparer avec…",

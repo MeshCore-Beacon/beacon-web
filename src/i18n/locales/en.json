@@ -317,7 +317,10 @@
       "none": "No observers",
       "hourWindow": "Packets {{start}}–{{end}} UTC",
       "lastNoise": "Last noise floor",
-      "copyKey": "Copy public key"
+      "copyKey": "Copy public key",
+      "sort": "Sort observers",
+      "sortActivity": "Activity",
+      "sortName": "Name"
     },
     "observerCompare": {
       "open": "Compare with…",
