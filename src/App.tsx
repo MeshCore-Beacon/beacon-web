@@ -234,6 +234,7 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
+      if (tab !== "Routes") for (const key of ["route", "routeIata", "routeRange", "routeSince", "routeUntil"]) next.delete(key);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
       if (tab !== "Observers") next.delete("observer");

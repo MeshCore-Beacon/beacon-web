@@ -12,6 +12,7 @@ import {
   searchCrossIATARoutes,
   getIatas,
   getRegions,
+  getRegion,
 } from "../../../src/api/client";
 import type { KnownRoute, CrossIATARoute } from "../../../src/types/api";
 
@@ -21,7 +22,10 @@ vi.mock("../../../src/api/client", () => ({
   searchCrossIATARoutes: vi.fn(),
   getIatas: vi.fn(),
   getRegions: vi.fn(),
+  getRegion: vi.fn(),
 }));
+
+vi.mock("../../../src/features/routes/RouteEvidencePanel", () => ({ RouteEvidencePanel: ({ pathKey }: { pathKey: string }) => <div data-testid="saved-route-selection">{pathKey}</div> }));
 
 const mockGetKnownRoutesPage = vi.mocked(getKnownRoutesPage);
 const mockSearchKnownRoutes = vi.mocked(searchKnownRoutes);
@@ -139,4 +143,15 @@ describe("RouteTable search", () => {
 
     expect(await screen.findByText("42")).toBeInTheDocument();
   });
+});
+
+it("preserves a shared saved route while a named region resolves", async () => {
+  vi.mocked(getRegions).mockResolvedValue([{ id: 1, slug: "ontario", name: "Ontario" }]);
+  vi.mocked(getRegion).mockResolvedValue({ id: 1, slug: "ontario", name: "Ontario", iatas: ["YOW"] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/?tab=Routes&regions=ontario&route=shared-key&routeIata=YOW"]}><RegionProvider defaultSelection={{ regions: ["ontario"], iatas: [] }}><RouteTable /></RegionProvider></MemoryRouter></QueryClientProvider>);
+  await waitFor(() => expect(getRegion).toHaveBeenCalledWith(1));
+  await waitFor(() => expect(getKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iata: "YOW" })));
+  expect(screen.getByTestId("saved-route-selection")).toHaveTextContent("shared-key");
+  client.clear();
 });

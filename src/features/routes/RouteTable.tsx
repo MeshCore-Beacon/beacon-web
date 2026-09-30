@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { RouteEvidencePanel, type RouteActions } from "./RouteEvidencePanel";
 import { getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getIatas } from "../../api/client";
-import { useRegion } from "../../hooks/useRegion";
+import { useRegion, useRegionSelection } from "../../hooks/useRegion";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
 import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
@@ -144,6 +144,7 @@ function directedPairs(iatas: string[]): [string, string][] {
 
 export function RouteTable(actions: RouteActions) {
   const { iatas, regionKey } = useRegion();
+  const { selection } = useRegionSelection();
   const [params, setParams] = useSearchParams();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
@@ -155,13 +156,13 @@ export function RouteTable(actions: RouteActions) {
 
 
   // drop the selection when the region changes — the selected route may not be in the new region
-  const prevRegion = useRef(regionKey);
+  const prevRegion = useRef(selection);
   useEffect(() => {
-    if (prevRegion.current !== regionKey) {
-      prevRegion.current = regionKey;
+    if (prevRegion.current !== selection) {
+      prevRegion.current = selection;
       closeRoute();
     }
-  }, [regionKey, closeRoute]);
+  }, [selection, closeRoute]);
 
   // path search form: source→dest hashes, scoped to a multi-select of IATAs. One IATA → within-IATA
   // /routes/search; two+ → /routes/cross across the directed pairs. Hashes + ≥1 IATA required.
@@ -237,7 +238,7 @@ export function RouteTable(actions: RouteActions) {
     const route = rows?.find(row => String(row.id) === id);
     if (route?.pathKey) {
       setSelectedKey(null);
-      setParams(previous => { const next = new URLSearchParams(previous); next.set("route", route.pathKey!); next.set("routeIata", route.iata); next.delete("routeSince"); next.delete("routeUntil"); return next; });
+      setParams(previous => { const next = new URLSearchParams(previous); next.set("route", route.pathKey!); next.set("routeIata", route.iata); next.delete("routeSince"); next.delete("routeUntil"); return next; }, { replace: true });
     } else {
       closeRoute();
       setSelectedKey(id);
