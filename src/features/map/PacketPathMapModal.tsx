@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PacketDetail } from "../../types/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
@@ -6,8 +6,9 @@ import { CloseButton } from "../../components/CloseButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { formatPropagation } from "../../lib/formatters";
 import { buildPacketPaths } from "./packet-path";
-import { PacketPathMap } from "./PacketPathMap";
 import { DEFAULT_STYLE_ID, MAP_STYLE_STORAGE_KEY } from "./types";
+
+const PacketPathMap = lazy(() => import("./PacketPathMap").then(module => ({ default: module.PacketPathMap })));
 
 // Closable mini-map of a packet's resolved path(s). "All paths" overlays every observation's route;
 // clicking an observer isolates its path. Lives over the analyzer (no tab switch), so closing it
@@ -64,7 +65,9 @@ export function PacketPathMapModal({ detail, onClose, initialSelectedKey, inacti
         {paths.length === 0 && !unavailable && <p role="status" className="px-3 py-2 text-sm text-text-muted">{t("investigation.unmappable")}</p>}
         <div className="flex-1 min-h-0 flex flex-col md:flex-row">
           <div className="h-[55vh] max-md:shrink-0 md:h-auto md:flex-1 min-h-0 bg-bg-base">
-            <PacketPathMap paths={paths} selectedKey={selectedKey} styleId={styleId} />
+            <Suspense fallback={<p role="status" className="p-4 text-sm text-text-muted">{t("common.loading")}</p>}>
+              <PacketPathMap paths={paths} selectedKey={selectedKey} styleId={styleId} />
+            </Suspense>
           </div>
           <div className="md:w-[220px] md:border-l border-t md:border-t-0 border-border flex flex-col min-h-0 overflow-y-auto">
             <div className="sticky top-0 bg-bg-surface z-10 border-b border-border-subtle">

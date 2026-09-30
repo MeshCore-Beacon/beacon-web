@@ -34,18 +34,18 @@ const detail = {
 } as unknown as PacketDetail;
 
 describe("PacketPathMapModal", () => {
-  it("lists All paths plus a row per observer and starts on All", () => {
+  it("lists All paths plus a row per observer and starts on All", async () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} />);
     expect(screen.getByText("All paths")).toBeInTheDocument();
     expect(screen.getByText("Alpha")).toBeInTheDocument();
     expect(screen.getByText("Bravo")).toBeInTheDocument();
-    expect(screen.getByTestId("mini-map")).toHaveTextContent("all");
+    expect(await screen.findByTestId("mini-map")).toHaveTextContent("all");
   });
 
-  it("isolates a path when its row is clicked", () => {
+  it("isolates a path when its row is clicked", async () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} />);
     fireEvent.click(screen.getByText("Bravo"));
-    expect(screen.getByTestId("mini-map")).toHaveTextContent("obs-bravo");
+    expect(await screen.findByTestId("mini-map")).toHaveTextContent("obs-bravo");
   });
 
   it("shows each observer's propagation", () => {
@@ -61,17 +61,17 @@ describe("PacketPathMapModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("pre-selects the observer from initialSelectedKey", () => {
+  it("pre-selects the observer from initialSelectedKey", async () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} initialSelectedKey="obs-bravo" />);
-    expect(screen.getByTestId("mini-map")).toHaveTextContent("obs-bravo");
+    expect(await screen.findByTestId("mini-map")).toHaveTextContent("obs-bravo");
   });
 
-  it("does not silently substitute all paths for an unavailable selected path", () => {
+  it("does not silently substitute all paths for an unavailable selected path", async () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} initialSelectedKey="nope" />);
-    expect(screen.getByTestId("mini-map")).toHaveTextContent("nope");
+    expect(await screen.findByTestId("mini-map")).toHaveTextContent("nope");
     expect(screen.getByRole("status")).toHaveTextContent("selected path cannot be mapped");
     fireEvent.click(screen.getByText("All paths"));
-    expect(screen.getByTestId("mini-map")).toHaveTextContent("all");
+    expect(await screen.findByTestId("mini-map")).toHaveTextContent("all");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 

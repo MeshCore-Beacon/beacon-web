@@ -1,6 +1,7 @@
 // src/features/map/PacketPathMap.tsx
 import { useEffect, useRef, useState } from "react";
 import { Map as MapLibreMap, NavigationControl, AttributionControl, Popup, LngLatBounds } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibre-worker";
 import type {
   GeoJSONSource,
