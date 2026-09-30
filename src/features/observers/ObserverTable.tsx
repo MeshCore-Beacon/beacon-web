@@ -120,6 +120,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   const { data: brokers } = useQuery({
     queryKey: ["brokers"],
     queryFn: getBrokers,
+    enabled: !compact,
     staleTime: 60_000,
   });
 
