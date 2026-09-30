@@ -247,7 +247,7 @@ function AppInner() {
   // Closing a detail panel drops its deep-link param so a reload can't reopen it (mirrors the packet
   // analyzer's ?analyze cleanup). Selecting a different node/observer doesn't touch the URL — the panel's
   // Copy Link button rebuilds a fresh link on demand.
-  const dropSelectionParam = useCallback((key: "node" | "observer") => {
+  const dropSelectionParam = useCallback((key: "node") => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete(key);
@@ -346,6 +346,7 @@ function AppInner() {
           {overlayNodeId && (
             <NodeDetailOverlay
               nodeId={overlayNodeId}
+              inactive={!!quickObserverId || !!overlayPacketHash || !!pathMapDetail}
               onClose={() => setOverlayNodeId(null)}
               onViewObserver={(observerId) => {
                 setQuickObserverId(observerId);
@@ -362,11 +363,11 @@ function AppInner() {
                 setQuickObserverId(observerId);
               }}
               onViewPath={() => { if (overlayPacketDetail) handleViewPath(overlayPacketDetail); }}
-              inactive={!!pathMapDetail}
+              inactive={!!pathMapDetail || !!quickObserverId}
             />
           )}
           {quickObserverId && <ModalOverlay label={t("tabs.Observers")} onClose={() => setQuickObserverId(null)}>
-            <ObserverDetailPanel observerId={quickObserverId} onClose={() => setQuickObserverId(null)} onViewStats={handleViewObserverStats} onAnalyzePacket={setOverlayPacketHash} />
+            <ObserverDetailPanel observerId={quickObserverId} onClose={() => setQuickObserverId(null)} onViewStats={handleViewObserverStats} onAnalyzePacket={hash => { setQuickObserverId(null); setOverlayPacketHash(hash); }} />
           </ModalOverlay>}
           {pathMapDetail && (
             <PacketPathMapModal
