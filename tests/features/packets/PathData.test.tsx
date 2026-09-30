@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { ResolvedHopBlock } from "../../../src/features/packets/PathData";
+import i18n from "../../../src/i18n";
 import type { ResolvedHop } from "../../../src/types/api";
 
 // mobile/touch == no hover-capable pointer; desktop == has hover. Interaction modality keys off
@@ -46,6 +47,26 @@ describe("ResolvedHopBlock tooltip", () => {
   it("relies on its popover rather than a native title", () => {
     const { container } = render(<ResolvedHopBlock hop={singleHop} label="ABC1" />);
     expect(container.querySelector("[title]")).toBeNull();
+  });
+});
+
+describe("ResolvedHopBlock unresolved popover", () => {
+  const noMatchHop: ResolvedHop = { confidence: "none", nodes: [] };
+
+  it("shows the same no-resolution message PacketEndpoints uses", () => {
+    setMobile(true);
+    render(<ResolvedHopBlock hop={noMatchHop} label="ABC1" />);
+    fireEvent.click(screen.getByText("ABC1"));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("No path resolution available");
+  });
+
+  it("translates it to French", async () => {
+    setMobile(true);
+    await act(() => i18n.changeLanguage("fr"));
+    render(<ResolvedHopBlock hop={noMatchHop} label="ABC1" />);
+    fireEvent.click(screen.getByText("ABC1"));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Aucune résolution de chemin disponible");
+    await act(() => i18n.changeLanguage("en"));
   });
 });
 

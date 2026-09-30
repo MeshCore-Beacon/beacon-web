@@ -47,6 +47,24 @@
       "noData": "No data",
       "dataUnavailable": "Data unavailable"
     },
+    "mesh": {
+      "totalPackets": "Total packets",
+      "observations": "Observations",
+      "activeObservers": "Active observers",
+      "activeIatas": "Active IATAs",
+      "observationsTitle": "Observations · {{range}}",
+      "topObservers": "Top observers · {{range}}",
+      "payloadTypes": "Payload types · {{range}}",
+      "obs": "{{value}} obs",
+      "topNodes": "Top nodes · all time",
+      "nodeTypes": "Node types · all time",
+      "radioPresets": "Radio presets · all time",
+      "scope": "Scope",
+      "packets": "Packets",
+      "observers": "Observers",
+      "nodes": "Nodes",
+      "nodesCenter": "NODES"
+    },
     "stats": {
       "section": "Stats section",
       "mobileSection": "Section",
@@ -211,6 +229,15 @@
       "other": "Other scopes",
       "chartDescription": "Counts by transport scope. Exact values for all matching scopes are listed in the table."
     },
+    "nodeDetail": {
+      "viewOnMap": "View on map"
+    },
+    "nodes": {
+      "lastHeard": "last heard {{ago}}"
+    },
+    "packetRow": {
+      "noResolution": "No path resolution available"
+    },
     "clockDrift": {
       "caption": "Repeaters & room servers out of sync · worst first",
       "node": "Node",
@@ -222,7 +249,13 @@
       "empty": "No repeaters out of sync"
     },
     "timestamp": {
-      "ago": "{{duration}} ago"
+      "ago": "{{duration}} ago",
+      "unit": {
+        "s": "{{count}}s",
+        "m": "{{count}}m",
+        "h": "{{count}}h",
+        "d": "{{count}}d"
+      }
     },
     "observerPage": {
       "back": "Back to observers",
@@ -234,8 +267,10 @@
       "lastHour": "Last complete hour",
       "lastPacket": "Last recorded packet",
       "battery": "Battery",
+      "batteryV": "Battery V",
       "uptime": "Device uptime",
       "noise": "Noise floor",
+      "noiseDbm": "Noise dBm",
       "packets": "Packets",
       "search": "Find an observer",
       "choose": "Choose an observer",

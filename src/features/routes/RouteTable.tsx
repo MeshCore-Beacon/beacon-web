@@ -150,9 +150,11 @@ export function RouteTable(actions: RouteActions) {
 
   const pathKey = params.get("route"), routeIata = params.get("routeIata");
   const closeRoute = useCallback(() => {
+    // no-op when nothing is open, so callers (e.g. the region-change effect) can call it unconditionally
+    if (!pathKey && !selectedKey) return;
     setSelectedKey(null);
     setParams(previous => { const next = new URLSearchParams(previous); for (const key of ["route", "routeIata", "routeRange", "routeSince", "routeUntil"]) next.delete(key); return next; }, { replace: true });
-  }, [setParams]);
+  }, [pathKey, selectedKey, setParams]);
 
 
   // drop the selection when the region changes — the selected route may not be in the new region

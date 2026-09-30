@@ -2,9 +2,11 @@ import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CopyButton } from "../../components/CopyButton";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { useTick } from "../../hooks/useTick";
 import { ObserverTable } from "./ObserverTable";
 import { observerDestination, observerRange } from "./observer-navigation";
+import { Segmented } from "../stats/Segmented";
 import type { WsManager } from "../../api/ws-manager";
 const ObserverTab = lazy(() => import("../stats/ObserverTab").then(m => ({ default: m.ObserverTab })));
 
@@ -53,16 +55,14 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
   };
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col">
     {(id || onReturn) && <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
-      {onReturn && <button ref={returnButton} type="button" aria-label={t("observerPage.returnTo", { page: returnLabel })} onClick={onReturn} className="min-h-11 text-sm text-primary">← {t("observerPage.returnTo", { page: returnLabel })}</button>}
+      {onReturn && <button ref={returnButton} type="button" aria-label={t("observerPage.returnTo", { page: returnLabel })} onClick={onReturn} className="font-mono text-[11px] text-primary hover:underline">← {t("observerPage.returnTo", { page: returnLabel })}</button>}
       {id && <>
-        <button type="button" onClick={() => select(null)} className="min-h-11 text-sm text-primary">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
+        <button type="button" onClick={() => select(null)} className="font-mono text-[11px] text-primary hover:underline">{onReturn ? t("observerPage.directory") : `← ${t("observerPage.back")}`}</button>
         <CopyButton value={share.toString()} label={t("observerPage.copyLink")} copiedLabel={t("observerPage.copied")} />
-        <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className="min-h-11 text-sm text-primary">{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
-        <label className="ml-auto flex items-center gap-2 text-sm text-text-muted">{t("observerPage.range")}
-          <select aria-label={t("observerPage.range")} value={range} onChange={e => setParams(observerDestination(params, id, observerRange(e.target.value)), visitOptions)} className="min-h-11 rounded border border-border bg-bg-raised px-3 text-text-normal">
-            <option value="24h">{t("stats.ranges.24h")}</option><option value="7d">{t("stats.ranges.7d")}</option><option value="30d">{t("stats.ranges.30d")}</option>
-          </select>
-        </label>
+        <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className={ACTION_BUTTON_CLASS}>{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
+        <span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-text-muted">{t("observerPage.range")}
+          <Segmented ariaLabel={t("observerPage.range")} size="sm" value={range} options={[{ value: "24h", label: t("stats.ranges.24h") }, { value: "7d", label: t("stats.ranges.7d") }, { value: "30d", label: t("stats.ranges.30d") }]} onChange={v => setParams(observerDestination(params, id, observerRange(v)), visitOptions)} />
+        </span>
       </>}
     </div>}
     <div className="flex min-h-0 min-w-0 flex-1">

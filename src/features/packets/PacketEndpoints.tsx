@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { PacketSummary, ResolvedHop, ResolvedNode } from "../../types/api";
 import { PayloadType, type PathConfidence } from "../../types/enums";
 import { HopPopover } from "./PathData";
@@ -12,12 +13,13 @@ const CONFIDENCE_CLASSES: Record<PathConfidence, string> = {
 const nodeLabel = (node: ResolvedNode) => node.name ?? node.publicKey.slice(0, 8);
 
 function Chip({ hop }: { hop: ResolvedHop }) {
+  const { t } = useTranslation();
   const node = hop.nodes[0];
   const label = node ? nodeLabel(node) : "?";
   return (
     <HopPopover hop={hop} showSnr={false}>
       <span
-        title={hop.nodes.map(nodeLabel).join(", ") || "No Path Resolutions Available"}
+        title={hop.nodes.map(nodeLabel).join(", ") || t("packetRow.noResolution")}
         className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[hop.confidence]}`}
       >
         {label}{hop.nodes.length > 1 ? ` +${hop.nodes.length - 1}` : ""}

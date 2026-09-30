@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { NodeDetailPanel } from "../../../src/features/nodes/NodeDetailPanel";
+import i18n from "../../../src/i18n";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../../src/api/client";
 import type { Node, NodeNeighbor } from "../../../src/features/nodes/types";
 
@@ -99,6 +100,18 @@ describe("NodeDetailPanel neighbors", () => {
   });
 });
 
+describe("NodeDetailPanel location", () => {
+  it("hides Lat/Lng but keeps the source for a 0/0 advert reset", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 0, lng: 0, locationSource: "advert" });
+
+    renderPanel();
+
+    expect(await screen.findByText("Source")).toBeInTheDocument();
+    expect(screen.queryByText("Lat")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lng")).not.toBeInTheDocument();
+  });
+});
+
 describe("NodeDetailPanel clock drift", () => {
   it("shows a repeater's clock drift in amber when the server flags it out of sync", async () => {
     mockGetNode.mockResolvedValue({ ...node, lastAdvertAt: 2, clockDriftSeconds: 432, clockOutOfSync: true, clockCheckedAt: 2 });
@@ -155,5 +168,28 @@ describe("NodeDetailPanel View on map", () => {
     renderWithMap();
     await screen.findByText("Self Node");
     expect(screen.queryByRole("button", { name: "View on map" })).not.toBeInTheDocument();
+  });
+
+  it("shows the French label", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 45.42153, lng: -75.69719 });
+    await act(() => i18n.changeLanguage("fr"));
+    renderWithMap(vi.fn());
+    expect(await screen.findByRole("button", { name: "Voir sur la carte" })).toBeInTheDocument();
+    await act(() => i18n.changeLanguage("en"));
+  });
+
+  it("is not offered for an explicit 0/0 advert reset", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 0, lng: 0 });
+    renderWithMap(vi.fn());
+    await screen.findByText("Self Node");
+    expect(screen.queryByRole("button", { name: "View on map" })).not.toBeInTheDocument();
+  });
+
+  it("is still offered when only one axis is zero", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 0, lng: 10 });
+    const onViewOnMap = vi.fn();
+    renderWithMap(onViewOnMap);
+    fireEvent.click(await screen.findByRole("button", { name: "View on map" }));
+    expect(onViewOnMap).toHaveBeenCalledWith(0, 10);
   });
 });

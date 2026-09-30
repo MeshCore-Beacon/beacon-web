@@ -24,7 +24,7 @@
       "live": "EN DIRECT",
       "stale": "EN RETARD {{age}}",
       "offline": "HORS LIGNE",
-      "rateLimited": "RÉESSAI DANS {{seconds}} s"
+      "rateLimited": "DÉBIT LIMITÉ {{seconds}} s"
     },
     "region": {
       "label": "RÉGION",
@@ -47,6 +47,24 @@
       "loadFailed": "Échec du chargement",
       "noData": "Aucune donnée",
       "dataUnavailable": "Données indisponibles"
+    },
+    "mesh": {
+      "totalPackets": "Paquets totaux",
+      "observations": "Observations",
+      "activeObservers": "Observateurs actifs",
+      "activeIatas": "IATA actifs",
+      "observationsTitle": "Observations · {{range}}",
+      "topObservers": "Meilleurs observateurs · {{range}}",
+      "payloadTypes": "Types de paquets · {{range}}",
+      "obs": "{{value}} obs",
+      "topNodes": "Meilleurs nœuds · historique complet",
+      "nodeTypes": "Types de nœuds · historique complet",
+      "radioPresets": "Préréglages radio · historique complet",
+      "scope": "Scope",
+      "packets": "Paquets",
+      "observers": "Observateurs",
+      "nodes": "Nœuds",
+      "nodesCenter": "NŒUDS"
     },
     "stats": {
       "section": "Section des statistiques",
@@ -215,6 +233,15 @@
       "other": "Autres scopes",
       "chartDescription": "Effectifs par scope de transport. Les valeurs exactes de tous les scopes correspondants figurent dans le tableau."
     },
+    "nodeDetail": {
+      "viewOnMap": "Voir sur la carte"
+    },
+    "nodes": {
+      "lastHeard": "dernier contact {{ago}}"
+    },
+    "packetRow": {
+      "noResolution": "Aucune résolution de chemin disponible"
+    },
     "clockDrift": {
       "caption": "Répéteurs et serveurs de salon désynchronisés · écart maximal en premier",
       "node": "Nœud",
@@ -226,7 +253,13 @@
       "empty": "Aucun répéteur désynchronisé"
     },
     "timestamp": {
-      "ago": "il y a {{duration}}"
+      "ago": "il y a {{duration}}",
+      "unit": {
+        "s": "{{count}} s",
+        "m": "{{count}} min",
+        "h": "{{count}} h",
+        "d": "{{count}} j"
+      }
     },
     "observerPage": {
       "back": "Retour aux observateurs",
@@ -238,8 +271,10 @@
       "lastHour": "Dernière heure complète",
       "lastPacket": "Dernier paquet enregistré",
       "battery": "Batterie",
+      "batteryV": "Batterie V",
       "uptime": "Durée de fonctionnement",
       "noise": "Bruit de fond",
+      "noiseDbm": "Bruit dBm",
       "packets": "Paquets",
       "search": "Rechercher un observateur",
       "choose": "Choisir un observateur",

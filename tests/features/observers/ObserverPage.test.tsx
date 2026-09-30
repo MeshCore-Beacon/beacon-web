@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import "../../../src/i18n";
 import { useState } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter, useNavigate, useLocation } from "react-router-dom";
 import type { WsManager } from "../../../src/api/ws-manager";
 import { ObserverPage } from "../../../src/features/observers/ObserverPage";
@@ -77,7 +77,10 @@ describe("Observer destination", () => {
   it("restores a deep link and has a directory return without prior history", async () => {
     view("?tab=Observers&observer=observer-b&range=30d");
     expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-b 30d");
-    expect(screen.getAllByRole("option").map(option => option.getAttribute("value"))).toEqual(["24h", "7d", "30d"]);
+    const range = screen.getByRole("group", { name: "Time range" });
+    const options = within(range).getAllByRole("button");
+    expect(options.map(option => option.textContent)).toEqual(["24h", "7d", "30d"]);
+    expect(options[2]).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByRole("button", { name: /Back to observers/ }));
     expect(screen.getByLabelText("Directory search")).toBeVisible();
   });

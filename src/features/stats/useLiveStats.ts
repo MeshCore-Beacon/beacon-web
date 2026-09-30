@@ -21,6 +21,8 @@ export function useLiveOverview(wsManager: WsManager) {
     const { packets, obs } = pending.current;
     if (!packets && !obs) return;
     pending.current = { packets: 0, obs: 0 };
+    // setQueryData would clear an error state and show stale numbers as healthy — drop the deltas instead.
+    if (qc.getQueryState(["stats-overview", regionKey])?.status !== "success") return;
     qc.setQueryData<StatsOverview>(["stats-overview", regionKey], (old) =>
       old
         ? { ...old, totalPackets: old.totalPackets + packets, totalObservations: old.totalObservations + obs }

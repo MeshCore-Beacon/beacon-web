@@ -106,4 +106,10 @@ describe("retained route evidence", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
+  it("colours a good SNR report the same way every other SNR cell does", async () => {
+    vi.mocked(getRouteEvidence).mockResolvedValue({ ...page, items: [{ ...page.items[0]!, snr: 12 }], hasMore: false });
+    mount();
+    const snr = await screen.findByText("12.00");
+    expect(snr).toHaveClass("text-green");
+  });
 });

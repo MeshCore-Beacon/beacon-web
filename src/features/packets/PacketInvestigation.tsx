@@ -1,21 +1,18 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType } from "../../types/enums";
 import { groupPacketReports } from "./packet-investigation";
-import { buildPacketPaths } from "../map/packet-path";
 
-const actionClass = "min-h-9 rounded border border-border px-2 text-xs text-primary hover:bg-bg-raised disabled:opacity-40 disabled:cursor-not-allowed";
-
-export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserver, onViewPath }: {
+export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserver, onViewPath, mappedKeys, observerCount }: {
   detail: PacketDetail; selectedId: number | null; onSelect: (id: number) => void;
   onViewObserver?: (id: string) => void; onViewPath?: (key?: string) => void;
+  mappedKeys: Set<string>; observerCount: number;
 }) {
   const { t } = useTranslation();
   const groups = useMemo(() => groupPacketReports(detail.observations), [detail.observations]);
-  const mapped = useMemo(() => new Set(buildPacketPaths(detail).map(p => p.key)), [detail]);
-  const observerCount = new Set(detail.observations.map(o => o.observerId)).size;
   const isTrace = detail.header.payloadType === PayloadType.TRACE;
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? groups : groups.filter((group, index) => index < 3 || group.reports.some(o => o.id === selectedId));
@@ -31,19 +28,19 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
       </summary>
       <ul className="mt-2 space-y-2">{group.reports.map(report => {
         const key = isTrace ? "trace" : report.observerId;
-        const canMap = mapped.has(key);
+        const canMap = mappedKeys.has(key);
         return <li key={report.id} className="space-y-2 border-t border-border-subtle pt-2">
           <p className="break-words text-xs text-text-normal">{report.observerName ?? report.observerId.slice(0, 8)} · {report.iata || "—"} · <Timestamp value={report.heardAt} ms /></p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={actionClass} aria-pressed={report.id === selectedId} onClick={() => onSelect(report.id)}>{t("investigation.inspect")}</button>
-            {onViewObserver && <button type="button" className={actionClass} onClick={() => { onSelect(report.id); onViewObserver(report.observerId); }}>{t("investigation.observer")}</button>}
-            <button type="button" className={actionClass} disabled={!canMap || !onViewPath} onClick={() => { onSelect(report.id); onViewPath?.(key); }}>{t("investigation.map")}</button>
+            <button type="button" className={ACTION_BUTTON_CLASS} aria-pressed={report.id === selectedId} onClick={() => onSelect(report.id)}>{t("investigation.inspect")}</button>
+            {onViewObserver && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => { onSelect(report.id); onViewObserver(report.observerId); }}>{t("investigation.observer")}</button>}
+            <button type="button" className={ACTION_BUTTON_CLASS} disabled={!canMap || !onViewPath} onClick={() => { onSelect(report.id); onViewPath?.(key); }}>{t("investigation.map")}</button>
           </div>
           {!canMap && <p className="text-xs text-text-muted">{t("investigation.unmappable")}</p>}
         </li>;
       })}</ul>
     </details>)}
-    {groups.length > 3 && <button type="button" className={actionClass} onClick={() => setShowAll(value => !value)}>{t(showAll ? "investigation.fewer" : "investigation.showAll", { count: groups.length })}</button>}
+    {groups.length > 3 && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => setShowAll(value => !value)}>{t(showAll ? "investigation.fewer" : "investigation.showAll", { count: groups.length })}</button>}
     <p className="text-xs leading-relaxed text-text-muted">{t("investigation.retention")}</p>
   </section>;
 }

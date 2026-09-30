@@ -49,8 +49,9 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
 
-  const hasPath = useMemo(() => (detail ? buildPacketPaths(detail).length > 0 : false), [detail]);
-  const observerCount = new Set(detail?.observations.map(o => o.observerId)).size;
+  const pathKeys = useMemo(() => new Set(detail ? buildPacketPaths(detail).map(p => p.key) : []), [detail]);
+  const hasPath = pathKeys.size > 0;
+  const observerCount = useMemo(() => new Set(detail?.observations.map(o => o.observerId)).size, [detail]);
 
   // drop ?analyze so a reload doesn't reopen the drawer; ?hash stays, leaving the row expanded
   const handleClose = useCallback(() => {
@@ -132,7 +133,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
             </DrawerSection>
 
             {unavailable && <p role="alert" className="px-3 py-2 text-sm text-warn">{t("investigation.unavailableReport")}</p>}
-            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} />
+            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} mappedKeys={pathKeys} observerCount={observerCount} />
 
             <div className="px-3 py-2 border-b border-border-subtle">
               <button

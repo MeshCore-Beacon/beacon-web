@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState } from "../../components/EmptyState";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatRadioParts } from "../../lib/formatters";
 import { ObserverComparison } from "../observers/ObserverComparison";
 import { ObserverSummary, ObserverDeviceDetails } from "../observers/ObserverSummary";
@@ -52,8 +53,8 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
     () => (bucketMs == null && hasTelemetry(points) ? latestAirtimePct(points, null) : { rx: null, tx: null }),
     [points, bucketMs],
   );
-  const battery = useMemo(() => batteryOption(points, colors, t("observerPage.battery") + " V"), [points, colors, t]);
-  const noise = useMemo(() => noiseFloorOption(points, colors, t("observerPage.noise") + " dBm"), [points, colors, t]);
+  const battery = useMemo(() => batteryOption(points, colors, t("observerPage.batteryV")), [points, colors, t]);
+  const noise = useMemo(() => noiseFloorOption(points, colors, t("observerPage.noiseDbm")), [points, colors, t]);
   const queue = useMemo(() => queueOption(points, colors, t("observerPage.queue")), [points, colors, t]);
   const recvErrors = useMemo(
     () => receiveErrorsOption(points, colors, bucketed, t("observerPage.errors")),
@@ -124,7 +125,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
     return (
       <div className="p-4" role="alert">
         <p>{t("observerPage.loadFailed")}</p>
-        <button className="min-h-11 text-primary" onClick={() => void observer.refetch()}>
+        <button className={ACTION_BUTTON_CLASS} onClick={() => void observer.refetch()}>
           {t("observerPage.retry")}
         </button>
       </div>
@@ -186,7 +187,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
             />
           </div>
           {activity.isError && (
-            <button className="min-h-11 text-sm text-primary" onClick={() => void activity.refetch()}>
+            <button className={ACTION_BUTTON_CLASS} onClick={() => void activity.refetch()}>
               {t("observerPage.retry")}
             </button>
           )}
@@ -246,7 +247,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
             />
           </div>
           {telemetry.isError && (
-            <button className="min-h-11 text-primary" onClick={() => void telemetry.refetch()}>
+            <button className={ACTION_BUTTON_CLASS} onClick={() => void telemetry.refetch()}>
               {t("observerPage.retry")}
             </button>
           )}

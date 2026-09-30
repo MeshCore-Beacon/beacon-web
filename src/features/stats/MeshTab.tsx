@@ -103,7 +103,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
     [nodeTypesData, colors],
   );
   const typeTotal = useMemo(() => typeRows.reduce((a, t) => a + t.value, 0), [typeRows]);
-  const typesOption = useMemo(() => donutOption(typeRows, colors, formatCount(typeTotal), "NODES"), [typeRows, colors, typeTotal]);
+  const typesOption = useMemo(() => donutOption(typeRows, colors, formatCount(typeTotal), t("mesh.nodesCenter")), [typeRows, colors, typeTotal, t]);
 
   const presetRows = useMemo(
     () => aggregatePresets(radioPresetsData ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), nodes: r.nodes, observers: r.observers })),
@@ -126,14 +126,14 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-3.5 px-4 py-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total packets" sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.totalPackets)} />
-        <StatCard label="Observations" sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.totalObservations)} spark={obsSpark} />
-        <StatCard label="Active observers" sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.activeObservers ?? "—"} spark={observerSpark} />
-        <StatCard label="Active IATAs" sublabel={ovWindow} accent="var(--color-warn)" value={ov?.activeIatas ?? "—"} />
+        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.totalPackets)} />
+        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.totalObservations)} spark={obsSpark} />
+        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.activeObservers ?? "—"} spark={observerSpark} />
+        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={ov?.activeIatas ?? "—"} />
       </div>
 
       <ChartCard
-        title={<>Observations · {range}</>}
+        title={t("mesh.observationsTitle", { range })}
         height={200}
         option={obsOption}
         isLoading={observations.isPending || observations.isPlaceholderData}
@@ -144,11 +144,11 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* range-driven charts lead the grid; the all-time ones follow below */}
         <div className="min-w-0">
-          <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
+          <ChartCard title={t("mesh.topObservers", { range })} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
         </div>
         <ChartCard
-          title={<>Payload types · {range}</>}
-          right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadData === undefined ? undefined : payloadTotal)} obs</span>}
+          title={t("mesh.payloadTypes", { range })}
+          right={<span className="font-mono text-[10px] text-text-muted">{t("mesh.obs", { value: formatCount(payloadData === undefined ? undefined : payloadTotal) })}</span>}
           height={208}
           option={payloadOption}
           isLoading={payload.isPending || payload.isPlaceholderData}
@@ -156,27 +156,27 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
           isEmpty={payloadItems.length === 0}
         />
         {/* counts are all-time; the server's 7d filter only prunes the roster to recently-heard nodes */}
-        <ChartCard title="Top nodes · all time" height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
-        <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isPending || nodeTypes.isPlaceholderData} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
-        <ChartCard title="Radio presets · all time" height={208} option={presetsOption} isLoading={radioPresets.isPending || radioPresets.isPlaceholderData} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
+        <ChartCard title={t("mesh.topNodes")} height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
+        <ChartCard title={t("mesh.nodeTypes")} height={208} option={typesOption} isLoading={nodeTypes.isPending || nodeTypes.isPlaceholderData} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
+        <ChartCard title={t("mesh.radioPresets")} height={208} option={presetsOption} isLoading={radioPresets.isPending || radioPresets.isPlaceholderData} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
-        <details className="self-start rounded-lg border border-border bg-bg-surface p-4">
-          <summary className="cursor-pointer font-mono text-xs font-semibold uppercase tracking-wide text-text-normal">{t("stats.tabs.scopes")}</summary>
+        <details className="self-start rounded-lg border border-border bg-bg-surface p-3.5">
+          <summary className="cursor-pointer font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{t("stats.tabs.scopes")}</summary>
           <div className="mt-3 max-h-96 overflow-auto">
           {scopes.isError ? (
-            <div className="py-4 text-center font-mono text-[11px] text-text-dim">Failed to load</div>
+            <div className="py-4 text-center font-mono text-[11px] text-text-dim">{t("common.loadFailed")}</div>
           ) : scopes.isPending || scopes.isLoading || scopes.isPlaceholderData ? (
-            <div className="py-4 text-center font-mono text-[11px] text-text-dim">Loading…</div>
+            <div className="py-4 text-center font-mono text-[11px] text-text-dim">{t("common.loading")}</div>
           ) : scopeRows.length === 0 ? (
-            <div className="py-4 text-center font-mono text-[11px] text-text-dim">No data</div>
+            <div className="py-4 text-center font-mono text-[11px] text-text-dim">{t("common.noData")}</div>
           ) : (
             <table className="w-full font-mono text-[11px]">
               <thead>
                 <tr className="text-text-muted">
-                  <th className="pb-1.5 text-left font-semibold uppercase tracking-wider">Scope</th>
-                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">Packets</th>
-                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">Observers</th>
-                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">Nodes</th>
+                  <th className="pb-1.5 text-left font-semibold uppercase tracking-wider">{t("mesh.scope")}</th>
+                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">{t("mesh.packets")}</th>
+                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">{t("mesh.observers")}</th>
+                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">{t("mesh.nodes")}</th>
                 </tr>
               </thead>
               <tbody>

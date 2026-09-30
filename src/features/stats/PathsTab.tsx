@@ -1,14 +1,12 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { formatCount } from "../../lib/formatters";
+import { formatCount, formatUtc } from "../../lib/formatters";
 import { Card, ChartCard, StatCard } from "./cards";
 import { donutOption } from "./chartOptions";
 import { tooltipStyle, useChartColors } from "./chartTheme";
 import { pathHours, pathLengthOption, pathTrendOption } from "./paths";
 import { usePathStats } from "./usePathStats";
 import type { StatsRange } from "./types";
-
-const utc = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 
 export function PathsTab({ range }: { range: StatsRange }) {
   const { t } = useTranslation();
@@ -48,7 +46,7 @@ export function PathsTab({ range }: { range: StatsRange }) {
       <StatCard label={t("paths.mostEntries")} value={largest ?? "—"} accent={c.warn} />
     </div>
     <p className="text-xs leading-relaxed text-text-muted">{t("paths.measurement")}</p>
-    {data && <p className="text-xs text-text-muted">{t("paths.window", { since: utc(data.since), until: utc(data.until) })}</p>}
+    {data && <p className="text-xs text-text-muted">{t("paths.window", { since: formatUtc(data.since), until: formatUtc(data.until) })}</p>}
     <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
       <ChartCard title={t("paths.widthTitle")} option={charts.width} height={260} isEmpty={!data?.hashed} {...state} />
       <ChartCard title={t("paths.lengthTitle")} option={charts.lengths} height={260} isEmpty={!data || data.hashed + data.empty === 0} {...state} />
@@ -65,13 +63,13 @@ export function PathsTab({ range }: { range: StatsRange }) {
       </Card>
     </div>
     {data && data.receptions > 0 && <details className="rounded-lg border border-border bg-bg-surface p-3.5">
-      <summary className="cursor-pointer text-sm font-semibold text-text-normal">{t("paths.details")}</summary>
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <summary className="cursor-pointer font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{t("paths.details")}</summary>
+      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <table aria-label={t("paths.widthTable")} className="w-full text-left font-mono text-xs"><thead className="text-text-muted"><tr><th scope="col" className="py-2">{t("paths.bytesPerHash")}</th><th scope="col" className="pl-2 text-right">{t("paths.receptionsColumn")}</th></tr></thead><tbody>{data.hashWidths.map((bin) => <tr key={bin.bytes} className="border-t border-border-subtle"><th scope="row" className="py-1.5 font-normal">{bin.bytes}</th><td className="pl-2 text-right">{bin.receptions.toLocaleString()}</td></tr>)}</tbody></table>
         <div className="max-h-[230px] overflow-auto"><table aria-label={t("paths.lengthTable")} className="w-full text-left font-mono text-xs"><thead className="text-text-muted"><tr><th scope="col" className="py-2">{t("paths.headerEntries")}</th><th scope="col" className="pl-2 text-right">{t("paths.receptionsColumn")}</th></tr></thead><tbody>{data.pathLengths.map((bin) => <tr key={bin.entries} className="border-t border-border-subtle"><th scope="row" className="py-1.5 font-normal">{bin.entries}</th><td className="pl-2 text-right">{bin.receptions.toLocaleString()}</td></tr>)}</tbody></table></div>
       </div>
       <p className="my-3 text-xs text-text-muted">{t("paths.lengthsHelp")}</p>
-      <div className="max-h-[340px] overflow-auto"><table aria-label={t("paths.hourlyTable")} className="w-full min-w-[650px] text-left font-mono text-xs"><thead className="text-text-muted"><tr>{[t("paths.utcHour"), t("paths.receptionsColumn"), ...[1, 2, 3].map((count) => t("paths.hashWidth", { count })), t("paths.categories.empty"), t("paths.categories.trace"), t("paths.categories.unclassified")].map((label) => <th key={label} scope="col" className="py-2">{label}</th>)}</tr></thead><tbody>{data.hourly.map((row) => <tr key={row.hour} className="border-t border-border-subtle"><th scope="row" className="py-2 font-normal">{utc(row.hour)}</th>{[row.receptions, row.oneByte, row.twoByte, row.threeByte, row.empty, row.trace, row.unclassified].map((n, i) => <td key={i}>{n.toLocaleString()}</td>)}</tr>)}</tbody></table></div>
+      <div className="max-h-[340px] overflow-auto"><table aria-label={t("paths.hourlyTable")} className="w-full min-w-[650px] text-left font-mono text-xs"><thead className="text-text-muted"><tr>{[t("paths.utcHour"), t("paths.receptionsColumn"), ...[1, 2, 3].map((count) => t("paths.hashWidth", { count })), t("paths.categories.empty"), t("paths.categories.trace"), t("paths.categories.unclassified")].map((label) => <th key={label} scope="col" className="py-2">{label}</th>)}</tr></thead><tbody>{data.hourly.map((row) => <tr key={row.hour} className="border-t border-border-subtle"><th scope="row" className="py-2 font-normal">{formatUtc(row.hour)}</th>{[row.receptions, row.oneByte, row.twoByte, row.threeByte, row.empty, row.trace, row.unclassified].map((n, i) => <td key={i}>{n.toLocaleString()}</td>)}</tr>)}</tbody></table></div>
     </details>}
   </div>;
 }

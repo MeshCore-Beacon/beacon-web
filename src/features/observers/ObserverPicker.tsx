@@ -1,24 +1,32 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getObserversPage } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
+import { SearchBar } from "../../components/SearchBar";
+import { SelectDropdown } from "../../components/SelectDropdown";
 
 export function ObserverPicker({ id, name, onSelect, excludeId, label }: { id: string; name: string; onSelect: (id: string) => void; excludeId?: string; label?: string }) {
   const { t } = useTranslation();
   const { iatas, regionKey } = useRegion();
-  const [text, setText] = useState("");
   const [query, setQuery] = useState("");
-  useEffect(() => { const timer = setTimeout(() => setQuery(text.trim()), 250); return () => clearTimeout(timer); }, [text]);
-  const options = useQuery({ queryKey: ["observer-picker", regionKey, query], queryFn: () => getObserversPage(iatas, { name: query || undefined, limit: 50 }), staleTime: 30_000 });
+  const options = useQuery({ queryKey: ["observer-picker", regionKey, query.trim()], queryFn: () => getObserversPage(iatas, { name: query.trim() || undefined, limit: 50 }), staleTime: 30_000 });
   const rows = (options.data?.items ?? []).filter(o => o.id !== excludeId);
   return <div className="min-w-0 space-y-1 text-sm">
     <div className="flex flex-wrap gap-2">
-      <input type="search" aria-label={label ? `${t("observerPage.search")} · ${label}` : t("observerPage.search")} placeholder={t("observerPage.search")} value={text} onChange={e => setText(e.target.value)} className="min-h-11 min-w-0 flex-1 rounded border border-border bg-bg-base px-3 text-text-normal" />
-      <select aria-label={label ?? t("observerPage.choose")} value={id} onChange={e => onSelect(e.target.value)} className="min-h-11 min-w-0 max-w-full flex-1 rounded border border-border bg-bg-base px-3 text-text-normal">
-        {!rows.some(o => o.id === id) && <option value={id}>{name}</option>}
-        {rows.map(o => <option key={o.id} value={o.id}>{o.displayName ?? o.id.slice(0, 8)} · {o.iata}</option>)}
-      </select>
+      <SearchBar hideField inputLabel={label ? `${t("observerPage.search")} · ${label}` : t("observerPage.search")} fields={[{ value: "name", label: t("observerPage.search") }]} field="name" onFieldChange={() => {}} value={query} onChange={setQuery} />
+      <SelectDropdown
+        label={label ?? t("observerPage.choose")}
+        allLabel={name}
+        hideAll
+        align="left"
+        value={id}
+        onChange={onSelect}
+        options={[
+          ...(!rows.some(o => o.id === id) ? [{ value: id, label: name }] : []),
+          ...rows.map(o => ({ value: o.id, label: `${o.displayName ?? o.id.slice(0, 8)} · ${o.iata}` })),
+        ]}
+      />
     </div>
     {options.isError ? <button type="button" onClick={() => void options.refetch()} className="text-danger">{t("common.loadFailed")} · {t("observerPage.retry")}</button> : <p className="text-xs text-text-muted">{options.isFetching ? t("common.loading") : t("observerPage.searchHelp")}</p>}
   </div>;

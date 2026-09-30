@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { PacketEndpoints } from "../../../src/features/packets/PacketEndpoints";
+import i18n from "../../../src/i18n";
 import type { LatestObserver, PacketSummary } from "../../../src/types/api";
 
 const pkt = (observer?: LatestObserver): PacketSummary => ({
@@ -72,7 +73,18 @@ describe("PacketEndpoints", () => {
     render(<PacketEndpoints packet={pkt(obs({
       resolvedSource: { confidence: "none", nodes: [] },
     }))} />);
-    expect(screen.getByText("?")).toBeInTheDocument();
+    const chip = screen.getByText("?");
+    expect(chip).toBeInTheDocument();
+    expect(chip).toHaveAttribute("title", "No path resolution available");
+  });
+
+  it("translates the no-resolution title to French", async () => {
+    await act(() => i18n.changeLanguage("fr"));
+    render(<PacketEndpoints packet={pkt(obs({
+      resolvedSource: { confidence: "none", nodes: [] },
+    }))} />);
+    expect(screen.getByText("?")).toHaveAttribute("title", "Aucune résolution de chemin disponible");
+    await act(() => i18n.changeLanguage("en"));
   });
 
   it("shows an advert as its single source node with no destination", () => {

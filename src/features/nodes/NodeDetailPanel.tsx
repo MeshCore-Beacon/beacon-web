@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
@@ -7,6 +8,7 @@ import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
 import { formatHex, formatSnr, snrLevel, formatRadio, formatClockDrift, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
+import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
 
@@ -77,6 +79,7 @@ interface NodeDetailPanelProps {
 }
 
 export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket, onViewOnMap }: NodeDetailPanelProps) {
+  const { t } = useTranslation();
   const { data: node, isLoading } = useQuery({
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
@@ -95,7 +98,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     staleTime: 30_000,
   });
 
-  const hasLocation = node != null && node.lat != null && node.lng != null;
+  const hasLocation = hasMapLocation(node);
 
   return (
     <DetailPanel
@@ -142,17 +145,17 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             {(hasLocation || node.locationSource) && (
               <Section title="Location">
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[13px]">
-                  {node.lat != null && <Field label="Lat" value={node.lat.toFixed(5)} />}
-                  {node.lng != null && <Field label="Lng" value={node.lng.toFixed(5)} />}
+                  {hasLocation && <Field label="Lat" value={node.lat!.toFixed(5)} />}
+                  {hasLocation && <Field label="Lng" value={node.lng!.toFixed(5)} />}
                   {node.locationSource && <Field label="Source" value={node.locationSource} />}
                 </div>
-                {hasLocation && onViewOnMap && (
+                {hasMapLocation(node) && onViewOnMap && (
                   <button
                     type="button"
-                    onClick={() => onViewOnMap(node.lat!, node.lng!)}
+                    onClick={() => onViewOnMap(node.lat, node.lng)}
                     className="mt-2 block font-mono text-[11px] text-primary hover:underline"
                   >
-                    View on map
+                    {t("nodeDetail.viewOnMap")}
                   </button>
                 )}
               </Section>

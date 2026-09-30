@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -73,6 +73,34 @@ describe("ObserverDetailPanel status", () => {
     renderPanel();
 
     expect(await screen.findByText("online")).toBeInTheDocument();
+  });
+});
+
+describe("ObserverDetailPanel copy link", () => {
+  const writeText = vi.fn();
+
+  beforeEach(() => {
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, writable: true, configurable: true });
+    writeText.mockClear();
+  });
+
+  afterEach(() => window.history.replaceState({}, "", "/"));
+
+  it("copies a link scoped to the observer tab, dropping foreign params", async () => {
+    window.history.replaceState({}, "", "/?tab=Packets&hash=abc&analyze=1&observation=7&iata=YVR");
+
+    renderPanel();
+
+    await screen.findByText("online");
+    fireEvent.click(screen.getByRole("button", { name: "Copy observer link" }));
+
+    const url = new URL(writeText.mock.calls[0][0]);
+    expect(url.searchParams.get("tab")).toBe("Observers");
+    expect(url.searchParams.get("observer")).toBe("obs-1");
+    expect(url.searchParams.get("iata")).toBe("YVR");
+    expect(url.searchParams.has("hash")).toBe(false);
+    expect(url.searchParams.has("analyze")).toBe(false);
+    expect(url.searchParams.has("observation")).toBe(false);
   });
 });
 

@@ -4,7 +4,9 @@ import {
   formatRadioParts,
   formatHex,
   formatAbsolute,
+  formatUtc,
   timeAgoMs,
+  timeAgoParts,
   formatSnr,
   snrLevel,
   formatPropagation,
@@ -38,6 +40,26 @@ describe("formatAbsolute", () => {
   });
 });
 
+describe("formatUtc", () => {
+  const t = 3_665_000; // 1970-01-01 01:01:05 UTC
+
+  it("formats as YYYY-MM-DD HH:MM by default", () => {
+    expect(formatUtc(t)).toBe("1970-01-01 01:01");
+  });
+
+  it("appends :SS when seconds is requested", () => {
+    expect(formatUtc(t, { seconds: true })).toBe("1970-01-01 01:01:05");
+  });
+
+  it("shows only HH:MM when timeOnly is requested", () => {
+    expect(formatUtc(t, { timeOnly: true })).toBe("01:01");
+  });
+
+  it("shows HH:MM:SS when both timeOnly and seconds are requested", () => {
+    expect(formatUtc(t, { timeOnly: true, seconds: true })).toBe("01:01:05");
+  });
+});
+
 describe("timeAgoMs", () => {
   it("renders sub-minute as seconds and minutes/hours/days above that", () => {
     const now = Date.now();
@@ -49,6 +71,20 @@ describe("timeAgoMs", () => {
 
   it("clamps future timestamps (clock skew) to 0s", () => {
     expect(timeAgoMs(Date.now() + 60_000)).toBe("0s");
+  });
+});
+
+describe("timeAgoParts", () => {
+  it("splits the same clamping/flooring timeAgoMs uses into a count and unit", () => {
+    const now = Date.now();
+    expect(timeAgoParts(now - 5_000)).toEqual({ count: 5, unit: "s" });
+    expect(timeAgoParts(now - 5 * 60_000)).toEqual({ count: 5, unit: "m" });
+    expect(timeAgoParts(now - 3 * 3_600_000)).toEqual({ count: 3, unit: "h" });
+    expect(timeAgoParts(now - 2 * 86_400_000)).toEqual({ count: 2, unit: "d" });
+  });
+
+  it("clamps future timestamps (clock skew) to 0s", () => {
+    expect(timeAgoParts(Date.now() + 60_000)).toEqual({ count: 0, unit: "s" });
   });
 });
 

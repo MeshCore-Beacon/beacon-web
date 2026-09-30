@@ -10,6 +10,7 @@ import { formatUptime, formatBattery, formatHex, formatSnr, snrLevel, SIGNAL_LEV
 import { Timestamp } from "../../components/Timestamp";
 import { useTick } from "../../hooks/useTick";
 import { deriveObserverStatus } from "./observer-status";
+import { getStats } from "./observer-stats";
 import type { BadgeVariant } from "../../components/badge-utils";
 import { IataChip } from "../../components/IataChip";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -48,27 +49,11 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick?: (
   );
 }
 
-interface Stats {
-  noise_floor?: number;
-  rx_air_secs?: number;
-  tx_air_secs?: number;
-  queue_len?: number;
-  recv_errors?: number;
-  errors?: number;
-  internal_heap?: number;
-}
-
 // broker freshness badge: <5m = live, <30m = stale
 function brokerStatusVariant(lastPacketAt: number | null): BadgeVariant {
   if (!lastPacketAt) return "offline";
   const ageMs = Date.now() - lastPacketAt;
   return ageMs < 5 * 60_000 ? "live" : ageMs < 30 * 60_000 ? "stale" : "offline";
-}
-
-// stats shape depends on the observer's firmware, so we just grab what we recognize
-function getStats(metadata: Record<string, unknown> | undefined): Stats | null {
-  if (!metadata?.stats || typeof metadata.stats !== "object") return null;
-  return metadata.stats as Stats;
 }
 
 function formatAirtime(secs: number): string {
@@ -131,7 +116,7 @@ export function ObserverDetailPanel({ observerId, onClose, onAnalyzePacket, onVi
       title="Observer Detail"
       onClose={onClose}
       closeLabel={t("investigation.closeObserver")}
-      headerAction={<CopyLinkButton params={{ tab: "Observers", observer: observerId }} ariaLabel="Copy observer link" />}
+      headerAction={<CopyLinkButton preserveParams={["regions", "iata", "region"]} params={{ tab: "Observers", observer: observerId }} ariaLabel="Copy observer link" />}
       isLoading={isLoading}
       notFound={!observer}
       notFoundLabel="Observer not found"

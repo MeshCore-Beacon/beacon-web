@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { RouteTable } from "../../../src/features/routes/RouteTable";
-import { MemoryRouter } from "react-router-dom";
-import { RegionProvider } from "../../../src/hooks/useRegion";
+import { MemoryRouter, useLocation } from "react-router-dom";
+import { RegionProvider, useRegionSelection } from "../../../src/hooks/useRegion";
 import { ALL_REGIONS } from "../../../src/hooks/region-selection";
 import {
   getKnownRoutesPage,
@@ -143,6 +143,42 @@ describe("RouteTable search", () => {
 
     expect(await screen.findByText("42")).toBeInTheDocument();
   });
+});
+
+function LocationKeyProbe({ keys }: { keys: string[] }) {
+  const location = useLocation();
+  useEffect(() => {
+    if (keys[keys.length - 1] !== location.key) keys.push(location.key);
+  }, [location.key, keys]);
+  return null;
+}
+
+function ChangeRegionButton() {
+  const { setSelection } = useRegionSelection();
+  return <button onClick={() => setSelection({ regions: [], iatas: ["AAA"] })}>Change region</button>;
+}
+
+it("does not navigate on a region change with no route selected", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const keys: string[] = [];
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <RegionProvider defaultSelection={ALL_REGIONS}>
+          <LocationKeyProbe keys={keys} />
+          <ChangeRegionButton />
+          <RouteTable />
+        </RegionProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  await screen.findByText("Find path");
+  const initialKeyCount = keys.length;
+
+  fireEvent.click(screen.getByRole("button", { name: "Change region" }));
+
+  await waitFor(() => expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iata: "AAA" })));
+  expect(keys.length).toBe(initialKeyCount);
 });
 
 it("preserves a shared saved route while a named region resolves", async () => {

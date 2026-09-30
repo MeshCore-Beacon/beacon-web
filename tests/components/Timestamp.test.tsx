@@ -33,21 +33,22 @@ describe("Timestamp", () => {
   });
 
   it.each([
-    [59_999, "59s"],
-    [60_000, "1m"],
-    [3_600_000, "1h"],
-    [86_400_000, "1d"],
-    [-60_000, "0s"],
-  ])("translates the phrase while preserving duration %s", async (age, duration) => {
+    [59_999, "59s", "59 s"],
+    [60_000, "1m", "1 min"],
+    [3_600_000, "1h", "1 h"],
+    [86_400_000, "1d", "1 j"],
+    [7 * 86_400_000, "7d", "7 j"],
+    [-60_000, "0s", "0 s"],
+  ])("translates the phrase while preserving duration %s", async (age, enDuration, frDuration) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 25, 12, 0, 0));
     render(<Timestamp value={Date.now() - age} />);
-    const label = screen.getByText(`${duration} ago`);
+    const label = screen.getByText(`${enDuration} ago`);
 
     await act(() => i18n.changeLanguage("fr"));
-    expect(screen.getByText(`il y a ${duration}`)).toBe(label);
+    expect(screen.getByText(`il y a ${frDuration}`)).toBe(label);
     await act(() => i18n.changeLanguage("en"));
-    expect(screen.getByText(`${duration} ago`)).toBe(label);
+    expect(screen.getByText(`${enDuration} ago`)).toBe(label);
   });
 
   it("updates an open relative tooltip without changing the absolute value or milliseconds", async () => {
@@ -61,7 +62,7 @@ describe("Timestamp", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("5m ago");
 
     await act(() => i18n.changeLanguage("fr"));
-    expect(screen.getByRole("tooltip")).toHaveTextContent("il y a 5m");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("il y a 5 min");
     expect(screen.getByText("2026-09-25 12:34:56.123")).toBe(label);
     expect(label).toHaveClass("timestamp-label");
   });
@@ -76,10 +77,10 @@ describe("Timestamp", () => {
     expect(vi.getTimerCount()).toBe(1);
 
     await act(() => i18n.changeLanguage("fr"));
-    expect(screen.getAllByText("il y a 1m")).toHaveLength(100);
+    expect(screen.getAllByText("il y a 1 min")).toHaveLength(100);
     expect(vi.getTimerCount()).toBe(1);
     act(() => vi.advanceTimersByTime(60_000));
-    expect(screen.getAllByText("il y a 2m")).toHaveLength(100);
+    expect(screen.getAllByText("il y a 2 min")).toHaveLength(100);
     expect(vi.getTimerCount()).toBe(1);
     unmount();
     expect(vi.getTimerCount()).toBe(0);

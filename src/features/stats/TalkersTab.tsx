@@ -26,8 +26,8 @@ export function TalkersTab({ range }: TalkersTabProps) {
   const topAdvertisers = useTopAdvertisers(range, 20);
   const topTalkers = useTopTalkers(range, 20);
 
-  const advertisersLoading = topAdvertisers.isPending || topAdvertisers.isLoading || topAdvertisers.isPlaceholderData;
-  const talkersLoading = topTalkers.isPending || topTalkers.isLoading || topTalkers.isPlaceholderData;
+  const advertisersLoading = topAdvertisers.isPending || topAdvertisers.isPlaceholderData;
+  const talkersLoading = topTalkers.isPending || topTalkers.isPlaceholderData;
   const talkersUnavailable = talkersLoading || topTalkers.isError;
   const advertisers = advertisersLoading || topAdvertisers.isError ? [] : (topAdvertisers.data ?? []);
 

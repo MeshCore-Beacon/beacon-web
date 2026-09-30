@@ -15,7 +15,7 @@ import {
 } from "../../api/client";
 import { RANGE_MS, type StatsRange } from "./types";
 
-// Shared query options: cache for 30s, keep previous data so region/range switches don't flash.
+// Shared query options: cache for 30s; previous data stays as placeholder so tabs can decide whether to show it during a switch.
 const common = {
   staleTime: 30_000,
   placeholderData: keepPreviousData,

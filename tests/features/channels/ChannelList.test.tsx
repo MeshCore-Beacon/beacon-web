@@ -1,7 +1,9 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type InfiniteData } from "@tanstack/react-query";
 import { ChannelList } from "../../../src/features/channels/ChannelList";
+import { noteRateLimited, noteRequestOk } from "../../../src/api/rate-limit";
+import { LIVE_BUFFER_CAP } from "../../../src/lib/constants";
 import type { ChannelMessage, ChannelSummary } from "../../../src/features/channels/types";
 import type { CursorPage } from "../../../src/types/api";
 import type { WsManager } from "../../../src/api/ws-manager";
@@ -29,13 +31,21 @@ function show(client = new QueryClient({ defaultOptions: { queries: { retry: fal
   return { ...render(app()), client, app };
 }
 function lastURL() { return new URL(String(fetchMock.mock.calls.at(-1)![0])); }
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => { resolve = res; });
+  return { promise, resolve };
+}
 
 beforeEach(() => {
   region = { iatas: ["YYZ"], regionKey: "YYZ" };
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  noteRequestOk();
+});
 
 describe("channel directory paging", () => {
   it("prefers the precise server cursor and preserves it through live updates", async () => {
@@ -172,5 +182,48 @@ describe("channel directory paging", () => {
     expect(screen.getByPlaceholderText("Search by name...")).toHaveValue("");
     expect(lastURL().searchParams.get("iata")).toBe("YOW");
     expect(lastURL().searchParams.has("cursor")).toBe(false);
+  });
+});
+
+describe("channel message overflow recovery", () => {
+  it("recovers a rate-limit-stuck overflow once the rate limit clears", async () => {
+    fetchMock.mockResolvedValueOnce(response(first()));
+    const { client } = show();
+    await screen.findByText("#Channel 1");
+    fireEvent.click(screen.getByText("#Channel 1"));
+    const key = ["channel-messages", 1, "YYZ", ""];
+    const fetch = deferred<InfiniteData<CursorPage<ChannelMessage>>>();
+    void client.fetchQuery({ queryKey: key, queryFn: () => fetch.promise });
+    await waitFor(() => expect(client.isFetching({ queryKey: key, exact: true })).toBe(1));
+    act(() => {
+      for (let i = 0; i <= LIVE_BUFFER_CAP; i++) {
+        onMessage({ id: i, packetHash: `h${i}`, channelHash: "01", senderName: "s", content: "c", sentAt: 20000 + i });
+      }
+    });
+    noteRateLimited(60_000);
+    await act(async () => fetch.resolve({ pages: [{ items: [], nextCursor: null, hasMore: false }], pageParams: [undefined] }));
+    await waitFor(() => expect(client.isFetching({ queryKey: key, exact: true })).toBe(0));
+    expect(client.getQueryState(key)?.isInvalidated).toBeFalsy();
+    act(() => noteRequestOk());
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+
+  it("invalidates an idle overflow directly from the WS handler once a further message arrives", async () => {
+    fetchMock.mockResolvedValueOnce(response(first()));
+    const { client } = show();
+    await screen.findByText("#Channel 1");
+    fireEvent.click(screen.getByText("#Channel 1"));
+    const key = ["channel-messages", 1, "YYZ", ""];
+    // A registered-but-unfetched query: getQueryData(key) stays undefined, so messages keep hitting the queue/overflow path.
+    client.getQueryCache().build(client, { queryKey: key });
+    expect(client.isFetching({ queryKey: key, exact: true })).toBe(0);
+    act(() => {
+      for (let i = 0; i < LIVE_BUFFER_CAP; i++) {
+        onMessage({ id: i, packetHash: `h${i}`, channelHash: "01", senderName: "s", content: "c", sentAt: 20000 + i });
+      }
+    });
+    expect(client.getQueryState(key)?.isInvalidated).toBeFalsy();
+    act(() => onMessage({ id: LIVE_BUFFER_CAP, packetHash: `h${LIVE_BUFFER_CAP}`, channelHash: "01", senderName: "s", content: "c", sentAt: 30000 }));
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   });
 });

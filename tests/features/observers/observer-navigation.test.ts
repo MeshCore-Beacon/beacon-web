@@ -19,6 +19,13 @@ describe("observerDestination", () => {
     const p = observerDestination(new URLSearchParams("hash=abc&analyze=1&node=n&path=p"), "b");
     expect(p.toString()).toBe("tab=Observers&observer=b&range=7d");
   });
+
+  it("drops the analytics compare params so they don't ride along into the dashboard URL", () => {
+    const p = observerDestination(new URLSearchParams("compareA=x&compareB=y&compareSince=1"), "b");
+    expect(p.has("compareA")).toBe(false);
+    expect(p.has("compareB")).toBe(false);
+    expect(p.has("compareSince")).toBe(false);
+  });
 });
 
 describe("observerRange", () => {

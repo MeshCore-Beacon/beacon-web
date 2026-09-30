@@ -2,8 +2,11 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getObserverComparison } from "../../api/client";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatBattery, formatUptime } from "../../lib/formatters";
 import { ObserverPicker } from "./ObserverPicker";
+import { observerNoiseFloor } from "./observer-stats";
+import { OBSERVER_UUID } from "./observer-id";
 import { Card, ChartCard } from "../stats/cards";
 import { activityParamsFor, useObserver, useObserverActivity } from "../stats/useTelemetry";
 import { useChartColors } from "../stats/chartTheme";
@@ -12,10 +15,9 @@ import { fillActivity, intervalToMs } from "../stats/transforms";
 import { RANGE_MS, type ObserverActivity, type StatsRange } from "../stats/types";
 import type { Observer } from "./types";
 
-const uuid = /^(?!00000000-0000-0000-0000-000000000000$)[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 function statusNoise(observer: Observer) {
-  const stats = observer.statusMetadata?.stats;
-  return stats && typeof stats === "object" && "noise_floor" in stats && typeof stats.noise_floor === "number" && Number.isFinite(stats.noise_floor) ? `${stats.noise_floor} dBm` : "—";
+  const n = observerNoiseFloor(observer);
+  return n == null ? "—" : `${n} dBm`;
 }
 
 export function ObserverComparison({ observerA, activityA, range, observerBId, until, onSelect, onRefresh }: {
@@ -23,7 +25,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   onSelect: (id: string) => void; onRefresh: () => number;
 }) {
   const { t, i18n } = useTranslation(); const colors = useChartColors();
-  const valid = until != null && uuid.test(observerA.id) && uuid.test(observerBId) && observerA.id.toLowerCase() !== observerBId.toLowerCase();
+  const valid = until != null && OBSERVER_UUID.test(observerA.id) && OBSERVER_UUID.test(observerBId) && observerA.id.toLowerCase() !== observerBId.toLowerCase();
   const b = useObserver(valid ? observerBId : null);
   const activityB = useObserverActivity(valid ? observerBId : null, range, until ?? undefined);
   const dataB = activityB.isError ? undefined : activityB.data;
@@ -52,9 +54,9 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   }, [activityA, dataB, aligned, intervalMs, start, end, colors]);
   const date = (value: number | null | undefined) => value == null ? "—" : new Date(value).toLocaleString(i18n.resolvedLanguage, { timeZone: "UTC", dateStyle: "short", timeStyle: "short" });
   const groups = overlap.data && !overlap.isError ? [
-    { label: t("observerCompare.onlyA"), count: overlap.data.onlyA, color: colors.primary },
-    { label: t("observerCompare.both"), count: overlap.data.both, color: colors.green },
-    { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.secondary },
+    { label: t("observerCompare.onlyA"), count: overlap.data.onlyA, color: colors.primary, textClass: "text-primary" },
+    { label: t("observerCompare.both"), count: overlap.data.both, color: colors.green, textClass: "text-green" },
+    { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.secondary, textClass: "text-secondary" },
   ] : [];
   const refresh = () => {
     const nextUntil = onRefresh();
@@ -76,7 +78,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   ] : [];
   return <section aria-label={t("observerCompare.title")} className="space-y-4 rounded-lg border border-primary-dim p-3">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("observerCompare.title")}</h2>
-      <button type="button" className="min-h-11 text-sm text-primary" onClick={refresh}>{t("observerCompare.refresh")}</button></div>
+      <button type="button" className={ACTION_BUTTON_CLASS} onClick={refresh}>{t("observerCompare.refresh")}</button></div>
     <p className="break-words text-sm text-text-normal">A: {observerA.displayName ?? observerA.id} {b.data && <>· B: {b.data.displayName ?? b.data.id}</>}</p>
     <ObserverPicker id={observerBId} name={b.data?.displayName ?? t("observerCompare.choose")} excludeId={observerA.id} label={t("observerCompare.partner")} onSelect={onSelect} />
     {until == null ? <p role="alert">{t("observerCompare.invalidTime")}</p> : !valid ? <p role={observerBId ? "alert" : "status"}>{t(observerBId ? "observerCompare.invalidObserver" : "observerCompare.choose")}</p> : b.isError || activityB.isError ? <p role="alert">{t("observerPage.loadFailed")}</p> : !activityA || activityB.isPending || b.isPending ? <p role="status">{t("common.loading")}</p> : !aligned ? <p role="status">{t("observerCompare.unavailable")}</p> : <>
@@ -88,7 +90,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
         {overlap.isError ? <p role="alert">{t("common.loadFailed")}</p> : !overlap.data ? <p role="status">{t("common.loading")}</p> : <>
           <p className="mb-3 text-lg font-semibold">{t("observerCompare.total", { count: overlap.data.totalPackets })}</p>
           {overlap.data.totalPackets === 0 ? <p>{t("observerCompare.empty")}</p> : <div aria-hidden className="mb-3 flex h-5 overflow-hidden rounded">{groups.map(g => <div key={g.label} style={{ width: `${g.count / overlap.data!.totalPackets * 100}%`, background: g.color }} />)}</div>}
-          <dl className="grid grid-cols-3 gap-2 text-sm">{groups.map(g => <div key={g.label}><dt className="text-text-muted">{g.label}</dt><dd className="text-lg font-semibold" style={{ color: g.color }}>{g.count.toLocaleString(i18n.resolvedLanguage)}</dd></div>)}</dl>
+          <dl className="grid grid-cols-3 gap-2 text-sm">{groups.map(g => <div key={g.label}><dt className="text-text-muted">{g.label}</dt><dd className={`text-lg font-semibold ${g.textClass}`}>{g.count.toLocaleString(i18n.resolvedLanguage)}</dd></div>)}</dl>
           <p className="mt-3 text-xs leading-relaxed text-text-muted">{t("observerCompare.definition")}</p>
         </>}
       </Card>

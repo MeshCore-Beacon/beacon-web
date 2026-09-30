@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MeshTab } from "../../../src/features/stats/MeshTab";
+import i18n from "../../../src/i18n";
 import { getStatsOverview, getStatsObservations, getPayloadBreakdown, getTopNodes, getTopObservers, getRadioPresets, getStatsScopes, getStatsNodeTypes } from "../../../src/api/client";
 import type { WsManager } from "../../../src/api/ws-manager";
 import type { EChartsOption } from "../../../src/features/stats/echarts-setup";
@@ -162,4 +163,19 @@ it("keeps the scope list collapsed until requested", async () => {
   fireEvent.click(screen.getByText("Scopes", { exact: true }));
   expect(scopeList).toHaveAttribute("open");
   expect(within(scopeList).getByText("#old")).toBeVisible();
+});
+
+it("shows French labels for the KPIs, chart titles and scope table", async () => {
+  await act(() => i18n.changeLanguage("fr"));
+  mount(); await loaded();
+  expect(within(card("Paquets totaux")).getByText("111")).toBeInTheDocument();
+  expect(screen.getByText("Observations · 24h")).toBeInTheDocument();
+  expect(screen.getByText("Meilleurs nœuds · historique complet")).toBeInTheDocument();
+  const typesChart = within(card("Types de nœuds · historique complet")).getByTestId("chart");
+  expect(typesChart.textContent).toContain("NŒUDS");
+  fireEvent.click(screen.getByText("Scopes", { exact: true }));
+  const scopeList = screen.getByText("Scopes", { exact: true }).closest("details")!;
+  expect(within(scopeList).getByText("Scope")).toBeInTheDocument();
+  expect(within(scopeList).getByText("Nœuds")).toBeInTheDocument();
+  await act(() => i18n.changeLanguage("en"));
 });

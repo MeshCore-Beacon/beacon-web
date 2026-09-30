@@ -16,6 +16,14 @@ export function formatAbsolute(epochMs: number, opts?: { ms?: boolean }): string
   return opts?.ms ? `${base}.${pad(d.getMilliseconds(), 3)}` : base;
 }
 
+// The UTC counterpart to formatAbsolute, for charts/tables anchored to server-side hour/minute
+// boundaries rather than the viewer's local time.
+export function formatUtc(epochMs: number, opts?: { seconds?: boolean; timeOnly?: boolean }): string {
+  const iso = new Date(epochMs).toISOString();
+  const date = iso.slice(0, 10), time = iso.slice(11, opts?.seconds ? 19 : 16);
+  return opts?.timeOnly ? time : `${date} ${time}`;
+}
+
 // signal quality and radio metric formatting
 
 export type SignalLevel = "good" | "mid" | "bad";
@@ -99,15 +107,24 @@ export function formatRatePerDay(count: number | null | undefined, windowMs: num
   return `${shown}/d`;
 }
 
+export type TimeAgoUnit = "s" | "m" | "h" | "d";
+
 // clamp negative values from clock skew
-export function timeAgoMs(epochMs: number): string {
+export function timeAgoParts(epochMs: number): { count: number; unit: TimeAgoUnit } {
   const seconds = Math.max(0, Math.floor((Date.now() - epochMs) / 1000));
-  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 60) return { count: seconds, unit: "s" };
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return { count: minutes, unit: "m" };
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
+  if (hours < 24) return { count: hours, unit: "h" };
+  return { count: Math.floor(hours / 24), unit: "d" };
+}
+
+// Compact English "7d" matching Timestamp's English relative phrasing; kept for tests that assert
+// against it, not used by app code (see timeAgoParts for the i18n path).
+export function timeAgoMs(epochMs: number): string {
+  const { count, unit } = timeAgoParts(epochMs);
+  return `${count}${unit}`;
 }
 
 // One radio config format for every panel ("915 MHz · SF11 · 250 kHz · CR 4/5"); unknown or zero parts drop out.

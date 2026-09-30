@@ -15,8 +15,7 @@ interface PacketTableRowProps {
   onToggle: () => void;
 }
 
-// Fixed-height table row sharing GRID_TEMPLATE with the sticky header. The observer lives in the
-// expansion instead, which frees the wide column for the packet's endpoints.
+// The observer lives in the expansion, which frees the wide column for the packet's endpoints.
 export function PacketTableRow({ packet, expanded, isFresh, onToggle }: PacketTableRowProps) {
   // ?? not ||, so a legitimate 0-hop direct packet still shows its count
   const pathLength = packet.latestObserver?.pathLength;

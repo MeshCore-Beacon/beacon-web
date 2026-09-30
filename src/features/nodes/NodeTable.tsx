@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getNodesPage } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
@@ -7,7 +8,8 @@ import { useTick } from "../../hooks/useTick";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
 import { patchInfinitePages } from "../../lib/infinite-pages";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
-import { formatHex, timeAgoMs, formatRadio } from "../../lib/formatters";
+import { formatHex, timeAgoParts, formatRadio } from "../../lib/formatters";
+import { hasMapLocation } from "../map/location";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { ObserverIcon } from "../../components/ObserverIcon";
@@ -17,12 +19,25 @@ import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
 import { patchNodeSummary } from "./node-updates";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
-import type { NodeSummary } from "./types";
+import type { NodeSummary, NodeIATA } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
+
+// A column cell and renderNodeCard sit outside any component, so the tooltip's translated
+// "last heard" label needs its own tiny component to call useTranslation.
+function IataBadge({ entry }: { entry: NodeIATA }) {
+  const { t } = useTranslation();
+  const { count, unit } = timeAgoParts(entry.lastHeard);
+  const ago = t("timestamp.ago", { duration: t(`timestamp.unit.${unit}`, { count }) });
+  return (
+    <Tooltip label={t("nodes.lastHeard", { ago })}>
+      <Badge variant="default">{entry.iata}</Badge>
+    </Tooltip>
+  );
+}
 
 interface NodeTableProps {
   wsManager: WsManager;
@@ -68,9 +83,7 @@ const COLUMNS: Column<NodeSummary>[] = [
       node.iatas && node.iatas.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {node.iatas.map((entry) => (
-            <Tooltip key={entry.iata} label={`last heard ${timeAgoMs(entry.lastHeard)} ago`}>
-              <Badge variant="default">{entry.iata}</Badge>
-            </Tooltip>
+            <IataBadge key={entry.iata} entry={entry} />
           ))}
         </div>
       ) : (
@@ -87,17 +100,16 @@ const COLUMNS: Column<NodeSummary>[] = [
     header: "Location",
     className: "text-text-muted",
     cell: (node) =>
-      node.lat != null && node.lng != null
+      hasMapLocation(node)
         ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
         : "—",
   },
 ];
 
 function renderNodeCard(node: NodeSummary) {
-  const location =
-    node.lat != null && node.lng != null
-      ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
-      : null;
+  const location = hasMapLocation(node)
+    ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
+    : null;
   return (
     <div className="flex flex-col gap-1.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2">
@@ -122,9 +134,7 @@ function renderNodeCard(node: NodeSummary) {
       {node.iatas && node.iatas.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {node.iatas.map((entry) => (
-            <Tooltip key={entry.iata} label={`last heard ${timeAgoMs(entry.lastHeard)} ago`}>
-              <Badge variant="default">{entry.iata}</Badge>
-            </Tooltip>
+            <IataBadge key={entry.iata} entry={entry} />
           ))}
         </div>
       )}

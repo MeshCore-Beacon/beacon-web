@@ -14,7 +14,7 @@ vi.mock("../src/api/client", () => ({ getRegions: async () => [], getRegion: asy
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));
 vi.mock("../src/components/AppShell", () => ({ AppShell: ({ children, onTabChange }: { children: ReactNode; onTabChange: (tab: string) => void }) => {
   const { setSelection } = useRegionSelection();
-  return <><button onClick={() => onTabChange("Observers")}>Observer tab</button><button onClick={() => onTabChange("Routes")}>Route tab</button><button onClick={() => setSelection({ regions: [], iatas: ["YVR"] })}>Change region</button>{children}</>;
+  return <><button onClick={() => onTabChange("Observers")}>Observer tab</button><button onClick={() => onTabChange("Routes")}>Route tab</button><button onClick={() => onTabChange("Analytics")}>Analytics tab</button><button onClick={() => setSelection({ regions: [], iatas: ["YVR"] })}>Change region</button>{children}</>;
 } }));
 vi.mock("../src/features/routes/RouteTable", () => ({ RouteTable: ({ onViewObserver, onAnalyzePacket, onViewNode }: { onViewObserver: (id: string) => void; onAnalyzePacket: (hash: string, id: number) => void; onViewNode: (id: string) => void }) => {
   const [filter, setFilter] = useState(""); const [params] = useSearchParams();
@@ -84,7 +84,7 @@ describe("observer investigation return", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 7d");
     expect(window.location.search).toContain("tab=Observers&observer=o1");
     expect(screen.getByTestId("origin-url")).toHaveTextContent("route=full-route");
-    fireEvent.change(screen.getByRole("combobox", { name: "Time range" }), { target: { value: "24h" } });
+    fireEvent.click(within(screen.getByRole("group", { name: "Time range" })).getByRole("button", { name: "24h" }));
     click("Compare with…");
     expect(window.location.search).toContain("compareWith=");
     click("Back to Routes");
@@ -131,5 +131,31 @@ describe("observer investigation return", () => {
   it("translates the return action", async () => {
     await i18n.changeLanguage("fr"); render(<App />); click("Route observer"); click("Open dashboard");
     expect(await screen.findByRole("button", { name: /Retour à « Routes »/ })).toBeInTheDocument();
+  });
+  it("clears comparison params from both the observer dashboard and analytics compare tabs on tab change", () => {
+    window.history.replaceState({}, "", "/?tab=Observers&observer=o1&compareWith=o2&compareUntil=1700000000000&compareA=x&compareB=y&compareSince=1");
+    render(<App />);
+    click("Route tab");
+    expect(window.location.search).toContain("tab=Routes");
+    for (const key of ["observer", "compareWith", "compareUntil", "compareA", "compareB", "compareSince"]) {
+      expect(window.location.search).not.toContain(key);
+    }
+  });
+  it("keeps analytics compare params when re-clicking the already-active Analytics tab", async () => {
+    await import("../src/features/stats/StatsOverview");
+    window.history.replaceState({}, "", "/?tab=Analytics&statsTab=compare&compareA=a&compareB=b&compareSince=1&compareUntil=2");
+    render(<App />);
+    click("Analytics tab");
+    for (const pair of ["compareA=a", "compareB=b", "compareSince=1", "compareUntil=2"]) {
+      expect(window.location.search).toContain(pair);
+    }
+  });
+  it("keeps the observer dashboard's compare params when re-clicking the already-active Observer tab", () => {
+    window.history.replaceState({}, "", "/?tab=Observers&observer=o1&compareWith=o2&compareUntil=2");
+    render(<App />);
+    click("Observer tab");
+    for (const pair of ["observer=o1", "compareWith=o2", "compareUntil=2"]) {
+      expect(window.location.search).toContain(pair);
+    }
   });
 });

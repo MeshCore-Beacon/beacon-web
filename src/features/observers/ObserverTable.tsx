@@ -114,7 +114,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   const [typeFilter, setTypeFilter] = useState("");
   const [brokerFilter, setBrokerFilter] = useState("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
-  // the compact sidebar only has a name search, so the directory's other filters sit out until it returns
+  // Compact mode has only the name search, so the other filters are ignored there.
   const status = compact ? "" : statusFilter;
   const type = compact ? "" : typeFilter;
   const broker = compact ? "" : brokerFilter;

@@ -65,6 +65,25 @@ describe("useLiveOverview", () => {
     expect(after?.totalPackets).toBe(101);
     expect(after?.totalObservations).toBe(202);
   });
+
+  it("drops pending deltas instead of resurrecting a failed overview query", () => {
+    const qc = new QueryClient();
+    qc.setQueryData<StatsOverview>(["stats-overview", "YOW"], overview);
+    qc.getQueryCache().find({ queryKey: ["stats-overview", "YOW"] })?.setState({ status: "error", error: new Error("refetch failed") });
+    const { manager, emit } = fakeManager();
+
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    renderHook(() => useLiveOverview(manager), { wrapper });
+
+    emit({ packet: { isFirstObservation: true } } as WsPacketObservation["data"]);
+    rafCallbacks.forEach((cb) => cb(0));
+
+    const state = qc.getQueryState<StatsOverview>(["stats-overview", "YOW"]);
+    expect(state?.status).toBe("error");
+    expect(state?.data).toEqual(overview);
+  });
 });
 
 describe("useLiveObserver", () => {

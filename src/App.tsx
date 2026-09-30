@@ -239,7 +239,11 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
       if (tab !== "Routes") for (const key of ["route", "routeIata", "routeRange", "routeSince", "routeUntil"]) next.delete(key);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
-      if (tab !== "Observers") next.delete("observer");
+      // AppShell fires onTabChange even for a no-op click on the already-active tab — only an actual
+      // tab switch should drop the other tab's compare state (compareUntil is shared by both lists).
+      const changed = prev.get("tab") !== tab;
+      if (changed && tab !== "Observers") for (const key of ["observer", "compareWith", "compareUntil"]) next.delete(key);
+      if (changed && tab !== "Analytics") for (const key of ["compareA", "compareB", "compareSince", "compareUntil"]) next.delete(key);
       // lat/lng/zoom only seed the map on mount, so they'd re-frame it on every later visit
       if (tab !== "Map" || mapFocus) for (const key of ["lat", "lng", "zoom"]) next.delete(key);
       if (mapFocus) {

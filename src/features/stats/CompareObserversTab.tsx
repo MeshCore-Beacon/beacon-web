@@ -4,14 +4,14 @@ import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getObserver, getObserverComparison, getObserversPage } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
+import { OBSERVER_UUID } from "../observers/observer-id";
 import { Card } from "./cards";
 
 type Selection = { observerA: string; observerB: string; since: number; until: number };
-const uuid = /^(?!00000000-0000-0000-0000-000000000000$)[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 const fieldClass = "min-w-0 w-full rounded border border-border bg-bg-base px-2.5 py-2 text-base text-text-normal";
 
 function validation(value: Selection): string | null {
-  if (!uuid.test(value.observerA) || !uuid.test(value.observerB) || value.observerA.toLowerCase() === value.observerB.toLowerCase()) {
+  if (!OBSERVER_UUID.test(value.observerA) || !OBSERVER_UUID.test(value.observerB) || value.observerA.toLowerCase() === value.observerB.toLowerCase()) {
     return "Choose two different observers.";
   }
   if (!Number.isSafeInteger(value.since) || !Number.isSafeInteger(value.until) || value.since < 0 || value.until <= value.since || value.until > 253402300799999) {
@@ -40,7 +40,7 @@ function ObserverSelect({ label, value, onChange }: { label: string; value: stri
   });
   const selected = useQuery({
     queryKey: ["observer", value], queryFn: () => getObserver(value),
-    enabled: uuid.test(value), staleTime: 30_000, retry: false,
+    enabled: OBSERVER_UUID.test(value), staleTime: 30_000, retry: false,
   });
   const rows = options.data?.items ?? [];
   return (

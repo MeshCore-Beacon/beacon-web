@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useInfiniteQuery, useIsFetching, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
-import { isRateLimited } from "../../api/rate-limit";
+import { isRateLimited, subscribeRateLimit } from "../../api/rate-limit";
 import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
 import { useRegion } from "../../hooks/useRegion";
 import { useIsMobile } from "../../hooks/useMediaQuery";
@@ -47,9 +47,10 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const messageKey = useMemo(() => ["channel-messages", selectedId, regionKey, messageScope], [selectedId, regionKey, messageScope]);
   const messageFetching = useIsFetching({ queryKey: messageKey, exact: true });
 
-  useEffect(() => {
-    if (messageFetching) return;
-    if (messagesOverflowed.current && !isRateLimited()) {
+  const flushPending = useCallback(() => {
+    if (queryClient.isFetching({ queryKey: messageKey, exact: true })) return;
+    if (messagesOverflowed.current) {
+      if (isRateLimited()) return;
       messagesOverflowed.current = false;
       pendingMessages.current.clear();
       void queryClient.invalidateQueries({ queryKey: messageKey, exact: true });
@@ -59,7 +60,14 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       pendingMessages.current.clear();
       queryClient.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(messageKey, (old) => appendMessages(old, queued));
     }
-  }, [messageFetching, messageKey, queryClient]);
+  }, [messageKey, queryClient]);
+
+  useEffect(() => {
+    flushPending();
+  }, [messageFetching, flushPending]);
+
+  // An overflow parked behind a 429 would otherwise sit until the user switches channel.
+  useEffect(() => subscribeRateLimit(flushPending), [flushPending]);
 
   const prevRegion = useRef(regionKey);
   useEffect(() => {
@@ -164,6 +172,8 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
             messagesOverflowed.current = true;
           } else pendingMessages.current.set(data.packetHash, data);
         }
+        // A fresh arrival is the only signal left once idle-and-overflowed, so try recovery here too.
+        flushPending();
         // The WS event has no retained observation total; repeats do not add observers.
         setHeardCounts((prev) => ({
           ...prev,
@@ -176,7 +186,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         );
       }
     },
-    [queryClient, selectedId, selection, regionKey, messageScope, messageKey],
+    [queryClient, selectedId, selection, regionKey, messageScope, messageKey, flushPending],
   );
 
   useWsChannelMessageHandler(wsManager, handleChannelMessage);

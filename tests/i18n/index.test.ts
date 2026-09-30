@@ -27,13 +27,41 @@ describe("language preferences and catalogs", () => {
   });
 
   it("still changes language when browser storage is unavailable", async () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
-    expect(readLanguagePreference()).toBe("en");
-    await i18n.changeLanguage("fr");
-    expect(i18n.t("tabs.Packets")).toBe("Paquets");
-    expect(document.documentElement.lang).toBe("fr");
-    expect(document.documentElement.dir).toBe("ltr");
+    vi.stubGlobal("localStorage", {
+      getItem() { throw new Error("blocked"); },
+      setItem() { throw new Error("blocked"); },
+      removeItem() {},
+    });
+    try {
+      expect(readLanguagePreference()).toBe("en");
+      await i18n.changeLanguage("fr");
+      expect(i18n.t("tabs.Packets")).toBe("Paquets");
+      expect(document.documentElement.lang).toBe("fr");
+      expect(document.documentElement.dir).toBe("ltr");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not persist a language on module init, only on an explicit change", async () => {
+    // Isolated in-memory store: the real localStorage is a single process-wide object (Node's
+    // localStorage shadows jsdom's per test file), so a leftover "beacon-language" from another
+    // suite sharing this worker could otherwise land here before the dynamic import reads it.
+    const store = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+    });
+    try {
+      vi.resetModules();
+      const fresh = await import("../../src/i18n");
+      expect(localStorage.getItem("beacon-language")).toBeNull();
+      await fresh.default.changeLanguage("fr");
+      expect(localStorage.getItem("beacon-language")).toBe("fr");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("persists only the language preference and restores English document metadata", async () => {
@@ -59,6 +87,20 @@ describe("language preferences and catalogs", () => {
     expect(i18n.t("region.count", { lng: "en", count: 2 })).toBe("2 regions");
     expect(i18n.t("region.count", { lng: "fr", count: 1 })).toBe("1 région");
     expect(i18n.t("region.count", { lng: "fr", count: 2 })).toBe("2 régions");
-    expect(i18n.t("connection.rateLimited", { lng: "fr", seconds: 5 })).toBe("RÉESSAI DANS 5 s");
+    expect(i18n.t("connection.rateLimited", { lng: "fr", seconds: 5 })).toBe("DÉBIT LIMITÉ 5 s");
+  });
+
+  it("has whole-phrase battery/noise labels in both catalogs (no joined-word strings)", () => {
+    expect(i18n.t("observerPage.batteryV", { lng: "en" })).toBe("Battery V");
+    expect(i18n.t("observerPage.noiseDbm", { lng: "en" })).toBe("Noise dBm");
+    expect(i18n.t("observerPage.batteryV", { lng: "fr" })).toBe("Batterie V");
+    expect(i18n.t("observerPage.noiseDbm", { lng: "fr" })).toBe("Bruit dBm");
+  });
+
+  it("interpolates the payload-type total as a plain value, not a plural count", () => {
+    // formatCount can return a non-numeric string like "1.2k"; a `count` placeholder would feed that
+    // into plural resolution instead of a straight interpolation.
+    expect(i18n.t("mesh.obs", { lng: "en", value: "1.2k" })).toBe("1.2k obs");
+    expect(i18n.t("mesh.obs", { lng: "fr", value: "1,2k" })).toBe("1,2k obs");
   });
 });
