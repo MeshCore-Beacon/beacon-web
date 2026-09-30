@@ -18,20 +18,19 @@ export function mergeBorders(entries: { iata: string; border: IataBorder | null 
 }
 
 // Fetch the border for each active IATA (only while `enabled`), then merge into one collection.
-// Borders are static, so each is cached indefinitely and most IATAs simply have none (204 -> null).
+// Cache geometry for an hour; missing borders can appear after an operator imports a snapshot.
 export function useMapBordersData(iataCodes: string[], enabled: boolean): BorderFeatureCollection {
   const results = useQueries({
     queries: iataCodes.map((iata) => ({
       queryKey: ["iata-border", iata],
       queryFn: () => getIataBorder(iata),
       enabled,
-      staleTime: Infinity,
+      staleTime: (query) => query.state.data ? 3_600_000 : 60_000,
     })),
   });
 
-  // useQueries returns a fresh array each render; a border is immutable once fetched, so a signature
-  // of which IATAs have resolved one is enough to keep the collection reference stable between renders.
-  const sig = iataCodes.map((iata, i) => `${iata}:${results[i]?.data ? 1 : 0}`).join("|");
+  // Keep the collection stable between renders, but replace geometry after a successful refresh.
+  const sig = iataCodes.map((iata, i) => `${iata}:${results[i]?.data ? 1 : 0}:${results[i]?.dataUpdatedAt ?? 0}`).join("|");
   return useMemo(
     () => mergeBorders(iataCodes.map((iata, i) => ({ iata, border: results[i]?.data ?? null }))),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sig captures iataCodes + which borders loaded

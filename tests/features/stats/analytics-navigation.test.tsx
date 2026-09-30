@@ -11,13 +11,13 @@ vi.mock("../../../src/features/stats/MeshTab", () => ({ MeshTab: () => <p>Mesh c
 vi.mock("../../../src/features/stats/ScopesTab", () => ({ ScopesTab: () => <p>Scope charts</p> }));
 function Location() { return <output aria-label="Analytics URL">{useLocation().search}</output>; }
 
-it("normalizes old seven-day links and explains retained summary history", () => {
+it("normalizes old seven-day links without the removed retention banner", () => {
   render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=signal&range=7d"]}><StatsOverview wsManager={{} as WsManager} /></MemoryRouter>);
   expect(screen.getByText("Signal range 3d")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
   expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "30d" })).toBeInTheDocument();
-  expect(screen.getByText(/Hourly analytics keep summaries for up to 30 days/)).toBeInTheDocument();
+  expect(screen.queryByText(/Hourly analytics keep summaries for up to 30 days/)).not.toBeInTheDocument();
 });
 
 it("opens Paths & Hashes from a shared URL and retains the region while changing range", () => {

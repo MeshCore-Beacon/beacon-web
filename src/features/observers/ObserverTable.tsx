@@ -10,6 +10,7 @@ import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
 import { formatHex, formatRadio } from "../../lib/formatters";
 import { Badge } from "../../components/Badge";
 import { DataTable, type Column } from "../../components/DataTable";
+import { SearchBar } from "../../components/SearchBar";
 import { LoadingPill } from "../../components/LoadingPill";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverDetailPanel } from "./ObserverDetailPanel";
@@ -72,6 +73,8 @@ const COLUMNS: Column<ObserverSummary>[] = [
     },
   },
 ];
+
+const COMPACT_COLUMNS = [COLUMNS[0]!];
 
 function renderObserverCard(obs: ObserverSummary) {
   const status = deriveObserverStatus(obs);
@@ -179,7 +182,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
   return (
     <div className="flex flex-1 min-h-0">
       <div className="relative flex flex-col flex-1 min-w-0">
-        {compact ? <input type="search" aria-label={t("observerPage.sidebarSearch")} placeholder={t("observerPage.sidebarSearch")} value={search} onChange={event => setSearch(event.target.value)} className="m-2 min-h-11 min-w-0 rounded border border-border bg-bg-base px-3 text-sm" /> : <ObserverFilterBar
+        {compact ? <div className="p-2"><SearchBar value={search} onChange={setSearch} fields={[{ value: "name", label: "Name" }]} field="name" onFieldChange={setSearchField} hideField inputLabel={t("observerPage.sidebarSearch")} /></div> : <ObserverFilterBar
           search={search}
           onSearchChange={setSearch}
           searchField={searchField}
@@ -198,7 +201,7 @@ export function ObserverTable({ compact = false, wsManager, selectedObserverId, 
         />}
 
         <DataTable
-          columns={compact ? [COLUMNS[0]!] : COLUMNS}
+          columns={compact ? COMPACT_COLUMNS : COLUMNS}
           rows={displayObservers}
           rowKey={(o) => o.id}
           selectedKey={selectedObserverId}
