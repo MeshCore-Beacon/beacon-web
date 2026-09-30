@@ -213,3 +213,9 @@ describe("packetPathsToFeatures", () => {
     expect(points.features[1]!.properties.title).toBe("Repeater North");
   });
 });
+
+it("resumes a confirmed segment after returning to the same node across a gap", () => {
+  const paths = buildPacketPaths(detail([obs(1, [hop("a", -79, 43), hop("missing"), hop("a", -79, 43), hop("b", -75, 45)])]));
+  expect(paths[0].points.map(point => point.id)).toEqual(["a", "b"]);
+  expect(paths[0].points[1].breakBefore).toBeUndefined();
+});

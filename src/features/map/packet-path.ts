@@ -44,7 +44,7 @@ function pathPoints(hops: ResolvedHop[]): PathPoint[] {
       seen.add(node.id);
       out.push({ id: node.id, name: node.name, lng: node.longitude!, lat: node.latitude!, ...(gap && out.length ? { breakBefore: true } : {}) });
       gap = false;
-    } else if (out.at(-1)?.id !== node.id) gap = true;
+    } else gap = out.at(-1)?.id !== node.id;
   }
   return out;
 }

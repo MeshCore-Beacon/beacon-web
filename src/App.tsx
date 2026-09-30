@@ -199,6 +199,15 @@ function AppInner() {
     setPathMapInitialKey(key ?? null);
   }, []);
 
+  const selectObservation = useCallback((id: number | null) => {
+    setSelectedObservationId(id);
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (id == null) next.delete("observation"); else next.set("observation", String(id));
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const handleAnalyze = useCallback((hash: string | null) => {
     // No reset: observation ids are globally unique, so a pick inside an expanded row survives into the drawer.
     setSearchParams((p) => {
@@ -289,7 +298,7 @@ function AppInner() {
         onAnalyze={handleAnalyze}
         onViewPath={handleViewPath}
         selectedObservationId={selectedObservationId}
-        onSelectObservation={setSelectedObservationId}
+        onSelectObservation={selectObservation}
       />
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
@@ -326,7 +335,7 @@ function AppInner() {
               detail={analyzerDetail}
               loading={analyzerLoading}
               selectedObservationId={selectedObservationId}
-              onSelectObservation={setSelectedObservationId}
+              onSelectObservation={selectObservation}
               onClose={() => handleAnalyze(null)}
               onViewNode={setOverlayNodeId}
               onViewObserver={setQuickObserverId}
