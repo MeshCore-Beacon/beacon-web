@@ -97,35 +97,28 @@ describe("PacketEndpoints", () => {
 
   it("shows all ambiguous candidates on hover, with an additional-match count", () => {
     render(<PacketEndpoints packet={pkt(obs({ resolvedSource: ambiguousSource }))} />);
-    const trigger = screen.getByRole("button", { name: "Alpha +1" });
+    const trigger = screen.getByText("Alpha +1").parentElement!;
     fireEvent.mouseEnter(trigger);
     const tip = screen.getByRole("tooltip");
     expect(within(tip).getByText("Alpha")).toBeInTheDocument();
     expect(within(tip).getByText("Beta")).toBeInTheDocument();
-    expect(trigger).toHaveAttribute("aria-describedby", tip.id);
+    expect(trigger).toHaveAttribute("title", "Alpha, Beta");
     expect(within(tip).queryByText(/SNR/)).not.toBeInTheDocument();
   });
 
-  it("opens candidates from the keyboard and closes with Escape without selecting the packet", () => {
-    const select = vi.fn();
-    render(<div onClick={select} onKeyDown={select}><PacketEndpoints packet={pkt(obs({ resolvedSource: ambiguousSource }))} /></div>);
-    const trigger = screen.getByRole("button", { name: "Alpha +1" });
-    fireEvent.focus(trigger);
-    expect(screen.getByRole("tooltip")).toBeInTheDocument();
-    fireEvent.keyDown(trigger, { key: "Escape" });
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
-    fireEvent.keyDown(trigger, { key: "Enter" });
-    expect(screen.getByRole("tooltip")).toBeInTheDocument();
-    expect(select).not.toHaveBeenCalled();
-    fireEvent.blur(trigger, { relatedTarget: document.body });
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  it("keeps the containing packet row as the only keyboard button", () => {
+    render(<button type="button"><PacketEndpoints packet={pkt(obs({ resolvedSource: ambiguousSource }))} /></button>);
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    const chip = screen.getByText("Alpha +1").parentElement!;
+    expect(chip).not.toHaveAttribute("tabindex");
+    expect(chip).toHaveAttribute("title", "Alpha, Beta");
   });
 
   it("opens all candidates on touch without activating the packet row", () => {
     vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ matches: false, media: query, onchange: null, addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn() }));
     const select = vi.fn();
     render(<div onClick={select}><PacketEndpoints packet={pkt(obs({ resolvedDestination: ambiguousSource }))} /></div>);
-    fireEvent.click(screen.getByRole("button", { name: "Alpha +1" }));
+    fireEvent.click(screen.getByText("Alpha +1").parentElement!);
     expect(within(screen.getByRole("tooltip")).getByText("Beta")).toBeInTheDocument();
     expect(select).not.toHaveBeenCalled();
     fireEvent.pointerDown(document.body);

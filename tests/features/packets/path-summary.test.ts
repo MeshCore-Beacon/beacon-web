@@ -102,20 +102,4 @@ describe("buildPathSummary", () => {
     expect(s.chips).toEqual([]);
   });
 
-  it("carries resolved endpoints through", () => {
-    const s = buildPathSummary(pkt(obs({
-      pathLength: { raw: "41", hashSize: 1, hopCount: 1 }, pathBytes: "7f",
-      resolvedSource: { confidence: "high", nodes: [{ id: "n", publicKey: "ab", name: "Salish" }] },
-    })));
-    expect(s.source).toEqual({ kind: "node", label: "Salish", confidence: "high" });
-    expect(s.destination).toBeNull();
-  });
-
-  it("falls back to an unresolved-run chip for an endpoint with confidence none", () => {
-    const s = buildPathSummary(pkt(obs({
-      pathLength: { raw: "41", hashSize: 1, hopCount: 1 }, pathBytes: "7f",
-      resolvedSource: { confidence: "none", nodes: [] },
-    })));
-    expect(s.source).toEqual({ kind: "unresolved-run", count: 1 });
-  });
 });

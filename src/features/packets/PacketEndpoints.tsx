@@ -13,7 +13,7 @@ function Chip({ hop }: { hop: ResolvedHop }) {
   const node = hop.nodes[0];
   const label = node ? node.name ?? node.publicKey.slice(0, 8) : "?";
   return (
-    <HopPopover hop={hop} showSnr={false} focusable>
+    <HopPopover hop={hop} showSnr={false}>
       <span className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[hop.confidence]}`}>
         {label}{hop.nodes.length > 1 ? ` +${hop.nodes.length - 1}` : ""}
       </span>

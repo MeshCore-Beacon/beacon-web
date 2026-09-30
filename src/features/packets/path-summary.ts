@@ -15,24 +15,16 @@ export interface PathSummary {
   hopLabel: string;
   chips: PathChip[];
   overflow: number; // hops not represented by a visible chip
-  source: PathChip | null;
-  destination: PathChip | null;
   isNa: boolean;
 }
 
-const NA: PathSummary = { hopLabel: "n/a", chips: [], overflow: 0, source: null, destination: null, isNa: true };
+const NA: PathSummary = { hopLabel: "n/a", chips: [], overflow: 0, isNa: true };
 
 function hopChip(hop: ResolvedHop): PathChip | null {
   if (hop.confidence === "none") return null;
   const node = hop.nodes[0];
   const label = node?.name ?? node?.publicKey.slice(0, 8) ?? "?";
   return { kind: "node", label, confidence: hop.confidence };
-}
-
-// Endpoints are single hops and never collapse — an unresolved one shows "?" rather than a run.
-function endpointChip(hop: ResolvedHop | undefined): PathChip | null {
-  if (!hop) return null;
-  return hopChip(hop) ?? { kind: "unresolved-run", count: 1 };
 }
 
 function chipsFromResolved(path: ResolvedHop[]): PathChip[] {
@@ -63,9 +55,7 @@ export function buildPathSummary(packet: PacketSummary): PathSummary {
   if (!observer || !length) return NA;
 
   const { hopCount, hashSize } = length;
-  const source = endpointChip(observer.resolvedSource);
-  const destination = endpointChip(observer.resolvedDestination);
-  const base = { hopLabel: `${hopCount} hops`, chips: [] as PathChip[], overflow: 0, source, destination, isNa: false };
+  const base = { hopLabel: `${hopCount} hops`, chips: [] as PathChip[], overflow: 0, isNa: false };
 
   if (hopCount === 0) return { ...base, hopLabel: "0 hops · direct" };
 

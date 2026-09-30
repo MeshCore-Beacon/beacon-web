@@ -14,7 +14,7 @@ const node = (name: string): ResolvedHop => ({
   nodes: [{ id: "n-1", name, publicKey: "aabbccdd" }],
 });
 
-// pathLength is what makes buildPathSummary produce endpoints at all, so it is always present here.
+// Physical path metadata is independent of the logical source/destination chips.
 const observer = (
   over: { hopCount?: number; hashSize?: number } & Partial<Pick<LatestObserver, "resolvedSource" | "resolvedDestination">> = {},
 ): LatestObserver => {
