@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { InfoTip } from "../../components/InfoTip";
 import { EmptyState } from "../../components/EmptyState";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatRadioParts } from "../../lib/formatters";
@@ -195,8 +196,8 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
       )}
       <h2 className="mt-2 text-lg font-semibold text-text-bright">{t("observerPage.device")}</h2>
       {noTelemetry ? (
-        <Card title={t("observerPage.noTelemetry")}>
-          <p className="text-sm text-text-muted">{t("observerPage.noTelemetryHelp")}</p>
+        <Card title={t("observerPage.noTelemetry")} right={<InfoTip text={t("observerPage.noTelemetryHelp")} />}>
+          {null}
         </Card>
       ) : (
         <>

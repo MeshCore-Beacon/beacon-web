@@ -38,7 +38,7 @@ it("aligns activity and retained overlap to the primary observer's effective win
   expect(getObserverActivity).toHaveBeenCalledWith(B, "168h", "1h", until);
   expect(getObserverComparison).toHaveBeenCalledWith(undefined, { observerA: A, observerB: B, since: activity.windowStart, until }, expect.any(AbortSignal));
   expect(screen.getByText("Retained flood-packet overlap")).toBeInTheDocument();
-  expect(screen.getByText(/Raw packet history may expire/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Raw packet history may expire/ })).toBeInTheDocument();
   expect(screen.getByTestId("chart").textContent).toContain('"name":"A"');
   expect(screen.getByTestId("chart").textContent).toContain('"name":"B"');
 });

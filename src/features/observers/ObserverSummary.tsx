@@ -6,6 +6,7 @@ import { useTick } from "../../hooks/useTick";
 import { observerNoiseFloor } from "./observer-stats";
 import { Card, StatCard } from "../stats/cards";
 import { Field } from "../../components/DetailPanel";
+import { IataChip } from "../../components/IataChip";
 import type { Observer } from "./types";
 import type { ObserverActivity, TelemetryPoint } from "../stats/types";
 
@@ -26,22 +27,22 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
   return <>
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0"><h1 className="break-words text-lg font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
-        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
           </span>
-          <span className="rounded bg-primary/10 px-2 py-1 text-primary">{observer.iata}</span>
+          <IataChip>{observer.iata}</IataChip>
         </div>
       </div>
     </div>
-    <ul role="list" aria-label={t("observerPage.metrics")} className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <ul role="list" aria-label={t("observerPage.metrics")} className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
       {cards.map(([key, value]) => {
         const note = key === "lastHour" && summary ? `${formatUtc(summary.lastCompleteHourStart, { timeOnly: true })}–${formatUtc(summary.lastCompleteHourEnd, { timeOnly: true })} UTC`
           : key === "noise" && noise != null ? t(reportedNoise != null ? "observerPage.latestStatus" : "observerPage.latestTelemetry")
           : undefined;
         return <li key={key} className="min-w-0">
           <StatCard label={t(`observerPage.${key}`)} value={value} accent="var(--color-primary)" />
-          {note && <p className="mt-1 text-xs text-text-muted">{note}</p>}
+          <p className="mt-1 min-h-4 text-xs text-text-muted">{note}</p>
         </li>;
       })}
     </ul>

@@ -29,7 +29,8 @@ it("keeps a trailing space visible while typing and trims only the query sent to
   vi.useFakeTimers();
   try {
     view("", "Choose an observer");
-    const input = screen.getByRole("textbox");
+    fireEvent.click(screen.getByRole("button", { name: /Choose an observer/ }));
+    const input = screen.getByRole("searchbox");
     fireEvent.change(input, { target: { value: "Node " } });
     await act(async () => { vi.advanceTimersByTime(400); });
     expect(input).toHaveValue("Node ");
@@ -37,4 +38,17 @@ it("keeps a trailing space visible while typing and trims only the query sent to
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("opens one searchable list and selects a result", async () => {
+  vi.mocked(getObserversPage).mockResolvedValue({ items: [{ id: "o1", displayName: "Rooftop", iata: "YOW", status: "online" }], hasMore: false, nextCursor: null } as never);
+  const onSelect = vi.fn();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={queryClient}><ObserverPicker id="" name="Choose" label="Partner" onSelect={onSelect} /></QueryClientProvider>);
+  expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Partner: Choose" }));
+  expect(screen.getByRole("searchbox")).toHaveFocus();
+  fireEvent.click(await screen.findByRole("option", { name: /Rooftop.*YOW/ }));
+  expect(onSelect).toHaveBeenCalledWith("o1");
+  expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
 });

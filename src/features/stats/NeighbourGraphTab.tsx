@@ -7,6 +7,7 @@ import { useChartColors } from "./chartTheme";
 import { buildNeighbourGraph, buildEgoGraph, neighbourGraphOption } from "./neighbour-graph";
 import { NeighbourGraph } from "./NeighbourGraph";
 import { EmptyState } from "../../components/EmptyState";
+import { InfoTip } from "../../components/InfoTip";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 
 // Most-connected nodes rendered; past this the canvas force layout bogs down. Reuses the map's node
@@ -79,12 +80,13 @@ export function NeighbourGraphTab() {
     <div className="flex h-full min-h-0 flex-col">
       {ego ? (
         <div className="shrink-0 border-b border-border bg-bg-surface px-4 py-2 text-center text-xs font-mono text-text-muted">
-          Neighbourhood of <span className="text-text-normal">{selectedNode?.name ?? selectedId}</span> · {ego.nodes.length - 1} neighbours — click empty space for the full mesh
+          Neighbourhood of <span className="text-text-normal">{selectedNode?.name ?? selectedId}</span> · {ego.nodes.length - 1} neighbours <InfoTip text="Click empty space for the full mesh." />
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-surface px-4 py-2">
-          <span className="text-xs font-mono text-text-muted">
-            {graph.capped ? `Showing ${CAP} of ${graph.total} nodes — narrow to an IATA for the rest` : `${graph.total} nodes`}
+          <span className="flex items-center gap-2 text-xs font-mono text-text-muted">
+            {graph.capped ? `Showing ${CAP} of ${graph.total} nodes` : `${graph.total} nodes`}
+            {graph.capped && <InfoTip text="Narrow to an IATA for the rest." />}
           </span>
           <div className="ml-auto">
             <SearchBar value={search} onChange={setSearch} fields={SEARCH_FIELDS} field={searchField} onFieldChange={setSearchField} />

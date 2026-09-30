@@ -8,6 +8,7 @@ import { getIatas, getRegions, getRegion } from "../../src/api/client";
 import type { WsManager } from "../../src/api/ws-manager";
 import { noteRateLimited, noteRequestOk } from "../../src/api/rate-limit";
 import pkg from "../../package.json";
+import i18n from "../../src/i18n";
 
 vi.mock("../../src/api/client", () => ({
   getIatas: vi.fn(),
@@ -303,5 +304,24 @@ describe("AppShell region picker alignment", () => {
     const panel = screen.getByPlaceholderText("Filter IATA or name…").closest(".absolute")!;
     expect(panel.className).toContain("left-0");
     expect(panel.className).toContain("md:right-0");
+  });
+});
+
+describe("AppShell on a phone", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("keeps the header to one row and folds theme, language and GitHub into a settings menu", async () => {
+    const media = window.matchMedia("(max-width: 767px)");
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ ...media, media: query, matches: query === "(max-width: 767px)" }));
+    vi.mocked(getIatas).mockResolvedValue([]);
+    renderShell();
+    expect(screen.getByRole("button", { name: /REGION/ })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "LIVE" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Language:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("link", { name: "GitHub" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Français" }));
+    await waitFor(() => expect(document.documentElement.lang).toBe("fr"));
+    await act(() => i18n.changeLanguage("en"));
   });
 });

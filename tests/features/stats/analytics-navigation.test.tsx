@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatsOverview } from "../../../src/features/stats/StatsOverview";
 import type { WsManager } from "../../../src/api/ws-manager";
 
@@ -59,4 +60,29 @@ it("opens Scopes without a misleading range control and preserves the chosen ran
   fireEvent.click(screen.getByRole("button", { name: "Traffic" }));
   expect(screen.getByText("Traffic range 30d")).toBeInTheDocument();
   expect(screen.getByLabelText("Analytics URL")).toHaveTextContent("iata=YOW");
+});
+
+describe("Observer analytics tab", () => {
+  const top = [
+    { observerId: "o1", displayName: "Alpha", observationCount: 90 },
+    { observerId: "o2", displayName: "Beta", observationCount: 30 },
+  ];
+  beforeEach(() => {
+    vi.doMock("../../../src/features/stats/useStats", async (orig) => ({ ...(await orig<object>()), useTopObservers: () => ({ data: top, isLoading: false }) }));
+    vi.doMock("../../../src/hooks/useRegion", async (orig) => ({ ...(await orig<object>()), useRegion: () => ({ iatas: null, regionKey: "*" }) }));
+    vi.doMock("../../../src/features/stats/ObserverTab", () => ({ ObserverTab: ({ selectedObserverId, range }: { selectedObserverId: string | null; range: string }) => <h1>Dashboard {selectedObserverId} {range}</h1> }));
+  });
+  afterEach(() => { vi.doUnmock("../../../src/features/stats/useStats"); vi.doUnmock("../../../src/hooks/useRegion"); vi.doUnmock("../../../src/features/stats/ObserverTab"); vi.resetModules(); });
+
+  it("lists observers in a sidebar, defaults to the busiest and switches on click", async () => {
+    vi.resetModules();
+    const { StatsOverview: Overview } = await import("../../../src/features/stats/StatsOverview");
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/?tab=Analytics&statsTab=observer&range=24h"]}><Overview wsManager={{} as WsManager} /><Location /></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 24h");
+    expect(screen.getByLabelText("Analytics URL")).toHaveTextContent("observerId=o1");
+    fireEvent.click(screen.getByRole("button", { name: /Beta/ }));
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o2 24h");
+    expect(screen.getByRole("searchbox", { name: "Search observers" })).toBeInTheDocument();
+  });
 });

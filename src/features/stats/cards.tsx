@@ -63,7 +63,7 @@ export function StatCard({
         <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
         {sublabel && <span className="shrink-0 whitespace-nowrap font-mono text-[9px] text-text-dim">{sublabel}</span>}
       </div>
-      <div className="mt-0.5 font-mono text-2xl font-bold tabular-nums text-text-bright">{value}</div>
+      <div className="mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright sm:text-2xl">{value}</div>
       {spark ? <Sparkline values={spark} color={accent} /> : <div className="mt-1.5 h-[20px]" />}
     </div>
   );

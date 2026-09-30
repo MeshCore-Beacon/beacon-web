@@ -103,17 +103,24 @@ describe("observer investigation return", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1");
     await browserBack(); expect(screen.getByLabelText("Route filter")).toHaveValue("keep");
   });
-  it("uses the same return flow for the Analytics observer leaderboard", async () => {
+  it("opens the Analytics observer tab from the leaderboard", async () => {
     await import("../src/features/stats/StatsOverview");
     window.history.replaceState({}, "", "/?tab=Analytics&statsTab=mesh&range=24h");
     render(<App />);
-    fireEvent.change(await screen.findByLabelText("Analytics local state"), { target: { value: "keep analytics" } });
+    await screen.findByRole("button", { name: "Leaderboard observer" });
     click("Leaderboard observer");
-    expect(await screen.findByRole("button", { name: "Back to Analytics" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 24h");
-    click("Back to Analytics");
-    await waitFor(() => expect(window.location.search).toContain("statsTab=mesh"));
-    expect(screen.getByLabelText("Analytics local state")).toHaveValue("keep analytics");
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 24h");
+    expect(window.location.search).toContain("tab=Analytics");
+    expect(window.location.search).toContain("statsTab=observer");
+    expect(window.location.search).toContain("observerId=o1");
+    expect(screen.queryByRole("button", { name: "Back to Analytics" })).not.toBeInTheDocument();
+  });
+  it("keeps shared Analytics observer links in Analytics", async () => {
+    window.history.replaceState({}, "", "/?tab=Analytics&statsTab=observer&observerId=o2&range=7d");
+    render(<App />);
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o2 7d");
+    expect(window.location.search).toContain("statsTab=observer");
+    expect(window.location.search).not.toContain("tab=Observers");
   });
   it("does not invent a return destination for a reloaded/shared dashboard", async () => {
     window.history.replaceState({ usr: { beaconObserverReturnKey: "old" } }, "", "/?tab=Observers&observer=o2&range=24h");

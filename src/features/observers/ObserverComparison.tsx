@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { InfoTip } from "../../components/InfoTip";
 import { getObserverComparison } from "../../api/client";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatBattery, formatUptime } from "../../lib/formatters";
@@ -82,16 +83,14 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
     <p className="break-words text-sm text-text-normal">A: {observerA.displayName ?? observerA.id} {b.data && <>· B: {b.data.displayName ?? b.data.id}</>}</p>
     <ObserverPicker id={observerBId} name={b.data?.displayName ?? t("observerCompare.choose")} excludeId={observerA.id} label={t("observerCompare.partner")} onSelect={onSelect} />
     {until == null ? <p role="alert">{t("observerCompare.invalidTime")}</p> : !valid ? <p role={observerBId ? "alert" : "status"}>{t(observerBId ? "observerCompare.invalidObserver" : "observerCompare.choose")}</p> : b.isError || activityB.isError ? <p role="alert">{t("observerPage.loadFailed")}</p> : !activityA || activityB.isPending || b.isPending ? <p role="status">{t("common.loading")}</p> : !aligned ? <p role="status">{t("observerCompare.unavailable")}</p> : <>
-      <p className="text-xs leading-relaxed text-text-muted">{t("observerPage.window")}: {date(start)} – {date(end)}. {t("observerCompare.currentNote")}</p>
+      <p className="flex flex-wrap items-center gap-2 text-xs text-text-muted">{t("observerPage.window")}: {date(start)} – {date(end)}<InfoTip text={t("observerCompare.currentNote")} /></p>
       <div className="overflow-x-auto"><table aria-label={t("observerCompare.metrics")} className="w-full text-left text-sm tabular-nums"><thead><tr><th className="p-2">{t("observerCompare.metric")}</th><th className="p-2">A</th><th className="p-2">B</th></tr></thead><tbody>{rows.map(([label, a, bValue]) => <tr className="border-t border-border" key={label}><th scope="row" className="p-2 font-normal text-text-muted">{label}</th><td className="p-2">{a}</td><td className="p-2">{bValue}</td></tr>)}</tbody></table></div>
       <ChartCard title={t("observerCompare.activity")} option={option} height={240} />
-      <Card title={t("observerCompare.overlap")}>
-        <p className="mb-3 text-xs leading-relaxed text-text-muted">{t("observerCompare.retention")}</p>
+      <Card title={t("observerCompare.overlap")} right={<InfoTip text={[t("observerCompare.retention"), t("observerCompare.definition")]} />}>
         {overlap.isError ? <p role="alert">{t("common.loadFailed")}</p> : !overlap.data ? <p role="status">{t("common.loading")}</p> : <>
           <p className="mb-3 text-lg font-semibold">{t("observerCompare.total", { count: overlap.data.totalPackets })}</p>
           {overlap.data.totalPackets === 0 ? <p>{t("observerCompare.empty")}</p> : <div aria-hidden className="mb-3 flex h-5 overflow-hidden rounded">{groups.map(g => <div key={g.label} style={{ width: `${g.count / overlap.data!.totalPackets * 100}%`, background: g.color }} />)}</div>}
           <dl className="grid grid-cols-3 gap-2 text-sm">{groups.map(g => <div key={g.label}><dt className="text-text-muted">{g.label}</dt><dd className={`text-lg font-semibold ${g.textClass}`}>{g.count.toLocaleString(i18n.resolvedLanguage)}</dd></div>)}</dl>
-          <p className="mt-3 text-xs leading-relaxed text-text-muted">{t("observerCompare.definition")}</p>
         </>}
       </Card>
     </>}

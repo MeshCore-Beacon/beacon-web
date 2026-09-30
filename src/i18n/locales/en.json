@@ -45,7 +45,8 @@
       "loading": "Loading…",
       "loadFailed": "Failed to load",
       "noData": "No data",
-      "dataUnavailable": "Data unavailable"
+      "dataUnavailable": "Data unavailable",
+      "info": "More information"
     },
     "mesh": {
       "totalPackets": "Total packets",
@@ -316,7 +317,9 @@
       "day": "day",
       "returnTo": "Back to {{page}}",
       "directory": "All observers",
-      "sidebarSearch": "Search observers"
+      "sidebarSearch": "Search observers",
+      "noMatches": "No matches",
+      "none": "No observers"
     },
     "observerCompare": {
       "open": "Compare with…",
@@ -432,6 +435,9 @@
       "emptyNoKey": "No decrypted messages are available without a known channel key.",
       "error": "Could not load messages.",
       "retry": "Retry"
+    },
+    "header": {
+      "settings": "Settings"
     }
   }
 }

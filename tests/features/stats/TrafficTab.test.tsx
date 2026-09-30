@@ -27,6 +27,8 @@ describe("Traffic page", () => {
     expect(screen.queryByText("9,999")).not.toBeInTheDocument();
     expect(screen.getByText(/heure UTC/)).toHaveTextContent("partielle");
     expect(screen.getByText(/ne prouvent pas une panne/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ne prouvent pas une panne/ })).toBeInTheDocument();
+    expect(screen.queryByText(/ne prouvent pas une panne/, { selector: "p" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Actualiser le trafic" }));
     expect(query.refetch).toHaveBeenCalledOnce();
   });
@@ -71,6 +73,8 @@ describe("Traffic page", () => {
     render(<TrafficTab range="24h" />);
     expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
     expect(screen.getByText(/ne prouvent pas une panne/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /ne prouvent pas une panne/ })).toBeInTheDocument();
+    expect(screen.queryByText(/ne prouvent pas une panne/, { selector: "p" })).not.toBeInTheDocument();
     expect(screen.getAllByText("Aucune donnée")).toHaveLength(3);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });

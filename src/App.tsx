@@ -160,8 +160,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
   const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
-  const legacyObserver = tabParam === "Analytics" && searchParams.get("statsTab") === "observer";
-  const activeTab = legacyObserver ? "Observers" : ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS.includes("Packets") ? "Packets" : ENABLED_TABS[0] ?? "Packets");
+  const activeTab = ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS.includes("Packets") ? "Packets" : ENABLED_TABS[0] ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
 
@@ -170,9 +169,6 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
   const analyzerHash = searchParams.get("analyze") === "1" ? searchParams.get("hash") : null;
   const [selectedObservationId, setSelectedObservationId] = useState<number | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => searchParams.get("node"));
-  useEffect(() => {
-    if (legacyObserver) setSearchParams(observerDestination(searchParams, searchParams.get("observerId")), { replace: true });
-  }, [legacyObserver, searchParams, setSearchParams]);
   const [panels, setPanels] = useState<Investigation[]>([]);
   const scene = JSON.stringify([activeTab, searchParams.get("route"), searchParams.get("hash"), searchParams.get("node"), searchParams.get("observer"), searchParams.get("analyze")]);
   const [panelScene, setPanelScene] = useState(scene);
@@ -319,7 +315,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
     Traces: <TraceList onAnalyze={hash => { if (hash) viewPacket(hash); }} onViewNode={viewNode} />,
     Channels: <ChannelList wsManager={wsManager} onAnalyze={handleAnalyze} />,
-    Analytics: <StatsOverview wsManager={wsManager} onObserverDashboard={handleViewObserverStats} />,
+    Analytics: <StatsOverview wsManager={wsManager} />,
     Map: <MapView wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
   };
 

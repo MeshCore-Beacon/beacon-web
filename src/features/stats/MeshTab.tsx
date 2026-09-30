@@ -124,7 +124,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const ovWindow = `${ov?.windowHours ?? 24}h`;
 
   return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-3.5 px-4 py-4">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.totalPackets)} />
         <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.totalObservations)} spark={obsSpark} />

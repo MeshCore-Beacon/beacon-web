@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { InfoTip } from "../../components/InfoTip";
 import { formatCount } from "../../lib/formatters";
 import { useStatsObservations } from "./useStats";
 import { tooltipStyle, useChartColors } from "./chartTheme";
@@ -26,7 +27,7 @@ export function TrafficTab({ range }: { range: StatsRange }) {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h2 className="text-lg font-semibold text-text-bright">{t("stats.tabs.traffic")}</h2><p className="text-sm text-text-muted">{t("traffic.subtitle")}</p></div>
+        <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("stats.tabs.traffic")}</h2><InfoTip text={[t("traffic.subtitle"), t("traffic.measurement")]} /></div>
         <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching || query.isPending} className="rounded border border-border px-3 py-1.5 text-xs text-text-normal hover:bg-bg-raised disabled:opacity-50">{t("traffic.refresh")}</button>
       </div>
       {query.isError && <p role="alert" className="text-sm text-danger">{t("traffic.error")}</p>}
@@ -36,12 +37,11 @@ export function TrafficTab({ range }: { range: StatsRange }) {
         <StatCard label={t("traffic.busiestHour")} value={unavailable || !model.peak ? "—" : formatCount(model.peak.total)} accent={colors.secondary} />
         <StatCard label={t("traffic.hoursWithRecords")} value={unavailable ? "—" : `${model.reportedHours}/${model.hours.length}`} accent={colors.warn} />
       </div>
-      <p className="text-xs leading-relaxed text-text-muted">{t("traffic.measurement")}</p>
       <ChartCard title={t("traffic.trendTitle")} right={<span className="text-[10px] text-text-muted">{t("traffic.hourlyRecords")}</span>} option={trend} height={260} isLoading={loading} isError={query.isError} isEmpty={!model.total} />
       <ChartCard title={t("traffic.hourlyTitle", { range: t(`stats.ranges.${range}`) })} option={heatmap} height={Math.max(150, model.days.length * 15 + 72)} isLoading={loading} isError={query.isError} isEmpty={!model.total} />
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         <ChartCard title={t("traffic.shareTitle")} option={share} height={260} isLoading={loading} isError={query.isError} isEmpty={!model.total} />
-        <Card title={t("traffic.byIata")}>
+        <Card title={t("traffic.byIata")} right={<InfoTip text={t("traffic.groupingHelp")} />}>
           {unavailable ? <p className="py-6 text-sm text-text-muted">{query.isError ? t("common.dataUnavailable") : t("traffic.loading")}</p> : !model.areas.length ? <p className="py-6 text-sm text-text-muted">{t("traffic.empty")}</p> : (
             <div className="max-h-[300px] overflow-y-auto"><table aria-label={t("traffic.byIata")} className="w-full text-left font-mono text-xs">
               <thead className="text-text-muted"><tr><th scope="col" className="py-2">IATA</th><th scope="col" className="pl-2 text-right">{t("traffic.receptionsColumn")}</th><th scope="col" className="pl-2 text-right">{t("traffic.share")}</th></tr></thead>
@@ -51,7 +51,6 @@ export function TrafficTab({ range }: { range: StatsRange }) {
               </tr>)}</tbody>
             </table></div>
           )}
-          <p className="mt-2 text-[11px] text-text-muted">{t("traffic.groupingHelp")}</p>
         </Card>
       </div>
     </div>

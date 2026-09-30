@@ -78,7 +78,8 @@ it("shows exact scope counts, keeps membership semantics explicit and filters th
   const table = screen.getByRole("table", { name: "Scope counts" });
   expect(within(table).getByRole("row", { name: /#west.*3.*2.*2/ })).toBeInTheDocument();
   expect(screen.getByText("Observer memberships")).toBeInTheDocument();
-  expect(screen.getByText(/An observer can appear/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /An observer can appear/ })).toBeInTheDocument();
+  expect(screen.queryByText(/An observer can appear/, { selector: "p" })).not.toBeInTheDocument();
   expect(screen.getByText(/Retained data/)).toBeInTheDocument();
   fireEvent.change(screen.getByRole("searchbox", { name: "Find a scope" }), { target: { value: "WEST" } });
   expect(screen.queryByText("#east")).not.toBeInTheDocument();

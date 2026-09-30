@@ -34,6 +34,15 @@ function MeshIcon() {
   );
 }
 
+function ObserverIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
+      <circle cx="7" cy="9.5" r="1.4" />
+      <path d="M7 8V4M4.5 6.5a3.5 3.5 0 0 1 5 0M2.7 4.7a6 6 0 0 1 8.6 0" strokeOpacity="0.85" />
+    </svg>
+  );
+}
+
 function SignalIcon() {
   return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden>
     <path d="M1 7h2l2-4 3.5 8L11 5l1 2h1" strokeLinecap="round" strokeLinejoin="round" />
@@ -86,6 +95,7 @@ const TAB_OPTIONS = [
   { value: "scopes", icon: <ScopesIcon /> },
   { value: "talkers", icon: <TalkersIcon /> },
   { value: "clockdrift", icon: <ClockDriftIcon /> },
+  { value: "observer", icon: <ObserverIcon /> },
   { value: "compare", icon: <CompareIcon /> },
   { value: "graph", icon: <GraphIcon /> },
 ];

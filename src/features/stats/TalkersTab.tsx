@@ -65,7 +65,7 @@ export function TalkersTab({ range }: TalkersTabProps) {
   const talkersOption = useMemo(() => leaderboardOption(talkerRows, colors), [talkerRows, colors]);
 
   return (
-    <div className="mx-auto grid max-w-[1100px] grid-cols-1 items-start gap-3.5 px-4 py-4 lg:grid-cols-2">
+    <div className="mx-auto grid w-full min-w-0 max-w-[1200px] grid-cols-1 items-start gap-3.5 p-4 lg:grid-cols-2">
       <Card title={<>Top advertisers · {range}</>} right={<span className="font-mono text-[10px] text-text-muted">flood · direct</span>}>
         <div className="flex flex-col" style={{ height: leaderboardHeight(advertisers.length) }}>
           <DataTable

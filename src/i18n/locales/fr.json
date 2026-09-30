@@ -46,7 +46,8 @@
       "loading": "Chargement…",
       "loadFailed": "Échec du chargement",
       "noData": "Aucune donnée",
-      "dataUnavailable": "Données indisponibles"
+      "dataUnavailable": "Données indisponibles",
+      "info": "Plus d’informations"
     },
     "mesh": {
       "totalPackets": "Paquets totaux",
@@ -320,7 +321,9 @@
       "day": "jour",
       "returnTo": "Retour à « {{page}} »",
       "directory": "Tous les observateurs",
-      "sidebarSearch": "Rechercher les observateurs"
+      "sidebarSearch": "Rechercher les observateurs",
+      "noMatches": "Aucun résultat",
+      "none": "Aucun observateur"
     },
     "observerCompare": {
       "open": "Comparer avec…",
@@ -436,6 +439,9 @@
       "emptyNoKey": "Aucun message déchiffré n’est disponible sans clé de canal connue.",
       "error": "Impossible de charger les messages.",
       "retry": "Réessayer"
+    },
+    "header": {
+      "settings": "Réglages"
     }
   }
 }
