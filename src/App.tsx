@@ -211,7 +211,7 @@ function AppInner({ observerVisit, onObserverDashboard, onReturn, onExitVisit }:
       if (id == null) next.delete("observation"); else next.set("observation", String(id));
       return next;
     }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, setSelectedObservationId]);
 
   const handleAnalyze = useCallback((hash: string | null, observationId?: number) => {
     // No reset: observation ids are globally unique, so a pick inside an expanded row survives into the drawer.
