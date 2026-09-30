@@ -124,3 +124,11 @@ describe("PacketTableRow", () => {
     expect(screen.getByText("Unknown")).toBeInTheDocument();
   });
 });
+
+it("keeps long route labels inside their dedicated track beside a scope", () => {
+  render(<PacketTableRow packet={pkt({ routeTypeName: "TRANSPORT_FLOOD", scope: "#ykf" })} expanded={false} onToggle={() => {}} />);
+  const route = screen.getByText("TRANSPORT_FLOOD");
+  expect(route).toHaveClass("truncate");
+  expect(route.parentElement).toHaveClass("min-w-0");
+  expect(screen.getByText("#ykf")).toBeInTheDocument();
+});
