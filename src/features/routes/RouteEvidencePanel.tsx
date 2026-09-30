@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -19,11 +20,12 @@ export interface RouteActions {
 export function RouteEvidencePanel({ iata, pathKey, onClose, onAnalyzePacket, onViewObserver, onViewNode }: RouteActions & { iata: string; pathKey: string; onClose: () => void }) {
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
+  const [openedAt] = useState(Date.now);
   const range = params.get("routeRange") === "7d" ? "7d" : params.get("routeRange") === "30d" ? "30d" : "24h";
   const rawSince = params.get("routeSince"), rawUntil = params.get("routeUntil");
   const fixed = rawSince !== null || rawUntil !== null;
   const since = Number(rawSince), until = Number(rawUntil);
-  const invalid = fixed && (!rawSince || !rawUntil || !/^\d+$/.test(rawSince) || !/^\d+$/.test(rawUntil) || !Number.isSafeInteger(since) || !Number.isSafeInteger(until) || until <= since || until > Date.now() || until - since > 30 * 86400000);
+  const invalid = fixed && (!rawSince || !rawUntil || !/^\d+$/.test(rawSince) || !/^\d+$/.test(rawUntil) || !Number.isSafeInteger(since) || !Number.isSafeInteger(until) || until <= since || until > openedAt || until - since > 30 * 86400000);
   const query = useInfiniteQuery({
     queryKey: ["route-evidence", iata, pathKey, range, rawSince, rawUntil],
     queryFn: ({ pageParam, signal }) => getRouteEvidence(iata, pathKey, pageParam ? { pageCursor: pageParam, limit: 50 } : fixed ? { since, until, limit: 50 } : { range: range === "7d" ? "168h" : range === "30d" ? "720h" : "24h", limit: 50 }, signal),

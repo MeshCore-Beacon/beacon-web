@@ -352,7 +352,7 @@ export function RouteTable(actions: RouteActions) {
             )}
           </div>
         )}
-        {pathKey && routeIata ? <RouteEvidencePanel iata={routeIata} pathKey={pathKey} onClose={closeRoute} {...actions} /> : selectedRoute && (
+        {pathKey && routeIata ? <RouteEvidencePanel key={[routeIata, pathKey, params.get("routeSince"), params.get("routeUntil")].join(":")} iata={routeIata} pathKey={pathKey} onClose={closeRoute} {...actions} /> : selectedRoute && (
           <RouteDetailPanel route={selectedRoute} onClose={() => setSelectedKey(null)} />
         )}
       </div>
