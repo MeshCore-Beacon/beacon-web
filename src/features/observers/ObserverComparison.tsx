@@ -20,7 +20,7 @@ function statusNoise(observer: Observer) {
 
 export function ObserverComparison({ observerA, activityA, range, observerBId, until, onSelect, onRefresh }: {
   observerA: Observer; activityA?: ObserverActivity; range: StatsRange; observerBId: string; until: number | null;
-  onSelect: (id: string) => void; onRefresh: () => void;
+  onSelect: (id: string) => void; onRefresh: () => number;
 }) {
   const { t, i18n } = useTranslation(); const colors = useChartColors();
   const valid = until != null && uuid.test(observerA.id) && uuid.test(observerBId) && observerA.id.toLowerCase() !== observerBId.toLowerCase();
@@ -56,7 +56,16 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
     { label: t("observerCompare.both"), count: overlap.data.both, color: colors.green },
     { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.secondary },
   ] : [];
-  const refresh = () => { onRefresh(); if (valid) { void b.refetch(); void activityB.refetch(); if (aligned) void overlap.refetch(); } };
+  const refresh = () => {
+    const nextUntil = onRefresh();
+    if (valid) {
+      void b.refetch();
+      if (nextUntil === until) {
+        void activityB.refetch();
+        if (aligned) void overlap.refetch();
+      }
+    }
+  };
   const rows = aligned && b.data ? [
     [t("observerPage.records"), activityA!.summary!.recordedPackets.toLocaleString(i18n.resolvedLanguage), dataB!.summary!.recordedPackets.toLocaleString(i18n.resolvedLanguage)],
     [t("observerPage.lastHour"), `${activityA!.summary!.lastCompleteHour.toLocaleString(i18n.resolvedLanguage)} (${date(activityA!.summary!.lastCompleteHourStart)})`, `${dataB!.summary!.lastCompleteHour.toLocaleString(i18n.resolvedLanguage)} (${date(dataB!.summary!.lastCompleteHourStart)})`],

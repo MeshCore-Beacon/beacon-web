@@ -33,7 +33,7 @@ interface ObserverTabProps {
   selectedObserverId: string | null;
   onSelectObserver: (id: string) => void;
   wsManager: WsManager;
-  comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => void };
+  comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => number };
 }
 export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsManager, comparison }: ObserverTabProps) {
   const { t, i18n } = useTranslation();
@@ -160,7 +160,13 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
         )}
         <p>{t("observerPage.windowHelp")}</p>
       </div>
-      {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={comparison.onRefresh} />}
+      {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => {
+        const nextUntil = comparison.onRefresh();
+        void observer.refetch();
+        void telemetry.refetch();
+        if (nextUntil === comparison.until) void activity.refetch();
+        return nextUntil;
+      }} />}
       {heardUnavailable ? (
         <Card title={t("observerPage.records")}>
           <p className="text-sm text-text-muted">{t("observerPage.summaryMissing")}</p>

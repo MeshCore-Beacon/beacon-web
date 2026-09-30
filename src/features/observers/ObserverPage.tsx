@@ -44,6 +44,7 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
       next.set("compareUntil", String(hourAt(clickedAt)));
       return next;
     }, { replace: true });
+    return hourAt(clickedAt);
   };
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col">
     {/* Keep the directory mounted so Back restores filters, sorting and scroll. */}

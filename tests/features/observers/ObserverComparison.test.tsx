@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 function view(id = B, data = activity, anchor: number | null = until) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const props = { observerA: observer, activityA: data, range: "7d" as const, observerBId: id, until: anchor, onSelect: vi.fn(), onRefresh: vi.fn() };
+  const props = { observerA: observer, activityA: data, range: "7d" as const, observerBId: id, until: anchor, onSelect: vi.fn(), onRefresh: vi.fn(() => anchor ?? until) };
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   return { ...render(<ObserverComparison {...props} />, { wrapper }), props };
 }
@@ -69,4 +69,19 @@ it("clears the previous partner's totals while the next request is pending", asy
   rerender(<ObserverComparison {...props} observerBId="33333333-3333-3333-3333-333333333333" />);
   await waitFor(() => expect(screen.queryByText("23")).not.toBeInTheDocument());
   expect(screen.queryByText("9 distinct flood packets")).not.toBeInTheDocument();
+});
+
+it("refreshes the current window without requesting the obsolete window after re-anchoring", async () => {
+  const { props } = view();
+  await waitFor(() => expect(getObserverComparison).toHaveBeenCalledTimes(1));
+  const activityCalls = vi.mocked(getObserverActivity).mock.calls.length;
+  props.onRefresh.mockReturnValue(until + 3_600_000);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh both observers" }));
+  expect(getObserverActivity).toHaveBeenCalledTimes(activityCalls);
+  expect(getObserverComparison).toHaveBeenCalledTimes(1);
+
+  props.onRefresh.mockReturnValue(until);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh both observers" }));
+  await waitFor(() => expect(getObserverActivity).toHaveBeenCalledTimes(activityCalls + 1));
+  expect(getObserverComparison).toHaveBeenCalledTimes(2);
 });
