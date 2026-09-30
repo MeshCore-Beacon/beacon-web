@@ -32,6 +32,7 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
   if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
   const select = (observer: string | null) => setParams(observerDestination(params, observer, range), visitOptions);
   const compare = (observer: string) => {
+    // eslint-disable-next-line react-hooks/purity -- Capture time when the user invokes this event callback.
     const clickedAt = Date.now();
     setActionTime(clickedAt);
     setParams(old => {
