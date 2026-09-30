@@ -6,12 +6,13 @@ import i18n from "../../../src/i18n";
 afterEach(() => vi.restoreAllMocks());
 
 describe("translated analytics controls", () => {
-  it("limits observer periods while keeping archived analytics ranges", async () => {
+  it("keeps archived analytics ranges without the legacy Observer destination", async () => {
     const props = { onTabChange: vi.fn(), onRangeChange: vi.fn() };
-    const { rerender } = render(<StatsSubHeader {...props} tab="observer" range="3d" />);
+    const { rerender } = render(<StatsSubHeader {...props} tab="mesh" range="3d" />);
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "30d" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30d" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Observer", exact: true })).not.toBeInTheDocument();
     await act(() => i18n.changeLanguage("fr"));
     fireEvent.click(screen.getByRole("button", { name: "3 j" }));
     expect(props.onRangeChange).toHaveBeenCalledWith("3d");
