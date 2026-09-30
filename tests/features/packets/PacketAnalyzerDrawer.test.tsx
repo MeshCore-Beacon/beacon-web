@@ -57,6 +57,14 @@ describe("packet reception evidence", () => {
     fireEvent.click(within(beta).getByRole("button", { name: "Map report" })); expect(onViewPath).toHaveBeenCalledWith("beta");
     expect(screen.getByTestId("search")).toHaveTextContent("observation=2"); expect(screen.getByTestId("search")).toHaveTextContent("q=keep");
   });
+  it("keeps the evidence notes in an info tip instead of paragraphs", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewPath={() => {}} /></MemoryRouter>);
+    const section = screen.getByRole("region", { name: "Reception evidence" });
+    expect(within(section).getByRole("button", { name: /Grouped by path prefixes.*Reports include all received regions/ })).toBeInTheDocument();
+    expect(within(section).queryByText(/Grouped by path prefixes/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Reports include all received regions/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Mapping needs at least two/, { selector: "p" })).not.toBeInTheDocument();
+  });
   it("reports an expired selection without quietly showing another report", () => {
     render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=99"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
     expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");

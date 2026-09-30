@@ -29,12 +29,11 @@ function senderColor(name: string): string {
 // Packet hash also identifies messages delivered by older servers without a live ID.
 function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heardCount?: number; onAnalyze?: (hash: string) => void }) {
   const { t } = useTranslation();
-  const scopeLabel = msg.scope ?? t(msg.scopeStatus === "unscoped" ? "channelMessages.unscoped" : msg.scopeStatus === "unknown" ? "channelMessages.unknownScope" : "channelMessages.unavailableScope");
   // REST carries the server-side total; the live WS counter augments it during the session
   const reach = Math.max(msg.observationCount ?? 0, heardCount ?? 0);
   return (
     <div
-      className={`px-3 py-2${onAnalyze ? " cursor-pointer hover:bg-bg-surface transition-colors" : ""}`}
+      className={`group px-3 py-2${onAnalyze ? " cursor-pointer hover:bg-bg-surface transition-colors" : ""}`}
       onClick={onAnalyze ? () => onAnalyze(msg.packetHash) : undefined}
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -43,10 +42,12 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
         </span>
         <Timestamp value={msg.sentAt} className="text-[11px] text-text-dim" />
         {reach > 0 && <Badge variant="text">×{reach}</Badge>}
-        {msg.scope ? <ScopeTag className="max-w-full break-all">{scopeLabel}</ScopeTag> : <span className="text-[11px] text-text-muted">{scopeLabel}</span>}
+        {/* Unscoped is the default, so only a named or unresolved scope earns a chip. */}
+        {msg.scope ? <ScopeTag className="max-w-full break-all">{msg.scope}</ScopeTag>
+          : msg.scopeStatus === "unknown" && <span className="rounded-sm bg-text-normal/5 px-1.5 py-px font-mono text-[11px] text-text-dim">{t("channelMessages.unknownScope")}</span>}
         {onAnalyze && <button type="button" aria-label={t("channelMessages.inspect", { sender: msg.senderName })}
-          className="text-[11px] text-primary underline cursor-pointer"
-          onClick={(event) => { event.stopPropagation(); onAnalyze(msg.packetHash); }}>{t("channelMessages.packet")}</button>}
+          className="ml-auto shrink-0 cursor-pointer font-mono text-[11px] text-text-dim transition-colors hover:text-primary group-hover:text-primary"
+          onClick={(event) => { event.stopPropagation(); onAnalyze(msg.packetHash); }}>{t("channelMessages.viewPacket")} ›</button>}
       </div>
       <div className="text-text-normal text-xs mt-0.5 whitespace-pre-wrap break-words">{msg.content}</div>
     </div>

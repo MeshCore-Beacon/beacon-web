@@ -1,12 +1,11 @@
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
 import { CopyButton } from "../../components/CopyButton";
 import { formatAbsolute, formatBattery, formatRadioParts, formatUptime, formatUtc, timeAgoParts } from "../../lib/formatters";
 import { useTick } from "../../hooks/useTick";
 import { observerNoiseFloor } from "./observer-stats";
-import { Card } from "../stats/cards";
 import { Tooltip } from "../../components/Tooltip";
-import { Field } from "../../components/DetailPanel";
 import { IataChip } from "../../components/IataChip";
 import type { Observer } from "./types";
 import type { ObserverActivity, TelemetryPoint } from "../stats/types";
@@ -28,6 +27,15 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
     const { count, unit } = timeAgoParts(at);
     return t("timestamp.ago", { duration: t(`timestamp.unit.${unit}`, { count }) });
   };
+  const headingId = useId();
+  const radio = formatRadioParts({ freqMhz: observer.radioFreqMhz, sf: observer.radioSf, bwKhz: observer.radioBwKhz, cr: observer.radioCr });
+  const client = observer.softwareVersion && !(observer.firmwareVersion && observer.softwareVersion.includes(observer.firmwareVersion)) ? observer.softwareVersion : null;
+  const device = ([
+    [t("observerPage.model"), observer.hardwareModel],
+    [t("observerPage.firmware"), observer.firmwareVersion],
+    [t("observerPage.client"), client],
+    [t("observerPage.radio"), radio],
+  ] as const).filter((item): item is readonly [string, string] => !!item[1]);
   const hour = (at: number) => formatUtc(at, { timeOnly: true }).slice(0, 2);
   const cards: { key: string; label: string; value: string; title?: string }[] = [
     { key: "records", label: t("observerPage.records"), value: summary?.recordedPackets.toLocaleString(i18n.resolvedLanguage) ?? "—" },
@@ -51,13 +59,36 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
     },
   ];
   return <>
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-      <h1 className="min-w-0 break-words text-lg font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
-      <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
-      </span>
-      <IataChip>{observer.iata}</IataChip>
-    </div>
+    <section aria-labelledby={headingId} className="flex flex-col gap-2 rounded-lg border border-border bg-bg-surface px-3.5 py-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+        <h1 id={headingId} className="min-w-0 break-words text-lg font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
+        <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
+        </span>
+        <IataChip>{observer.iata}</IataChip>
+      </div>
+      {device.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 font-mono text-[12px] text-text-normal">
+          {device.map(([label, value]) => <Tooltip key={label} label={label}><span className="rounded-sm bg-bg-raised px-1.5 py-0.5">{value}</span></Tooltip>)}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-[11px] text-text-muted">
+        {observer.publicKey && <span className="inline-flex items-center gap-2">
+          <Tooltip label={observer.publicKey}><code className="text-text-normal">{observer.publicKey.slice(0, 8)}…{observer.publicKey.slice(-7)}</code></Tooltip>
+          <CopyButton value={observer.publicKey} label={t("observerPage.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyKey")} />
+        </span>}
+        {(observer.brokers ?? []).map((b) => (
+          <Tooltip key={b.name} label={`${t("observerPage.packetArrival")}: ${b.lastPacketAt > 0 ? ago(b.lastPacketAt) : "—"}`}>
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${now - b.lastSeenAt < 300_000 ? "bg-green" : "bg-warn"}`} />
+              <span className="text-text-normal">{b.name}</span>
+              <Timestamp value={b.lastSeenAt} />
+            </span>
+          </Tooltip>
+        ))}
+        <span>{t("observerPage.firstSeen")} {observer.firstSeen ? <Timestamp value={observer.firstSeen} className="text-text-normal" /> : "—"}</span>
+      </div>
+    </section>
     <ul role="list" aria-label={t("observerPage.metrics")} className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
       {cards.map(({ key, label, value, title }) => {
         const shown = <span className="font-mono text-xl font-bold tabular-nums text-text-bright sm:text-2xl"><Measure text={value} /></span>;
@@ -69,17 +100,4 @@ export function ObserverSummary({ observer, activity, points, pending = false }:
     </ul>
     {!summary && !pending && <p className="text-sm text-text-muted">{t("observerPage.summaryMissing")}</p>}
   </>;
-}
-
-export function ObserverDeviceDetails({ observer }: { observer: Observer }) {
-  const { t } = useTranslation();
-  const radio = formatRadioParts({ freqMhz: observer.radioFreqMhz, sf: observer.radioSf, bwKhz: observer.radioBwKhz, cr: observer.radioCr });
-  return <Card title={t("observerPage.details")}>
-    <div className="grid gap-x-4 gap-y-0.5 font-mono text-[13px] sm:grid-cols-2">
-      {([ ["model", observer.hardwareModel], ["firmware", observer.firmwareVersion], ["client", observer.softwareVersion], ["radio", radio] ] as const).map(([key, value]) => <Field key={key} label={t(`observerPage.${key}`)} value={value ?? "—"} />)}
-      <div className="min-w-0 sm:col-span-2"><Field label={t("observerPage.publicKey")} value={<span className="inline-flex items-center gap-2"><code className="min-w-0 break-all">{observer.publicKey}</code><CopyButton value={observer.publicKey} label={t("observerPage.copy")} copiedLabel={t("observerPage.copied")} /></span>} /></div>
-      <Field label={t("observerPage.firstSeen")} value={<Timestamp value={observer.firstSeen} />} />
-    </div>
-    <ul className="mt-3 space-y-1.5 font-mono text-[11px]">{observer.brokers.map(b => <li key={b.name} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border-subtle pt-1.5"><strong className="text-text-normal">{b.name}</strong><span>{t("observerPage.presence")}: <Timestamp value={b.lastSeenAt} /></span><span>{t("observerPage.packetArrival")}: {b.lastPacketAt > 0 ? <Timestamp value={b.lastPacketAt} /> : "—"}</span></li>)}</ul>
-  </Card>;
 }

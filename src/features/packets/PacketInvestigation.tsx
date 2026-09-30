@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
+import { InfoTip } from "../../components/InfoTip";
+import { Tooltip } from "../../components/Tooltip";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType } from "../../types/enums";
 import { groupPacketReports } from "./packet-investigation";
@@ -17,9 +19,11 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? groups : groups.filter((group, index) => index < 3 || group.reports.some(o => o.id === selectedId));
   return <section aria-label={t("investigation.title")} className="space-y-3 border-b border-border-subtle px-3 py-3">
-    <h2 className="text-sm font-semibold text-text-bright">{t("investigation.title")}</h2>
+    <div className="flex items-center gap-2">
+      <h2 className="text-sm font-semibold text-text-bright">{t("investigation.title")}</h2>
+      <InfoTip text={[t(isTrace ? "investigation.traceNote" : "investigation.pathNote"), t("investigation.retention")]} />
+    </div>
     <p className="text-xs text-text-normal">{t("investigation.reports", { count: detail.observations.length })} · {t("investigation.observers", { count: observerCount })}</p>
-    <p className="text-xs leading-relaxed text-text-muted">{t(isTrace ? "investigation.traceNote" : "investigation.pathNote")}</p>
     {groups.length === 0 ? <p role="status" className="text-sm text-text-muted">{t("investigation.empty")}</p> : visible.map(group => <details key={group.key} open={group.reports.some(o => o.id === selectedId)} className="rounded border border-border bg-bg-base p-2">
       <summary className="cursor-pointer text-xs text-text-normal">
         {t(group.kind === "empty" ? "investigation.noEntries" : group.kind === "unavailable" ? "investigation.unavailablePath" : isTrace ? "investigation.tracePath" : "investigation.path", { number: groups.indexOf(group) + 1 })}
@@ -34,13 +38,13 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
           <div className="flex flex-wrap gap-2">
             <button type="button" className={ACTION_BUTTON_CLASS} aria-pressed={report.id === selectedId} onClick={() => onSelect(report.id)}>{t("investigation.inspect")}</button>
             {onViewObserver && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => { onSelect(report.id); onViewObserver(report.observerId); }}>{t("investigation.observer")}</button>}
-            <button type="button" className={ACTION_BUTTON_CLASS} disabled={!canMap || !onViewPath} onClick={() => { onSelect(report.id); onViewPath?.(key); }}>{t("investigation.map")}</button>
+            {canMap
+              ? <button type="button" className={ACTION_BUTTON_CLASS} disabled={!onViewPath} onClick={() => { onSelect(report.id); onViewPath?.(key); }}>{t("investigation.map")}</button>
+              : <Tooltip wrap label={t("investigation.unmappable")}><button type="button" className={`${ACTION_BUTTON_CLASS} pointer-events-none`} disabled>{t("investigation.map")}<span className="sr-only">: {t("investigation.unmappable")}</span></button></Tooltip>}
           </div>
-          {!canMap && <p className="text-xs text-text-muted">{t("investigation.unmappable")}</p>}
         </li>;
       })}</ul>
     </details>)}
     {groups.length > 3 && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => setShowAll(value => !value)}>{t(showAll ? "investigation.fewer" : "investigation.showAll", { count: groups.length })}</button>}
-    <p className="text-xs leading-relaxed text-text-muted">{t("investigation.retention")}</p>
   </section>;
 }

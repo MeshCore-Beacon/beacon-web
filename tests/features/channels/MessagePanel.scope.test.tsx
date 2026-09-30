@@ -52,23 +52,24 @@ beforeEach(() => {
 });
 
 describe("channel scope evidence", () => {
-  it("distinguishes matched, unscoped, unresolved and legacy metadata, with keyboard packet inspection", async () => {
+  it("chips matched and unresolved scopes, leaves the unscoped default and legacy rows unlabelled, and offers packet inspection", async () => {
     const inspect = vi.fn();
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" onAnalyze={inspect} />);
     expect(await screen.findByText("#yow")).toBeInTheDocument();
-    expect(screen.getByText("No transport scope")).toBeInTheDocument();
     expect(screen.getByText("Unresolved scope")).toBeInTheDocument();
-    expect(screen.getByText("Scope unavailable")).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Inspect packet from Fixture" })[0]!);
+    expect(screen.queryByText("No transport scope")).not.toBeInTheDocument();
+    expect(screen.queryByText("Scope unavailable")).not.toBeInTheDocument();
+    const view = screen.getAllByRole("button", { name: "Inspect packet from Fixture" })[0]!;
+    expect(view).toHaveTextContent("View packet");
+    expect(view).not.toHaveClass("underline");
+    fireEvent.click(view);
     expect(inspect).toHaveBeenCalledTimes(1);
   });
   it("switches French labels without refetching or changing protocol names", async () => {
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
     await screen.findByText("#yow");
     await act(() => i18n.changeLanguage("fr"));
-    expect(screen.getByText("Sans portée de transport")).toBeInTheDocument();
     expect(screen.getByText("Portée non résolue")).toBeInTheDocument();
-    expect(screen.getByText("Portée indisponible")).toBeInTheDocument();
     expect(screen.getByText("#yow")).toBeInTheDocument();
     expect(getChannelMessagesPage).toHaveBeenCalledTimes(1);
   });
@@ -78,13 +79,13 @@ describe("channel scope evidence", () => {
     );
     const { client } = show(<ChannelList wsManager={{} as WsManager} onAnalyze={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /#test/ }));
-    await screen.findByText("No transport scope");
+    await screen.findByText("Unresolved scope");
     fireEvent.click(screen.getByRole("button", { name: /Transport scope.*All scopes/ }));
     fireEvent.click(screen.getByRole("option", { name: "#yow", exact: true }));
     await waitFor(() =>
       expect(getChannelMessagesPage).toHaveBeenLastCalledWith(1, expect.objectContaining({ scope: "#yow" })),
     );
-    await waitFor(() => expect(screen.queryByText("No transport scope")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Unresolved scope")).not.toBeInTheDocument());
     await waitFor(() => expect(client.getQueryData(["channel-messages", 1, "YOW", "#yow"])).toBeDefined());
     const event = {
       ...base,

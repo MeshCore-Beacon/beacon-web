@@ -21,10 +21,10 @@ describe("filterEnabledTabs", () => {
 
   it("excludes named tabs case-insensitively", () => {
     expect(filterEnabledTabs(TABS, "map,nodes")).toEqual([
-      "Observers", "Packets", "Channels", "Routes", "Traces", "Analytics",
+      "Packets", "Channels", "Observers", "Routes", "Traces", "Analytics",
     ]);
     expect(filterEnabledTabs(TABS, "MAP , NODES")).toEqual([
-      "Observers", "Packets", "Channels", "Routes", "Traces", "Analytics",
+      "Packets", "Channels", "Observers", "Routes", "Traces", "Analytics",
     ]);
   });
 

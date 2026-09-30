@@ -288,7 +288,6 @@
       "signal": "Signal reçu",
       "airtime": "Temps radio TX / RX",
       "device": "Télémétrie de l’appareil",
-      "details": "Détails de l’appareil",
       "queue": "File d’attente",
       "errors": "Erreurs de réception",
       "busy": "Occupation du canal",
@@ -304,7 +303,6 @@
       "publicKey": "Clé publique",
       "copy": "Copier",
       "copied": "Copié",
-      "presence": "Dernier contact",
       "packetArrival": "Réception de paquet",
       "firstSeen": "Première réception",
       "copyLink": "Copier le lien de l’observateur",
@@ -322,7 +320,8 @@
       "noMatches": "Aucun résultat",
       "none": "Aucun observateur",
       "hourWindow": "Paquets {{start}}–{{end}} h UTC",
-      "lastNoise": "Dernier bruit de fond"
+      "lastNoise": "Dernier bruit de fond",
+      "copyKey": "Copier la clé publique"
     },
     "observerCompare": {
       "open": "Comparer avec…",
@@ -425,11 +424,8 @@
       "keyMissing": "Aucune clé de déchiffrement n’est configurée pour ce canal.",
       "scope": "Portée de transport",
       "allScopes": "Toutes les portées",
-      "unscoped": "Sans portée de transport",
       "unknownScope": "Portée non résolue",
-      "unavailableScope": "Portée indisponible",
       "inspect": "Inspecter le paquet de {{sender}}",
-      "packet": "Paquet",
       "loading": "Chargement des messages…",
       "loadingOlder": "Chargement des messages plus anciens… ({{count}} affichés)",
       "loadOlder": "Charger les messages plus anciens",
@@ -437,7 +433,8 @@
       "emptyScope": "Aucun message conservé ne correspond à {{scope}}.",
       "emptyNoKey": "Aucun message déchiffré n’est disponible sans clé de canal connue.",
       "error": "Impossible de charger les messages.",
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "viewPacket": "Voir le paquet"
     },
     "header": {
       "settings": "Réglages"

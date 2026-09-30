@@ -284,7 +284,6 @@
       "signal": "Received signal",
       "airtime": "Airtime TX / RX",
       "device": "Device telemetry",
-      "details": "Device details",
       "queue": "Queue length",
       "errors": "Receive errors",
       "busy": "Channel busy",
@@ -300,7 +299,6 @@
       "publicKey": "Public key",
       "copy": "Copy",
       "copied": "Copied",
-      "presence": "Last contact",
       "packetArrival": "Packet arrival",
       "firstSeen": "First seen",
       "copyLink": "Copy observer link",
@@ -318,7 +316,8 @@
       "noMatches": "No matches",
       "none": "No observers",
       "hourWindow": "Packets {{start}}–{{end}} UTC",
-      "lastNoise": "Last noise floor"
+      "lastNoise": "Last noise floor",
+      "copyKey": "Copy public key"
     },
     "observerCompare": {
       "open": "Compare with…",
@@ -421,11 +420,8 @@
       "keyMissing": "No decryption key is configured for this channel.",
       "scope": "Transport scope",
       "allScopes": "All scopes",
-      "unscoped": "No transport scope",
       "unknownScope": "Unresolved scope",
-      "unavailableScope": "Scope unavailable",
       "inspect": "Inspect packet from {{sender}}",
-      "packet": "Packet",
       "loading": "Loading messages…",
       "loadingOlder": "Loading older messages… ({{count}} shown)",
       "loadOlder": "Load older messages",
@@ -433,7 +429,8 @@
       "emptyScope": "No retained messages match {{scope}}.",
       "emptyNoKey": "No decrypted messages are available without a known channel key.",
       "error": "Could not load messages.",
-      "retry": "Retry"
+      "retry": "Retry",
+      "viewPacket": "View packet"
     },
     "header": {
       "settings": "Settings"

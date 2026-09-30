@@ -202,7 +202,8 @@ describe("Observer dashboard hierarchy", () => {
     await i18n.changeLanguage("fr");
     renderTab();
     expect(screen.getByText("Paquets enregistrés")).toBeInTheDocument();
-    expect(screen.getByText("Détails de l’appareil")).toBeInTheDocument();
+    expect(screen.queryByText("Détails de l’appareil")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copier la clé publique/ })).toBeInTheDocument();
   });
 
   it("keeps packet metrics without the removed traffic text badge", () => {

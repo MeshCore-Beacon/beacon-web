@@ -5,7 +5,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatRadioParts } from "../../lib/formatters";
 import { ObserverComparison } from "../observers/ObserverComparison";
-import { ObserverSummary, ObserverDeviceDetails } from "../observers/ObserverSummary";
+import { ObserverSummary } from "../observers/ObserverSummary";
 import { useChartColors } from "./chartTheme";
 import { activityParamsFor, useObserver, useObserverActivity, useObserverTelemetry } from "./useTelemetry";
 import {
@@ -264,7 +264,6 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
           isError={!heardData && activity.isError}
         />
       )}
-      <ObserverDeviceDetails observer={observer.data} />
     </section>
   );
 }
