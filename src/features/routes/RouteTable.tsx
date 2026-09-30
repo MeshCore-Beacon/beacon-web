@@ -143,7 +143,7 @@ function directedPairs(iatas: string[]): [string, string][] {
 }
 
 export function RouteTable(actions: RouteActions) {
-  const { iatas, regionKey } = useRegion();
+  const { iatas } = useRegion();
   const { selection } = useRegionSelection();
   const [params, setParams] = useSearchParams();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
