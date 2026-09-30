@@ -233,7 +233,7 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
 
 export async function getObserver(observerId: string): Promise<Observer> {
   const observer = await request<Observer>(`/observers/${observerId}`);
-  // The server marshals the stored JSON byte slice as base64; decode it, and accept an object once json.RawMessage ships.
+  // Servers before json.RawMessage (and cache entries written by them) send the stored JSON as base64.
   let metadata: unknown = observer.statusMetadata;
   if (typeof metadata === "string") {
     try { metadata = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(metadata), c => c.charCodeAt(0)))); }

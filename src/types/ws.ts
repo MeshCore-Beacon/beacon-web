@@ -110,9 +110,9 @@ export interface WsNodeUpdate {
     // Omitted leaves the prior verdict unchanged; null clears an unknown/reset position.
     possiblyForeign?: boolean | null;
     iata: string;
-    // decimal degrees, same as REST /nodes (api/nodes.go serializes *float64 degrees to both)
-    lat?: number;
-    lng?: number;
+    // decimal degrees as in REST /nodes; omitted keeps the prior position, null clears it (explicit 0/0 advert)
+    lat?: number | null;
+    lng?: number | null;
     isObserver: boolean;
     iatas: NodeIATA[];
     defaultScope?: string;
