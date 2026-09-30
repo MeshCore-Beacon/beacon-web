@@ -52,7 +52,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     if (messagesOverflowed.current && !isRateLimited()) {
       messagesOverflowed.current = false;
       pendingMessages.current.clear();
-      void queryClient.resetQueries({ queryKey: messageKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey: messageKey, exact: true });
     } else if (pendingMessages.current.size && queryClient.getQueryData(messageKey)) {
       // Merge live arrivals after history settles so its older snapshot cannot erase them.
       const queued = [...pendingMessages.current.values()];
@@ -164,12 +164,12 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
             messagesOverflowed.current = true;
           } else pendingMessages.current.set(data.packetHash, data);
         }
-        // A repeated WS delivery is not another observer; retained counts remain authoritative.
+        // The WS event has no retained observation total; repeats do not add observers.
         setHeardCounts((prev) => ({
           ...prev,
           [data.packetHash]: Math.max(prev[data.packetHash] ?? 0, data.observationCount ?? 1),
         }));
-        // append to the newest InfiniteData page; MessagePanel re-sorts by sentAt, so the page is arbitrary
+        // Append to the retained newest page; browsing older history must not evict it.
         queryClient.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(
           messageKey,
           (old) => appendMessages(old, [data]),

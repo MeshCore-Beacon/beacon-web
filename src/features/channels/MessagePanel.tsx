@@ -8,7 +8,6 @@ import { LoadingPill } from "../../components/LoadingPill";
 import { ScopeTag } from "../../components/ScopeTag";
 import { SelectDropdown } from "../../components/SelectDropdown";
 import { useScopes } from "../../hooks/useScopes";
-import { MAX_INFINITE_PAGES } from "../../lib/constants";
 import { channelDisplayName } from "./types";
 import type { ChannelSummary, ChannelMessage } from "./types";
 
@@ -76,7 +75,6 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     initialPageParam: undefined as number | undefined,
     enabled: channel !== null,
     staleTime: 30_000,
-    maxPages: MAX_INFINITE_PAGES,
   });
 
   // flatten order is irrelevant — the ascending sort below restores chat order from newest-first pages
