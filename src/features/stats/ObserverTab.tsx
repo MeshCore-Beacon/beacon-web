@@ -39,7 +39,7 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
   const { t, i18n } = useTranslation();
   const colors = useChartColors();
   useLiveObserver(wsManager, selectedObserverId, range);
-  const observer = useObserver(selectedObserverId);
+  const observer = useObserver(selectedObserverId, true);
   const telemetry = useObserverTelemetry(selectedObserverId, range);
   const activity = useObserverActivity(selectedObserverId, range, comparison?.until ?? undefined);
   const points = useMemo(() => telemetry.data?.points ?? [], [telemetry.data]);
@@ -160,7 +160,7 @@ export function ObserverTab({ range, selectedObserverId, onSelectObserver, wsMan
         )}
         <p>{t("observerPage.windowHelp")}</p>
       </div>
-      {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => { comparison.onRefresh(); void activity.refetch(); void observer.refetch(); }} />}
+      {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={comparison.onRefresh} />}
       {heardUnavailable ? (
         <Card title={t("observerPage.records")}>
           <p className="text-sm text-text-muted">{t("observerPage.summaryMissing")}</p>

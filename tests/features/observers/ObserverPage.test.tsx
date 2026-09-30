@@ -18,10 +18,26 @@ vi.mock("../../../src/features/observers/ObserverTable", () => ({
   },
 }));
 vi.mock("../../../src/features/stats/ObserverTab", () => ({
-  ObserverTab: ({ selectedObserverId, range }: { selectedObserverId: string; range: string }) => (
-    <h1>
-      Dashboard {selectedObserverId} {range}
-    </h1>
+  ObserverTab: ({
+    selectedObserverId,
+    range,
+    comparison,
+  }: {
+    selectedObserverId: string;
+    range: string;
+    comparison?: { until: number | null; onRefresh: () => void };
+  }) => (
+    <>
+      <h1>
+        Dashboard {selectedObserverId} {range}
+      </h1>
+      {comparison && (
+        <>
+          <output data-testid="comparison-until">{String(comparison.until)}</output>
+          <button onClick={comparison.onRefresh}>Refresh comparison</button>
+        </>
+      )}
+    </>
   ),
 }));
 function Location() {
@@ -64,4 +80,31 @@ describe("Observer destination", () => {
     fireEvent.click(screen.getByRole("button", { name: /Back to observers/ }));
     expect(screen.getByLabelText("Directory search")).toBeVisible();
   });
+});
+
+it("anchors a new comparison at the click time and accepts Refresh across an hour boundary", async () => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2026, 8, 29, 12, 30));
+  try {
+    view("?tab=Observers&observer=observer-a&range=24h");
+    await screen.findByRole("heading");
+    clock.mockReturnValue(Date.UTC(2026, 8, 29, 15, 59, 59));
+    fireEvent.click(screen.getByRole("button", { name: "Compare with…" }));
+    expect(screen.getByTestId("comparison-until")).toHaveTextContent(String(Date.UTC(2026, 8, 29, 15)));
+    clock.mockReturnValue(Date.UTC(2026, 8, 29, 16, 0, 1));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh comparison" }));
+    expect(screen.getByTestId("comparison-until")).toHaveTextContent(String(Date.UTC(2026, 8, 29, 16)));
+    fireEvent.click(screen.getByRole("button", { name: "Close comparison" }));
+    expect(screen.queryByTestId("comparison-until")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).not.toHaveTextContent("compareUntil");
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+it("rejects duplicate, malformed and future comparison anchors", async () => {
+  const viewResult = view("?tab=Observers&observer=observer-a&compareWith=observer-b&compareUntil=bad");
+  expect(await screen.findByTestId("comparison-until")).toHaveTextContent("null");
+  viewResult.unmount();
+  view("?tab=Observers&observer=observer-a&compareWith=observer-b&compareUntil=" + (Date.now() + 86400000));
+  expect(await screen.findByTestId("comparison-until")).toHaveTextContent("null");
 });

@@ -14,21 +14,37 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
   const now = useTick(60_000);
   const id = params.get("observer");
   const [directoryVisited, setDirectoryVisited] = useState(!id);
-  const [initialUntil] = useState(() => Math.floor(Date.now() / 3_600_000) * 3_600_000);
+  const [actionTime, setActionTime] = useState(() => Date.now());
+  const hourAt = (time: number) => Math.floor(time / 3_600_000) * 3_600_000;
   const comparing = params.has("compareWith");
-  const anchor = params.has("compareUntil") ? Number(params.get("compareUntil")) : initialUntil;
-  const validAnchor = params.getAll("compareUntil").length <= 1 && Number.isSafeInteger(anchor) && anchor > now - 30 * 86_400_000 && anchor <= now;
+  const anchor = params.has("compareUntil") ? Number(params.get("compareUntil")) : hourAt(actionTime);
+  const validAnchor = params.getAll("compareUntil").length <= 1 && Number.isSafeInteger(anchor) && anchor > now - 30 * 86_400_000 && anchor <= Math.max(now, actionTime);
   const until = validAnchor ? anchor : null;
   if (!id && !directoryVisited) setDirectoryVisited(true);
   const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
   if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
   const range = observerRange(params.get("range"));
   const select = (observer: string | null) => setParams(observerDestination(params, observer, range));
-  const compare = (observer: string) => setParams(old => {
-    const next = new URLSearchParams(old); next.set("compareWith", observer); next.set("compareUntil", String(until ?? initialUntil)); return next;
-  });
+  const compare = (observer: string) => {
+    const clickedAt = Date.now();
+    setActionTime(clickedAt);
+    setParams(old => {
+      const next = new URLSearchParams(old);
+      next.set("compareWith", observer);
+      next.set("compareUntil", String(comparing ? until ?? hourAt(clickedAt) : hourAt(clickedAt)));
+      return next;
+    });
+  };
   const closeCompare = () => setParams(old => { const next = new URLSearchParams(old); next.delete("compareWith"); next.delete("compareUntil"); return next; });
-  const refreshCompare = () => setParams(old => { const next = new URLSearchParams(old); next.set("compareUntil", String(Math.floor(Date.now() / 3_600_000) * 3_600_000)); return next; }, { replace: true });
+  const refreshCompare = () => {
+    const clickedAt = Date.now();
+    setActionTime(clickedAt);
+    setParams(old => {
+      const next = new URLSearchParams(old);
+      next.set("compareUntil", String(hourAt(clickedAt)));
+      return next;
+    }, { replace: true });
+  };
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col">
     {/* Keep the directory mounted so Back restores filters, sorting and scroll. */}
     {directoryVisited && <div className={id ? "hidden" : "flex min-h-0 flex-1"} aria-hidden={id ? true : undefined}>

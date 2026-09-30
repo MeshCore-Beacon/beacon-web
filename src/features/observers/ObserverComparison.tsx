@@ -35,7 +35,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
     queryKey: ["observer-dashboard-overlap", observerA.id, observerBId, start, end],
     queryFn: ({ signal }) => getObserverComparison(undefined, { observerA: observerA.id, observerB: observerBId, since: start, until: end }, signal),
     enabled: valid && aligned && !!b.data && !b.isError,
-    staleTime: 30_000, refetchInterval: 60_000, refetchOnWindowFocus: false, retry: false,
+    staleTime: 30_000, refetchInterval: false, refetchOnWindowFocus: false, retry: false,
   });
   const option = useMemo(() => {
     const window = { start, end };

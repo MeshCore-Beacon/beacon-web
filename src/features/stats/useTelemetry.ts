@@ -17,13 +17,13 @@ const INTERVAL_PARAM: Record<StatsRange, string> = {
   "30d": "24h",
 };
 
-export function useObserver(observerId: string | null) {
+export function useObserver(observerId: string | null, poll = false) {
   return useQuery({
     queryKey: ["observer", observerId],
     queryFn: () => getObserver(observerId!),
     enabled: !!observerId,
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: poll ? 60_000 : false,
     refetchOnWindowFocus: false,
   });
 }
@@ -52,7 +52,7 @@ export function useObserverActivity(observerId: string | null, range: StatsRange
     enabled: !!observerId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
-    refetchInterval: (query) => activityRefetchInterval(query.state.error),
+    refetchInterval: (query) => until == null ? activityRefetchInterval(query.state.error) : false,
   });
 }
 
