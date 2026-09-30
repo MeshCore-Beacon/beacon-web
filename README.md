@@ -10,18 +10,7 @@ Built with React 19, TypeScript, Tailwind CSS 4, TanStack Query, and TanStack Vi
 
 ## Deployment
 
-### Beacon 1.4.0 release
-
-Beacon 1.4.0 is the planned replacement for CoreScope at **https://live.meshcore.ca**.
-**https://dev.meshcore.ca** remains a separate development deployment. Alderson
-controls the production switch; changing this repository does not switch either host.
-My Atlas remains a separate feature for after 1.4.0.
-
-Follow the [1.4.0 release and cutover plan](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/app_documentation/release-140-preparation.md)
-for the matched server revision, retained data, validation and rollback.
-Use the complete deployment in beacon-docs for the same-origin MeshCore Canada
-sites; it routes `/api/*` and `/ws` to the backend. The `docker/` example below
-serves only the frontend and requires a separately reachable backend.
+The `docker/` example serves only the frontend; it needs a separately reachable beacon-server backend.
 
 ### 1. Copy the `docker/` folder to your server
 
@@ -44,7 +33,7 @@ EOF
 | Variable | Description |
 |---|---|
 | `DOMAIN` | Domain for HTTPS (Caddy auto-provisions Let's Encrypt certs) |
-| `BEACON_WEB_IMAGE` | Required reviewed release tag or immutable digest; `:dev` is for development only |
+| `BEACON_WEB_IMAGE` | Image to run: a release tag (e.g. `:1.4.0`), `:latest`, or `:dev` |
 | `VITE_API_BASE` | Backend REST API base URL |
 | `VITE_WS_URL` | Backend WebSocket URL |
 
@@ -61,13 +50,8 @@ in [beacon-docs](https://github.com/MeshCore-Beacon/beacon-docs)).
 
 Caddy will automatically obtain a TLS certificate for your domain. Ensure DNS is pointed at your server before starting.
 
-The example requires the 1.4.0 release image to exist. Verify its Actions build and
-pin its digest before the production cutover. For the complete development deployment, use
-`DOMAIN=dev.meshcore.ca`, `BEACON_WEB_IMAGE=ghcr.io/meshcore-beacon/beacon-web:dev`
-and matching development REST/WebSocket URLs in the beacon-docs topology. Use separate deployment directories.
-Branch builds publish revision tags, and `dev` builds also publish `dev`; only
-stable semantic-version tags publish `latest`. Main-branch and prerelease builds
-do not move `latest`.
+Image tags: `latest` is the newest `main` build, each `vX.Y.Z` release tag publishes `X.Y.Z` and `X.Y`,
+and `dev` tracks the `dev` branch.
 
 ## Local Development
 
