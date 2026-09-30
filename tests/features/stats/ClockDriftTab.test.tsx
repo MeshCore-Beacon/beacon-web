@@ -66,3 +66,19 @@ it("retains valid values during a healthy background refresh", () => {
   expect(screen.getByText("+59m 59s ahead")).toHaveClass("text-warn");
   expect(screen.getByText("-1h 0m behind")).toHaveClass("text-danger");
 });
+
+it("shows compact cards instead of a wide table on a phone, worst first", async () => {
+  await act(() => i18n.changeLanguage("en"));
+  const media = window.matchMedia("(max-width: 767px)");
+  const spy = vi.spyOn(window, "matchMedia").mockImplementation((q) => ({ ...media, media: q, matches: q === "(max-width: 767px)" }));
+  try {
+    const { container } = render(<ClockDriftTab />);
+    expect(container.querySelector("table")).toBeNull();
+    const cards = screen.getAllByRole("button", { name: /Beta|Alpha/ });
+    expect(cards.map((c) => c.textContent)).toEqual([expect.stringContaining("Beta"), expect.stringContaining("Alpha")]);
+    expect(cards[0]).toHaveTextContent("-1h 0m behind");
+    expect(cards[0]).toHaveTextContent("YOW");
+  } finally {
+    spy.mockRestore();
+  }
+});

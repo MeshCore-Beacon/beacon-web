@@ -209,7 +209,6 @@
     "scopes": {
       "title": "Scopes de transport",
       "subtitle": "Données conservées et appartenances pour la région sélectionnée.",
-      "refresh": "Actualiser les scopes",
       "search": "Rechercher un scope",
       "error": "Impossible de charger les scopes. Réessayez.",
       "active": "Scopes avec données",
@@ -270,7 +269,7 @@
       "metrics": "Mesures de l’observateur",
       "records": "Paquets enregistrés",
       "lastHour": "Dernière heure complète",
-      "lastPacket": "Dernier paquet enregistré",
+      "lastPacket": "Dernier paquet",
       "battery": "Batterie",
       "batteryV": "Batterie V",
       "uptime": "Durée de fonctionnement",
@@ -314,8 +313,6 @@
       "mean": "Moyenne",
       "minimum": "Minimum",
       "unknown": "Inconnu",
-      "latestStatus": "Dernier état",
-      "latestTelemetry": "Dernière période de télémétrie",
       "recording": "Chargement de l’observateur…",
       "hour": "heure",
       "day": "jour",
@@ -323,7 +320,9 @@
       "directory": "Tous les observateurs",
       "sidebarSearch": "Rechercher les observateurs",
       "noMatches": "Aucun résultat",
-      "none": "Aucun observateur"
+      "none": "Aucun observateur",
+      "hourWindow": "Paquets {{start}}–{{end}} h UTC",
+      "lastNoise": "Dernier bruit de fond"
     },
     "observerCompare": {
       "open": "Comparer avec…",

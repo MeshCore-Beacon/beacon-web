@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { ObserverSummary } from "../../../src/features/observers/ObserverSummary";
 import type { Observer } from "../../../src/features/observers/types";
 import type { ObserverActivity, TelemetryPoint } from "../../../src/features/stats/types";
@@ -22,21 +22,30 @@ describe("compact observer header", () => {
 });
 
 describe("observer summary card notes", () => {
-  it("wraps the last-complete-hour window under its card instead of a non-wrapping sublabel", () => {
+  it("keeps the status icon and IATA chip on the name row", () => {
+    render(<ObserverSummary observer={observer} points={[]} />);
+    const row = screen.getByRole("heading", { level: 1 }).parentElement!;
+    expect(screen.getByRole("img", { name: "Status is stale" }).parentElement).toBe(row);
+    expect(screen.getByText("YKF").parentElement).toBe(row);
+  });
+
+  it("names the last complete hour by its UTC window instead of a note under the card", () => {
     const activity = { summary: {
       recordedPackets: 5, lastCompleteHour: 3, lastCompleteHourStart: 0, lastCompleteHourEnd: 3_600_000, latestRecordedAt: null,
     } } as unknown as ObserverActivity;
     render(<ObserverSummary observer={observer} activity={activity} points={[]} />);
-    const note = screen.getByText("00:00–01:00 UTC");
-    expect(note).not.toHaveClass("whitespace-nowrap");
-    expect(note).toHaveClass("mt-1");
+    const tile = screen.getByText("Packets 00–01 UTC").closest("li")!;
+    expect(tile).toHaveTextContent("3");
+    expect(tile).toHaveClass("text-center");
+    expect(screen.queryByText(/00:00–01:00/)).not.toBeInTheDocument();
   });
 
-  it("wraps the noise-floor telemetry note under its card the same way", () => {
+  it("labels the noise tile as the last reading and sets the unit apart from the number", () => {
     const points = [{ noiseFloorDb: -91 } as unknown as TelemetryPoint];
     render(<ObserverSummary observer={observer} points={points} />);
-    const note = screen.getByText("Latest telemetry interval");
-    expect(note).not.toHaveClass("whitespace-nowrap");
-    expect(note).toHaveClass("mt-1");
+    const tile = screen.getByText("Last noise floor").closest("li")!;
+    expect(screen.queryByText(/Latest telemetry interval|Latest status/)).not.toBeInTheDocument();
+    expect(within(tile).getByText("-91")).not.toHaveClass("text-sm");
+    expect(within(tile).getByText("dBm")).toHaveClass("text-sm");
   });
 });

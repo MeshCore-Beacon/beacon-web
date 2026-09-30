@@ -25,10 +25,7 @@ export function ScopesTab() {
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("scopes.title")}</h2><InfoTip text={[t("scopes.subtitle"), t("scopes.measurement")]} /></div>
-        <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching || query.isPending} className="rounded border border-border px-3 py-1.5 text-xs text-text-normal hover:bg-bg-raised disabled:opacity-50">{t("scopes.refresh")}</button>
-      </div>
+      <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("scopes.title")}</h2><InfoTip text={[t("scopes.subtitle"), t("scopes.measurement")]} /></div>
       <label className="flex max-w-sm flex-col gap-1 text-xs text-text-muted">{t("scopes.search")}
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="#bc, #east…" className="rounded border border-border bg-bg-raised px-3 py-2 text-base text-text-bright outline-none focus:border-primary sm:text-sm" />
       </label>

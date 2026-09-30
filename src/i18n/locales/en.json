@@ -206,7 +206,6 @@
     "scopes": {
       "title": "Transport scopes",
       "subtitle": "Retained data and memberships for the selected region.",
-      "refresh": "Refresh scopes",
       "search": "Find a scope",
       "error": "Could not load scopes. Try refreshing.",
       "active": "Scopes with data",
@@ -266,10 +265,10 @@
       "metrics": "Observer metrics",
       "records": "Recorded packets",
       "lastHour": "Last complete hour",
-      "lastPacket": "Last recorded packet",
+      "lastPacket": "Last packet",
       "battery": "Battery",
       "batteryV": "Battery V",
-      "uptime": "Device uptime",
+      "uptime": "Uptime",
       "noise": "Noise floor",
       "noiseDbm": "Noise dBm",
       "packets": "Packets",
@@ -310,8 +309,6 @@
       "mean": "Average",
       "minimum": "Minimum",
       "unknown": "Unknown",
-      "latestStatus": "Latest status",
-      "latestTelemetry": "Latest telemetry interval",
       "recording": "Loading observer…",
       "hour": "hour",
       "day": "day",
@@ -319,7 +316,9 @@
       "directory": "All observers",
       "sidebarSearch": "Search observers",
       "noMatches": "No matches",
-      "none": "No observers"
+      "none": "No observers",
+      "hourWindow": "Packets {{start}}–{{end}} UTC",
+      "lastNoise": "Last noise floor"
     },
     "observerCompare": {
       "open": "Compare with…",

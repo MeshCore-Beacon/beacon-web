@@ -37,7 +37,7 @@ export function ClockDriftTab() {
       id: "drift",
       header: t("clockDrift.drift"),
       className: "tabular-nums",
-      cell: (e) => <span className={driftClass(e.clockDriftSeconds)}>{formatClockDrift(e.clockDriftSeconds, { inSync: t("clockDrift.inSync"), ahead: t("clockDrift.ahead"), behind: t("clockDrift.behind") })}</span>,
+      cell: (e) => <span className={`whitespace-nowrap ${driftClass(e.clockDriftSeconds)}`}>{formatClockDrift(e.clockDriftSeconds, { inSync: t("clockDrift.inSync"), ahead: t("clockDrift.ahead"), behind: t("clockDrift.behind") })}</span>,
       sortValue: (e) => Math.abs(e.clockDriftSeconds),
     },
     {
@@ -58,6 +58,23 @@ export function ClockDriftTab() {
       ),
     },
   ], [t]);
+  const drift = (e: ClockDriftEntry) =>
+    formatClockDrift(e.clockDriftSeconds, { inSync: t("clockDrift.inSync"), ahead: t("clockDrift.ahead"), behind: t("clockDrift.behind") });
+  const renderCard = (e: ClockDriftEntry) => (
+    <div className="flex flex-col gap-1.5 font-mono text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className={`min-w-0 flex-1 truncate ${e.nodeName ? "text-text-normal" : "italic text-text-dim"}`}>{e.nodeName ?? e.nodeId.slice(0, 8)}</span>
+        <span className="shrink-0"><Badge variant="default">{e.nodeTypeName}</Badge></span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`tabular-nums ${driftClass(e.clockDriftSeconds)}`}>{drift(e)}</span>
+        <span className="shrink-0 text-text-muted"><Timestamp value={e.clockCheckedAt} /></span>
+      </div>
+      {(e.iatas ?? []).length > 0 && (
+        <div className="flex flex-wrap gap-1">{e.iatas!.map((i) => <IataChip key={i.iata}>{i.iata}</IataChip>)}</div>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -73,6 +90,7 @@ export function ClockDriftTab() {
         isLoading={loading}
         emptyLabel={clockDrift.isError ? t("common.loadFailed") : t("clockDrift.empty")}
         defaultSort={{ id: "drift", direction: "desc" }}
+        renderCard={renderCard}
       />
     </div>
   );
