@@ -61,7 +61,7 @@ export function ObserverSidebar({ observers, filtered, isPending, isError, onRet
                     active ? "border-primary bg-primary/10" : "border-transparent hover:bg-text-normal/3"
                   }`}
                 >
-                  {count != null && <div className="absolute bottom-0 left-0 h-0.5 bg-secondary/40" style={{ width: `${(count / max) * 100}%` }} aria-hidden />}
+                  {count != null && <div className="absolute inset-y-0 left-0 bg-secondary/15" style={{ width: `${(count / max) * 100}%` }} aria-hidden />}
                   <div className="relative flex items-center gap-2">
                     <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${deriveObserverStatus(o) === "online" ? "bg-green" : "bg-text-dim/30"}`} />
                     <span className={`min-w-0 flex-1 truncate font-mono text-[12px] ${active ? "text-text-bright" : "text-text-normal"}`}>{nameOf(o)}</span>

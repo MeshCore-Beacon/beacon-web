@@ -3,7 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getBrokers } from "../../api/client";
+import { CloseButton } from "../../components/CloseButton";
 import { CopyButton } from "../../components/CopyButton";
+import { MinimizeButton } from "../../components/DetailPanel";
 import { EmptyState } from "../../components/EmptyState";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { useScopes } from "../../hooks/useScopes";
@@ -16,8 +18,6 @@ import { observerDestination, observerRange } from "./observer-navigation";
 import { Segmented } from "../stats/Segmented";
 import type { WsManager } from "../../api/ws-manager";
 const ObserverTab = lazy(() => import("../stats/ObserverTab").then(m => ({ default: m.ObserverTab })));
-
-const NAV_CHIP = "inline-flex items-center gap-1.5 rounded-sm border border-border bg-bg-raised px-2 py-0.5 font-mono text-[11px] text-text-normal transition-colors hover:border-text-dim hover:text-text-bright";
 
 export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
   const [params, setParams] = useSearchParams();
@@ -37,6 +37,7 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
   const [type, setType] = useState("");
   const [broker, setBroker] = useState("");
   const [scope, setScope] = useState("");
+  const [minimized, setMinimized] = useState(false);
   const directory = useObserverDirectory(wsManager, broker);
   const { data: brokers } = useQuery({ queryKey: ["brokers"], queryFn: getBrokers, staleTime: 60_000 });
   const scopeOptions = useScopes(scope);
@@ -45,7 +46,7 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
   const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
   if (id) share.searchParams.set("range", range);
   if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
-  const select = (observer: string | null) => setParams(observerDestination(params, observer, range));
+  const select = (observer: string | null) => { setMinimized(false); setParams(observerDestination(params, observer, range)); };
   const compare = (observer: string) => {
     // eslint-disable-next-line react-hooks/purity -- Capture time when the user invokes this event callback.
     const clickedAt = Date.now();
@@ -78,17 +79,21 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
           <Segmented ariaLabel={t("observerPage.range")} size="sm" value={range} options={[{ value: "24h", label: t("stats.ranges.24h") }, { value: "7d", label: t("stats.ranges.7d") }, { value: "30d", label: t("stats.ranges.30d") }]} onChange={v => setParams(observerDestination(params, id, observerRange(v)))} />
         </span>}
     />
-    <div className="flex min-h-0 min-w-0 flex-1">
-      {/* below md the list and the dashboard take turns */}
-      <div className={`${id ? "hidden md:flex" : "flex"} min-h-0 w-full shrink-0 flex-col p-4 md:w-[260px] md:pr-0`}>
+    <div className="relative flex min-h-0 min-w-0 flex-1">
+      <div className="flex min-h-0 w-full shrink-0 flex-col p-4 md:w-[260px] md:pr-0">
         <ObserverSidebar observers={observers} filtered={Boolean(search || status || type || broker || scope)} isPending={directory.isPending} isError={directory.isError}
           onRetry={() => void directory.refetch()} range={range} selectedId={id} onSelect={select} />
       </div>
-      {id ? <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="px-4 pt-3 md:hidden">
-          <button type="button" aria-label={t("observerPage.back")} onClick={() => select(null)} className={NAV_CHIP}><span aria-hidden>‹</span>{t("observerPage.directory")}</button>
+      {/* below md the dashboard overlays the list, like the node detail panel */}
+      {id ? <div className={`${minimized ? "absolute inset-x-0 bottom-0" : "absolute inset-0"} z-30 flex min-h-0 min-w-0 flex-col bg-bg-base md:static md:z-auto md:flex-1`}>
+        <div className="flex shrink-0 items-center justify-between border-b border-border-subtle bg-bg-surface px-3 py-2 md:hidden">
+          <span className="font-mono text-[13px] font-medium uppercase tracking-wider text-text-dim">{t("observerPage.detail")}</span>
+          <div className="-mr-1 flex items-center gap-0.5">
+            <MinimizeButton collapsed={minimized} onToggle={() => setMinimized(v => !v)} />
+            <CloseButton onClose={() => select(null)} label={t("observerPage.back")} />
+          </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className={`min-h-0 flex-1 overflow-auto ${minimized ? "hidden md:block" : ""}`}>
         <Suspense fallback={<p role="status" className="p-4">{t("common.loading")}</p>}>
           <ObserverTab range={range} selectedObserverId={id} onSelectObserver={select} wsManager={wsManager} actions={<>
             <CopyButton value={share.toString()} label={t("observerPage.copyLinkShort")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyLink")} className="justify-center py-1" />

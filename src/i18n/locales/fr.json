@@ -262,6 +262,7 @@
     },
     "observerPage": {
       "back": "Retour aux observateurs",
+      "detail": "Détail de l'observateur",
       "range": "Période",
       "open": "Ouvrir le tableau de bord",
       "legacy": "Ancien compteur de présence",
@@ -313,7 +314,6 @@
       "recording": "Chargement de l’observateur…",
       "hour": "heure",
       "day": "jour",
-      "directory": "Tous les observateurs",
       "sidebarSearch": "Rechercher les observateurs",
       "noMatches": "Aucun résultat",
       "none": "Aucun observateur",

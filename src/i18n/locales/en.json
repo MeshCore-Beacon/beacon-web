@@ -258,6 +258,7 @@
     },
     "observerPage": {
       "back": "Back to observers",
+      "detail": "Observer detail",
       "range": "Time range",
       "open": "Open observer dashboard",
       "legacy": "Legacy presence count",
@@ -309,7 +310,6 @@
       "recording": "Loading observer…",
       "hour": "hour",
       "day": "day",
-      "directory": "All observers",
       "sidebarSearch": "Search observers",
       "noMatches": "No matches",
       "none": "No observers",

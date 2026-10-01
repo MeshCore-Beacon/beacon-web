@@ -19,7 +19,7 @@ export function Field({ label, value }: { label: string; value: ReactNode }) {
 }
 
 // Minimize/expand toggle for the mobile overlay only; at md+ the panel is a sidebar so it's hidden.
-function MinimizeButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+export function MinimizeButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"

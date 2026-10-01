@@ -116,14 +116,25 @@ describe("Observer destination", () => {
     expect(within(header).getByRole("button", { name: "Copy observer link" })).toHaveTextContent("Copy link");
     expect(screen.getAllByRole("button", { name: "Compare with…" })).toHaveLength(1);
   });
-  it("only offers a return to the list on mobile, where the list is hidden", async () => {
+  it("closes the mobile overlay from its header, back to the list", async () => {
     view("?tab=Observers&observer=observer-a&range=7d");
     await screen.findByRole("heading");
-    const back = screen.getByRole("button", { name: /Back to observers/ });
-    expect(back.closest(".md\\:hidden")).not.toBeNull();
-    fireEvent.click(back);
+    const header = screen.getByText("Observer detail").parentElement!;
+    expect(header).toHaveClass("md:hidden");
+    fireEvent.click(within(header).getByRole("button", { name: "Back to observers" }));
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.getByRole("status").textContent).not.toContain("observer=");
+  });
+  it("minimizes the mobile overlay over the list and expands for the next pick", async () => {
+    view("?tab=Observers&observer=observer-a&range=7d");
+    const body = () => screen.getByRole("heading").closest(".overflow-auto")!;
+    await screen.findByRole("heading");
+    expect(list().getAllByRole("button")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Minimize detail panel" }));
+    expect(body()).toHaveClass("hidden");
+    fireEvent.click(list().getByText("Basement B"));
+    expect(await screen.findByRole("heading")).toHaveTextContent("observer-b");
+    expect(body()).not.toHaveClass("hidden");
   });
 });
 
