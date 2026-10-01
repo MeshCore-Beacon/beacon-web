@@ -20,6 +20,14 @@ describe("ObservationCard", () => {
     expect(tokens(name)).toEqual(expect.arrayContaining(["flex-1", "min-w-0", "truncate"]));
   });
 
+  it("shows the observer's radio settings", () => {
+    render(<ObservationCard observation={obs({ radio: { freqMhz: 910.525, spreadFactor: 7, bandwidthKhz: 62.5, codingRate: 5 } })} />);
+    expect(screen.getByText("910.525 MHz")).toBeInTheDocument();
+    expect(screen.getByText("SF7")).toBeInTheDocument();
+    expect(screen.getByText("62.5 kHz")).toBeInTheDocument();
+    expect(screen.getByText("CR 4/5")).toBeInTheDocument();
+  });
+
   it("lays the four stats out as equal grid columns that can shrink", () => {
     render(<ObservationCard observation={obs()} />);
 

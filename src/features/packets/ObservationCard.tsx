@@ -64,6 +64,15 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
           </div>
         </div>
 
+        {obs.radio && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5 font-mono text-[11px] text-text-muted">
+            <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-0.5">Radio</span>
+            {obs.radio.freqMhz != null && <span>{obs.radio.freqMhz} MHz</span>}
+            {obs.radio.spreadFactor != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>SF{obs.radio.spreadFactor}</span></>}
+            {obs.radio.bandwidthKhz != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>{obs.radio.bandwidthKhz} kHz</span></>}
+            {obs.radio.codingRate != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>CR 4/{obs.radio.codingRate}</span></>}
+          </div>
+        )}
       </div>
 
       {obs.pathBytes && (

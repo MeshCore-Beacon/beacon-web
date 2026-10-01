@@ -11,7 +11,7 @@ import { payloadTypeVariant } from "../../components/badge-utils";
 import { ScopeTag } from "../../components/ScopeTag";
 import { formatHex, formatPropagation } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
-import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, ObservationDetail } from "./packet-structure";
+import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, transportCodeHex } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
 import { PathData } from "./PathData";
 import { buildPacketPaths } from "../map/packet-path";
@@ -109,7 +109,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 <Badge variant={payloadTypeVariant(detail.header.payloadType)}>
                   {PAYLOAD_TYPE_NAMES[detail.header.payloadType as PayloadTypeValue] ?? "Unknown"}
                 </Badge>
-                {detail.scope && <ScopeTag>{detail.scope}</ScopeTag>}
+                {detail.scope && <ScopeTag boxed>{detail.scope}</ScopeTag>}
                 <Tooltip
                   label={t("investigation.reportedBy", { count: observerCount })}
                   className="ml-auto"
@@ -149,13 +149,6 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
               </button>
             </div>
 
-            {selectedObs && (
-              <DrawerSection title="Observation">
-                <ObservationDetail observation={selectedObs} />
-              </DrawerSection>
-            )}
-
-
             <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} onViewNode={onViewNode} mappedKeys={pathKeys} observerCount={observerCount} />
 
             {rawHex && (
@@ -184,8 +177,21 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 {/* Transport codes */}
                 {detail.transportCodes && (
                   <ColorAccentField field="transport">
-                    <span className="text-text-dim">Transport </span>
-                    <span className="text-text-normal">{detail.transportCodes.regionCode} / {detail.transportCodes.subRegionCode}</span>
+                    <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">Transport Codes</div>
+                    <div>
+                      <span className="text-text-dim">Scope code </span>
+                      <span className="text-text-normal">{transportCodeHex(detail.transportCodes.regionCode).toUpperCase()}</span>
+                      <span className="text-text-dim"> (2B) = </span>
+                      <span className="text-text-normal">{detail.transportCodes.regionCode}</span>
+                      <span className="text-text-dim"> → </span>
+                      {detail.scope ? <ScopeTag>{detail.scope}</ScopeTag> : <span className="text-text-dim">no known scope</span>}
+                    </div>
+                    <div>
+                      <span className="text-text-dim">Code 2 </span>
+                      <span className="text-text-normal">{transportCodeHex(detail.transportCodes.subRegionCode).toUpperCase()}</span>
+                      <span className="text-text-dim"> (2B) = </span>
+                      <span className="text-text-normal">{detail.transportCodes.subRegionCode}</span>
+                    </div>
                   </ColorAccentField>
                 )}
 

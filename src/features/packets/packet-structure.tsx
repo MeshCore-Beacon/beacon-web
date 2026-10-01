@@ -2,9 +2,6 @@
 import { Fragment, useState } from "react";
 import type { PacketDetail, Observation } from "../../types/api";
 import { RouteType, PayloadType } from "../../types/enums";
-import { formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
-import { Timestamp } from "../../components/Timestamp";
-import { IataChip } from "../../components/IataChip";
 
 // Advert device-role (ADV_TYPE) low-nibble names, shared with the DISCOVER payload renderers.
 export const DEVICE_ROLE_NAMES: Record<number, string> = {
@@ -23,15 +20,21 @@ export interface ByteRange {
   end: number;
 }
 
+// A transport code as its two on-air bytes (little-endian uint16).
+export function transportCodeHex(code: number): string {
+  return [code & 0xff, (code >> 8) & 0xff].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 // Reconstruct the full on-air frame for one observer:
-//   header.raw + pathLength.raw + pathBytes + rawPayload
+//   header.raw + transport codes + pathLength.raw + pathBytes + rawPayload
 // Header/payload are packet-scope (observer-independent); the path is per-observer.
 export function buildObservationFrame(detail: PacketDetail, obs: Observation | null): string {
   // Header and path-length are each one on-air byte that computeFieldRanges always reserves, so force
   // every value to a full 2-char byte: pad a stray nibble, and coerce a missing/empty value to "00"
   // rather than dropping a byte and shifting every field after it out of alignment.
   const pad = (b?: string) => (!b ? "00" : b.length === 1 ? "0" + b : b);
-  const header = pad(detail.header.raw);
+  const tc = detail.transportCodes;
+  const header = pad(detail.header.raw) + (tc ? transportCodeHex(tc.regionCode) + transportCodeHex(tc.subRegionCode) : "");
   const payload = detail.rawPayload ?? "";
   if (!obs) return header + payload;
   const pathLen = pad(obs.pathLength.raw);
@@ -393,39 +396,6 @@ export function ColorAccentField({
   return (
     <div className={`pl-2 -mx-1 py-0.5 -my-0.5 border-l-2 ${FIELD_COLORS[field].accent} ${className ?? ""}`}>
       {children}
-    </div>
-  );
-}
-
-export function ObservationDetail({ observation }: { observation: Observation }) {
-  const level = snrLevel(observation.snr);
-  const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
-
-  return (
-    <div className="flex flex-col gap-1.5 font-mono text-[13px]">
-      <div className="flex items-center gap-2">
-        <span className="text-text-normal font-semibold">{observation.observerName ?? observation.observerId.slice(0, 8)}</span>
-        <IataChip>{observation.iata}</IataChip>
-        <Timestamp value={observation.heardAt} className="text-text-dim ml-auto text-[13px]" />
-      </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[13px]">
-        <span><span className="text-text-dim">SNR </span><span className={sigClass}>{formatSnr(observation.snr)}</span></span>
-        <span><span className="text-text-dim">RSSI </span><span className={sigClass}>{observation.rssi ?? "—"}</span></span>
-        <span><span className="text-text-dim">Prop </span><span className="text-text-normal">{formatPropagation(observation.propagationTimeMs)}</span></span>
-        <span><span className="text-text-dim">Hops </span><span className="text-text-normal">{observation.pathLength.hopCount}</span></span>
-      </div>
-
-      {observation.radio && (
-        <div className="flex items-center gap-1.5 text-[13px] text-text-muted">
-          <span className="text-text-dim text-xs font-medium uppercase tracking-wider mr-0.5">Radio</span>
-          {observation.radio.freqMhz != null && <span>{observation.radio.freqMhz} MHz</span>}
-          {observation.radio.spreadFactor != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>SF{observation.radio.spreadFactor}</span></>}
-          {observation.radio.bandwidthKhz != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>{observation.radio.bandwidthKhz} kHz</span></>}
-          {observation.radio.codingRate != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>CR 4/{observation.radio.codingRate}</span></>}
-        </div>
-      )}
-
     </div>
   );
 }

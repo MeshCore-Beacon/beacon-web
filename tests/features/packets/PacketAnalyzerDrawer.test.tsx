@@ -67,12 +67,12 @@ describe("packet reception evidence", () => {
     expect(within(section).queryByText(/Reports include all received regions/, { selector: "p" })).not.toBeInTheDocument();
     expect(within(section).queryByText(/Mapping needs at least two/, { selector: "p" })).not.toBeInTheDocument();
   });
-  it("sits below the selected observation, above the raw packet", () => {
+  it("shows the selected report only in the observations list, above the raw packet", () => {
     render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
     const list = screen.getByRole("region", { name: "Observations" });
-    const detail = screen.getByText("Observation", { exact: true });
+    expect(screen.queryByText("Observation", { exact: true })).not.toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /Inspect report.*Alpha/ })).toHaveAttribute("aria-pressed", "true");
     const raw = screen.getByText("Raw Packet");
-    expect(detail.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(list.compareDocumentPosition(raw) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it("reports an expired selection without quietly showing another report", () => {
@@ -103,6 +103,33 @@ describe("packet reception evidence", () => {
     expect(within(section).getByText("Path 4")).toBeInTheDocument();
     expect(within(section).getByText("Path 6")).toBeInTheDocument();
     expect(within(section).queryByText("Path 7")).not.toBeInTheDocument();
+  });
+});
+
+describe("transport scope", () => {
+  const transport = () => {
+    const d = makeDetail([]);
+    d.header = { ...d.header, raw: "14", routeType: RouteType.TRANSPORT_FLOOD, routeTypeName: "TRANSPORT_FLOOD" };
+    d.transportCodes = { regionCode: 49240, subRegionCode: 0 };
+    d.scope = "#yow";
+    return d;
+  };
+  it("boxes the summary scope chip like the type badge", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={transport()} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const chip = within(screen.getByText("Summary").parentElement!).getByText("#yow");
+    expect((chip.getAttribute("class") ?? "").split(/\s+/)).toEqual(expect.arrayContaining(["border", "px-2", "py-0.5"]));
+  });
+  it("breaks the transport codes out of the frame and shows the matched scope", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={transport()} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const field = screen.getByText("Transport Codes").parentElement!;
+    expect(field).toHaveTextContent("Scope code 58C0 (2B) = 49240");
+    expect(within(field).getByText("#yow")).toBeInTheDocument();
+    expect(field).toHaveTextContent("Code 2 0000 (2B) = 0");
+  });
+  it("says when a scope code matched no known scope", () => {
+    const d = transport(); delete d.scope;
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByText("Transport Codes").parentElement!).toHaveTextContent("no known scope");
   });
 });
 
