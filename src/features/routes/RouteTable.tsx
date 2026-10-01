@@ -10,6 +10,7 @@ import { Timestamp } from "../../components/Timestamp";
 import { DataTable, type Column } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { MultiSelectDropdown } from "../../components/MultiSelectDropdown";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 import { RouteDetailPanel } from "./RouteDetailPanel";
 import { ResolvedHopBlock } from "../packets/PathData";
 import { formatHex } from "../../lib/formatters";
@@ -257,6 +258,7 @@ export function RouteTable(actions: RouteActions) {
     loadMore();
   }, [search, serverIata, iatas, hasMore, isPaging, rows, loadedCount, loadMore]);
 
+  const isMobile = useIsMobile();
   const panelOpen = Boolean(pathKey && routeIata || selectedRoute);
   const canSearch = !!(from.trim() && to.trim() && searchIatas.length >= 1);
   // clear any selection when the visible list changes out from under it (search submit/clear)
@@ -279,36 +281,41 @@ export function RouteTable(actions: RouteActions) {
       {/* stacks into two rows on mobile (the inputs would otherwise wrap around the arrow); one row at md+ */}
       <div className={`${panelOpen ? "hidden md:flex" : "flex"} flex-col md:flex-row md:flex-wrap md:items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0`}>
         <div className="flex items-center gap-1.5">
-          <span className="text-text-muted text-[11px] uppercase tracking-wider mr-1 shrink-0">Find path</span>
+          <span className="hidden md:inline text-text-muted text-[11px] uppercase tracking-wider mr-1 shrink-0">Find path</span>
           <input
-            className={`${inputClass} flex-1 min-w-0 md:flex-none md:w-24`}
+            className={`${inputClass} h-7 flex-1 min-w-0 md:flex-none md:w-24`}
             placeholder="from hash"
+            aria-label="From hash"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             onKeyDown={onKeyDown}
           />
           <span className="text-text-dim text-xs shrink-0" aria-hidden>→</span>
           <input
-            className={`${inputClass} flex-1 min-w-0 md:flex-none md:w-24`}
+            className={`${inputClass} h-7 flex-1 min-w-0 md:flex-none md:w-24`}
             placeholder="to hash"
+            aria-label="To hash"
             value={to}
             onChange={(e) => setTo(e.target.value)}
             onKeyDown={onKeyDown}
           />
         </div>
         <div className="flex items-center gap-1.5">
-          <MultiSelectDropdown
-            label="IATA"
-            options={iataOptions}
-            selected={searchIatas}
-            onChange={setSearchIatas}
-            align="left"
-          />
+          <div className="flex-1 min-w-0 md:flex-none">
+            <MultiSelectDropdown
+              label="IATA"
+              options={iataOptions}
+              selected={searchIatas}
+              onChange={setSearchIatas}
+              align="left"
+              fullWidth={isMobile}
+            />
+          </div>
           <button
             type="button"
             onClick={submitSearch}
             disabled={!canSearch}
-            className="text-[11px] font-mono px-2 py-1 rounded-sm border border-border bg-bg-surface text-text-normal hover:border-primary-dim disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+            className="h-7 text-[11px] font-mono px-3 rounded-sm border border-border bg-bg-surface text-text-normal hover:border-primary-dim disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
           >
             Search
           </button>
@@ -316,7 +323,7 @@ export function RouteTable(actions: RouteActions) {
             <button
               type="button"
               onClick={clearSearch}
-              className="text-[11px] font-mono px-2 py-1 rounded-sm text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+              className="h-7 text-[11px] font-mono px-2 rounded-sm text-text-dim hover:text-text-normal cursor-pointer transition-colors"
             >
               Clear
             </button>

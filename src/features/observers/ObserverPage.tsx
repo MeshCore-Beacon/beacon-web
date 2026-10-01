@@ -76,7 +76,7 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
       brokerFilter={broker} onBrokerChange={setBroker} brokerOptions={brokers?.map((b) => b.name) ?? []}
       scopeFilter={scope} onScopeChange={setScope} scopeOptions={scopeOptions}
       trailing={<span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-text-muted"><span className="hidden sm:inline">{t("observerPage.range")}</span>
-          <Segmented ariaLabel={t("observerPage.range")} size="sm" value={range} options={[{ value: "24h", label: t("stats.ranges.24h") }, { value: "7d", label: t("stats.ranges.7d") }, { value: "30d", label: t("stats.ranges.30d") }]} onChange={v => setParams(observerDestination(params, id, observerRange(v)))} />
+          <Segmented ariaLabel={t("observerPage.range")} size="xs" value={range} options={[{ value: "24h", label: t("stats.ranges.24h") }, { value: "7d", label: t("stats.ranges.7d") }, { value: "30d", label: t("stats.ranges.30d") }]} onChange={v => setParams(observerDestination(params, id, observerRange(v)))} />
         </span>}
     />
     <div className="relative flex min-h-0 min-w-0 flex-1">
