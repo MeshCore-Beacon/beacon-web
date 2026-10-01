@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
+import { SectionInfo } from "./SectionInfo";
 import { formatCount, formatUtc } from "../../lib/formatters";
 import { Card, ChartCard, StatCard } from "./cards";
 import { donutOption } from "./chartOptions";
@@ -35,10 +36,7 @@ export function PathsTab({ range }: { range: StatsRange }) {
   const largest = data?.pathLengths.at(-1)?.entries;
 
   return <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("stats.tabs.paths")}</h2><InfoTip text={[t("paths.subtitle"), t("paths.measurement"), data && t("paths.window", { since: formatUtc(data.since), until: formatUtc(data.until) })]} /></div>
-      <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching || query.isPending} className="rounded border border-border px-3 py-1.5 text-xs text-text-normal hover:bg-bg-raised disabled:opacity-50">{t("paths.refresh")}</button>
-    </div>
+    <SectionInfo text={[t("paths.subtitle"), t("paths.measurement"), data && t("paths.window", { since: formatUtc(data.since), until: formatUtc(data.until) })]} />
     {query.isError && <p role="alert" className="text-sm text-danger">{t("paths.error")}</p>}
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatCard label={t("paths.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} />

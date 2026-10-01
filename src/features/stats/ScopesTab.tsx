@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
+import { SectionInfo } from "./SectionInfo";
 import { useScopes } from "./useStats";
 import { useChartColors } from "./chartTheme";
 import { Card, ChartCard, StatCard } from "./cards";
@@ -25,7 +26,7 @@ export function ScopesTab() {
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
-      <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("scopes.title")}</h2><InfoTip text={[t("scopes.subtitle"), t("scopes.measurement")]} /></div>
+      <SectionInfo text={[t("scopes.subtitle"), t("scopes.measurement")]} />
       <label className="flex max-w-sm flex-col gap-1 text-xs text-text-muted">{t("scopes.search")}
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="#bc, #east…" className="rounded border border-border bg-bg-raised px-3 py-2 text-base text-text-bright outline-none focus:border-primary sm:text-sm" />
       </label>

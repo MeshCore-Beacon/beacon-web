@@ -143,7 +143,7 @@ describe("observer comparison", () => {
     mount(query);
     const table = await screen.findByRole("table", { name: "Comparaison des paquets flood" });
     expect(within(table).getByRole("row", { name: /A seulement.*1.*25.0%/ })).toBeInTheDocument();
-    expect(screen.getByText("Comparer les observateurs")).toBeInTheDocument();
+    expect(screen.queryByText("Comparer les observateurs")).not.toBeInTheDocument();
     expect(screen.getByText("A : Rooftop · B : Hilltop")).toBeInTheDocument();
     expect(screen.getByText(/4 paquets flood/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Comparer" })).toBeInTheDocument();

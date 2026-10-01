@@ -15,17 +15,15 @@ beforeEach(() => { query.data = originalData; query.isPending = false; query.isP
 it("translates the signal view while retaining the requested window, true zero and exact counts", async () => {
   await act(() => i18n.changeLanguage("fr"));
   render(<SignalTab range="7d" />);
-  expect(screen.getByRole("button", { name: "Actualiser le signal" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   expect(useSignalStats).toHaveBeenCalledWith("7d");
   expect(screen.getByText("0.0 dB")).toBeInTheDocument();
   const table = screen.getByRole("table", { name: "Disponibilité des échantillons du signal" });
   expect(within(table).getByRole("row", { name: /SNR.*80.*20.*80.0%/ })).toBeInTheDocument();
   expect(screen.getByText(/1970-01-01 00:00.*1970-01-01 01:00.*UTC/)).toHaveTextContent("heure en cours exclue");
-  fireEvent.click(screen.getByRole("button", { name: "Actualiser le signal" }));
-  expect(query.refetch).toHaveBeenCalledOnce();
 });
 
-it("shows measured units, exact sample coverage and refresh without treating zero SNR as missing", () => {
+it("shows measured units and exact sample coverage without treating zero SNR as missing", () => {
   render(<SignalTab range="24h" />);
   expect(useSignalStats).toHaveBeenCalledWith("24h");
   expect(screen.getByText("0.0 dB")).toBeInTheDocument();
@@ -34,8 +32,7 @@ it("shows measured units, exact sample coverage and refresh without treating zer
   const table = screen.getByRole("table", { name: "Signal sample availability" });
   expect(within(table).getByRole("row", { name: /SNR.*80.*20.*80.0%/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /RSSI.*90.*10.*90.0%/ })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Refresh signal" }));
-  expect(query.refetch).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("button", { name: /Refresh/ })).not.toBeInTheDocument();
 });
 it.each(["isPending", "isPlaceholderData", "isError"] as const)("hides previous filter values when %s", (state) => {
   query[state] = true;

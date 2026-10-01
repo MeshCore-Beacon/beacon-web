@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
+import { SectionInfo } from "./SectionInfo";
 import { formatCount } from "../../lib/formatters";
 import { useStatsObservations } from "./useStats";
 import { tooltipStyle, useChartColors } from "./chartTheme";
@@ -26,10 +27,7 @@ export function TrafficTab({ range }: { range: StatsRange }) {
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("stats.tabs.traffic")}</h2><InfoTip text={[t("traffic.subtitle"), t("traffic.measurement")]} /></div>
-        <button type="button" onClick={() => void query.refetch()} disabled={query.isFetching || query.isPending} className="rounded border border-border px-3 py-1.5 text-xs text-text-normal hover:bg-bg-raised disabled:opacity-50">{t("traffic.refresh")}</button>
-      </div>
+      <SectionInfo text={[t("traffic.subtitle"), t("traffic.measurement")]} />
       {query.isError && <p role="alert" className="text-sm text-danger">{t("traffic.error")}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t("traffic.receptions")} value={value(model.total)} accent={colors.primary} sublabel={t(`stats.ranges.${range}`)} />

@@ -16,7 +16,7 @@ beforeEach(() => { query.data = originalData; query.isPending = false; query.isP
 it("translates classification and exact tables while preserving counts and the requested window", async () => {
   await act(() => i18n.changeLanguage("fr"));
   render(<PathsTab range="7d" />);
-  expect(screen.getByRole("heading", { name: "Chemins et hachages" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   expect(usePathStats).toHaveBeenCalledWith("7d");
   expect(screen.getByText("7 j")).toBeInTheDocument();
   expect(screen.getByText("66.7%")).toBeInTheDocument();
@@ -29,8 +29,6 @@ it("translates classification and exact tables while preserving counts and the r
   expect(screen.getByRole("table", { name: "Effectifs par largeur de hachage" })).toHaveTextContent("Octets par hachage");
   expect(within(screen.getByRole("table", { name: "Effectifs par nombre d’entrées" })).getByRole("row", { name: "0 20" })).toBeInTheDocument();
   expect(within(screen.getByRole("table", { name: "Effectifs horaires des chemins" })).getByRole("row", { name: "1970-01-01 00:00 100 20 30 10 20 10 10" })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Actualiser les chemins" }));
-  expect(query.refetch).toHaveBeenCalledOnce();
 });
 
 it("redraws all chart labels on language change and keeps exact details open", async () => {
@@ -58,8 +56,7 @@ it("uses only nonempty hash paths for multi-byte share, exposes categories and e
   const table = screen.getByRole("table", { name: "Path classification counts" });
   expect(within(table).getByRole("row", { name: /Hash paths.*60.*60.0%/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /Empty.*20.*20.0%/ })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Refresh paths" }));
-  expect(query.refetch).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("button", { name: /Refresh/ })).not.toBeInTheDocument();
 });
 it.each(["isPending", "isPlaceholderData", "isError"] as const)("hides old values when %s", (state) => {
   query[state] = true; render(<PathsTab range="7d" />);

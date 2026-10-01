@@ -1,7 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { WsManager } from "../../api/ws-manager";
 import { StatsSubHeader } from "./StatsSubHeader";
+import { SectionInfoSlot } from "./section-info-slot";
 import { MeshTab } from "./MeshTab";
 import { TrafficTab } from "./TrafficTab";
 import { SignalTab } from "./SignalTab";
@@ -33,6 +34,7 @@ export function StatsOverview({ wsManager, onViewNode }: StatsOverviewProps) {
   const tab = asTab(params.get("statsTab"));
   const range = asRange(params.get("range"));
   const legacyObserver = params.get("statsTab") === "observer";
+  const [infoSlot, setInfoSlot] = useState<HTMLElement | null>(null);
 
   const patch = useCallback(
     (updates: Record<string, string | null>) => {
@@ -62,7 +64,8 @@ export function StatsOverview({ wsManager, onViewNode }: StatsOverviewProps) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} />
+      <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} infoSlot={setInfoSlot} />
+      <SectionInfoSlot.Provider value={infoSlot}>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />}
         {tab === "traffic" && <TrafficTab range={range} />}
@@ -74,6 +77,7 @@ export function StatsOverview({ wsManager, onViewNode }: StatsOverviewProps) {
         {tab === "graph" && <NeighbourGraphTab />}
         {tab === "compare" && <CompareObserversTab />}
       </div>
+      </SectionInfoSlot.Provider>
     </div>
   );
 }

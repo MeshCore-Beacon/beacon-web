@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
+import { SectionInfo } from "./SectionInfo";
 import { getObserver, getObserverComparison } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { OBSERVER_UUID } from "../observers/observer-id";
@@ -125,7 +126,7 @@ export function CompareObserversTab() {
   ] : [];
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
-      <div className="flex items-center gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("observerCompare.title")}</h2><InfoTip text={t("observerCompare.retainedWindow")} /></div>
+      <SectionInfo text={t("observerCompare.retainedWindow")} />
       <Card title={t("observerCompare.selection")}>
         {supplied && !valid && <p role="alert" className="mb-3 text-sm text-danger">{t("observerCompare.invalidLink")}</p>}
         <ComparisonForm key={keys.map((key) => params.get(key)).join("|")} initial={selection} onCompare={compare} />

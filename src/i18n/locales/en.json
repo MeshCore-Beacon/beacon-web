@@ -110,9 +110,7 @@
       }
     },
     "signal": {
-      "title": "RF / Signal",
       "subtitle": "Signal strength of packets heard by observers.",
-      "refresh": "Refresh signal",
       "error": "Could not load signal data. Try refreshing or choosing a shorter time period.",
       "receptions": "Observations",
       "meanSnr": "Mean SNR",
@@ -150,7 +148,6 @@
     },
     "paths": {
       "subtitle": "How received packets carry route hashes.",
-      "refresh": "Refresh paths",
       "error": "Could not load path data. Try refreshing or choosing a shorter time period.",
       "receptions": "Observations",
       "withHashPaths": "With hash paths",
@@ -196,7 +193,6 @@
     },
     "traffic": {
       "subtitle": "When and where observers hear packets.",
-      "refresh": "Refresh traffic",
       "error": "Could not load traffic. Try refreshing.",
       "receptions": "Observations",
       "reportingIatas": "Active areas",
@@ -226,7 +222,6 @@
       "heatmapTooltip_other": "{{day}} {{hour}}:00 UTC\n{{value}} observations"
     },
     "scopes": {
-      "title": "Transport scopes",
       "subtitle": "Scope activity for the selected region.",
       "search": "Find a scope",
       "error": "Could not load scopes. Try refreshing.",

@@ -112,9 +112,7 @@
       }
     },
     "signal": {
-      "title": "RF / Signal",
       "subtitle": "Force du signal des paquets reçus par les observateurs.",
-      "refresh": "Actualiser le signal",
       "error": "Impossible de charger les données du signal. Réessayez ou choisissez une période plus courte.",
       "receptions": "Observations",
       "meanSnr": "SNR moyen",
@@ -152,7 +150,6 @@
     },
     "paths": {
       "subtitle": "Les hachages de route portés par les paquets reçus.",
-      "refresh": "Actualiser les chemins",
       "error": "Impossible de charger les données des chemins. Réessayez ou choisissez une période plus courte.",
       "receptions": "Observations",
       "withHashPaths": "Avec chemins hachés",
@@ -199,7 +196,6 @@
     },
     "traffic": {
       "subtitle": "Quand et où les observateurs reçoivent des paquets.",
-      "refresh": "Actualiser le trafic",
       "error": "Impossible de charger le trafic. Réessayez.",
       "receptions": "Observations",
       "reportingIatas": "Zones actives",
@@ -230,7 +226,6 @@
       "heatmapTooltip_other": "{{day}} {{hour}}:00 UTC\n{{value}} observations"
     },
     "scopes": {
-      "title": "Scopes de transport",
       "subtitle": "Activité des scopes pour la région sélectionnée.",
       "search": "Rechercher un scope",
       "error": "Impossible de charger les scopes. Réessayez.",

@@ -15,7 +15,7 @@ beforeEach(() => { vi.clearAllMocks(); query.data = originalData; query.isError 
 it("translates scope counts and membership guidance without changing scope names or values", async () => {
   await act(() => i18n.changeLanguage("fr"));
   render(<ScopesTab />);
-  expect(screen.getByRole("heading", { name: "Scopes de transport" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   const table = screen.getByRole("table", { name: "Effectifs des scopes" });
   expect(within(table).getByRole("row", { name: /#west.*3.*2.*2/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /#east.*2.*2.*3/ })).toBeInTheDocument();
