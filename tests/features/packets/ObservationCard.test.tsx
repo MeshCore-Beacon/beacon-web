@@ -56,7 +56,7 @@ describe("ObservationCard", () => {
   it("lets selection override the signal edge", () => {
     const { container } = render(<ObservationCard observation={obs({ snr: 12 })} selected />);
     const cls = tokens(container.firstElementChild!);
-    expect(cls).toContain("border-l-secondary");
+    expect(cls).toEqual(expect.arrayContaining(["border-l-primary", "bg-primary/6"]));
     expect(cls).not.toContain("border-l-green");
   });
 

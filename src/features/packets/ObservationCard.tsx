@@ -19,7 +19,7 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
     <div
       className={`bg-bg-base border border-border rounded px-3 py-2.5 border-l-2 transition-colors ${
         selected
-          ? "border-l-secondary bg-secondary/5"
+          ? "border-l-primary bg-primary/6"
           // the edge mirrors the table's SNR coloring, so the list scans as a signal column
           : level
             ? SIGNAL_LEVEL_BORDER_CLASSES[level]
@@ -91,7 +91,7 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
           )}
         </div>
       )}
-      {actions && <div className="mt-2 flex flex-wrap items-center justify-end gap-3 border-t border-border-subtle pt-1.5" onClick={(e) => e.stopPropagation()}>{actions}</div>}
+      {actions && <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5 border-t border-border-subtle pt-1.5" onClick={(e) => e.stopPropagation()}>{actions}</div>}
     </div>
   );
 }
