@@ -41,10 +41,11 @@ export function useMapBordersData(iataCodes: string[], enabled: boolean): Border
   });
 
   // Keep the collection stable between renders, but replace geometry after a successful refresh.
-  const sig = iataCodes.map((iata, i) => `${iata}:${idOf(results[i]?.data)}`).join("|");
+  // disabled queries keep their cached data, so an off toggle has to empty the collection itself
+  const sig = enabled ? iataCodes.map((iata, i) => `${iata}:${idOf(results[i]?.data)}`).join("|") : "off";
   return useMemo(
-    () => mergeBorders(iataCodes.map((iata, i) => ({ iata, border: results[i]?.data ?? null }))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sig captures iataCodes + which borders loaded
+    () => mergeBorders(enabled ? iataCodes.map((iata, i) => ({ iata, border: results[i]?.data ?? null })) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sig captures enabled + iataCodes + which borders loaded
     [sig],
   );
 }
