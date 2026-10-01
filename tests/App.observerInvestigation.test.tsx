@@ -5,7 +5,6 @@ import { useSearchParams } from "react-router-dom";
 import { App } from "../src/App";
 import { useRegionSelection } from "../src/hooks/useRegion";
 import type { PacketDetail } from "../src/types/api";
-import i18n from "../src/i18n";
 
 vi.mock("../src/api/ws-manager", () => ({ WsManager: class {
   connect() {} disconnect() {} updateSubscription() {}

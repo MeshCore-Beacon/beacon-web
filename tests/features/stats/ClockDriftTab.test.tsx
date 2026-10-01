@@ -21,8 +21,8 @@ it("translates clock labels and direction without changing signs, thresholds or 
   expect(screen.getByRole("button", { name: /^Dérive\s*▼$/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^Nœud\s*▲$/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^Vérifié\s*▲$/ })).toBeInTheDocument();
-  expect(screen.getByText("+59m 59s en avance")).toHaveClass("text-warn");
-  expect(screen.getByText("-1h 0m en retard")).toHaveClass("text-danger");
+  expect(screen.getByText("+59 min 59 s en avance")).toHaveClass("text-warn");
+  expect(screen.getByText("-1 h 0 min en retard")).toHaveClass("text-danger");
   expect(screen.getByText("YVR")).toBeInTheDocument();
   expect(screen.getByText("YOW")).toBeInTheDocument();
   expect([...container.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent)).toEqual(["BetaRoom", "AlphaRepeater"]);

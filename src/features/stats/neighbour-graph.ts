@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { NodeSummary, NodeNeighbor } from "../nodes/types";
 import { NODE_TYPE_NAMES, NODE_TYPES } from "../../lib/node-types";
 import { blend, nodeTypeColor, tooltipStyle, withAlpha, type ChartColors } from "./chartTheme";
@@ -172,10 +173,10 @@ export function buildEgoGraph(
 
 // One legend/category per device type (in NODE_TYPES order) plus an "Other" bucket for unknowns; the
 // GraphNode.category index lines up with this list.
-function graphCategories(c: ChartColors) {
+function graphCategories(c: ChartColors, t: TFunction) {
   return [
-    ...NODE_TYPES.map((t) => ({ name: t.label, itemStyle: { color: nodeTypeColor(t.name, c) } })),
-    { name: "Other", itemStyle: { color: c.primaryDim } },
+    ...NODE_TYPES.map((type) => ({ name: t(`nodeTypes.${type.name}`), itemStyle: { color: nodeTypeColor(type.name, c) } })),
+    { name: t("neighbourGraph.other"), itemStyle: { color: c.primaryDim } },
   ];
 }
 
@@ -185,6 +186,7 @@ function graphCategories(c: ChartColors) {
 export function neighbourGraphOption(
   graph: NeighbourGraph,
   c: ChartColors,
+  t: TFunction,
   opts: { ego?: boolean } = {},
 ): EChartsOption {
   const ego = !!opts.ego;
@@ -207,16 +209,16 @@ export function neighbourGraphOption(
           const obs = param.data.obs as number | undefined;
           if (obs == null) return ""; // uniform mesh edge — nothing to show
           const days = Math.round((param.data.ageDays as number) ?? 0);
-          return `${obs} obs · ${days === 0 ? "seen today" : `seen ${days}d ago`}`;
+          return days === 0 ? t("neighbourGraph.edgeToday", { obs }) : t("neighbourGraph.edgeAgo", { obs, days });
         }
         const d = param.data as unknown as GraphNode;
-        const type = d.nodeTypeName || "unknown";
-        return d.degree > 0 ? `${d.name}\n${type} · ${d.degree} neighbor${d.degree === 1 ? "" : "s"}` : `${d.name}\n${type}`;
+        const type = d.nodeTypeName || t("neighbourGraph.unknownType");
+        return d.degree > 0 ? `${d.name}\n${type} · ${t("neighbourGraph.neighbors", { count: d.degree })}` : `${d.name}\n${type}`;
       },
     },
     legend: [
       {
-        data: graphCategories(c).map((cat) => cat.name),
+        data: graphCategories(c, t).map((cat) => cat.name),
         bottom: 4,
         left: "center",
         icon: "circle",
@@ -233,7 +235,7 @@ export function neighbourGraphOption(
         roam: true,
         draggable: true,
         scaleLimit: { min: 0.2, max: 8 },
-        categories: graphCategories(c),
+        categories: graphCategories(c, t),
         force: ego
           ? { repulsion: 320, edgeLength: 120, gravity: 0.05, friction: 0.15, layoutAnimation: true }
           : { repulsion: big ? 60 : 120, edgeLength: big ? [20, 60] : [40, 90], gravity: 0.08, friction: 0.2, layoutAnimation: !big },

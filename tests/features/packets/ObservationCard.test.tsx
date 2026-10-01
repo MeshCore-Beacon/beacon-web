@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ObservationCard } from "../../../src/features/packets/ObservationCard";
 import type { Observation } from "../../../src/types/api";
+import i18n from "../../../src/i18n";
 
 const obs = (over: Partial<Observation> = {}): Observation => ({
   id: 1, observerId: "o1", observerName: "Observer 1", iata: "YVR",
@@ -76,5 +77,11 @@ describe("ObservationCard", () => {
     expect(screen.getByText("41")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Observer 1"));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels the stats and path in French", async () => {
+    await i18n.changeLanguage("fr");
+    render(<ObservationCard observation={obs({ pathBytes: "41", radio: { freqMhz: 910.525 } })} />);
+    for (const label of ["Prop.", "Sauts", "Radio", "Trajet"]) expect(screen.getByText(label)).toBeInTheDocument();
   });
 });

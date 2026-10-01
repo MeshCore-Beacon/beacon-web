@@ -51,21 +51,21 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
 
   return (
     <DetailPanel
-      title="Route Detail"
+      title={t("routeDetail.title")}
       onClose={onClose}
       isLoading={!route && query.isPending && keyed}
       headerAction={keyed && <CopyLinkButton label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} params={() => ({ tab: "Routes", route: pathKey!, routeIata: iata!, hash: null, analyze: null, observation: null, path: null, observer: null, node: null })} />}
     >
       {route && <>
-        <Section title="Summary" first>
+        <Section title={t("routeDetail.summary")} first>
           <div className="flex items-center gap-3 font-mono text-[13px]">
             <Badge variant="default">{route.iata}</Badge>
-            <Field label="Hops" value={route.hopCount} />
-            <Field label="Heard" value={route.observationCount.toLocaleString()} />
+            <Field label={t("routeDetail.hops")} value={route.hopCount} />
+            <Field label={t("routeDetail.heard")} value={route.observationCount.toLocaleString()} />
           </div>
         </Section>
 
-        <Section title="Route">
+        <Section title={t("routeDetail.route")}>
           <div className="flex flex-col gap-1.5">
             {route.hops.map((hop, i) => {
               const resolved: ResolvedHop = { confidence: "high", nodes: hop.node ? [hop.node] : [] };
@@ -80,10 +80,10 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
           </div>
         </Section>
 
-        <Section title="Timestamps">
+        <Section title={t("routeDetail.timestamps")}>
           <div className="flex flex-col gap-0.5 font-mono text-[13px]">
-            <Field label="First seen" value={<Timestamp value={route.firstSeen} />} />
-            <Field label="Last seen" value={<Timestamp value={route.lastSeen} />} />
+            <Field label={t("routeDetail.firstSeen")} value={<Timestamp value={route.firstSeen} />} />
+            <Field label={t("routeDetail.lastSeen")} value={<Timestamp value={route.lastSeen} />} />
           </div>
         </Section>
       </>}

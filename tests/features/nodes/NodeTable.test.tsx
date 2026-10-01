@@ -74,3 +74,22 @@ describe("NodeTable IATA badge tooltip", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("dernier contact il y a 7 j");
   });
 });
+
+describe("NodeTable in French", () => {
+  it("translates column headers and filter labels", async () => {
+    await i18n.changeLanguage("fr");
+    mount([node({ id: "node-fr", name: "Nœud FR" })]);
+    await screen.findByText("Nœud FR");
+    for (const header of ["Nom", "Zones", "Voisins", "Position"]) {
+      expect(screen.getByRole("columnheader", { name: new RegExp(header) })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("toolbar", { name: "Filtres des nœuds" })).toHaveTextContent("Chemins multi-octets");
+    expect(screen.getByRole("toolbar")).toHaveTextContent("Indifférent");
+  });
+
+  it("shows the French empty state", async () => {
+    await i18n.changeLanguage("fr");
+    mount([]);
+    expect(await screen.findByText("Aucun nœud")).toBeInTheDocument();
+  });
+});

@@ -1,5 +1,7 @@
 // hex and time display helpers
 
+import i18n from "../i18n";
+
 export function formatHex(hex: string): string {
   return hex.slice(0, 8).toUpperCase();
 }
@@ -61,9 +63,10 @@ export function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  const unit = (u: "d" | "h" | "m", count: number) => i18n.t(`timestamp.unit.${u}`, { count });
+  if (d > 0) return `${unit("d", d)} ${unit("h", h)} ${unit("m", m)}`;
+  if (h > 0) return `${unit("h", h)} ${unit("m", m)}`;
+  return unit("m", m);
 }
 
 // Signed device-clock drift for the node detail, e.g. "+42s ahead", "-1h 1m behind", "in sync".
@@ -77,7 +80,8 @@ export function formatClockDrift(seconds: number, labels = { inSync: "in sync", 
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  const mag = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  const unit = (u: "h" | "m" | "s", count: number) => i18n.t(`timestamp.unit.${u}`, { count });
+  const mag = h > 0 ? `${unit("h", h)} ${unit("m", m)}` : m > 0 ? `${unit("m", m)} ${unit("s", sec)}` : unit("s", sec);
   return `${sign}${mag} ${dir}`;
 }
 
@@ -104,7 +108,7 @@ export function formatRatePerDay(count: number | null | undefined, windowMs: num
   const days = windowMs / 86_400_000;
   const rate = days > 0 ? count / days : 0;
   const shown = rate >= 10 ? formatCount(Math.round(rate)) : String(Math.round(rate * 10) / 10);
-  return `${shown}/d`;
+  return i18n.t("units.perDay", { value: shown });
 }
 
 export type TimeAgoUnit = "s" | "m" | "h" | "d";

@@ -1,5 +1,6 @@
 import { useRef, useCallback, useLayoutEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useTranslation } from "react-i18next";
 import type { PacketSummary } from "../../types/api";
 import { PacketTableHeader } from "./PacketTableHeader";
 import { PacketTableRow } from "./PacketTableRow";
@@ -45,6 +46,7 @@ export function PacketVirtualList({
   selectedObservationId,
   onSelectObservation,
 }: PacketVirtualListProps) {
+  const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
   const freshHashes = useFreshHashes(packets);
   const isMobile = useIsMobile();
@@ -153,7 +155,7 @@ export function PacketVirtualList({
         })}
       </div>
       {packets.length === 0 && (
-        <p className="py-4 text-center text-xs font-mono text-text-muted">No matching packets loaded.</p>
+        <p className="py-4 text-center text-xs font-mono text-text-muted">{t("packetList.noMatching")}</p>
       )}
       {hasNextPage && (
         <div className="flex justify-center py-4">
@@ -163,7 +165,7 @@ export function PacketVirtualList({
             onClick={() => fetchNextPage()}
             className="rounded border border-border px-3 py-1.5 text-xs font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            {isFetching ? "Loading packets..." : "Load older packets"}
+            {isFetching ? t("packetList.loadingPackets") : t("packetList.loadOlder")}
           </button>
         </div>
       )}

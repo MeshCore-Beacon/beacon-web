@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapLibre } from "./useMapLibre";
@@ -37,6 +38,7 @@ interface MapViewProps {
 }
 
 export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProps) {
+  const { t } = useTranslation();
   // Deep-link params, read once at mount (like the region's ?iata seed). Each setting below is seeded
   // URL -> localStorage -> default; the URL wins for this session but is never written back to
   // localStorage, so a shared link can't clobber the visitor's saved prefs.
@@ -235,7 +237,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       {error && (
         // z-20 so the failure overlay covers the settings card (z-10) instead of it floating on top
         <div className="absolute inset-0 z-20 bg-bg-base">
-          <EmptyState title="Map failed to load" subtitle="Check your connection and reload" />
+          <EmptyState title={t("map.loadFailed")} subtitle={t("map.loadFailedHint")} />
         </div>
       )}
     </div>

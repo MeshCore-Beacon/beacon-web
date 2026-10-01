@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { PacketSummary } from "../../types/api";
 import { formatPropagation } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
@@ -29,6 +30,7 @@ interface Props {
 export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedObservationId, onSelectObservation }: Props) {
   const { data, isLoading, isError, refetch } = usePacketDetail(packet.packetHash);
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const observer = packet.latestObserver;
   // firstHeardAt/lastHeardAt are epoch ms (same unit Timestamp expects), so the difference is
   // already in ms for formatPropagation -- no *1000 here.
@@ -38,7 +40,7 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
   // The summary already knows the count is zero, so skip the fetch-driven states entirely rather
   // than showing a blank (0-row) skeleton while it loads.
   const noObservations = packet.observationCount === 0;
-  const emptyState = <div className="text-[10px] text-text-dim py-2">No observations</div>;
+  const emptyState = <div className="text-[10px] text-text-dim py-2">{t("packetRow.noObservations")}</div>;
   // Picking an observation is the way into the analyzer — it opens on the one you clicked.
   const handleSelectObservation = useCallback(
     (id: number) => {
@@ -55,22 +57,22 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] md:text-[10px] text-text-muted pb-2">
         {/* the mobile card header right above already names the latest observer */}
         <span className="hidden md:inline">
-          observer{" "}
+          {t("packetRow.observer")}{" "}
           {observer
             ? <span className="text-text-normal">{observer.displayName ?? observer.id.slice(0, 8)}</span>
-            : <span className="text-text-dim">n/a</span>}
+            : <span className="text-text-dim">{t("packetEndpoints.na")}</span>}
         </span>
-        <span>first <Timestamp value={packet.firstHeardAt} /></span>
-        <span>last <Timestamp value={packet.lastHeardAt} /></span>
-        <span>spread {formatPropagation(spread)}</span>
+        <span>{t("packetRow.first")} <Timestamp value={packet.firstHeardAt} /></span>
+        <span>{t("packetRow.last")} <Timestamp value={packet.lastHeardAt} /></span>
+        <span>{t("packetRow.spread")} {formatPropagation(spread)}</span>
         <button
           type="button"
           onClick={onViewPath}
           disabled={!ready || !hasPath}
-          title={hasPath ? undefined : "No resolved path to map"}
+          title={hasPath ? undefined : t("packetRow.noPath")}
           className={ACTION_BUTTON_CLASS}
         >
-          Map all paths
+          {t("investigation.viewAll")}
         </button>
       </div>
 
@@ -78,9 +80,9 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
       <div data-testid="observation-scroller" className="md:max-h-[360px] md:overflow-y-auto">
         {isError ? (
           <div className="flex flex-wrap items-center gap-3 text-[11px] md:text-[10px] text-danger py-2">
-            <span>Failed to load observations</span>
+            <span>{t("packetRow.loadFailed")}</span>
             <button type="button" onClick={() => refetch()} className={ACTION_BUTTON_CLASS}>
-              Retry
+              {t("observerPage.retry")}
             </button>
           </div>
         ) : noObservations ? (

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Dropdown } from "./Dropdown";
 
 interface SelectOption {
@@ -18,7 +19,9 @@ interface SelectDropdownProps {
 
 // single-select dropdown styled to match the packets MultiSelectDropdown trigger
 
-export function SelectDropdown({ label, options, value, onChange, align = "right", allLabel = "All", hideAll = false, fullWidth = false }: SelectDropdownProps) {
+export function SelectDropdown({ label, options, value, onChange, align = "right", allLabel: allLabelProp, hideAll = false, fullWidth = false }: SelectDropdownProps) {
+  const { t } = useTranslation();
+  const allLabel = allLabelProp ?? t("common.all");
   const active = value !== "";
   const selectedLabel = options.find((o) => o.value === value)?.label ?? value;
 
@@ -79,7 +82,7 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
             );
           })}
           {hideAll && options.length === 0 && (
-            <div className="px-2.5 py-1 text-xs font-mono text-text-dim">No options</div>
+            <div className="px-2.5 py-1 text-xs font-mono text-text-dim">{t("common.noOptions")}</div>
           )}
         </div>
       )}

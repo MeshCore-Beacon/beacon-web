@@ -1,19 +1,10 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { SelectDropdown } from "../../components/SelectDropdown";
 import { FilterSheet, FiltersButton } from "../../components/FilterSheet";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { NODE_TYPE_OPTIONS } from "../../lib/node-types";
-
-const MULTIBYTE_OPTIONS = [
-  { value: "true", label: "Yes" },
-  { value: "false", label: "No" },
-];
-
-const SEARCH_FIELDS: SearchFieldOption[] = [
-  { value: "name", label: "Name" },
-  { value: "pubkey", label: "Public Key" },
-];
 
 // "" means no filter (Any)
 export type MultibyteFilter = "" | "true" | "false";
@@ -49,6 +40,7 @@ export function NodeFilterBar({
   onScopeChange,
   scopeOptions,
 }: NodeFilterBarProps) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
   // close the sheet when leaving mobile — derive during render, not in an effect
@@ -62,22 +54,32 @@ export function NodeFilterBar({
     onScopeChange("");
   };
 
+  const multibyteOptions = [
+    { value: "true", label: t("nodeFilters.yes") },
+    { value: "false", label: t("nodeFilters.no") },
+  ];
+  const typeOptions = NODE_TYPE_OPTIONS.map((o) => ({ ...o, label: t(`nodeTypes.${o.value}`, { defaultValue: o.label }) }));
+  const searchFields: SearchFieldOption[] = [
+    { value: "name", label: t("nodeFilters.fieldName") },
+    { value: "pubkey", label: t("nodeFilters.fieldPubkey") },
+  ];
+
   // shared by the desktop inline bar and the mobile filter sheet
   const controls = (fullWidth: boolean) => (
     <>
-      <SelectDropdown label="Type" options={NODE_TYPE_OPTIONS} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
-      <SelectDropdown label="Multi-byte paths" options={MULTIBYTE_OPTIONS} allLabel="Any" value={pathsFilter} onChange={(v) => onPathsChange(v as MultibyteFilter)} fullWidth={fullWidth} />
-      <SelectDropdown label="Multi-byte traces" options={MULTIBYTE_OPTIONS} allLabel="Any" value={tracesFilter} onChange={(v) => onTracesChange(v as MultibyteFilter)} fullWidth={fullWidth} />
+      <SelectDropdown label={t("nodeFilters.type")} options={typeOptions} allLabel={t("nodeFilters.all")} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
+      <SelectDropdown label={t("nodeFilters.multibytePaths")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={pathsFilter} onChange={(v) => onPathsChange(v as MultibyteFilter)} fullWidth={fullWidth} />
+      <SelectDropdown label={t("nodeFilters.multibyteTraces")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={tracesFilter} onChange={(v) => onTracesChange(v as MultibyteFilter)} fullWidth={fullWidth} />
       {scopeOptions.length > 0 && (
-        <SelectDropdown label="Scope" options={scopeOptions.map((s) => ({ value: s, label: s }))} allLabel="Any" value={scopeFilter} onChange={onScopeChange} fullWidth={fullWidth} />
+        <SelectDropdown label={t("nodeFilters.scope")} options={scopeOptions.map((s) => ({ value: s, label: s }))} allLabel={t("nodeFilters.any")} value={scopeFilter} onChange={onScopeChange} fullWidth={fullWidth} />
       )}
     </>
   );
 
   if (isMobile) {
     return (
-      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label="Node filters">
-        <SearchBar value={search} onChange={onSearchChange} fields={SEARCH_FIELDS} field={searchField} onFieldChange={onSearchFieldChange} />
+      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label={t("nodeFilters.label")}>
+        <SearchBar value={search} onChange={onSearchChange} fields={searchFields} field={searchField} onFieldChange={onSearchFieldChange} />
         <FiltersButton activeCount={activeCount} onClick={() => setSheetOpen(true)} />
         {sheetOpen && (
           <FilterSheet onClose={() => setSheetOpen(false)} onClear={activeCount > 0 ? clearAll : undefined}>
@@ -92,12 +94,12 @@ export function NodeFilterBar({
     <div
       className="flex flex-wrap items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0"
       role="toolbar"
-      aria-label="Node filters"
+      aria-label={t("nodeFilters.label")}
     >
       <SearchBar
         value={search}
         onChange={onSearchChange}
-        fields={SEARCH_FIELDS}
+        fields={searchFields}
         field={searchField}
         onFieldChange={onSearchFieldChange}
       />

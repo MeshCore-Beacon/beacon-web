@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { Observation } from "../../types/api";
 import { formatSnr, formatPropagation, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
@@ -11,18 +12,19 @@ interface Props {
 
 // Per-observer readings vary by distance; presentational component owned by caller.
 export function ObservationTable({ observations, selectedId, onSelect }: Props) {
+  const { t } = useTranslation();
   return (
     <table className="w-full text-[10px] border-collapse">
       <thead>
         <tr className="text-text-dim uppercase tracking-wider text-[9px]">
-          <th className="text-left font-medium py-1 px-1.5">Observer</th>
-          <th className="text-left font-medium py-1 px-1.5">Area</th>
-          <th className="text-left font-medium py-1 px-1.5">Heard</th>
+          <th className="text-left font-medium py-1 px-1.5">{t("observation.observer")}</th>
+          <th className="text-left font-medium py-1 px-1.5">{t("observation.area")}</th>
+          <th className="text-left font-medium py-1 px-1.5">{t("observation.heard")}</th>
           <th className="text-left font-medium py-1 px-1.5">SNR</th>
           <th className="text-left font-medium py-1 px-1.5">RSSI</th>
-          <th className="text-left font-medium py-1 px-1.5">Prop</th>
-          <th className="text-left font-medium py-1 px-1.5">Hops</th>
-          <th className="text-left font-medium py-1 px-1.5">Path</th>
+          <th className="text-left font-medium py-1 px-1.5">{t("observation.prop")}</th>
+          <th className="text-left font-medium py-1 px-1.5">{t("observation.hops")}</th>
+          <th className="text-left font-medium py-1 px-1.5">{t("observation.path")}</th>
         </tr>
       </thead>
       <tbody>

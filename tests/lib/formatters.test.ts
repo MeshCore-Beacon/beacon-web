@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import i18n from "../../src/i18n";
 import {
   formatRadio,
   formatRadioParts,
@@ -13,6 +14,7 @@ import {
   formatCount,
   formatClockDrift,
   formatRatePerDay,
+  formatUptime,
 } from "../../src/lib/formatters";
 
 const DAY_MS = 86_400_000;
@@ -217,5 +219,20 @@ describe("formatRadioParts", () => {
 
   it("backs the compact-string formatter so both read the same", () => {
     expect(formatRadio("915,250,11")).toBe(formatRadioParts({ freqMhz: 915, sf: 11, bwKhz: 250 }));
+  });
+});
+
+describe("formatters in French", () => {
+  it("uses French unit words for uptime and daily rates", async () => {
+    await i18n.changeLanguage("fr");
+    expect(formatUptime(90061)).toBe("1 j 1 h 1 min");
+    expect(formatUptime(300)).toBe("5 min");
+    expect(formatRatePerDay(340, DAY_MS)).toBe("340/j");
+    expect(formatClockDrift(-3670, { inSync: "synchronisé", ahead: "en avance", behind: "en retard" })).toBe("-1 h 1 min en retard");
+  });
+
+  it("keeps the compact English units", () => {
+    expect(formatUptime(90061)).toBe("1d 1h 1m");
+    expect(formatUptime(3660)).toBe("1h 1m");
   });
 });

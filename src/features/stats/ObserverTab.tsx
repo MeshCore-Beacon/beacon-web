@@ -88,8 +88,8 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison, 
     [heardData, intervalMs, heardWindow],
   );
   const busy = useMemo(
-    () => busyOption(heard, colors, intervalMs, heardWindow),
-    [heard, colors, intervalMs, heardWindow],
+    () => busyOption(heard, colors, intervalMs, heardWindow, t("charts.busy")),
+    [heard, colors, intervalMs, heardWindow, t],
   );
   const heardCount = useMemo(
     () => heardOption(heard, colors, heardWindow, t("observerPage.packets")),

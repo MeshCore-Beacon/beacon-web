@@ -29,12 +29,12 @@ function LiveBadge({ wsManager, compact = false }: { wsManager: WsManager; compa
     if (status !== "connecting") return;
     function update() {
       const staleSec = Math.floor((Date.now() - wsManager.getLastEventTimestamp()) / 1000);
-      setStaleStr(staleSec > 60 ? `${Math.floor(staleSec / 60)}m` : `${staleSec}s`);
+      setStaleStr(staleSec > 60 ? t("timestamp.unit.m", { count: Math.floor(staleSec / 60) }) : t("timestamp.unit.s", { count: staleSec }));
     }
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [status, wsManager]);
+  }, [status, wsManager, t]);
 
   if (status === "connected") {
     if (compact) return (
@@ -364,12 +364,13 @@ function ThemeOptions({ onPick }: { onPick?: () => void }) {
 }
 
 function GitHubLink() {
+  const { t } = useTranslation();
   return (
     <a
       href={GITHUB_URL}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="GitHub"
+      aria-label={t("header.github")}
       className="text-text-muted hover:text-text-normal transition-colors shrink-0"
     >
       <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">

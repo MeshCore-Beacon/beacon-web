@@ -41,7 +41,9 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
           {msg.senderName}
         </span>
         <Timestamp value={msg.sentAt} className="text-[11px] text-text-dim" />
-        {reach > 0 && <Badge variant="text">×{reach}</Badge>}
+        {reach > 0 && <span title={t("channelMessages.heardTimes", { count: reach })}>
+          <Badge variant="text"><span aria-hidden>×{reach}</span><span className="sr-only">{t("channelMessages.heardTimes", { count: reach })}</span></Badge>
+        </span>}
         {/* Unscoped is the default, so only a named or unresolved scope earns a chip. */}
         {msg.scope ? <ScopeTag boxed className="max-w-full break-all">{msg.scope}</ScopeTag>
           : msg.scopeStatus === "unknown" && <span className="rounded-sm bg-text-normal/5 px-1.5 py-px font-mono text-[11px] text-text-dim">{t("channelMessages.unknownScope")}</span>}

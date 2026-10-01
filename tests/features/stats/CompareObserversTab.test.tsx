@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { CompareObserversTab } from "../../../src/features/stats/CompareObserversTab";
 import { getObserverComparison, getObserversPage, getObserver } from "../../../src/api/client";
+import i18n from "../../../src/i18n";
 
 const region = { iatas: ["YVR"], regionKey: "YVR" };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
@@ -135,5 +136,16 @@ describe("observer comparison", () => {
     expect(screen.queryByText(/Only recent packets are kept/)).not.toBeInTheDocument();
     fireEvent.change(start, { target: { value: "2020-01-01T00:00" } });
     expect(screen.getByText(/Only recent packets are kept/)).toBeInTheDocument();
+  });
+
+  it("renders the comparison in French", async () => {
+    await i18n.changeLanguage("fr");
+    mount(query);
+    const table = await screen.findByRole("table", { name: "Comparaison des paquets flood" });
+    expect(within(table).getByRole("row", { name: /A seulement.*1.*25.0%/ })).toBeInTheDocument();
+    expect(screen.getByText("Comparer les observateurs")).toBeInTheDocument();
+    expect(screen.getByText("A : Rooftop · B : Hilltop")).toBeInTheDocument();
+    expect(screen.getByText(/4 paquets flood/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Comparer" })).toBeInTheDocument();
   });
 });

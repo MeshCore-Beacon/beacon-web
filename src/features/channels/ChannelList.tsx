@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useIsFetching, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { isRateLimited, subscribeRateLimit } from "../../api/rate-limit";
@@ -33,6 +34,7 @@ function appendMessages(old: InfiniteData<CursorPage<ChannelMessage>> | undefine
 }
 
 export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
+  const { t } = useTranslation();
   const { iatas, regionKey } = useRegion();
   const isMobile = useIsMobile();
   // Keep the open channel available when a directory page is evicted or refreshed.
@@ -251,18 +253,18 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
               />
             )}
             {!keyed.isLoading && filteredChannels.length === 0 && (
-              <p className="px-3 py-2 text-xs font-mono text-text-muted">No matching channels loaded.</p>
+              <p className="px-3 py-2 text-xs font-mono text-text-muted">{t("channels.noMatches")}</p>
             )}
-            {(keyed.isError || others.isError) && <p role="alert" className="px-3 py-2 text-xs text-danger">Could not load channels.</p>}
+            {(keyed.isError || others.isError) && <p role="alert" className="px-3 py-2 text-xs text-danger">{t("channels.loadError")}</p>}
             {keyed.isError ? (
               <PagerButton disabled={keyed.isFetching} onClick={() => void keyed.refetch()}>
-                {keyed.isFetching ? "Loading channels..." : "Retry loading channels"}
+                {keyed.isFetching ? t("channels.loadingChannels") : t("channels.retryChannels")}
               </PagerButton>
             ) : !others.isEnabled ? (
-              !keyed.isLoading && <PagerButton onClick={() => setOthersRegion(regionKey)}>Load other channels</PagerButton>
+              !keyed.isLoading && <PagerButton onClick={() => setOthersRegion(regionKey)}>{t("channels.loadOthers")}</PagerButton>
             ) : (others.hasNextPage || others.isError) && (
               <PagerButton disabled={others.isFetching} onClick={() => void (others.hasNextPage ? others.fetchNextPage() : others.refetch())}>
-                {others.isFetching ? "Loading channels..." : others.isError ? "Retry loading channels" : "Load more channels"}
+                {others.isFetching ? t("channels.loadingChannels") : others.isError ? t("channels.retryChannels") : t("channels.loadMore")}
               </PagerButton>
             )}
           </div>

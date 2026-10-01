@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { PacketRow } from "../../../src/features/packets/PacketRow";
+import i18n from "../../../src/i18n";
 import type { PacketSummary } from "../../../src/types/api";
 
 const pkt = (over: Partial<PacketSummary> = {}): PacketSummary => ({
@@ -28,5 +29,14 @@ describe("PacketRow", () => {
     render(<PacketRow packet={pkt()} expanded={false} onToggle={onToggle} />);
     fireEvent.click(screen.getByText("AA11"));
     expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PacketRow in French", () => {
+  it("translates the observer count label and unknown route", async () => {
+    await i18n.changeLanguage("fr");
+    render(<PacketRow packet={pkt({ routeTypeName: "" })} expanded={false} onToggle={() => {}} />);
+    expect(screen.getByLabelText("Reçu par 2 observateurs")).toBeInTheDocument();
+    expect(screen.getByText("Inconnu")).toBeInTheDocument();
   });
 });

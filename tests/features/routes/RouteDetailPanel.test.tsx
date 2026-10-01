@@ -110,4 +110,14 @@ describe("route detail", () => {
     mount();
     expect(await screen.findByText("12.00")).toHaveClass("text-green");
   });
+
+  it("translates the summary section titles and labels", async () => {
+    await i18n.changeLanguage("fr");
+    vi.mocked(getRouteEvidence).mockReturnValue(new Promise(() => {}));
+    mount({ listed: route });
+    expect(screen.getByText("Détail du trajet")).toBeInTheDocument();
+    expect(screen.getByText("Résumé")).toBeInTheDocument();
+    expect(screen.getByText("Horodatages")).toBeInTheDocument();
+    expect(screen.getByText("Première réception")).toBeInTheDocument();
+  });
 });

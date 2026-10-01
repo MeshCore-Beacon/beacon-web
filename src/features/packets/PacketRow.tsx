@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { formatHex } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import type { PacketSummary } from "../../types/api";
@@ -17,6 +18,8 @@ interface PacketRowProps {
 // selectable packet card; observations live in the analyzer drawer
 
 export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProps) {
+  const { t } = useTranslation();
+  const heardBy = t("packetRow.heardBy", { count: packet.observationCount });
   return (
     <div
       className={`group bg-bg-surface border rounded-md px-3.5 py-2.5 cursor-pointer ${
@@ -44,10 +47,10 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
         <Badge variant={payloadTypeVariant(packet.payloadType)}>
           {PAYLOAD_TYPE_NAMES[packet.payloadType as PayloadTypeValue] ?? packet.payloadTypeName}
         </Badge>
-        <Tooltip label={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}>
+        <Tooltip label={heardBy}>
           <span
             className="font-mono text-[11px] text-primary font-semibold whitespace-nowrap bg-primary/6 px-1.5 rounded-sm"
-            aria-label={`Heard by ${packet.observationCount} observer${packet.observationCount === 1 ? "" : "s"}`}
+            aria-label={heardBy}
           >
             ×{packet.observationCount}
           </span>
@@ -58,7 +61,7 @@ export function PacketRow({ packet, expanded, isFresh, onToggle }: PacketRowProp
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-text-dim">
         <span className="font-mono text-[11px] text-text-muted uppercase tracking-wider bg-text-muted/8 px-1.5 py-px rounded-sm">
-          {packet.routeTypeName || "Unknown"}
+          {packet.routeTypeName || t("packetRow.unknown")}
         </span>
         {packet.scope && (
           <>

@@ -118,6 +118,32 @@ describe("packet reception evidence", () => {
   });
 });
 
+describe("PacketAnalyzerDrawer in French", () => {
+  it("translates the empty state and close control", async () => {
+    await i18n.changeLanguage("fr");
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={undefined} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByText("Analyseur de paquets")).toBeInTheDocument();
+    expect(screen.getByText("Sélectionnez un paquet à analyser")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fermer l’analyseur")).toBeInTheDocument();
+  });
+  it("translates the structure section and payload fields", async () => {
+    const d = makeDetail([]);
+    d.observations[0].pathBytes = "aabb";
+    d.header = { ...d.header, raw: "14", routeType: RouteType.TRANSPORT_FLOOD, routeTypeName: "TRANSPORT_FLOOD" };
+    d.transportCodes = { regionCode: 49240, subRegionCode: 0 };
+    d.parsedPayload = { type: "TEXT_MESSAGE", destinationHash: "aa", sourceHash: "bb", ciphertext: "0011" };
+    await i18n.changeLanguage("fr");
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
+    for (const text of ["Résumé", "Paquet brut", "Structure du paquet", "Octet d’en-tête", "Longueur du trajet", "Données du trajet", "Détail de la charge utile"]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("Code de portée 58C0 (2B) = 49240");
+    expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("aucune portée connue");
+    expect(screen.getByText("sauts=2")).toBeInTheDocument();
+    expect(screen.getByText("Chiffré — clé non disponible")).toBeInTheDocument();
+  });
+});
+
 describe("transport scope", () => {
   const transport = () => {
     const d = makeDetail([]);

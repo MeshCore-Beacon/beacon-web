@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { CopyButton } from "../../src/components/CopyButton";
+import i18n from "../../src/i18n";
 
 const writeText = vi.fn();
 
@@ -45,5 +46,13 @@ describe("CopyButton", () => {
   it("uses the provided aria-label for the accessible name", () => {
     render(<CopyButton value="deadbeef" ariaLabel="Copy public key" />);
     expect(screen.getByRole("button", { name: "Copy public key" })).toBeInTheDocument();
+  });
+
+  it("defaults to French labels in French", async () => {
+    await i18n.changeLanguage("fr");
+    render(<CopyButton value="deadbeef" />);
+    const button = screen.getByRole("button", { name: "Copier" });
+    fireEvent.click(button);
+    expect(button).toHaveTextContent("Copié");
   });
 });

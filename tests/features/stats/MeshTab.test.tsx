@@ -186,3 +186,13 @@ it("shows French labels for the KPIs, chart titles and scope table", async () =>
   expect(within(scopeList).getByText("Nœuds")).toBeInTheDocument();
   await act(() => i18n.changeLanguage("en"));
 });
+
+it("names the observation and preset chart series in French", async () => {
+  await act(() => i18n.changeLanguage("fr"));
+  mount(); await loaded();
+  const obsChart = within(card("Observations · 24h")).getByTestId("chart").textContent;
+  expect(obsChart).toContain('"Observations","Paquets uniques"');
+  const presetChart = within(card("Préréglages radio · historique complet")).getByTestId("chart").textContent;
+  expect(presetChart).toContain('"Nœuds","Observateurs"');
+  await act(() => i18n.changeLanguage("en"));
+});

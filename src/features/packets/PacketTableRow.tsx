@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { formatHex } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { Badge } from "../../components/Badge";
@@ -17,10 +18,11 @@ interface PacketTableRowProps {
 
 // The observer lives in the expansion, which frees the wide column for the packet's endpoints.
 export function PacketTableRow({ packet, expanded, isFresh, onToggle }: PacketTableRowProps) {
+  const { t } = useTranslation();
   // ?? not ||, so a legitimate 0-hop direct packet still shows its count
   const pathLength = packet.latestObserver?.pathLength;
-  const routeName = packet.routeTypeName || "Unknown";
-  const na = <span className="text-text-dim">n/a</span>;
+  const routeName = packet.routeTypeName || t("packetTable.unknown");
+  const na = <span className="text-text-dim">{t("packetEndpoints.na")}</span>;
 
   return (
     <div

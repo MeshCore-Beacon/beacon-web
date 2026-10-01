@@ -202,3 +202,28 @@ describe("NodeDetailPanel recent packets", () => {
     expect(screen.queryByText("Observations")).not.toBeInTheDocument();
   });
 });
+
+describe("NodeDetailPanel in French", () => {
+  it("translates section titles, labels, yes/no and empty states", async () => {
+    mockGetNode.mockResolvedValue({ ...node, knownNeighborCount: 2, clockDriftSeconds: 20, clockOutOfSync: false, clockCheckedAt: 2 });
+    await act(() => i18n.changeLanguage("fr"));
+    renderPanel();
+
+    expect(await screen.findByText("Capacités")).toBeInTheDocument();
+    expect(screen.getByText("Détail du nœud")).toBeInTheDocument();
+    expect(screen.getByText("Chemins multi-octets")).toBeInTheDocument();
+    expect(screen.getAllByText("non")).toHaveLength(2);
+    expect(screen.getByText("+20 s en avance")).toBeInTheDocument();
+    expect(screen.getByText("Voisins (2)")).toBeInTheDocument();
+    expect(await screen.findByText("Aucun voisin connu")).toBeInTheDocument();
+    expect(screen.getByText("Aucun paquet récent")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copier la clé publique" })).toBeInTheDocument();
+  });
+
+  it("translates the possibly-foreign badge", async () => {
+    mockGetNode.mockResolvedValue({ ...node, possiblyForeign: true });
+    await act(() => i18n.changeLanguage("fr"));
+    renderPanel();
+    expect(await screen.findByText("Possiblement étranger")).toBeInTheDocument();
+  });
+});

@@ -87,6 +87,12 @@ describe("PacketEndpoints", () => {
     await act(() => i18n.changeLanguage("en"));
   });
 
+  it("shows a missing endpoint as n/d in French", async () => {
+    await act(() => i18n.changeLanguage("fr"));
+    render(<PacketEndpoints packet={pkt()} />);
+    expect(screen.getByText("n/d")).toBeInTheDocument();
+  });
+
   it("shows an advert as its single source node with no destination", () => {
     const advert = { ...pkt(obs({ resolvedSource: { confidence: "high", nodes: [{ id: "s", publicKey: "aa", name: "Fuzz HQ" }] } })), payloadType: 4, summary: "Fuzz HQ" };
     render(<PacketEndpoints packet={advert} />);

@@ -5,6 +5,7 @@ import { TalkersTab } from "../../../src/features/stats/TalkersTab";
 import { getTopAdvertisers, getTopTalkers } from "../../../src/api/client";
 import type { StatsRange, TopAdvertiser, TopTalker } from "../../../src/features/stats/types";
 import type { EChartsOption } from "../../../src/features/stats/echarts-setup";
+import i18n from "../../../src/i18n";
 
 const region = { iatas: ["YVR"], regionKey: "YVR" };
 const advertisers: TopAdvertiser[] = [{ nodeId: "fixture-node", nodeName: "Old advertiser", nodeType: 2, nodeTypeName: "Repeater", iata: "YVR", advertCount: 14, floodAdvertCount: 10, directAdvertCount: 4, lastHeard: 0 }];
@@ -124,4 +125,13 @@ it("opens the clicked advertiser's node", async () => {
   mount(onViewNode);
   fireEvent.click(await screen.findByText("Old advertiser"));
   expect(onViewNode).toHaveBeenCalledWith("fixture-node");
+});
+
+it("renders the leaderboards in French", async () => {
+  await i18n.changeLanguage("fr");
+  mount();
+  await screen.findByText("Old advertiser");
+  expect(screen.getByText("Principaux annonceurs · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Principaux émetteurs · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Nœud")).toBeInTheDocument();
 });

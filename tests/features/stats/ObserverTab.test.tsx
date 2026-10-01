@@ -23,7 +23,7 @@ vi.mock("../../../src/features/stats/useLiveStats", () => ({
 
 // ECharts needs a real canvas; the tab's behaviour is in which cards it renders, not the pixels
 vi.mock("../../../src/features/stats/EChart", () => ({
-  EChart: () => <div data-testid="chart" />,
+  EChart: ({ option }: { option: unknown }) => <div data-testid="chart" data-option={JSON.stringify(option)} />,
 }));
 
 const telemetryResult = { data: undefined as ObserverTelemetry | undefined, isLoading: false, isError: false };
@@ -204,6 +204,14 @@ describe("Observer dashboard hierarchy", () => {
     expect(screen.getByText("Paquets reçus")).toBeInTheDocument();
     expect(screen.queryByText("Détails de l’appareil")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Copier la clé publique/ })).toBeInTheDocument();
+  });
+
+  it("names the busy series in French", async () => {
+    await i18n.changeLanguage("fr");
+    renderTab();
+    const options = screen.getAllByTestId("chart").map((c) => c.getAttribute("data-option") ?? "");
+    expect(options.some((o) => o.includes('"name":"Occupation"'))).toBe(true);
+    expect(options.some((o) => o.includes('"name":"Busy"'))).toBe(false);
   });
 
   it("keeps packet metrics without the removed traffic text badge", () => {

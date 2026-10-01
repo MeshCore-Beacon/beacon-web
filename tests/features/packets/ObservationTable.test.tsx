@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { ObservationTable } from "../../../src/features/packets/ObservationTable";
+import i18n from "../../../src/i18n";
 import type { Observation } from "../../../src/types/api";
 
 const obs = (id: number, over: Partial<Observation> = {}): Observation => ({
@@ -95,5 +96,15 @@ describe("ObservationTable", () => {
     const row = screen.getAllByRole("row")[1]!;
     const cell = within(row).getAllByRole("cell")[3]!;
     expect(cell.className).toContain("text-text-dim");
+  });
+});
+
+describe("ObservationTable in French", () => {
+  it("translates the column headers", async () => {
+    await i18n.changeLanguage("fr");
+    render(<ObservationTable observations={[obs(1)]} selectedId={null} onSelect={() => {}} />);
+    for (const h of ["Observateur", "Zone", "Reçu", "Prop.", "Sauts", "Trajet"]) {
+      expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
+    }
   });
 });

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { getTraces } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { SkeletonRows } from "../../components/SkeletonRows";
@@ -14,13 +15,6 @@ import type { TraceTagSummary, TraceType } from "../../types/api";
 // Traces are modest in number and the list isn't streamed, so a single region-filtered fetch covers
 // the card list (the /traces cursor is sound if pagination is ever needed).
 const TRACE_LIST_LIMIT = 200;
-
-// "" = both; the backend takes TRACE or PING and omits the param to mean all.
-const TYPE_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "TRACE", label: "Trace" },
-  { value: "PING", label: "Ping" },
-];
 
 interface TraceListProps {
   onAnalyze: (hash: string | null) => void;
@@ -63,6 +57,7 @@ function TraceTagCard({ tag, selected, onSelect }: {
   selected: boolean;
   onSelect: (tag: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       className={`bg-bg-surface border rounded-md px-3.5 py-2.5 cursor-pointer ${
@@ -85,7 +80,7 @@ function TraceTagCard({ tag, selected, onSelect }: {
         <Timestamp value={tag.lastHeardAt} className="ml-auto text-[11px] text-text-dim" />
       </div>
       <div className="mt-1 text-[11px] text-text-dim font-mono">
-        {tag.packetCount} pkt · {tag.iataCount} iata
+        {t("traces.pkt", { count: tag.packetCount })} · {t("traces.iata", { count: tag.iataCount })}
       </div>
       {tag.pathHashes?.length ? <TracePathPreview hashes={tag.pathHashes} snrs={tag.snrValues ?? []} /> : null}
     </div>
@@ -93,7 +88,14 @@ function TraceTagCard({ tag, selected, onSelect }: {
 }
 
 export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
+  const { t } = useTranslation();
   const { iatas, regionKey } = useRegion();
+  // "" = both; the backend takes TRACE or PING and omits the param to mean all.
+  const typeOptions = useMemo(() => [
+    { value: "", label: t("traces.all") },
+    { value: "TRACE", label: t("traces.trace") },
+    { value: "PING", label: t("traces.ping") },
+  ], [t]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<"" | TraceType>("");
 
@@ -117,23 +119,23 @@ export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
           <span className="font-mono text-[11px] text-text-dim">
-            {tags ? `${tags.length} tag${tags.length === 1 ? "" : "s"}` : ""}
+            {tags ? t("traces.tagCount", { count: tags.length }) : ""}
           </span>
           <Segmented
-            options={TYPE_OPTIONS}
+            options={typeOptions}
             value={typeFilter}
             onChange={(v) => setTypeFilter(v as "" | TraceType)}
-            ariaLabel="Trace type"
+            ariaLabel={t("traces.typeLabel")}
           />
         </div>
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
           {isLoading ? (
             <SkeletonRows rows={8} />
           ) : (tags?.length ?? 0) === 0 ? (
-            <EmptyState title="No traces" />
+            <EmptyState title={t("traces.empty")} />
           ) : (
-            tags!.map((t) => (
-              <TraceTagCard key={t.traceTag} tag={t} selected={t.traceTag === selectedTag} onSelect={setSelectedTag} />
+            tags!.map((tag) => (
+              <TraceTagCard key={tag.traceTag} tag={tag} selected={tag.traceTag === selectedTag} onSelect={setSelectedTag} />
             ))
           )}
         </div>

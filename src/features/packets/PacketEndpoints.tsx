@@ -28,7 +28,10 @@ function Chip({ hop }: { hop: ResolvedHop }) {
   );
 }
 
-const Na = () => <span className="text-text-dim">n/a</span>;
+function Na() {
+  const { t } = useTranslation();
+  return <span className="text-text-dim">{t("packetEndpoints.na")}</span>;
+}
 
 // Keep every candidate: a short endpoint hash can match several nodes.
 export function PacketEndpoints({ packet }: { packet: PacketSummary }) {

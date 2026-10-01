@@ -19,6 +19,7 @@ import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
 import { patchNodeSummary } from "./node-updates";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
+import type { TFunction } from "i18next";
 import type { NodeSummary, NodeIATA } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
@@ -26,8 +27,7 @@ import type { WsNodeUpdate } from "../../types/ws";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
 
-// A column cell and renderNodeCard sit outside any component, so the tooltip's translated
-// "last heard" label needs its own tiny component to call useTranslation.
+// Cell and card renderers can't call hooks, so the computed "last heard" label gets its own component.
 function IataBadge({ entry }: { entry: NodeIATA }) {
   const { t } = useTranslation();
   const { count, unit } = timeAgoParts(entry.lastHeard);
@@ -46,67 +46,7 @@ interface NodeTableProps {
   onSelectNode: (id: string | null) => void;
 }
 
-const COLUMNS: Column<NodeSummary>[] = [
-  {
-    header: "Name",
-    sortValue: (node) => node.name ?? formatHex(node.id),
-    cell: (node) => (
-      <span className={`truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
-        {node.name ?? formatHex(node.id)}
-      </span>
-    ),
-  },
-  {
-    header: "Type",
-    sortValue: (node) => node.nodeTypeName,
-    cell: (node) => (
-      <div className="flex flex-wrap gap-1">
-        <Badge variant="default">
-          {node.isObserver && (
-            <Tooltip label="Observer" className="mr-1"><ObserverIcon /></Tooltip>
-          )}
-          {node.nodeTypeName}
-        </Badge>
-        <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
-      </div>
-    ),
-  },
-  {
-    header: "Radio",
-    className: "text-text-muted",
-    sortValue: (node) => formatRadio(node.radio) ?? null,
-    cell: (node) => formatRadio(node.radio) ?? "—",
-  },
-  {
-    header: "Areas",
-    cell: (node) =>
-      node.iatas && node.iatas.length > 0 ? (
-        <div className="flex flex-wrap gap-1">
-          {node.iatas.map((entry) => (
-            <IataBadge key={entry.iata} entry={entry} />
-          ))}
-        </div>
-      ) : (
-        <span className="text-text-dim">—</span>
-      ),
-  },
-  {
-    header: "Neighbors",
-    className: "text-text-muted",
-    sortValue: (node) => node.knownNeighborCount,
-    cell: (node) => node.knownNeighborCount.toLocaleString(),
-  },
-  {
-    header: "Location",
-    className: "text-text-muted",
-    cell: (node) =>
-      hasMapLocation(node)
-        ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
-        : "—",
-  },
-];
-
-function renderNodeCard(node: NodeSummary) {
+function renderNodeCard(node: NodeSummary, t: TFunction) {
   const location = hasMapLocation(node)
     ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
     : null;
@@ -119,7 +59,7 @@ function renderNodeCard(node: NodeSummary) {
         <span className="shrink-0">
           <Badge variant="default">
             {node.isObserver && (
-              <Tooltip label="Observer" className="mr-1"><ObserverIcon /></Tooltip>
+              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
             )}
             {node.nodeTypeName}
           </Badge>
@@ -128,7 +68,7 @@ function renderNodeCard(node: NodeSummary) {
       <div className="flex items-center gap-2 text-text-muted">
         <span>{formatRadio(node.radio) ?? "—"}</span>
         {location && <span>· {location}</span>}
-        {node.knownNeighborCount > 0 && <span>· {node.knownNeighborCount.toLocaleString()} neighbors</span>}
+        {node.knownNeighborCount > 0 && <span>· {t("nodes.neighbors", { count: node.knownNeighborCount, formatted: node.knownNeighborCount.toLocaleString() })}</span>}
       </div>
       <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
       {node.iatas && node.iatas.length > 0 && (
@@ -143,6 +83,7 @@ function renderNodeCard(node: NodeSummary) {
 }
 
 export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
+  const { t } = useTranslation();
   const { iatas, regionKey } = useRegion();
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("");
@@ -151,6 +92,72 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
+
+  const columns = useMemo<Column<NodeSummary>[]>(() => [
+    {
+      id: "name",
+      header: t("nodes.colName"),
+      sortValue: (node) => node.name ?? formatHex(node.id),
+      cell: (node) => (
+        <span className={`truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
+          {node.name ?? formatHex(node.id)}
+        </span>
+      ),
+    },
+    {
+      id: "type",
+      header: t("nodes.colType"),
+      sortValue: (node) => node.nodeTypeName,
+      cell: (node) => (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="default">
+            {node.isObserver && (
+              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
+            )}
+            {node.nodeTypeName}
+          </Badge>
+          <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
+        </div>
+      ),
+    },
+    {
+      id: "radio",
+      header: t("nodes.colRadio"),
+      className: "text-text-muted",
+      sortValue: (node) => formatRadio(node.radio) ?? null,
+      cell: (node) => formatRadio(node.radio) ?? "—",
+    },
+    {
+      id: "areas",
+      header: t("nodes.colAreas"),
+      cell: (node) =>
+        node.iatas && node.iatas.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {node.iatas.map((entry) => (
+              <IataBadge key={entry.iata} entry={entry} />
+            ))}
+          </div>
+        ) : (
+          <span className="text-text-dim">—</span>
+        ),
+    },
+    {
+      id: "neighbors",
+      header: t("nodes.colNeighbors"),
+      className: "text-text-muted",
+      sortValue: (node) => node.knownNeighborCount,
+      cell: (node) => node.knownNeighborCount.toLocaleString(),
+    },
+    {
+      id: "location",
+      header: t("nodes.colLocation"),
+      className: "text-text-muted",
+      cell: (node) =>
+        hasMapLocation(node)
+          ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
+          : "—",
+    },
+  ], [t]);
 
   useTick();
 
@@ -227,15 +234,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         />
 
         <DataTable
-          columns={COLUMNS}
+          columns={columns}
           rows={displayNodes}
           rowKey={(n) => n.id}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
           isLoading={isLoading}
-          emptyLabel="No nodes"
-          defaultSort={{ header: "Name" }}
-          renderCard={renderNodeCard}
+          emptyLabel={t("nodes.empty")}
+          defaultSort={{ id: "name" }}
+          renderCard={(node) => renderNodeCard(node, t)}
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>

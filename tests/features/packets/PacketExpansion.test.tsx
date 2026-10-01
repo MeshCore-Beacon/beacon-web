@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { PacketExpansion } from "../../../src/features/packets/PacketExpansion";
 import type { PacketSummary, Observation, PacketDetail } from "../../../src/types/api";
 import { PayloadType, RouteType } from "../../../src/types/enums";
+import i18n from "../../../src/i18n";
 
 const usePacketDetail = vi.fn();
 vi.mock("../../../src/features/packets/usePacketDetail", () => ({
@@ -190,5 +191,16 @@ describe("PacketExpansion", () => {
     render(<PacketExpansion {...props} onViewPath={onViewPath} />);
     fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
     expect(onViewPath).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the timing strip and error state in French", async () => {
+    await i18n.changeLanguage("fr");
+    usePacketDetail.mockReturnValue({ isError: true, refetch: vi.fn() });
+    render(<PacketExpansion {...props} />);
+    expect(screen.getByText("Impossible de charger les observations")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Réessayer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Carte de tous les trajets" })).toBeInTheDocument();
+    expect(screen.getByText(/^premier/)).toBeInTheDocument();
+    expect(screen.getByText("n/d")).toBeInTheDocument();
   });
 });
