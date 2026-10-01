@@ -24,7 +24,7 @@ scp -r docker/ user@your-server:/opt/docker/beacon-web
 cd /opt/docker/beacon-web
 cat > .env << 'EOF'
 DOMAIN=web.example.com
-BEACON_WEB_IMAGE=ghcr.io/meshcore-beacon/beacon-web:1.4.0
+BEACON_WEB_IMAGE=ghcr.io/meshcore-beacon/beacon-web:2.0.0
 VITE_API_BASE=https://api.example.com/api/v1
 VITE_WS_URL=wss://api.example.com/ws
 EOF
@@ -33,7 +33,7 @@ EOF
 | Variable | Description |
 |---|---|
 | `DOMAIN` | Domain for HTTPS (Caddy auto-provisions Let's Encrypt certs) |
-| `BEACON_WEB_IMAGE` | Image to run: a release tag (e.g. `:1.4.0`), `:latest`, or `:dev` |
+| `BEACON_WEB_IMAGE` | Image to run: a release tag (e.g. `:2.0.0`), `:latest`, or `:dev` |
 | `VITE_API_BASE` | Backend REST API base URL |
 | `VITE_WS_URL` | Backend WebSocket URL |
 
@@ -51,7 +51,8 @@ in [beacon-docs](https://github.com/MeshCore-Beacon/beacon-docs)).
 Caddy will automatically obtain a TLS certificate for your domain. Ensure DNS is pointed at your server before starting.
 
 Image tags: `latest` is the newest `main` build, each `vX.Y.Z` release tag publishes `X.Y.Z` and `X.Y`,
-and `dev` tracks the `dev` branch.
+and `dev` tracks the `dev` branch. Web and server releases share major.minor versions
+(web `2.0.x` pairs with server `2.0.x`); patch levels are independent.
 
 ## Local Development
 
