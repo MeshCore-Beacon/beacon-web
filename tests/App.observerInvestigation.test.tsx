@@ -164,3 +164,24 @@ describe("observer investigation windows", () => {
     }
   });
 });
+
+describe("observer investigation on mobile", () => {
+  beforeEach(() => vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {} })));
+  it("closes an inspected observer back to the packet it came from", async () => {
+    render(<App />); click("Route packet"); click("Select report 8"); click("Packet observer");
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1");
+    expect(screen.queryByRole("heading", { name: /^Packet / })).not.toBeInTheDocument();
+    click("Back to observers");
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("tab")).toBe("Routes"));
+    expect(await screen.findByRole("heading", { name: /^Packet / })).toHaveTextContent("Packet aa");
+    expect(new URLSearchParams(window.location.search).get("observation")).toBe("8");
+  });
+  it("closes a dashboard opened from the list back to the list", async () => {
+    window.history.replaceState({}, "", "/?tab=Observers&observer=o1");
+    render(<App />);
+    await screen.findByRole("heading", { level: 1 });
+    click("Back to observers");
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument());
+    expect(new URLSearchParams(window.location.search).get("tab")).toBe("Observers");
+  });
+});

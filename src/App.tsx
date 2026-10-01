@@ -274,13 +274,18 @@ function AppInner() {
   // An observer opens its dashboard; a packet it was inspected from moves into the side drawer beside it.
   const viewObserver = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
     setPanels([]);
-    const next = observerDestination(searchParams, id);
+    const origin = new URLSearchParams(searchParams);
     if (packet) {
-      next.set("hash", packet.hash); next.set("analyze", "1"); next.delete("path");
-      if (packet.observationId != null) next.set("observation", String(packet.observationId)); else next.delete("observation");
+      origin.set("hash", packet.hash); origin.set("analyze", "1"); origin.delete("path");
+      if (packet.observationId != null) origin.set("observation", String(packet.observationId)); else origin.delete("observation");
     }
-    if (isMobile) next.delete("analyze");
-    navigate({ search: "?" + next.toString() });
+    const next = observerDestination(origin, id);
+    if (isMobile) {
+      // The dashboard covers the screen on mobile, so its Close steps back to the packet instead.
+      if (packet) navigate({ search: "?" + origin.toString() }, { replace: true });
+      next.delete("analyze");
+    }
+    navigate({ search: "?" + next.toString() }, { state: { inspected: isMobile } });
   }, [navigate, searchParams, setPanels, isMobile]);
 
   useEffect(() => {

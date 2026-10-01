@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getBrokers } from "../../api/client";
@@ -25,6 +25,8 @@ export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsMana
   const { t } = useTranslation();
   const now = useTick(60_000);
   const id = params.get("observer");
+  const navigate = useNavigate();
+  const inspected = (useLocation().state as { inspected?: boolean } | null)?.inspected;
   const [actionTime, setActionTime] = useState(() => Date.now());
   const hourAt = (time: number) => Math.floor(time / 3_600_000) * 3_600_000;
   const comparing = params.has("compareWith");
@@ -91,7 +93,7 @@ export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsMana
           <span className="font-mono text-[13px] font-medium uppercase tracking-wider text-text-dim">{t("observerPage.detail")}</span>
           <div className="-mr-1 flex items-center gap-0.5">
             <MinimizeButton collapsed={minimized} onToggle={() => setMinimized(v => !v)} />
-            <CloseButton onClose={() => select(null)} label={t("observerPage.back")} />
+            <CloseButton onClose={() => inspected ? navigate(-1) : select(null)} label={t("observerPage.back")} />
           </div>
         </div>
         <div className={`min-h-0 flex-1 overflow-auto ${minimized ? "hidden md:block" : ""}`}>
