@@ -141,7 +141,7 @@ afterEach(() => {
 });
 
 describe("Packets deep links", () => {
-  it("returns from an observer dashboard to the same packet, report and filters", async () => {
+  it("keeps the packet drawer beside the observer dashboard and returns to the same packet, report and filters", async () => {
     setMobile(false);
     window.history.pushState({}, "", "/?tab=Packets&hash=AA11&analyze=1&observation=1&iata=YOW&q=missing");
     render(<App />);
@@ -150,10 +150,10 @@ describe("Packets deep links", () => {
     fireEvent.click(within(section).getByRole("button", { name: "Inspect observer" }));
     fireEvent.click(await screen.findByRole("button", { name: "Open observer dashboard" }));
     expect(await screen.findByRole("heading", { name: "Observer dashboard" })).toBeInTheDocument();
-    expect(new URLSearchParams(window.location.search).has("observation")).toBe(false);
+    expect(new URLSearchParams(window.location.search).get("observation")).toBe("1");
+    expect(screen.getByTestId("packet-analyzer-drawer")).toBeInTheDocument();
     act(() => window.history.back());
-    // The originating drawer now stays mounted while hidden; wait for history, not its existence.
-    await waitFor(() => expect(new URLSearchParams(window.location.search).get("hash")).toBe("AA11"));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("tab")).toBe("Packets"));
     expect(await screen.findByTestId("packet-analyzer-drawer")).toBeInTheDocument();
     const params = new URLSearchParams(window.location.search);
     expect(params.get("hash")).toBe("AA11"); expect(params.get("observation")).toBe("1");

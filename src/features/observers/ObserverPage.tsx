@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, useEffect, useMemo, useRef } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { lazy, Suspense, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getBrokers } from "../../api/client";
@@ -19,13 +19,8 @@ const ObserverTab = lazy(() => import("../stats/ObserverTab").then(m => ({ defau
 
 const NAV_CHIP = "inline-flex items-center gap-1.5 rounded-sm border border-border bg-bg-raised px-2 py-0.5 font-mono text-[11px] text-text-normal transition-colors hover:border-text-dim hover:text-text-bright";
 
-export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: WsManager; onReturn?: () => void; returnLabel?: string }) {
+export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
   const [params, setParams] = useSearchParams();
-  const location = useLocation();
-  const returnButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => { returnButton.current?.focus(); }, []);
-  // Dashboard adjustments belong to this visit; Back returns to the original investigation.
-  const visitOptions = onReturn ? { replace: true, state: location.state } : undefined;
   const { t } = useTranslation();
   const now = useTick(60_000);
   const id = params.get("observer");
@@ -50,7 +45,7 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
   const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
   if (id) share.searchParams.set("range", range);
   if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
-  const select = (observer: string | null) => setParams(observerDestination(params, observer, range), visitOptions);
+  const select = (observer: string | null) => setParams(observerDestination(params, observer, range));
   const compare = (observer: string) => {
     // eslint-disable-next-line react-hooks/purity -- Capture time when the user invokes this event callback.
     const clickedAt = Date.now();
@@ -60,9 +55,9 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
       next.set("compareWith", observer);
       next.set("compareUntil", String(comparing ? until ?? hourAt(clickedAt) : hourAt(clickedAt)));
       return next;
-    }, visitOptions);
+    });
   };
-  const closeCompare = () => setParams(old => { const next = new URLSearchParams(old); next.delete("compareWith"); next.delete("compareUntil"); return next; }, visitOptions);
+  const closeCompare = () => setParams(old => { const next = new URLSearchParams(old); next.delete("compareWith"); next.delete("compareUntil"); return next; });
   const refreshCompare = () => {
     const clickedAt = Date.now();
     setActionTime(clickedAt);
@@ -70,20 +65,17 @@ export function ObserverPage({ wsManager, onReturn, returnLabel }: { wsManager: 
       const next = new URLSearchParams(old);
       next.set("compareUntil", String(hourAt(clickedAt)));
       return next;
-    }, { replace: true, state: location.state });
+    }, { replace: true });
     return hourAt(clickedAt);
   };
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-    {onReturn && <div className="flex items-center border-b border-border px-4 py-2">
-      <button ref={returnButton} type="button" aria-label={t("observerPage.returnTo", { page: returnLabel })} onClick={onReturn} className={NAV_CHIP}><span aria-hidden>‹</span>{returnLabel}</button>
-    </div>}
     <ObserverFilterBar
       search={search} onSearchChange={setSearch} searchField={searchField} onSearchFieldChange={setSearchField}
       statusFilter={status} onStatusChange={setStatus} typeFilter={type} onTypeChange={setType} typeOptions={typeOptions}
       brokerFilter={broker} onBrokerChange={setBroker} brokerOptions={brokers?.map((b) => b.name) ?? []}
       scopeFilter={scope} onScopeChange={setScope} scopeOptions={scopeOptions}
       trailing={<span className="ml-auto flex items-center gap-2 font-mono text-[11px] text-text-muted"><span className="hidden sm:inline">{t("observerPage.range")}</span>
-          <Segmented ariaLabel={t("observerPage.range")} size="sm" value={range} options={[{ value: "24h", label: t("stats.ranges.24h") }, { value: "7d", label: t("stats.ranges.7d") }, { value: "30d", label: t("stats.ranges.30d") }]} onChange={v => setParams(observerDestination(params, id, observerRange(v)), visitOptions)} />
+          <Segmented ariaLabel={t("observerPage.range")} size="sm" value={range} options={[{ value: "24h", label: t("stats.ranges.24h") }, { value: "7d", label: t("stats.ranges.7d") }, { value: "30d", label: t("stats.ranges.30d") }]} onChange={v => setParams(observerDestination(params, id, observerRange(v)))} />
         </span>}
     />
     <div className="flex min-h-0 min-w-0 flex-1">

@@ -313,7 +313,6 @@
       "recording": "Chargement de l’observateur…",
       "hour": "heure",
       "day": "jour",
-      "returnTo": "Retour à « {{page}} »",
       "directory": "Tous les observateurs",
       "sidebarSearch": "Rechercher les observateurs",
       "noMatches": "Aucun résultat",

@@ -15,9 +15,9 @@ describe("observerDestination", () => {
     expect(p.has("statsTab")).toBe(false);
   });
 
-  it("drops unrelated investigation selectors and defaults the range to 7d", () => {
-    const p = observerDestination(new URLSearchParams("hash=abc&analyze=1&node=n&path=p"), "b");
-    expect(p.toString()).toBe("tab=Observers&observer=b&range=7d");
+  it("keeps the open packet analyzer, drops other tabs' selectors and defaults the range to 7d", () => {
+    const p = observerDestination(new URLSearchParams("hash=abc&analyze=1&observation=5&path=p&node=n&route=r"), "b");
+    expect(Object.fromEntries(p)).toEqual({ hash: "abc", analyze: "1", observation: "5", path: "p", tab: "Observers", observer: "b", range: "7d" });
   });
 
   it("drops the analytics compare params so they don't ride along into the dashboard URL", () => {

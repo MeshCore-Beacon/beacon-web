@@ -51,7 +51,7 @@ const click = (name: string) => { const button = screen.getByRole("button", { na
 const escape = () => fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
 const browserBack = async () => { await act(async () => { window.history.back(); }); await waitFor(() => expect(window.location.search).toContain("tab=Routes")); };
 
-describe("observer investigation return", () => {
+describe("observer investigation windows", () => {
   it("dismisses only the observer with Escape and returns keyboard focus", () => {
     render(<App />); click("Route observer"); escape();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -77,32 +77,35 @@ describe("observer investigation return", () => {
     expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Observer o1");
     escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa report 8");
   });
-  it("returns from a changed dashboard window to the same route, filter, scroll and observer", async () => {
-    render(<App />);
-    fireEvent.change(screen.getByLabelText("Route filter"), { target: { value: "roof" } });
-    screen.getByTestId("route-scroll").scrollTop = 180;
-    click("Route observer"); click("Open dashboard");
+  it("opens the dashboard as a normal tab with every window left open", async () => {
+    render(<App />); click("Route packet"); click("Packet observer"); click("Open dashboard");
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 7d");
     expect(window.location.search).toContain("tab=Observers&observer=o1");
-    expect(screen.getByTestId("origin-url")).toHaveTextContent("route=full-route");
-    fireEvent.click(within(screen.getByRole("group", { name: "Time range" })).getByRole("button", { name: "24h" }));
-    click("Compare with…");
-    expect(window.location.search).toContain("compareWith=");
-    click("Back to Routes");
-    await waitFor(() => expect(window.location.search).toContain("tab=Routes"));
-    expect(screen.getByLabelText("Route filter")).toHaveValue("roof");
-    expect(screen.getByTestId("route-scroll").scrollTop).toBe(180);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Open dashboard" })).toHaveFocus());
-    escape(); expect(screen.getByRole("button", { name: "Route observer" })).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Back to Routes" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Observer o1");
+    escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa");
   });
-  it("supports browser Back/Forward without rebuilding the originating screen", async () => {
-    render(<App />); fireEvent.change(screen.getByLabelText("Route filter"), { target: { value: "keep" } });
-    click("Route observer"); click("Open dashboard");
+  it("returns to the previous tab with browser Back", async () => {
+    render(<App />); click("Route observer"); click("Open dashboard");
     await screen.findByRole("heading", { level: 1 });
-    await browserBack(); expect(screen.getByLabelText("Route filter")).toHaveValue("keep");
-    await act(async () => { window.history.forward(); });
-    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1");
-    await browserBack(); expect(screen.getByLabelText("Route filter")).toHaveValue("keep");
+    await browserBack(); expect(screen.getByTestId("route-origin")).toBeInTheDocument();
+  });
+  it("keeps the packet drawer and stacked windows across tabs, but not into Analytics", async () => {
+    await import("../src/features/stats/StatsOverview");
+    window.history.replaceState({}, "", "/?tab=Routes&hash=aa&analyze=1");
+    render(<App />);
+    expect(screen.getByRole("heading", { name: /Packet aa/ })).toBeInTheDocument();
+    click("Packet node");
+    click("Observer tab");
+    expect(await screen.findByRole("heading", { level: 2, name: /Packet aa/ })).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Node n1");
+    click("Analytics tab");
+    await screen.findByRole("button", { name: "Leaderboard observer" });
+    expect(screen.queryByRole("heading", { name: /Packet aa/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    click("Route tab");
+    expect(await screen.findByRole("heading", { name: /Packet aa/ })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
   it("opens the Observers dashboard from the leaderboard", async () => {
     await import("../src/features/stats/StatsOverview");
@@ -122,23 +125,10 @@ describe("observer investigation return", () => {
     expect(window.location.search).toContain("tab=Observers");
     expect(window.location.search).not.toContain("statsTab");
   });
-  it("does not invent a return destination for a reloaded/shared dashboard", async () => {
-    window.history.replaceState({ usr: { beaconObserverReturnKey: "old" } }, "", "/?tab=Observers&observer=o2&range=24h");
-    render(<App />); expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o2 24h");
-    expect(screen.queryByRole("button", { name: "Back to Routes" })).not.toBeInTheDocument();
-    click("Back to observers"); expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
-    expect(screen.getByText("Observer directory")).toBeInTheDocument();
-  });
-  it("ends the retained investigation when the operator changes tabs or regions", async () => {
+  it("closes the stacked windows when the region changes", async () => {
     render(<App />); click("Route observer"); click("Open dashboard"); await screen.findByRole("heading", { level: 1 });
     click("Change region");
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Back to Routes" })).not.toBeInTheDocument());
-    expect(screen.queryByTestId("route-origin")).not.toBeInTheDocument();
-    click("Route tab"); expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-  it("translates the return action", async () => {
-    await i18n.changeLanguage("fr"); render(<App />); click("Route observer"); click("Open dashboard");
-    expect(await screen.findByRole("button", { name: /Retour à « Routes »/ })).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
   it("clears comparison params from both the observer dashboard and analytics compare tabs on tab change", () => {
     window.history.replaceState({}, "", "/?tab=Observers&observer=o1&compareWith=o2&compareUntil=1700000000000&compareA=x&compareB=y&compareSince=1");

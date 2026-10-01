@@ -309,7 +309,6 @@
       "recording": "Loading observer…",
       "hour": "hour",
       "day": "day",
-      "returnTo": "Back to {{page}}",
       "directory": "All observers",
       "sidebarSearch": "Search observers",
       "noMatches": "No matches",
