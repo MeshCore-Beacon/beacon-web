@@ -13,7 +13,7 @@ const PAGE = 3;
 // Every retained reception, grouped by the path bytes it carried; each report is a selectable signal card.
 export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserver, onViewPath, onViewNode, mappedKeys, observerCount, defaultOpen = false }: {
   detail: PacketDetail; selectedId: number | null; onSelect: (id: number) => void;
-  onViewObserver?: (id: string) => void; onViewPath?: (key?: string) => void; onViewNode?: (id: string) => void;
+  onViewObserver?: (id: string, observationId: number) => void; onViewPath?: (key?: string) => void; onViewNode?: (id: string) => void;
   mappedKeys: Set<string>; observerCount: number; defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
@@ -53,7 +53,7 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
             isTrace={isTrace}
             selectLabel={`${t("investigation.inspect")}: ${name}`}
             actions={<>
-              {onViewObserver && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => { onSelect(report.id); onViewObserver(report.observerId); }}>{t("investigation.observer")}</button>}
+              {onViewObserver && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => { onSelect(report.id); onViewObserver(report.observerId, report.id); }}>{t("investigation.observer")}</button>}
               {canMap
                 ? <button type="button" className={ACTION_BUTTON_CLASS} disabled={!onViewPath} onClick={() => { onSelect(report.id); onViewPath?.(key); }}>{t("investigation.map")}</button>
                 : <Tooltip wrap label={t("investigation.unmappable")}><button type="button" className={`${ACTION_BUTTON_CLASS} pointer-events-none`} disabled>{t("investigation.map")}<span className="sr-only">: {t("investigation.unmappable")}</span></button></Tooltip>}

@@ -12,6 +12,7 @@ import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverSidebar } from "./ObserverSidebar";
+import { ObserverAdverts } from "./ObserverAdverts";
 import { filterObservers } from "./observer-filter";
 import { useObserverDirectory } from "./useObserverDirectory";
 import { observerDestination, observerRange } from "./observer-navigation";
@@ -19,7 +20,7 @@ import { Segmented } from "../stats/Segmented";
 import type { WsManager } from "../../api/ws-manager";
 const ObserverTab = lazy(() => import("../stats/ObserverTab").then(m => ({ default: m.ObserverTab })));
 
-export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
+export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsManager; onAnalyzePacket: (hash: string, observationId: number) => void }) {
   const [params, setParams] = useSearchParams();
   const { t } = useTranslation();
   const now = useTick(60_000);
@@ -100,6 +101,7 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
             <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className={`${ACTION_BUTTON_CLASS} text-center`}>{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
           </>} comparison={comparing ? { id: params.getAll("compareWith").length === 1 ? params.get("compareWith") ?? "" : "invalid", until, onSelect: compare, onRefresh: refreshCompare } : undefined} />
         </Suspense>
+        <div className="mx-auto w-full max-w-[1600px] px-4 pb-4"><ObserverAdverts observerId={id} onAnalyzePacket={onAnalyzePacket} /></div>
         </div>
       </div> : <div className="hidden min-w-0 flex-1 md:flex"><EmptyState title={t("observerPage.choose")} /></div>}
     </div>

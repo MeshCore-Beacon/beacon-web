@@ -178,7 +178,6 @@ function AppInner() {
     });
   }, [setPanels]);
   const viewNode = useCallback((id: string) => openPanel({ kind: "node", id }), [openPanel]);
-  const viewObserver = useCallback((id: string) => openPanel({ kind: "observer", id }), [openPanel]);
   const viewPacket = useCallback((hash: string, observationId?: number) => openPanel({ kind: "packet", hash, observationId }), [openPanel]);
   const handleViewPath = useCallback((detail: PacketDetail, key?: string) => openPanel({ kind: "path", detail, selectedKey: key }), [openPanel]);
   const [pathLink] = useState(() => ({ path: searchParams.get("path"), hash: searchParams.get("hash") }));
@@ -272,9 +271,17 @@ function AppInner() {
     dropSelectionParam("node");
   }, [dropSelectionParam, setSelectedNodeId]);
 
-  const handleViewObserverStats = useCallback((id: string) => {
-    navigate({ search: "?" + observerDestination(searchParams, id).toString() });
-  }, [navigate, searchParams]);
+  // An observer opens its dashboard; a packet it was inspected from moves into the side drawer beside it.
+  const viewObserver = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
+    setPanels([]);
+    const next = observerDestination(searchParams, id);
+    if (packet) {
+      next.set("hash", packet.hash); next.set("analyze", "1"); next.delete("path");
+      if (packet.observationId != null) next.set("observation", String(packet.observationId)); else next.delete("observation");
+    }
+    if (isMobile) next.delete("analyze");
+    navigate({ search: "?" + next.toString() });
+  }, [navigate, searchParams, setPanels, isMobile]);
 
   useEffect(() => {
     // Region slugs can't be expanded yet (region details load async) — connect with the directly
@@ -295,7 +302,7 @@ function AppInner() {
       />
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverPage wsManager={wsManager} />,
+    Observers: <ObserverPage wsManager={wsManager} onAnalyzePacket={handleAnalyze} />,
     Routes: <RouteTable onAnalyzePacket={viewPacket} onViewObserver={viewObserver} onViewNode={viewNode} />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
@@ -331,7 +338,7 @@ function AppInner() {
               onSelectObservation={selectObservation}
               onClose={() => handleAnalyze(null)}
               onViewNode={viewNode}
-              onViewObserver={viewObserver}
+              onViewObserver={(id, observationId) => viewObserver(id, { hash: analyzerHash!, observationId: observationId ?? selectedObservationId ?? undefined })}
               onViewPath={(key) => { if (analyzerDetail) handleViewPath(analyzerDetail, key); }}
             />
           )}
@@ -345,7 +352,7 @@ function AppInner() {
               onViewOnMap={activeTab === "Map" ? undefined : (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng)}
             />
           )}
-          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onObserverDashboard={handleViewObserverStats} onViewOnMap={activeTab === "Map" ? undefined : handleViewOnMap} />)}
+          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={activeTab === "Map" ? undefined : handleViewOnMap} />)}
         </div>
       </AppShell>
     </RegionProvider>

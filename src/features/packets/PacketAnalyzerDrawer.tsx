@@ -36,7 +36,7 @@ interface PacketAnalyzerDrawerProps {
   onSelectObservation?: (id: number) => void;
   onViewNode?: (nodeId: string) => void;
   onViewPath?: (key?: string) => void;
-  onViewObserver?: (id: string) => void;
+  onViewObserver?: (id: string, observationId?: number) => void;
   loading?: boolean;
   requireSelectedObservation?: boolean;
   syncUrl?: boolean;

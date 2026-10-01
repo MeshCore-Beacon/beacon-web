@@ -329,7 +329,11 @@
       "sortName": "Nom",
       "deviceInfo": "Appareil",
       "brokers": "Courtiers",
-      "copyLinkShort": "Copier le lien"
+      "copyLinkShort": "Copier le lien",
+      "advertsHeard": "Annonces reçues",
+      "noAdverts": "Aucune annonce reçue",
+      "unknownNode": "inconnu",
+      "hops": "Sauts"
     },
     "observerCompare": {
       "open": "Comparer avec…",

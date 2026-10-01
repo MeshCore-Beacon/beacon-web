@@ -324,7 +324,11 @@
       "sortName": "Name",
       "deviceInfo": "Device",
       "brokers": "Brokers",
-      "copyLinkShort": "Copy link"
+      "copyLinkShort": "Copy link",
+      "advertsHeard": "Adverts heard",
+      "noAdverts": "No adverts heard",
+      "unknownNode": "unknown",
+      "hops": "Hops"
     },
     "observerCompare": {
       "open": "Compare with…",

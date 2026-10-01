@@ -36,7 +36,7 @@ vi.mock("../src/features/stats/TalkersTab", () => ({ TalkersTab: () => null }));
 vi.mock("../src/features/stats/ClockDriftTab", () => ({ ClockDriftTab: () => null }));
 vi.mock("../src/features/stats/CompareObserversTab", () => ({ CompareObserversTab: () => null }));
 vi.mock("../src/features/stats/NeighbourGraphTab", () => ({ NeighbourGraphTab: () => null }));
-vi.mock("../src/features/observers/ObserverDetailPanel", () => ({ ObserverDetailPanel: ({ observerId, onClose, onViewStats, onAnalyzePacket }: { observerId: string; onClose: () => void; onViewStats: (id: string) => void; onAnalyzePacket: (hash: string) => void }) => <><h2>Observer {observerId}</h2><button onClick={onClose}>Close observer</button><button onClick={() => onViewStats(observerId)}>Open dashboard</button><button onClick={() => onAnalyzePacket("bb")}>Advert packet</button></> }));
+vi.mock("../src/features/observers/ObserverAdverts", () => ({ ObserverAdverts: ({ onAnalyzePacket }: { onAnalyzePacket: (hash: string, id: number) => void }) => <button onClick={() => onAnalyzePacket("bb", 3)}>Advert packet</button> }));
 vi.mock("../src/features/nodes/NodeDetailPanel", () => ({ NodeDetailPanel: ({ nodeId, onClose, onViewObserver }: { nodeId: string; onClose: () => void; onViewObserver: (id: string) => void }) => <><h2>Node {nodeId}</h2><button onClick={onClose}>Close node</button><button onClick={() => onViewObserver("o1")}>Node observer</button></> }));
 vi.mock("../src/features/packets/usePacketDetail", () => ({ usePacketDetail: (hash: string | null) => ({ data: hash ? { packetHash: hash, observations: [], header: { payloadType: 1 } } as unknown as PacketDetail : undefined, isLoading: false }) }));
 vi.mock("../src/features/packets/PacketAnalyzerDrawer", () => ({ PacketAnalyzerDrawer: ({ detail, onClose, onViewObserver, onViewNode, onViewPath, selectedObservationId, onSelectObservation }: { detail: PacketDetail; onClose: () => void; onViewObserver: (id: string) => void; onViewNode: (id: string) => void; onViewPath: () => void; selectedObservationId: number | null; onSelectObservation: (id: number) => void }) => <><h2>Packet {detail?.packetHash} report {selectedObservationId}</h2><button onClick={onClose}>Close packet</button><button onClick={() => onViewObserver("o1")}>Packet observer</button><button onClick={() => onViewNode("n1")}>Packet node</button><button onClick={onViewPath}>Packet map</button><button onClick={() => onSelectObservation(8)}>Select report 8</button></> }));
@@ -52,41 +52,49 @@ const escape = () => fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escap
 const browserBack = async () => { await act(async () => { window.history.back(); }); await waitFor(() => expect(window.location.search).toContain("tab=Routes")); };
 
 describe("observer investigation windows", () => {
-  it("dismisses only the observer with Escape and returns keyboard focus", () => {
-    render(<App />); click("Route observer"); escape();
+  const dashboard = async (id = "o1") => {
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(`Dashboard ${id}`);
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("tab")).toBe("Observers"); expect(params.get("observer")).toBe(id);
+  };
+  it("opens the dashboard straight from the route panel", async () => {
+    render(<App />); click("Route observer");
+    await dashboard();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Route observer" })).toHaveFocus();
   });
-  it("orders route packet -> observer -> advert packet and preserves the earlier report", () => {
-    render(<App />); click("Route packet"); click("Select report 8"); click("Packet observer"); click("Advert packet");
-    expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet bb");
-    escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Observer o1");
-    expect(screen.getByRole("button", { name: "Advert packet" })).toHaveFocus();
-    escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa report 8");
-    escape(); expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  it("moves a stacked packet into the side drawer beside the dashboard, keeping its report", async () => {
+    render(<App />); click("Route packet"); click("Select report 8"); click("Packet observer");
+    await dashboard();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Packet / })).toHaveTextContent("Packet aa");
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("hash")).toBe("aa"); expect(params.get("analyze")).toBe("1"); expect(params.get("observation")).toBe("8");
   });
-  it("keeps the node and packet underneath the observer when Escape is pressed", () => {
+  it("keeps the side drawer open when its observer is inspected", async () => {
+    window.history.replaceState({}, "", "/?tab=Routes&hash=aa&analyze=1");
+    render(<App />); click("Packet observer");
+    await dashboard();
+    expect(screen.getByRole("heading", { name: /^Packet / })).toHaveTextContent("Packet aa");
+  });
+  it("closes stacked node windows when going to the dashboard", async () => {
     render(<App />); click("Route packet"); click("Packet node"); click("Node observer");
-    escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Node n1");
+    await dashboard();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  it("opens an advert from the dashboard in the side drawer", async () => {
+    window.history.replaceState({}, "", "/?tab=Observers&observer=o1");
+    render(<App />); click("Advert packet");
+    expect(await screen.findByRole("heading", { name: /^Packet / })).toHaveTextContent("Packet bb");
+    expect(new URLSearchParams(window.location.search).get("observation")).toBe("3");
+  });
+  it("keeps the node and packet stack when Escape is pressed", () => {
+    render(<App />); click("Route packet"); click("Packet node");
     escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa");
     click("Packet map"); escape();
     expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa");
   });
-  it("returns to an already-open observer instead of making a cyclic panel chain", () => {
-    render(<App />); click("Route packet"); click("Select report 8"); click("Packet observer"); click("Advert packet"); click("Packet observer");
-    expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Observer o1");
-    escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa report 8");
-  });
-  it("opens the dashboard as a normal tab with every window left open", async () => {
-    render(<App />); click("Route packet"); click("Packet observer"); click("Open dashboard");
-    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Dashboard o1 7d");
-    expect(window.location.search).toContain("tab=Observers&observer=o1");
-    expect(screen.queryByRole("button", { name: "Back to Routes" })).not.toBeInTheDocument();
-    expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Observer o1");
-    escape(); expect(within(screen.getByRole("dialog")).getByRole("heading")).toHaveTextContent("Packet aa");
-  });
   it("returns to the previous tab with browser Back", async () => {
-    render(<App />); click("Route observer"); click("Open dashboard");
+    render(<App />); click("Route observer");
     await screen.findByRole("heading", { level: 1 });
     await browserBack(); expect(screen.getByTestId("route-origin")).toBeInTheDocument();
   });
@@ -126,7 +134,7 @@ describe("observer investigation windows", () => {
     expect(window.location.search).not.toContain("statsTab");
   });
   it("closes the stacked windows when the region changes", async () => {
-    render(<App />); click("Route observer"); click("Open dashboard"); await screen.findByRole("heading", { level: 1 });
+    render(<App />); click("Route packet"); click("Packet node");
     click("Change region");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });

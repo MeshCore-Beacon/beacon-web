@@ -33,9 +33,6 @@ vi.mock("../src/api/client", () => ({
   getChannelMessagesPage: async () => ({ items: [], nextCursor: null, hasMore: false }),
 }));
 
-vi.mock("../src/features/observers/ObserverDetailPanel", () => ({
-  ObserverDetailPanel: ({ observerId, onViewStats }: { observerId: string; onViewStats: (id: string) => void }) => <button onClick={() => onViewStats(observerId)}>Open observer dashboard</button>,
-}));
 vi.mock("../src/features/observers/ObserverPage", () => ({ ObserverPage: () => <h1>Observer dashboard</h1> }));
 
 const packet: PacketSummary = {
@@ -148,7 +145,6 @@ describe("Packets deep links", () => {
     const section = await screen.findByRole("region", { name: "Observations" });
     expect(within(section).getByText("No path entries").closest("details")).toHaveAttribute("open");
     fireEvent.click(within(section).getByRole("button", { name: "Inspect observer" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Open observer dashboard" }));
     expect(await screen.findByRole("heading", { name: "Observer dashboard" })).toBeInTheDocument();
     expect(new URLSearchParams(window.location.search).get("observation")).toBe("1");
     expect(screen.getByTestId("packet-analyzer-drawer")).toBeInTheDocument();

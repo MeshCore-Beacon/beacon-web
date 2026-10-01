@@ -56,7 +56,7 @@ describe("packet reception evidence", () => {
     expect(within(beta).getByText("SNR")).toBeInTheDocument();
     expect(screen.queryByText(/^Observations \(/)).not.toBeInTheDocument();
     for (const name of ["Inspect observer", "Map path"]) expect(within(beta).getByRole("button", { name })).toHaveClass("border", "border-border", "text-primary");
-    fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta");
+    fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta", 2);
     fireEvent.click(within(beta).getByRole("button", { name: "Map path" })); expect(onViewPath).toHaveBeenCalledWith("beta");
     expect(screen.getByTestId("search")).toHaveTextContent("observation=2"); expect(screen.getByTestId("search")).toHaveTextContent("q=keep");
   });
