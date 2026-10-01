@@ -56,7 +56,7 @@ describe("channel scope evidence", () => {
     const inspect = vi.fn();
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" onAnalyze={inspect} />);
     expect(await screen.findByText("#yow")).toBeInTheDocument();
-    expect(screen.getByText("Unresolved scope")).toBeInTheDocument();
+    expect(screen.getByText("Unknown scope")).toBeInTheDocument();
     expect(screen.queryByText("No transport scope")).not.toBeInTheDocument();
     expect(screen.queryByText("Scope unavailable")).not.toBeInTheDocument();
     const view = screen.getAllByRole("button", { name: "Inspect packet from Fixture" })[0]!;
@@ -74,7 +74,7 @@ describe("channel scope evidence", () => {
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
     await screen.findByText("#yow");
     await act(() => i18n.changeLanguage("fr"));
-    expect(screen.getByText("Portée non résolue")).toBeInTheDocument();
+    expect(screen.getByText("Portée inconnue")).toBeInTheDocument();
     expect(screen.getByText("#yow")).toBeInTheDocument();
     expect(getChannelMessagesPage).toHaveBeenCalledTimes(1);
   });
@@ -84,13 +84,13 @@ describe("channel scope evidence", () => {
     );
     const { client } = show(<ChannelList wsManager={{} as WsManager} onAnalyze={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /#test/ }));
-    await screen.findByText("Unresolved scope");
+    await screen.findByText("Unknown scope");
     fireEvent.click(screen.getByRole("button", { name: /Scope.*All scopes/ }));
     fireEvent.click(screen.getByRole("option", { name: "#yow", exact: true }));
     await waitFor(() =>
       expect(getChannelMessagesPage).toHaveBeenLastCalledWith(1, expect.objectContaining({ scope: "#yow" })),
     );
-    await waitFor(() => expect(screen.queryByText("Unresolved scope")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Unknown scope")).not.toBeInTheDocument());
     await waitFor(() => expect(client.getQueryData(["channel-messages", 1, "YOW", "#yow"])).toBeDefined());
     const event = {
       ...base,
@@ -127,7 +127,7 @@ describe("channel scope evidence", () => {
   it("explains an empty filtered history", async () => {
     vi.mocked(getChannelMessagesPage).mockResolvedValue(page([]));
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" scope="#yow" onScopeChange={() => {}} />);
-    expect(await screen.findByText("No retained messages match #yow.")).toBeInTheDocument();
+    expect(await screen.findByText("No messages match #yow.")).toBeInTheDocument();
   });
   it("keeps messages received during history loading without an extra request", async () => {
     let resolveHistory!: (value: ReturnType<typeof page>) => void;
@@ -155,7 +155,7 @@ describe("channel scope evidence", () => {
     vi.mocked(getChannelMessagesPage).mockResolvedValue(page([]));
     show(<MessagePanel channel={{ ...channel, keyKnown: false }} heardCounts={{}} regionKey="YOW" />);
     expect(
-      await screen.findByText("No decrypted messages are available without a known channel key."),
+      await screen.findByText("Messages can't be decrypted without the channel key."),
     ).toBeInTheDocument();
     expect(screen.queryByText("No transport scope")).not.toBeInTheDocument();
   });

@@ -106,7 +106,7 @@ function CheckBox({ checked }: { checked: boolean }) {
   );
 }
 
-// Compact header summary of the active selection, e.g. "ALL", "YVR, YYJ", "2 regions", "1 region · 3 IATA".
+// Compact header summary of the active selection, e.g. "ALL", "YVR, YYJ", "2 regions", "1 region · 3 areas".
 function regionSummaryLabel(selection: RegionSelection, t: TFunction): string {
   if (isAllRegions(selection)) return t("region.allShort");
   const parts: string[] = [];
@@ -135,7 +135,7 @@ function RegionSelector() {
           className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-3 py-1 text-text-bright font-mono text-xs font-semibold hover:border-text-dim/30 transition-colors"
           onClick={toggle}
         >
-          <span className="text-text-muted font-normal text-[11px]">{t("region.label")}</span>
+          <span className="text-text-muted font-normal text-[11px] uppercase">{t("region.label")}</span>
           {regionSummaryLabel(selection, t)}
           <span className="text-text-dim text-[11px]">▾</span>
         </button>
@@ -277,7 +277,7 @@ function RegionSelectorPanel() {
         <>
           <div className={`px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim ${
             hasRowsAbove ? "border-t border-border-subtle mt-1" : ""
-          }`}>IATA</div>
+          }`}>{t("region.areaGroup")}</div>
           {iatas ? (
             shownIatas.map((i) => {
               const checked = selection.iatas.includes(i.iata);

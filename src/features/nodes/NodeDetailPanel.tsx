@@ -164,8 +164,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             <Section title="Capabilities">
               <div className="flex flex-col gap-0.5 font-mono text-[13px]">
                 {node.minFirmwareVersion && <Field label="Min firmware" value={node.minFirmwareVersion} />}
-                <Field label="Multibyte paths" value={node.supportsMultibytePaths ? "yes" : "no"} />
-                <Field label="Multibyte traces" value={node.supportsMultibyteTraces ? "yes" : "no"} />
+                <Field label="Multi-byte paths" value={node.supportsMultibytePaths ? "yes" : "no"} />
+                <Field label="Multi-byte traces" value={node.supportsMultibyteTraces ? "yes" : "no"} />
                 {node.radio && <Field label="Radio" value={formatRadio(node.radio) ?? "—"} />}
                 {node.defaultScope && <Field label="Scope" value={node.defaultScope} />}
               </div>
@@ -202,7 +202,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               )}
             </Section>
 
-            <Section title="Observations">
+            <Section title="Recent packets">
               {observations && observations.items.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {observations.items.map((obs) => (
@@ -214,7 +214,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   ))}
                 </div>
               ) : (
-                <div className="font-mono text-[13px] text-text-dim">No recent observations</div>
+                <div className="font-mono text-[13px] text-text-dim">No recent packets</div>
               )}
             </Section>
         </>

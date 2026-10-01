@@ -32,7 +32,7 @@ function BorderLegend() {
         className="inline-block h-2.5 w-4 rounded-sm border"
         style={{ borderColor: "var(--palette-secondary)", backgroundColor: "var(--palette-secondary)", opacity: 0.5 }}
       />
-      IATA region outline
+      Area outline
     </div>
   );
 }
@@ -155,9 +155,9 @@ export function MapSettingsPanel({
             />
             {neighborLines === "selected" && <NeighborLegend />}
           </Section>
-          <Section title="IATA Borders">
+          <Section title="Area Borders">
             <SegmentedControl
-              ariaLabel="IATA borders"
+              ariaLabel="Area borders"
               options={BORDER_OPTIONS}
               value={borders ? "on" : "off"}
               onChange={(v) => onBordersChange(v === "on")}

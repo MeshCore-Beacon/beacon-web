@@ -52,12 +52,12 @@ describe("packet reception evidence", () => {
     const section = screen.getByRole("region", { name: "Observations" });
     expect(within(section).getByText("Path 1").closest("details")).toHaveAttribute("open");
     const beta = within(section).getByText(/Beta/).closest("li")!;
-    expect(within(beta).getByRole("button", { name: /Inspect report.*Beta/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(beta).getByRole("button", { name: /Select observation.*Beta/ })).toHaveAttribute("aria-pressed", "true");
     expect(within(beta).getByText("SNR")).toBeInTheDocument();
     expect(screen.queryByText(/^Observations \(/)).not.toBeInTheDocument();
-    for (const name of ["Inspect observer", "Map report"]) expect(within(beta).getByRole("button", { name })).toHaveClass("border", "border-border", "text-primary");
+    for (const name of ["Inspect observer", "Map path"]) expect(within(beta).getByRole("button", { name })).toHaveClass("border", "border-border", "text-primary");
     fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta");
-    fireEvent.click(within(beta).getByRole("button", { name: "Map report" })); expect(onViewPath).toHaveBeenCalledWith("beta");
+    fireEvent.click(within(beta).getByRole("button", { name: "Map path" })); expect(onViewPath).toHaveBeenCalledWith("beta");
     expect(screen.getByTestId("search")).toHaveTextContent("observation=2"); expect(screen.getByTestId("search")).toHaveTextContent("q=keep");
   });
   it("collapses the observations list unless a report was picked", () => {
@@ -65,7 +65,7 @@ describe("packet reception evidence", () => {
     const section = screen.getByRole("region", { name: "Observations" });
     const toggle = within(section).getByRole("button", { name: "Observations" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(section).toHaveTextContent("2 retained reports");
+    expect(section).toHaveTextContent("Heard by 2 observers");
     expect(within(section).queryByText("Path 1")).not.toBeInTheDocument();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -74,27 +74,27 @@ describe("packet reception evidence", () => {
   it("keeps the evidence notes in an info tip instead of paragraphs", () => {
     render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewPath={() => {}} /></MemoryRouter>);
     const section = screen.getByRole("region", { name: "Observations" });
-    expect(within(section).getByRole("button", { name: /Grouped by path prefixes.*Reports include all received regions/ })).toBeInTheDocument();
-    expect(within(section).queryByText(/Grouped by path prefixes/, { selector: "p" })).not.toBeInTheDocument();
-    expect(within(section).queryByText(/Reports include all received regions/, { selector: "p" })).not.toBeInTheDocument();
-    expect(within(section).queryByText(/Mapping needs at least two/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: /Grouped by the repeaters.*One entry per observer/ })).toBeInTheDocument();
+    expect(within(section).queryByText(/Grouped by the repeaters/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).queryByText(/One entry per observer/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Needs at least two repeaters/, { selector: "p" })).not.toBeInTheDocument();
   });
   it("shows the selected report only in the observations list, above the raw packet", () => {
     render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
     const list = screen.getByRole("region", { name: "Observations" });
     expect(screen.queryByText("Observation", { exact: true })).not.toBeInTheDocument();
-    expect(within(list).getByRole("button", { name: /Inspect report.*Alpha/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(list).getByRole("button", { name: /Select observation.*Alpha/ })).toHaveAttribute("aria-pressed", "true");
     const raw = screen.getByText("Raw Packet");
     expect(list.compareDocumentPosition(raw) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it("reports an expired selection without quietly showing another report", () => {
     render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=99"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
-    expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
+    expect(screen.getByRole("alert")).toHaveTextContent("That observation is no longer available");
     expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
   });
   it("keeps route evidence selections strict without requiring packet URL state", () => {
     render(<MemoryRouter initialEntries={["/?tab=Routes&route=keep"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={99} requireSelectedObservation onClose={() => {}} /></MemoryRouter>);
-    expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
+    expect(screen.getByRole("alert")).toHaveTextContent("That observation is no longer available");
     expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
   });
   it("explains TRACE and missing-report semantics in French", async () => {
@@ -102,7 +102,7 @@ describe("packet reception evidence", () => {
     await i18n.changeLanguage("fr");
     render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
     expect(screen.getByRole("region", { name: "Observations" })).toHaveTextContent("itinéraire prévu");
-    expect(screen.getByText("Aucun rapport conservé pour ce paquet.")).toBeInTheDocument();
+    expect(screen.getByText("Aucune observation pour ce paquet.")).toBeInTheDocument();
   });
   it("keeps a later selected path visible while bounding the initial list", () => {
     const d = reports();
@@ -191,7 +191,7 @@ describe("PacketAnalyzerDrawer view-path button", () => {
         <PacketAnalyzerDrawer detail={makeDetail([hop("a", -79, 43), hop("b", -75, 45)])} selectedObservationId={null} onClose={() => {}} onViewPath={onViewPath} />
       </MemoryRouter>,
     );
-    const btn = screen.getByRole("button", { name: /view path on map/i });
+    const btn = screen.getByRole("button", { name: /map all paths/i });
     expect(btn).toBeEnabled();
     fireEvent.click(btn);
     expect(onViewPath).toHaveBeenCalledOnce();
@@ -203,7 +203,7 @@ describe("PacketAnalyzerDrawer view-path button", () => {
         <PacketAnalyzerDrawer detail={makeDetail([hop("a", -79, 43)])} selectedObservationId={null} onClose={() => {}} onViewPath={() => {}} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("button", { name: /view path on map/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /map all paths/i })).toBeDisabled();
   });
 });
 

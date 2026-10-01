@@ -68,25 +68,25 @@ export function NeighbourGraphTab() {
     return (
       <EmptyState
         title="Pick a region"
-        subtitle="All regions is 5,000+ nodes — choose a region from the REGION picker above, or narrow to an IATA, to view its mesh."
+        subtitle="All regions is 5,000+ nodes — choose a region from the REGION picker above, or narrow to a single area, to view its mesh."
       />
     );
-  if (isError) return <EmptyState title="Neighbour Graph" subtitle="Failed to load nodes" />;
+  if (isError) return <EmptyState title="Neighbor graph" subtitle="Failed to load nodes" />;
   // build only once the pager settles, or the force layout would restart on every streamed page
   if (isPaging) return <EmptyState title="Loading mesh…" subtitle={`${loadedCount} nodes`} />;
-  if (graph.nodes.length === 0) return <EmptyState title="Neighbour Graph" subtitle="No nodes in this region" />;
+  if (graph.nodes.length === 0) return <EmptyState title="Neighbor graph" subtitle="No nodes in this region" />;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {ego ? (
         <div className="shrink-0 border-b border-border bg-bg-surface px-4 py-2 text-center text-xs font-mono text-text-muted">
-          Neighbourhood of <span className="text-text-normal">{selectedNode?.name ?? selectedId}</span> · {ego.nodes.length - 1} neighbours <InfoTip text="Click empty space for the full mesh." />
+          Neighborhood of <span className="text-text-normal">{selectedNode?.name ?? selectedId}</span> · {ego.nodes.length - 1} neighbors <InfoTip text="Click empty space for the full mesh." />
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-surface px-4 py-2">
           <span className="flex items-center gap-2 text-xs font-mono text-text-muted">
             {graph.capped ? `Showing ${CAP} of ${graph.total} nodes` : `${graph.total} nodes`}
-            {graph.capped && <InfoTip text="Narrow to an IATA for the rest." />}
+            {graph.capped && <InfoTip text="Narrow to a single area for the rest." />}
           </span>
           <div className="ml-auto">
             <SearchBar value={search} onChange={setSearch} fields={SEARCH_FIELDS} field={searchField} onFieldChange={setSearchField} />

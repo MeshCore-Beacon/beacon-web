@@ -23,9 +23,12 @@ function validation(value: Selection): string | null {
   return null;
 }
 
+// raw packets are kept 3-7 days depending on the instance
+const RETENTION_HINT_MS = 7 * 86_400_000;
+
 function localTime(ms: number) {
   const date = new Date(ms);
-  return new Date(ms - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 23);
+  return new Date(ms - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 function ObserverSelect({ label, value, onChange, excludeId }: { label: string; value: string; onChange: (id: string) => void; excludeId?: string }) {
@@ -48,6 +51,7 @@ function ComparisonForm({ initial, onCompare }: { initial: Selection | null; onC
   const [since, setSince] = useState(() => localTime(initial?.since ?? Math.floor((Date.now() - 86_400_000) / 60_000) * 60_000));
   const [until, setUntil] = useState(() => localTime(initial?.until ?? Math.floor(Date.now() / 60_000) * 60_000));
   const [error, setError] = useState<string | null>(null);
+  const [retainedSince] = useState(() => Date.now() - RETENTION_HINT_MS);
   function submit(e: FormEvent) {
     e.preventDefault();
     const value = { observerA: a.toLowerCase(), observerB: b.toLowerCase(), since: new Date(since).getTime(), until: new Date(until).getTime() };
@@ -61,12 +65,13 @@ function ComparisonForm({ initial, onCompare }: { initial: Selection | null; onC
         <ObserverSelect label="Observer A" value={a} onChange={setA} excludeId={b} />
         <ObserverSelect label="Observer B" value={b} onChange={setB} excludeId={a} />
         <label className="flex min-w-0 flex-col gap-1.5"><span className={labelClass}>Start (local time)</span>
-          <input type="datetime-local" step="0.001" value={since} onChange={(e) => setSince(e.target.value)} className={fieldClass} />
+          <input type="datetime-local" step="60" value={since} onChange={(e) => setSince(e.target.value)} className={fieldClass} />
         </label>
         <label className="flex min-w-0 flex-col gap-1.5"><span className={labelClass}>End (local time)</span>
-          <input type="datetime-local" step="0.001" value={until} onChange={(e) => setUntil(e.target.value)} className={fieldClass} />
+          <input type="datetime-local" step="60" value={until} onChange={(e) => setUntil(e.target.value)} className={fieldClass} />
         </label>
       </div>
+      {new Date(since).getTime() < retainedSince && <p className="text-sm text-warn">Only recent packets are kept, so the start of this window may be empty.</p>}
       {error && <p role="alert" className="text-sm text-danger">{t(error, { defaultValue: error })}</p>}
       <button type="submit" className="rounded border border-primary-dim bg-primary/10 px-3 py-1.5 font-mono text-xs font-semibold text-primary hover:bg-primary/15">Compare</button>
     </form>
@@ -124,14 +129,14 @@ export function CompareObserversTab() {
         {supplied && !valid && <p role="alert" className="mb-3 text-sm text-danger">This comparison link has invalid or missing values. Choose observers and dates below.</p>}
         <ComparisonForm key={keys.map((key) => params.get(key)).join("|")} initial={selection} onCompare={compare} />
       </Card>
-      {selection && <Card title="Reported flood packets">
+      {selection && <Card title="Flood packets heard">
         <p className="mb-2 break-words text-sm text-text-normal">A: {observerA.data?.displayName ?? selection.observerA} · B: {observerB.data?.displayName ?? selection.observerB}</p>
         <p className="mb-3 flex flex-wrap items-center gap-x-2 break-words text-sm text-text-muted">{new Date(selection.since).toLocaleString()} – {new Date(selection.until).toLocaleString()} · {iatas?.join(", ") || "All"}<InfoTip text="Local time; the end is excluded." /></p>
-        {result.isFetching && <p role="status" className="text-sm text-text-muted">Comparing reported packets…</p>}
+        {result.isFetching && <p role="status" className="text-sm text-text-muted">Comparing…</p>}
         {result.isError && <div role="alert" className="text-sm text-danger"><p>{result.error.message}</p><button type="button" onClick={() => void result.refetch()} className="mt-2 text-primary">Retry comparison</button></div>}
         {data && !result.isError && <>
-          <p className="mb-3 flex items-center gap-2 text-lg font-semibold text-text-bright">{data.totalPackets.toLocaleString()} distinct flood packets<InfoTip text="Percentages use the union of packets heard by either observer. Repeated receptions count once. These counts reflect retained reports, not radio packet loss; an offline observer, broker interruption or expired history can affect the result." /></p>
-          {data.totalPackets === 0 ? <p className="text-sm text-text-muted">No flood packets were reported by either observer in this period and region.</p> : <>
+          <p className="mb-3 flex items-center gap-2 text-lg font-semibold text-text-bright">{data.totalPackets.toLocaleString()} flood packets<InfoTip text="Percentages are of all flood packets either observer heard; each packet counts once. Not a packet-loss measure." /></p>
+          {data.totalPackets === 0 ? <p className="text-sm text-text-muted">Neither observer heard a flood packet in this period and region.</p> : <>
             <div aria-hidden className="mb-4 flex h-5 overflow-hidden rounded">{groups.map((g) => <div key={g.name} style={{ width: `${g.count / data.totalPackets * 100}%`, background: g.color }} />)}</div>
             <table className="w-full text-left text-sm tabular-nums" aria-label="Flood packet comparison">
               <thead className="text-text-muted"><tr><th scope="col">Heard by</th><th scope="col" className="text-right">Packets</th><th scope="col" className="text-right">% of union</th></tr></thead>

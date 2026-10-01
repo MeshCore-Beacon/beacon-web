@@ -43,7 +43,7 @@ describe("observer summary card notes", () => {
   it("labels the noise tile as the last reading and sets the unit apart from the number", () => {
     const points = [{ noiseFloorDb: -91 } as unknown as TelemetryPoint];
     render(<ObserverSummary observer={observer} points={points} />);
-    const tile = screen.getByText("Last noise floor").closest("li")!;
+    const tile = screen.getByText("Noise floor").closest("li")!;
     expect(screen.queryByText(/Latest telemetry interval|Latest status/)).not.toBeInTheDocument();
     expect(within(tile).getByText("-91")).not.toHaveClass("text-sm");
     expect(within(tile).getByText("dBm")).toHaveClass("text-sm");

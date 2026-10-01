@@ -121,7 +121,7 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const observerSpark = useMemo(() => kpiObs.slice(-24).map((p) => p.activeObservers), [kpiObs]);
 
   // top-row KPIs are the overview endpoint's fixed 24h snapshot; range only drives the charts below
-  const ovWindow = `${ov?.windowHours ?? 24}h`;
+  const ovWindow = t("mesh.lastHours", { hours: ov?.windowHours ?? 24 });
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">

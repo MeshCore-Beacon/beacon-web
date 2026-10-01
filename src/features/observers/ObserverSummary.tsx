@@ -55,7 +55,7 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
     { key: "uptime", label: t("observerPage.uptime"), value: observer.uptimeSeconds != null ? formatUptime(observer.uptimeSeconds) : "—" },
     {
       key: "noise",
-      label: t("observerPage.lastNoise"),
+      label: t("observerPage.noise"),
       value: noise != null && Number.isFinite(noise) ? `${noise.toLocaleString(i18n.resolvedLanguage, { maximumFractionDigits: 1 })} dBm` : "—",
     },
   ];

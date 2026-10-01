@@ -15,7 +15,7 @@ export function PacketTableHeader() {
       <span>Hops</span>
       <span>Hash Size</span>
       <span className="truncate" title="Summary and source / destination">Summary / Src → Dst</span>
-      <span>IATA</span>
+      <span>Area</span>
       <span className="text-right">Age</span>
     </div>
   );

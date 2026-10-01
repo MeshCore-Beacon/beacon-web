@@ -25,9 +25,9 @@ beforeEach(() => {
   vi.mocked(getObserverActivity).mockResolvedValue({ ...activity, summary: { ...activity.summary!, recordedPackets: 23 } });
   vi.mocked(getObserverComparison).mockResolvedValue({ observerA: A, observerB: B, since: activity.windowStart!, until, onlyA: 2, both: 3, onlyB: 4, totalPackets: 9 });
 });
-function view(id = B, data = activity, anchor: number | null = until) {
+function view(id = B, data = activity, anchor: number | null = until, range: "24h" | "7d" | "30d" = "7d") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const props = { observerA: observer, activityA: data, range: "7d" as const, observerBId: id, until: anchor, onSelect: vi.fn(), onRefresh: vi.fn(() => anchor ?? until) };
+  const props = { observerA: observer, activityA: data, range, observerBId: id, until: anchor, onSelect: vi.fn(), onRefresh: vi.fn(() => anchor ?? until) };
   const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   return { ...render(<ObserverComparison {...props} />, { wrapper }), props };
 }
@@ -37,15 +37,15 @@ it("aligns activity and retained overlap to the primary observer's effective win
   expect(screen.getByText("19")).toBeInTheDocument();
   expect(getObserverActivity).toHaveBeenCalledWith(B, "168h", "1h", until);
   expect(getObserverComparison).toHaveBeenCalledWith(undefined, { observerA: A, observerB: B, since: activity.windowStart, until }, expect.any(AbortSignal));
-  expect(screen.getByText("Retained flood-packet overlap")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Raw packet history may expire/ })).toBeInTheDocument();
+  expect(screen.getByText("Heard by both")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Only packets the server still keeps/ })).toBeInTheDocument();
   expect(screen.getByTestId("chart").textContent).toContain('"name":"A"');
   expect(screen.getByTestId("chart").textContent).toContain('"name":"B"');
 });
 it("does not compare mismatched or old-server windows", async () => {
   vi.mocked(getObserverActivity).mockResolvedValue({ ...activity, windowEnd: until - 3_600_000 });
   view();
-  expect(await screen.findByText(/Aligned summaries are unavailable/)).toBeInTheDocument();
+  expect(await screen.findByText(/Comparison not available on this server/)).toBeInTheDocument();
   expect(getObserverComparison).not.toHaveBeenCalled();
   expect(screen.queryByTestId("chart")).not.toBeInTheDocument();
 });
@@ -58,7 +58,7 @@ it.each([A, "broken-id", ""]) ("never requests overlap for an invalid or missing
 it("rejects a bad anchor and offers a fresh common window", async () => {
   const { props } = view(B, activity, null);
   expect(await screen.findByText(/This comparison time is invalid/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Refresh both observers" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   expect(props.onRefresh).toHaveBeenCalled();
   expect(getObserverActivity).not.toHaveBeenCalled();
 });
@@ -76,12 +76,23 @@ it("refreshes the current window without requesting the obsolete window after re
   await waitFor(() => expect(getObserverComparison).toHaveBeenCalledTimes(1));
   const activityCalls = vi.mocked(getObserverActivity).mock.calls.length;
   props.onRefresh.mockReturnValue(until + 3_600_000);
-  fireEvent.click(screen.getByRole("button", { name: "Refresh both observers" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   expect(getObserverActivity).toHaveBeenCalledTimes(activityCalls);
   expect(getObserverComparison).toHaveBeenCalledTimes(1);
 
   props.onRefresh.mockReturnValue(until);
-  fireEvent.click(screen.getByRole("button", { name: "Refresh both observers" }));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
   await waitFor(() => expect(getObserverActivity).toHaveBeenCalledTimes(activityCalls + 1));
   expect(getObserverComparison).toHaveBeenCalledTimes(2);
+});
+
+it("skips the raw-packet overlap at 30d but keeps the aligned charts", async () => {
+  const month: ObserverActivity = { ...activity, range: "720h", interval: "6h", windowStart: Math.floor(until / 21_600_000) * 21_600_000 - 2_592_000_000, windowEnd: Math.floor(until / 21_600_000) * 21_600_000 };
+  vi.mocked(getObserverActivity).mockResolvedValue({ ...month, summary: { ...month.summary!, recordedPackets: 23 } });
+  view(B, month, until, "30d");
+  expect(await screen.findByText("23")).toBeInTheDocument();
+  expect(screen.getByTestId("chart")).toBeInTheDocument();
+  expect(screen.getByText(/Packet overlap is available for 24h and 7d/)).toBeInTheDocument();
+  expect(screen.queryByText("Heard by both")).not.toBeInTheDocument();
+  expect(getObserverComparison).not.toHaveBeenCalled();
 });

@@ -20,7 +20,7 @@ it("translates the signal view while retaining the requested window, true zero a
   expect(screen.getByText("0.0 dB")).toBeInTheDocument();
   const table = screen.getByRole("table", { name: "Disponibilité des échantillons du signal" });
   expect(within(table).getByRole("row", { name: /SNR.*80.*20.*80.0%/ })).toBeInTheDocument();
-  expect(screen.getByText(/1970-01-01 00:00.*1970-01-01 01:00.*UTC/)).toHaveTextContent("fin exclue");
+  expect(screen.getByText(/1970-01-01 00:00.*1970-01-01 01:00.*UTC/)).toHaveTextContent("heure en cours exclue");
   fireEvent.click(screen.getByRole("button", { name: "Actualiser le signal" }));
   expect(query.refetch).toHaveBeenCalledOnce();
 });
@@ -80,8 +80,8 @@ it("shows a translated empty state without implying an outage or displaying samp
   query.data = { ...originalData, receptions: 0, hourly: [], snr: { samples: 0, average: null, histogram: [] }, rssi: { samples: 0, average: null, histogram: [] } };
   await act(() => i18n.changeLanguage("fr"));
   render(<SignalTab range="24h" />);
-  expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
-  expect(screen.getByText(/ne prouvent pas une panne/)).toBeInTheDocument();
+  expect(screen.getByText("Aucune observation dans cette période.")).toBeInTheDocument();
+  expect(screen.getByText(/pas une panne/)).toBeInTheDocument();
   expect(screen.getAllByText("Aucune donnée").length).toBeGreaterThan(0);
   expect(screen.queryAllByTestId("chart")).toHaveLength(0);
 });

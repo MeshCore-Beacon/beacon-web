@@ -24,7 +24,7 @@ it("translates classification and exact tables while preserving counts and the r
   expect(within(table).getByRole("row", { name: /Chemins hachés.*60.*60.0%/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /Vides.*20.*20.0%/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /Non classés.*10.*10.0%/ })).toBeInTheDocument();
-  expect(screen.getByText(/1970-01-01 00:00.*1970-01-01 01:00.*UTC/)).toHaveTextContent("fin exclue");
+  expect(screen.getByText(/1970-01-01 00:00.*1970-01-01 01:00.*UTC/)).toHaveTextContent("heure en cours exclue");
   fireEvent.click(screen.getByText("Valeurs exactes des largeurs, longueurs et par heure"));
   expect(screen.getByRole("table", { name: "Effectifs par largeur de hachage" })).toHaveTextContent("Octets par hachage");
   expect(within(screen.getByRole("table", { name: "Effectifs par nombre d’entrées" })).getByRole("row", { name: "0 20" })).toBeInTheDocument();
@@ -43,7 +43,7 @@ it("redraws all chart labels on language change and keeps exact details open", a
   expect(screen.getByText("Valeurs exactes des largeurs, longueurs et par heure").closest("details")).toHaveAttribute("open");
   const after = chartOptions();
   expect(after[0]).toMatchObject({ series: [{ data: [{ name: "1 octet", value: 20 }, { name: "2 octets", value: 30 }, { name: "3 octets", value: 10 }] }] });
-  expect(after[1]).toMatchObject({ xAxis: { name: "Entrées du chemin" }, series: [{ name: "Réceptions", data: [{ value: 20 }, { value: 0 }, { value: 60 }] }] });
+  expect(after[1]).toMatchObject({ xAxis: { name: "Entrées du chemin" }, series: [{ name: "Observations", data: [{ value: 20 }, { value: 0 }, { value: 60 }] }] });
   expect(after[2]).toMatchObject({ series: [{ name: "1 octet", data: [[0, 20]] }, { name: "2 octets", data: [[0, 30]] }, { name: "3 octets", data: [[0, 10]] }] });
   expect(after[3]).toMatchObject({ series: [{ data: [{ name: "Chemins hachés", value: 60 }, { name: "Vides", value: 20 }, { name: "Trace", value: 10 }, { name: "Non classés", value: 10 }] }] });
   after.forEach((option, i) => expect(option.aria).not.toEqual(before[i]!.aria));
@@ -54,7 +54,7 @@ it("uses only nonempty hash paths for multi-byte share, exposes categories and e
   render(<PathsTab range="24h" />);
   expect(usePathStats).toHaveBeenCalledWith("24h");
   expect(screen.getByText("66.7%")).toBeInTheDocument();
-  expect(screen.getByText(/direct routes/i)).toHaveTextContent("remaining");
+  expect(screen.getByText(/unclassified packets/i)).toHaveTextContent("no usable path data");
   const table = screen.getByRole("table", { name: "Path classification counts" });
   expect(within(table).getByRole("row", { name: /Hash paths.*60.*60.0%/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /Empty.*20.*20.0%/ })).toBeInTheDocument();
@@ -85,7 +85,7 @@ it("translates empty coverage without inventing hash-width votes or hourly recor
   query.data = { ...originalData, receptions: 0, hashed: 0, empty: 0, trace: 0, unclassified: 0, hashWidths: [], pathLengths: [], hourly: [] };
   await act(() => i18n.changeLanguage("fr"));
   render(<PathsTab range="24h" />);
-  expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
+  expect(screen.getByText("Aucune observation dans cette période.")).toBeInTheDocument();
   expect(screen.getAllByText("Aucune donnée")).toHaveLength(4);
   expect(screen.queryAllByTestId("chart")).toHaveLength(0);
   expect(screen.queryByRole("table")).not.toBeInTheDocument();

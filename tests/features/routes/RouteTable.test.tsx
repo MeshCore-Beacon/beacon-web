@@ -45,7 +45,7 @@ function renderTable(selection = ALL_REGIONS) {
   render(<RouteTable />, { wrapper });
 }
 
-const openIataPicker = () => fireEvent.click(screen.getByText("IATA"));
+const openIataPicker = () => fireEvent.click(screen.getByText("Areas"));
 const checkIata = (code: string) => fireEvent.click(screen.getByRole("option", { name: new RegExp(code) }));
 
 beforeEach(() => {

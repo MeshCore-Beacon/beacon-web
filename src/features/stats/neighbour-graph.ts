@@ -211,7 +211,7 @@ export function neighbourGraphOption(
         }
         const d = param.data as unknown as GraphNode;
         const type = d.nodeTypeName || "unknown";
-        return d.degree > 0 ? `${d.name}\n${type} · ${d.degree} neighbour${d.degree === 1 ? "" : "s"}` : `${d.name}\n${type}`;
+        return d.degree > 0 ? `${d.name}\n${type} · ${d.degree} neighbor${d.degree === 1 ? "" : "s"}` : `${d.name}\n${type}`;
       },
     },
     legend: [

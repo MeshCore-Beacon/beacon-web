@@ -66,8 +66,8 @@ export function NodeFilterBar({
   const controls = (fullWidth: boolean) => (
     <>
       <SelectDropdown label="Type" options={NODE_TYPE_OPTIONS} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
-      <SelectDropdown label="Multibyte paths" options={MULTIBYTE_OPTIONS} allLabel="Any" value={pathsFilter} onChange={(v) => onPathsChange(v as MultibyteFilter)} fullWidth={fullWidth} />
-      <SelectDropdown label="Multibyte traces" options={MULTIBYTE_OPTIONS} allLabel="Any" value={tracesFilter} onChange={(v) => onTracesChange(v as MultibyteFilter)} fullWidth={fullWidth} />
+      <SelectDropdown label="Multi-byte paths" options={MULTIBYTE_OPTIONS} allLabel="Any" value={pathsFilter} onChange={(v) => onPathsChange(v as MultibyteFilter)} fullWidth={fullWidth} />
+      <SelectDropdown label="Multi-byte traces" options={MULTIBYTE_OPTIONS} allLabel="Any" value={tracesFilter} onChange={(v) => onTracesChange(v as MultibyteFilter)} fullWidth={fullWidth} />
       {scopeOptions.length > 0 && (
         <SelectDropdown label="Scope" options={scopeOptions.map((s) => ({ value: s, label: s }))} allLabel="Any" value={scopeFilter} onChange={onScopeChange} fullWidth={fullWidth} />
       )}

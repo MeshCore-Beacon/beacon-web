@@ -26,7 +26,7 @@ it("keeps seven-day links and falls back from retired 3d links", () => {
 it("opens Paths & Hashes from a shared URL and retains the region while changing range", () => {
   render(<MemoryRouter initialEntries={["/?tab=Analytics&statsTab=paths&range=24h&iata=YOW"]}><StatsOverview wsManager={{} as WsManager} /><Location /></MemoryRouter>);
   expect(screen.getByText("Paths range 24h")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Paths & Hashes" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Paths & hashes" })).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(screen.getByRole("button", { name: "30d" }));
   expect(screen.getByText("Paths range 30d")).toBeInTheDocument();
   expect(screen.getByLabelText("Analytics URL")).toHaveTextContent("iata=YOW");

@@ -7,7 +7,7 @@ import { VARIANT_CLASSES } from "./badge-utils";
 // (e.g. the map camera) and use a null value to delete a key that's now at its default.
 export function CopyLinkButton({
   params,
-  label = "Copy Link",
+  label = "Copy link",
   copiedLabel = "Copied",
   ariaLabel,
   preserveParams,

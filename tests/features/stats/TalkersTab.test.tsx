@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TalkersTab } from "../../../src/features/stats/TalkersTab";
 import { getTopAdvertisers, getTopTalkers } from "../../../src/api/client";
@@ -30,10 +30,10 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function mount() {
+function mount(onViewNode?: (id: string) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
-  const view = (range: StatsRange) => <QueryClientProvider client={client}><TalkersTab range={range} /></QueryClientProvider>;
+  const view = (range: StatsRange) => <QueryClientProvider client={client}><TalkersTab range={range} onViewNode={onViewNode} /></QueryClientProvider>;
   const result = render(view("24h"));
   return { client, rerender: (range: StatsRange) => result.rerender(view(range)) };
 }
@@ -117,4 +117,11 @@ it("distinguishes initial loading from successful empty results", async () => {
   await act(() => { nextAdvertisers.resolve([]); nextTalkers.resolve([]); });
   await screen.findByText("No advertisers");
   expect(screen.getByText("No data")).toBeInTheDocument();
+});
+
+it("opens the clicked advertiser's node", async () => {
+  const onViewNode = vi.fn();
+  mount(onViewNode);
+  fireEvent.click(await screen.findByText("Old advertiser"));
+  expect(onViewNode).toHaveBeenCalledWith("fixture-node");
 });

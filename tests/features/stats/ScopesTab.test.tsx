@@ -19,8 +19,8 @@ it("translates scope counts and membership guidance without changing scope names
   const table = screen.getByRole("table", { name: "Effectifs des scopes" });
   expect(within(table).getByRole("row", { name: /#west.*3.*2.*2/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /#east.*2.*2.*3/ })).toBeInTheDocument();
-  expect(screen.getByText("Appartenances d’observateurs")).toBeInTheDocument();
-  expect(screen.getByText(/plusieurs scopes/)).toHaveTextContent("sans période sélectionnée");
+  expect(screen.getByText("Observateurs par scope")).toBeInTheDocument();
+  expect(screen.getByText(/plusieurs scopes/)).toHaveTextContent("pas limités à une période");
   expect(screen.getByText("2 sur 2 scopes")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Actualiser/ })).not.toBeInTheDocument();
 });
@@ -76,10 +76,10 @@ it("shows exact scope counts, keeps membership semantics explicit and filters th
   render(<ScopesTab />);
   const table = screen.getByRole("table", { name: "Scope counts" });
   expect(within(table).getByRole("row", { name: /#west.*3.*2.*2/ })).toBeInTheDocument();
-  expect(screen.getByText("Observer memberships")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /An observer can appear/ })).toBeInTheDocument();
-  expect(screen.queryByText(/An observer can appear/, { selector: "p" })).not.toBeInTheDocument();
-  expect(screen.getByText(/Retained data/)).toBeInTheDocument();
+  expect(screen.getByText("Observers by scope")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /An observer can belong/ })).toBeInTheDocument();
+  expect(screen.queryByText(/An observer can belong/, { selector: "p" })).not.toBeInTheDocument();
+  expect(screen.getByText(/Scope activity/)).toBeInTheDocument();
   fireEvent.change(screen.getByRole("searchbox", { name: "Find a scope" }), { target: { value: "WEST" } });
   expect(screen.queryByText("#east")).not.toBeInTheDocument();
   expect(screen.getByText(/1 of 2 scopes/)).toBeInTheDocument();

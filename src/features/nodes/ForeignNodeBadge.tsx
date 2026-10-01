@@ -4,7 +4,7 @@ import { Tooltip } from "../../components/Tooltip";
 export function ForeignNodeBadge({ possiblyForeign }: { possiblyForeign?: boolean }) {
   if (possiblyForeign !== true) return null;
   return (
-    <Tooltip label="Reported position is outside this server's configured local borders.">
+    <Tooltip label="This node's position is outside this server's local area.">
       <Badge variant="default">Possibly foreign</Badge>
     </Tooltip>
   );

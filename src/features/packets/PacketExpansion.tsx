@@ -70,7 +70,7 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
           title={hasPath ? undefined : "No resolved path to map"}
           className={ACTION_BUTTON_CLASS}
         >
-          View path on map
+          Map all paths
         </button>
       </div>
 

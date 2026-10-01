@@ -165,10 +165,17 @@ it("keeps the scope list collapsed until requested", async () => {
   expect(within(scopeList).getByText("#old")).toBeVisible();
 });
 
+it("labels the KPI cards as the last 24h whatever the selected range", async () => {
+  mount("7d"); await loaded();
+  expect(screen.getAllByText("Last 24h")).toHaveLength(4);
+  expect(within(card("Active areas")).getByText("4")).toBeInTheDocument();
+});
+
 it("shows French labels for the KPIs, chart titles and scope table", async () => {
   await act(() => i18n.changeLanguage("fr"));
   mount(); await loaded();
   expect(within(card("Paquets totaux")).getByText("111")).toBeInTheDocument();
+  expect(screen.getAllByText("Dernières 24 h")).toHaveLength(4);
   expect(screen.getByText("Observations · 24h")).toBeInTheDocument();
   expect(screen.getByText("Meilleurs nœuds · historique complet")).toBeInTheDocument();
   const typesChart = within(card("Types de nœuds · historique complet")).getByTestId("chart");

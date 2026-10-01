@@ -111,12 +111,12 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 </Badge>
                 {detail.scope && <ScopeTag boxed>{detail.scope}</ScopeTag>}
                 <Tooltip
-                  label={t("investigation.reportedBy", { count: observerCount })}
+                  label={t("investigation.heardBy", { count: observerCount })}
                   className="ml-auto"
                 >
                   <span
                     className="font-mono text-[13px] text-primary font-semibold bg-primary/6 px-1.5 rounded-sm"
-                    aria-label={t("investigation.reportedBy", { count: observerCount })}
+                    aria-label={t("investigation.heardBy", { count: observerCount })}
                   >
                     ×{observerCount}
                   </span>

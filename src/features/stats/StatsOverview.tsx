@@ -22,11 +22,12 @@ const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRan
 
 interface StatsOverviewProps {
   wsManager: WsManager;
+  onViewNode?: (nodeId: string) => void;
 }
 
 // Stats page shell: an analytics sub-header and range over the active sub-tab. Sub-tab and range live
 // in the URL (?statsTab/?range) so the view is shareable.
-export function StatsOverview({ wsManager }: StatsOverviewProps) {
+export function StatsOverview({ wsManager, onViewNode }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const tab = asTab(params.get("statsTab"));
@@ -68,7 +69,7 @@ export function StatsOverview({ wsManager }: StatsOverviewProps) {
         {tab === "signal" && <SignalTab range={range} />}
         {tab === "paths" && <PathsTab range={range} />}
         {tab === "scopes" && <ScopesTab />}
-        {tab === "talkers" && <TalkersTab range={range} />}
+        {tab === "talkers" && <TalkersTab range={range} onViewNode={onViewNode} />}
         {tab === "clockdrift" && <ClockDriftTab />}
         {tab === "graph" && <NeighbourGraphTab />}
         {tab === "compare" && <CompareObserversTab />}

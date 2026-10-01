@@ -12,6 +12,7 @@ import type { TopAdvertiser, StatsRange } from "./types";
 
 interface TalkersTabProps {
   range: StatsRange;
+  onViewNode?: (nodeId: string) => void;
 }
 
 // grow with the roster so bars stay readable; a floor keeps the loading/empty state from collapsing
@@ -21,7 +22,7 @@ function leaderboardHeight(count: number) {
 
 // The "noisy nodes, politely" tab: who's loudest by adverts and by channel chatter. Advertisers list
 // their flood/direct advert split with a per-day rate; talkers are grouped by sender display-name.
-export function TalkersTab({ range }: TalkersTabProps) {
+export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
   const colors = useChartColors();
   const topAdvertisers = useTopAdvertisers(range, 20);
   const topTalkers = useTopTalkers(range, 20);
@@ -73,7 +74,7 @@ export function TalkersTab({ range }: TalkersTabProps) {
             rows={advertisers}
             rowKey={(a) => a.nodeId}
             selectedKey={null}
-            onSelect={() => {}}
+            onSelect={(id) => { if (id) onViewNode?.(id); }}
             isLoading={advertisersLoading}
             emptyLabel={topAdvertisers.isError ? "Failed to load" : "No advertisers"}
           />

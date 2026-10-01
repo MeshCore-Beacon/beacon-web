@@ -143,7 +143,7 @@ describe("PacketVirtualList expansion", () => {
 
     // clicking an observation is what opens the analyzer now — there is no button for it
     fireEvent.click(screen.getByText("o1"));
-    fireEvent.click(screen.getByRole("button", { name: "View path on map" }));
+    fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
 
     expect(handlers.onSelectObservation).toHaveBeenCalledWith(1);
     expect(handlers.onOpenAnalyzer).toHaveBeenCalledTimes(1);

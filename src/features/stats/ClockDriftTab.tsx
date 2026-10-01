@@ -48,7 +48,7 @@ export function ClockDriftTab() {
     },
     {
       id: "iatas",
-      header: "IATAs",
+      header: t("clockDrift.areas"),
       cell: (e) => (
         <div className="flex flex-wrap gap-1">
           {(e.iatas ?? []).map((i) => (

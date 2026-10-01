@@ -58,7 +58,7 @@ describe("route detail", () => {
   it("opens the exact report and observer, and pins cursor pages", async () => {
     mount();
     await screen.findByText("Garden");
-    fireEvent.click(screen.getByRole("button", { name: "Inspect report" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect packet" }));
     expect(inspect).toHaveBeenCalledWith("aabb", 17);
     fireEvent.click(screen.getByRole("button", { name: "Inspect observer" }));
     expect(observer).toHaveBeenCalledWith("o1");
@@ -74,10 +74,10 @@ describe("route detail", () => {
     expect(screen.queryByText("Garden")).not.toBeInTheDocument();
   });
 
-  it("says when no packets on the route are still kept", async () => {
+  it("says when no observations on the route are still kept", async () => {
     vi.mocked(getRouteEvidence).mockResolvedValue({ ...page, items: [], hasMore: false });
     mount({ listed: route });
-    expect(await screen.findByText(/No packets on this route are still kept/)).toBeInTheDocument();
+    expect(await screen.findByText(/No observations on this route are still kept/)).toBeInTheDocument();
   });
 
   it("does not fetch packets for a legacy route without a path key", () => {
@@ -86,11 +86,11 @@ describe("route detail", () => {
     expect(getRouteEvidence).not.toHaveBeenCalled();
   });
 
-  it("distinguishes unavailable saved prefixes and translates the panel", async () => {
+  it("distinguishes an unmatchable route and translates the panel", async () => {
     await i18n.changeLanguage("fr");
     vi.mocked(getRouteEvidence).mockResolvedValue({ ...page, matchAvailable: false, items: [], hasMore: false });
     mount();
-    expect(await screen.findByText(/préfixes enregistrés ne permettent pas/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ce trajet ne peut pas être comparé/)).toBeInTheDocument();
     await i18n.changeLanguage("en");
   });
 

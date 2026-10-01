@@ -26,10 +26,10 @@ it("keeps the same traffic cache entry and request when only the language change
   vi.mocked(getStatsObservations).mockResolvedValueOnce([]);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const { unmount } = render(<QueryClientProvider client={client}><TrafficTab range="7d" /></QueryClientProvider>);
-  await screen.findByText("No retained receptions in this window.");
+  await screen.findByText("No observations in this window.");
   expect(getStatsObservations).toHaveBeenCalledOnce();
   await act(() => i18n.changeLanguage("fr"));
-  expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
+  expect(screen.getByText("Aucune observation dans cette période.")).toBeInTheDocument();
   expect(getStatsObservations).toHaveBeenCalledOnce();
   expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-observations", "YVR", "7d"]]);
   unmount(); client.clear();

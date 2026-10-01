@@ -72,7 +72,7 @@ describe("observer comparison", () => {
     expect(within(table).getByRole("row", { name: /Only A.*1.*25.0%/ })).toBeInTheDocument();
     expect(within(table).getByRole("row", { name: /Only B.*2.*50.0%/ })).toBeInTheDocument();
     expect(within(table).getByRole("row", { name: /Both.*1.*25.0%/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Percentages use the union/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Percentages are of all flood packets/ })).toBeInTheDocument();
   });
 
   it("offers only a different observer and rejects an incomplete pair without querying", async () => {
@@ -90,7 +90,7 @@ describe("observer comparison", () => {
   it("renders an empty period without NaN percentages", async () => {
     vi.mocked(getObserverComparison).mockResolvedValue({ ...counts, totalPackets: 0, onlyA: 0, onlyB: 0, both: 0 });
     mount(query);
-    expect(await screen.findByText(/No flood packets were reported/)).toBeInTheDocument();
+    expect(await screen.findByText(/Neither observer heard a flood packet/)).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("NaN");
   });
 
@@ -124,5 +124,16 @@ describe("observer comparison", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry comparison" }));
     await screen.findByRole("table", { name: "Flood packet comparison" });
     expect(getObserverComparison).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses minute precision and flags a start older than packet retention", async () => {
+    mount();
+    const start = screen.getByLabelText("Start (local time)");
+    expect(start).toHaveAttribute("step", "60");
+    expect(screen.getByLabelText("End (local time)")).toHaveAttribute("step", "60");
+    expect((start as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(screen.queryByText(/Only recent packets are kept/)).not.toBeInTheDocument();
+    fireEvent.change(start, { target: { value: "2020-01-01T00:00" } });
+    expect(screen.getByText(/Only recent packets are kept/)).toBeInTheDocument();
   });
 });

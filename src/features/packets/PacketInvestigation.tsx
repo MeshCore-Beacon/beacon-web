@@ -32,13 +32,13 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
       </button></h2>
       <InfoTip text={[t(isTrace ? "investigation.traceNote" : "investigation.pathNote"), t("investigation.retention")]} />
     </div>
-    <p className="font-mono text-[11px] text-text-muted">{t("investigation.reports", { count: detail.observations.length })} · {t("investigation.observers", { count: observerCount })}</p>
+    <p className="font-mono text-[11px] text-text-muted">{detail.observations.length === observerCount ? t("investigation.heardBy", { count: observerCount }) : `${t("investigation.heardTimes", { count: detail.observations.length })} ${t("investigation.byObservers", { count: observerCount })}`}</p>
     {groups.length === 0 ? <p role="status" className="text-sm text-text-muted">{t("investigation.empty")}</p> : open && visible.map(group => <details key={group.key} open={group.reports.some(o => o.id === selectedId)} className="group/path">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded px-1 py-1.5 font-mono text-xs hover:bg-text-normal/3 [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="text-[9px] text-text-dim transition-transform group-open/path:rotate-90">▶</span>
         <span className="shrink-0 text-text-normal">{t(group.kind === "empty" ? "investigation.noEntries" : group.kind === "unavailable" ? "investigation.unavailablePath" : isTrace ? "investigation.tracePath" : "investigation.path", { number: groups.indexOf(group) + 1 })}</span>
         {group.hashes.length > 0 && <code className="min-w-0 truncate text-primary">{group.hashes.join(" → ")}</code>}
-        <span className="ml-auto shrink-0 rounded-sm bg-text-normal/5 px-1.5 text-[11px] text-text-muted" aria-label={t("investigation.reports", { count: group.reports.length })}>×{group.reports.length}</span>
+        <span className="ml-auto shrink-0 rounded-sm bg-text-normal/5 px-1.5 text-[11px] text-text-muted" aria-label={t("investigation.observations", { count: group.reports.length })}>×{group.reports.length}</span>
       </summary>
       <ul className="mt-1 mb-2 flex flex-col gap-1.5">{group.reports.map(report => {
         const key = isTrace ? "trace" : report.observerId;

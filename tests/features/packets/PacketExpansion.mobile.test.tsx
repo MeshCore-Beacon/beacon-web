@@ -125,7 +125,7 @@ describe("PacketExpansion below md", () => {
     usePacketDetail.mockReturnValue({ data: detail([obs(1)]) });
     render(<PacketExpansion {...props} />);
 
-    const button = screen.getByRole("button", { name: "View path on map" });
+    const button = screen.getByRole("button", { name: "Map all paths" });
     expect(tokens(button)).toEqual(
       expect.arrayContaining(["w-full", "md:w-auto", "py-2", "md:py-0.5", "text-[11px]", "md:text-[10px]"]),
     );

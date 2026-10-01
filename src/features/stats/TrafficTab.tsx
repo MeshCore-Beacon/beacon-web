@@ -44,7 +44,7 @@ export function TrafficTab({ range }: { range: StatsRange }) {
         <Card title={t("traffic.byIata")} right={<InfoTip text={t("traffic.groupingHelp")} />}>
           {unavailable ? <p className="py-6 text-sm text-text-muted">{query.isError ? t("common.dataUnavailable") : t("traffic.loading")}</p> : !model.areas.length ? <p className="py-6 text-sm text-text-muted">{t("traffic.empty")}</p> : (
             <div className="max-h-[300px] overflow-y-auto"><table aria-label={t("traffic.byIata")} className="w-full text-left font-mono text-xs">
-              <thead className="text-text-muted"><tr><th scope="col" className="py-2">IATA</th><th scope="col" className="pl-2 text-right">{t("traffic.receptionsColumn")}</th><th scope="col" className="pl-2 text-right">{t("traffic.share")}</th></tr></thead>
+              <thead className="text-text-muted"><tr><th scope="col" className="py-2">{t("traffic.area")}</th><th scope="col" className="pl-2 text-right">{t("traffic.receptionsColumn")}</th><th scope="col" className="pl-2 text-right">{t("traffic.share")}</th></tr></thead>
               <tbody>{model.areas.map((area, i) => <tr key={area.name} className="border-t border-border-subtle">
                 <th scope="row" className="py-2 font-normal text-text-normal"><span aria-hidden className="mr-2 inline-block h-2 w-2 rounded-full" style={{ background: colors.series[Math.min(i, 7)] }} />{trafficAreaLabel(area.name, t)}</th>
                 <td className="pl-2 text-right tabular-nums text-text-bright">{area.total.toLocaleString()}</td><td className="pl-2 text-right tabular-nums text-text-muted">{(model.total ? 100 * area.total / model.total : 0).toFixed(1)}%</td>

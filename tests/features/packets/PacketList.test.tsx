@@ -68,7 +68,7 @@ vi.mock("../../../src/features/packets/PacketVirtualList", () => ({
     <div>
       <div data-testid="expanded">{String(expandedHash)}</div>
       <button type="button" onClick={() => onOpenAnalyzer()}>Open analyzer</button>
-      <button type="button" onClick={onViewPath}>View path on map</button>
+      <button type="button" onClick={onViewPath}>Map all paths</button>
       {packets.map((p) => (
         <button
           key={p.packetHash}
@@ -234,7 +234,7 @@ describe("PacketList expanded row", () => {
 
     const { onViewPath } = renderList("/?tab=Packets&hash=AA11");
 
-    fireEvent.click(screen.getByRole("button", { name: "View path on map" }));
+    fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
     expect(onViewPath).toHaveBeenCalledWith(detail);
   });
 
@@ -243,7 +243,7 @@ describe("PacketList expanded row", () => {
 
     const { onViewPath } = renderList("/?tab=Packets&hash=AA11");
 
-    fireEvent.click(screen.getByRole("button", { name: "View path on map" }));
+    fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
     expect(onViewPath).not.toHaveBeenCalled();
   });
 });

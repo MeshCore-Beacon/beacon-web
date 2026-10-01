@@ -61,7 +61,7 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
           <div className="flex items-center gap-3 font-mono text-[13px]">
             <Badge variant="default">{route.iata}</Badge>
             <Field label="Hops" value={route.hopCount} />
-            <Field label="Obs" value={route.observationCount.toLocaleString()} />
+            <Field label="Heard" value={route.observationCount.toLocaleString()} />
           </div>
         </Section>
 
@@ -109,7 +109,7 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
                       <p className="break-words text-sm text-text-bright">{report.observerName ?? report.observerId.slice(0, 8)}</p>
                       <p className="text-xs text-text-normal"><Timestamp value={report.heardAt} ms /> · SNR <span className={level ? SIGNAL_LEVEL_CLASSES[level] : ""}>{formatSnr(report.snr)}</span>{report.snr != null && " dB"} · RSSI {report.rssi == null ? "—" : `${report.rssi} dBm`}</p>
                       <div className="flex flex-wrap gap-2">
-                        {onAnalyzePacket && <button className={ACTION_BUTTON_CLASS} onClick={() => onAnalyzePacket(report.packetHash, report.id)}>{t("investigation.inspect")}</button>}
+                        {onAnalyzePacket && <button className={ACTION_BUTTON_CLASS} onClick={() => onAnalyzePacket(report.packetHash, report.id)}>{t("routeEvidence.inspect")}</button>}
                         {onViewObserver && <button className={ACTION_BUTTON_CLASS} onClick={() => onViewObserver(report.observerId)}>{t("investigation.observer")}</button>}
                       </div>
                     </li>

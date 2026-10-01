@@ -193,3 +193,12 @@ describe("NodeDetailPanel View on map", () => {
     expect(onViewOnMap).toHaveBeenCalledWith(0, 10);
   });
 });
+
+describe("NodeDetailPanel recent packets", () => {
+  it("labels the expiring packet list as recent packets", async () => {
+    renderPanel();
+    expect(await screen.findByText("Recent packets")).toBeInTheDocument();
+    expect(await screen.findByText("No recent packets")).toBeInTheDocument();
+    expect(screen.queryByText("Observations")).not.toBeInTheDocument();
+  });
+});

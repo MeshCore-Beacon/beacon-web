@@ -78,7 +78,7 @@ const COLUMNS: Column<NodeSummary>[] = [
     cell: (node) => formatRadio(node.radio) ?? "—",
   },
   {
-    header: "IATAs",
+    header: "Areas",
     cell: (node) =>
       node.iatas && node.iatas.length > 0 ? (
         <div className="flex flex-wrap gap-1">

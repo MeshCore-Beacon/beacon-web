@@ -78,7 +78,7 @@ function CrossRouteCard({ route }: { route: CrossIATARoute }) {
 
 const COLUMNS: Column<KnownRoute>[] = [
   {
-    header: "IATA",
+    header: "Area",
     sortValue: (r) => r.iata,
     cell: (r) => <Badge variant="default">{r.iata}</Badge>,
   },
@@ -302,7 +302,7 @@ export function RouteTable(actions: RouteActions) {
         <div className="flex items-center gap-1.5">
           <div className="flex-1 min-w-0 md:flex-none">
             <MultiSelectDropdown
-              label="IATA"
+              label="Areas"
               options={iataOptions}
               selected={searchIatas}
               onChange={setSearchIatas}
@@ -338,7 +338,7 @@ export function RouteTable(actions: RouteActions) {
             ) : crossRoutes && crossRoutes.length > 0 ? (
               crossRoutes.map((r, i) => <CrossRouteCard key={i} route={r} />)
             ) : (
-              <div className="font-mono text-[13px] text-text-dim">No cross-IATA routes</div>
+              <div className="font-mono text-[13px] text-text-dim">No routes between these areas</div>
             )}
           </div>
         ) : (

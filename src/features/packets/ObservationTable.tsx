@@ -16,7 +16,7 @@ export function ObservationTable({ observations, selectedId, onSelect }: Props) 
       <thead>
         <tr className="text-text-dim uppercase tracking-wider text-[9px]">
           <th className="text-left font-medium py-1 px-1.5">Observer</th>
-          <th className="text-left font-medium py-1 px-1.5">IATA</th>
+          <th className="text-left font-medium py-1 px-1.5">Area</th>
           <th className="text-left font-medium py-1 px-1.5">Heard</th>
           <th className="text-left font-medium py-1 px-1.5">SNR</th>
           <th className="text-left font-medium py-1 px-1.5">RSSI</th>
