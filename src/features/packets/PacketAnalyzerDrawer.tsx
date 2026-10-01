@@ -84,7 +84,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
       <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
         <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">Packet Analyzer</span>
         <div className="flex items-center gap-1.5">
-          {detail && <CopyLinkButton params={() => ({ tab: "Packets", route: null, routeIata: null, routeRange: null, routeSince: null, routeUntil: null, hash: detail.packetHash, analyze: "1", path: null, node: null, observer: null, observerId: null, statsTab: null, compareWith: null, compareUntil: null, observation: selectedObs ? String(selectedObs.id) : null })} label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("investigation.copyPacket")} />}
+          {detail && <CopyLinkButton params={() => ({ tab: "Packets", route: null, routeIata: null, hash: detail.packetHash, analyze: "1", path: null, node: null, observer: null, observerId: null, statsTab: null, compareWith: null, compareUntil: null, observation: selectedObs ? String(selectedObs.id) : null })} label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} ariaLabel={t("investigation.copyPacket")} />}
           <CloseButton onClose={handleClose} label="Close analyzer" className="-mr-1" />
         </div>
       </div>

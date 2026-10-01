@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { RouteEvidencePanel, type RouteActions } from "./RouteEvidencePanel";
 import { getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getIatas } from "../../api/client";
 import { useRegion, useRegionSelection } from "../../hooks/useRegion";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
@@ -11,7 +10,7 @@ import { DataTable, type Column } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { MultiSelectDropdown } from "../../components/MultiSelectDropdown";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-import { RouteDetailPanel } from "./RouteDetailPanel";
+import { RouteDetailPanel, type RouteActions } from "./RouteDetailPanel";
 import { ResolvedHopBlock } from "../packets/PathData";
 import { formatHex } from "../../lib/formatters";
 import type { KnownRoute, CrossIATARoute, ResolvedHop, ResolvedNode, RouteHop } from "../../types/api";
@@ -154,7 +153,7 @@ export function RouteTable(actions: RouteActions) {
     // no-op when nothing is open, so callers (e.g. the region-change effect) can call it unconditionally
     if (!pathKey && !selectedKey) return;
     setSelectedKey(null);
-    setParams(previous => { const next = new URLSearchParams(previous); for (const key of ["route", "routeIata", "routeRange", "routeSince", "routeUntil"]) next.delete(key); return next; }, { replace: true });
+    setParams(previous => { const next = new URLSearchParams(previous); for (const key of ["route", "routeIata"]) next.delete(key); return next; }, { replace: true });
   }, [pathKey, selectedKey, setParams]);
 
 
@@ -241,7 +240,7 @@ export function RouteTable(actions: RouteActions) {
     const route = rows?.find(row => String(row.id) === id);
     if (route?.pathKey) {
       setSelectedKey(null);
-      setParams(previous => { const next = new URLSearchParams(previous); next.set("route", route.pathKey!); next.set("routeIata", route.iata); next.delete("routeSince"); next.delete("routeUntil"); return next; }, { replace: true });
+      setParams(previous => { const next = new URLSearchParams(previous); next.set("route", route.pathKey!); next.set("routeIata", route.iata); return next; }, { replace: true });
     } else {
       closeRoute();
       setSelectedKey(id);
@@ -361,8 +360,10 @@ export function RouteTable(actions: RouteActions) {
             )}
           </div>
         )}
-        {pathKey && routeIata ? <RouteEvidencePanel key={[routeIata, pathKey, params.get("routeSince"), params.get("routeUntil")].join(":")} iata={routeIata} pathKey={pathKey} onClose={closeRoute} {...actions} /> : selectedRoute && (
-          <RouteDetailPanel route={selectedRoute} onClose={() => setSelectedKey(null)} />
+        {pathKey && routeIata ? (
+          <RouteDetailPanel key={`${routeIata}:${pathKey}`} route={rows?.find(row => row.pathKey === pathKey && row.iata === routeIata)} iata={routeIata} pathKey={pathKey} onClose={closeRoute} {...actions} />
+        ) : selectedRoute && (
+          <RouteDetailPanel route={selectedRoute} onClose={() => setSelectedKey(null)} {...actions} />
         )}
       </div>
     </div>

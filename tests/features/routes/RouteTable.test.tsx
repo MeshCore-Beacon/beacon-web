@@ -25,7 +25,7 @@ vi.mock("../../../src/api/client", () => ({
   getRegion: vi.fn(),
 }));
 
-vi.mock("../../../src/features/routes/RouteEvidencePanel", () => ({ RouteEvidencePanel: ({ pathKey }: { pathKey: string }) => <div data-testid="saved-route-selection">{pathKey}</div> }));
+vi.mock("../../../src/features/routes/RouteDetailPanel", () => ({ RouteDetailPanel: ({ pathKey }: { pathKey?: string }) => <div data-testid="saved-route-selection">{pathKey}</div> }));
 
 const mockGetKnownRoutesPage = vi.mocked(getKnownRoutesPage);
 const mockSearchKnownRoutes = vi.mocked(searchKnownRoutes);

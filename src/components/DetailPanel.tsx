@@ -3,7 +3,7 @@ import { CloseButton } from "./CloseButton";
 
 // shared scaffolding for the right-hand entity detail panels (observers, nodes, …)
 
-export function Section({ title, children, first }: { title: string; children: ReactNode; first?: boolean }) {
+export function Section({ title, children, first }: { title: ReactNode; children: ReactNode; first?: boolean }) {
   return (
     <div className={`px-3 py-2.5 ${first ? "" : "border-t border-border-subtle"}`}>
       <div className="text-xs font-mono font-medium text-text-bright uppercase tracking-wider mb-1.5">{title}</div>
