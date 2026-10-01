@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { SelectDropdown } from "../../components/SelectDropdown";
 import { FilterSheet, FiltersButton } from "../../components/FilterSheet";
@@ -29,6 +29,7 @@ interface ObserverFilterBarProps {
   scopeFilter: string;
   onScopeChange: (s: string) => void;
   scopeOptions: string[];
+  trailing?: ReactNode;
 }
 
 export function ObserverFilterBar({
@@ -47,6 +48,7 @@ export function ObserverFilterBar({
   scopeFilter,
   onScopeChange,
   scopeOptions,
+  trailing,
 }: ObserverFilterBarProps) {
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -82,6 +84,7 @@ export function ObserverFilterBar({
       <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label="Observer filters">
         <SearchBar value={search} onChange={onSearchChange} fields={SEARCH_FIELDS} field={searchField} onFieldChange={onSearchFieldChange} />
         <FiltersButton activeCount={activeCount} onClick={() => setSheetOpen(true)} />
+        {trailing}
         {sheetOpen && (
           <FilterSheet onClose={() => setSheetOpen(false)} onClear={activeCount > 0 ? clearAll : undefined}>
             {controls(true)}
@@ -108,6 +111,7 @@ export function ObserverFilterBar({
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>
 
       {controls(false)}
+      {trailing}
     </div>
   );
 }

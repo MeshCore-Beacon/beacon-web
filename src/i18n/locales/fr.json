@@ -318,7 +318,7 @@
       "sidebarSearch": "Rechercher les observateurs",
       "noMatches": "Aucun résultat",
       "none": "Aucun observateur",
-      "hourWindow": "Paquets {{start}}–{{end}} h UTC",
+      "packetsLastHour": "Paquets dernière heure",
       "lastNoise": "Dernier bruit de fond",
       "copyKey": "Copier la clé publique",
       "sort": "Trier les observateurs",

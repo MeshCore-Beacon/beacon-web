@@ -2,7 +2,7 @@ import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
 import { CopyButton } from "../../components/CopyButton";
-import { formatAbsolute, formatBattery, formatRadioParts, formatUptime, formatUtc, timeAgoParts } from "../../lib/formatters";
+import { formatAbsolute, formatBattery, formatRadioParts, formatUptime, timeAgoParts } from "../../lib/formatters";
 import { useTick } from "../../hooks/useTick";
 import { observerNoiseFloor } from "./observer-stats";
 import { Tooltip } from "../../components/Tooltip";
@@ -38,12 +38,11 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
     [t("observerPage.client"), client],
     [t("observerPage.radio"), radio],
   ] as const).filter((item): item is readonly [string, string] => !!item[1]);
-  const hour = (at: number) => formatUtc(at, { timeOnly: true }).slice(0, 2);
   const cards: { key: string; label: string; value: string; title?: string }[] = [
     { key: "records", label: t("observerPage.records"), value: summary?.recordedPackets.toLocaleString(i18n.resolvedLanguage) ?? "—" },
     {
       key: "lastHour",
-      label: summary ? t("observerPage.hourWindow", { start: hour(summary.lastCompleteHourStart), end: hour(summary.lastCompleteHourEnd) }) : t("observerPage.lastHour"),
+      label: t("observerPage.packetsLastHour"),
       value: summary?.lastCompleteHour.toLocaleString(i18n.resolvedLanguage) ?? "—",
     },
     {

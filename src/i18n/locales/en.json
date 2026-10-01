@@ -314,7 +314,7 @@
       "sidebarSearch": "Search observers",
       "noMatches": "No matches",
       "none": "No observers",
-      "hourWindow": "Packets {{start}}–{{end}} UTC",
+      "packetsLastHour": "Packets last hour",
       "lastNoise": "Last noise floor",
       "copyKey": "Copy public key",
       "sort": "Sort observers",

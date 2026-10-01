@@ -29,15 +29,15 @@ describe("observer summary card notes", () => {
     expect(screen.getByText("YKF").parentElement).toBe(row);
   });
 
-  it("names the last complete hour by its UTC window instead of a note under the card", () => {
+  it("labels the last complete hour plainly, without a UTC window", () => {
     const activity = { summary: {
       recordedPackets: 5, lastCompleteHour: 3, lastCompleteHourStart: 0, lastCompleteHourEnd: 3_600_000, latestRecordedAt: null,
     } } as unknown as ObserverActivity;
     render(<ObserverSummary observer={observer} activity={activity} points={[]} />);
-    const tile = screen.getByText("Packets 00–01 UTC").closest("li")!;
+    const tile = screen.getByText("Packets last hour").closest("li")!;
     expect(tile).toHaveTextContent("3");
     expect(tile).toHaveClass("text-center");
-    expect(screen.queryByText(/00:00–01:00/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/UTC/)).not.toBeInTheDocument();
   });
 
   it("labels the noise tile as the last reading and sets the unit apart from the number", () => {
