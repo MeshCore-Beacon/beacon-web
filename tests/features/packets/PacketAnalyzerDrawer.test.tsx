@@ -59,6 +59,17 @@ describe("packet reception evidence", () => {
     fireEvent.click(within(beta).getByRole("button", { name: "Map report" })); expect(onViewPath).toHaveBeenCalledWith("beta");
     expect(screen.getByTestId("search")).toHaveTextContent("observation=2"); expect(screen.getByTestId("search")).toHaveTextContent("q=keep");
   });
+  it("collapses the observations list unless a report was picked", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const section = screen.getByRole("region", { name: "Observations" });
+    const toggle = within(section).getByRole("button", { name: "Observations" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(section).toHaveTextContent("2 retained reports");
+    expect(within(section).queryByText("Path 1")).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(section).getByText("Path 1")).toBeInTheDocument();
+  });
   it("keeps the evidence notes in an info tip instead of paragraphs", () => {
     render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewPath={() => {}} /></MemoryRouter>);
     const section = screen.getByRole("region", { name: "Observations" });

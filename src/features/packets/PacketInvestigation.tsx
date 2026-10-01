@@ -12,25 +12,29 @@ const PAGE = 3;
 const LINK = "font-mono text-[11px] text-text-muted transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-text-muted";
 
 // Every retained reception, grouped by the path bytes it carried; each report is a selectable signal card.
-export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserver, onViewPath, onViewNode, mappedKeys, observerCount }: {
+export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserver, onViewPath, onViewNode, mappedKeys, observerCount, defaultOpen = false }: {
   detail: PacketDetail; selectedId: number | null; onSelect: (id: number) => void;
   onViewObserver?: (id: string) => void; onViewPath?: (key?: string) => void; onViewNode?: (id: string) => void;
-  mappedKeys: Set<string>; observerCount: number;
+  mappedKeys: Set<string>; observerCount: number; defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const groups = useMemo(() => groupPacketReports(detail.observations), [detail.observations]);
   const isTrace = detail.header.payloadType === PayloadType.TRACE;
   const [shown, setShown] = useState(PAGE);
+  const [open, setOpen] = useState(defaultOpen);
   // a selected report deeper in the list stays visible even before it's paged in
   const visible = groups.filter((group, index) => index < shown || group.reports.some(o => o.id === selectedId));
   const remaining = Math.max(0, groups.length - shown);
   return <section aria-label={t("investigation.title")} className="space-y-2 border-t border-border-subtle px-3 py-2.5">
     <div className="flex items-center gap-2">
-      <h2 className="font-mono text-xs font-medium uppercase tracking-wider text-text-bright">{t("investigation.title")}</h2>
+      <h2><button type="button" className="group flex cursor-pointer items-center gap-1.5 font-mono text-xs font-medium uppercase tracking-wider text-text-bright" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+        <span aria-hidden className="w-3.5 text-[11px] text-text-muted transition-colors group-hover:text-text-normal">{open ? "▾" : "▸"}</span>
+        {t("investigation.title")}
+      </button></h2>
       <InfoTip text={[t(isTrace ? "investigation.traceNote" : "investigation.pathNote"), t("investigation.retention")]} />
     </div>
     <p className="font-mono text-[11px] text-text-muted">{t("investigation.reports", { count: detail.observations.length })} · {t("investigation.observers", { count: observerCount })}</p>
-    {groups.length === 0 ? <p role="status" className="text-sm text-text-muted">{t("investigation.empty")}</p> : visible.map(group => <details key={group.key} open={group.reports.some(o => o.id === selectedId)} className="group/path">
+    {groups.length === 0 ? <p role="status" className="text-sm text-text-muted">{t("investigation.empty")}</p> : open && visible.map(group => <details key={group.key} open={group.reports.some(o => o.id === selectedId)} className="group/path">
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded px-1 py-1.5 font-mono text-xs hover:bg-text-normal/3 [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="text-[9px] text-text-dim transition-transform group-open/path:rotate-90">▶</span>
         <span className="shrink-0 text-text-normal">{t(group.kind === "empty" ? "investigation.noEntries" : group.kind === "unavailable" ? "investigation.unavailablePath" : isTrace ? "investigation.tracePath" : "investigation.path", { number: groups.indexOf(group) + 1 })}</span>
@@ -59,6 +63,6 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
         </li>;
       })}</ul>
     </details>)}
-    {remaining > 0 && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => setShown(n => n + PAGE)}>{t("investigation.loadMore", { count: remaining })}</button>}
+    {open && remaining > 0 && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => setShown(n => n + PAGE)}>{t("investigation.loadMore", { count: remaining })}</button>}
   </section>;
 }

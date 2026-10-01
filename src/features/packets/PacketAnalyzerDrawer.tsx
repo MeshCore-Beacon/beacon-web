@@ -149,7 +149,8 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
               </button>
             </div>
 
-            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} onViewNode={onViewNode} mappedKeys={pathKeys} observerCount={observerCount} />
+            <PacketInvestigation key={detail.packetHash} detail={detail} selectedId={selectedObs?.id ?? null} onSelect={selectReport} onViewObserver={onViewObserver} onViewPath={onViewPath} onViewNode={onViewNode} mappedKeys={pathKeys} observerCount={observerCount}
+              defaultOpen={selectedObservationId != null || selectionParams.has("observation")} />
 
             {rawHex && (
               <DrawerSection title="Raw Packet">
