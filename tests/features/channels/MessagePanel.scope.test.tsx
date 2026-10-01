@@ -65,6 +65,11 @@ describe("channel scope evidence", () => {
     fireEvent.click(view);
     expect(inspect).toHaveBeenCalledTimes(1);
   });
+  it("sizes the scope chip like the heard-count badge", async () => {
+    show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
+    const chip = await screen.findByText("#yow");
+    expect(chip).toHaveClass("border", "px-2", "py-0.5", "font-semibold");
+  });
   it("switches French labels without refetching or changing protocol names", async () => {
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
     await screen.findByText("#yow");

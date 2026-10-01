@@ -186,8 +186,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     keepPrevious: true,
   });
 
-  // scope options are the configured scopes; the filter itself is applied client-side on defaultScope
-  const scopeOptions = useScopes();
+  const scopeOptions = useScopes(scopeFilter);
 
   const displayNodes = useMemo(
     () => (scopeFilter ? nodes.filter((n) => n.defaultScope === scopeFilter) : nodes),

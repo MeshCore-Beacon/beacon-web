@@ -159,10 +159,10 @@ export function getBrokers(): Promise<BrokerStatus[]> {
   return request("/brokers");
 }
 
-// The authoritative list of configured transport scope names (e.g. "#bc", "#west"), used to populate
-// the scope filter dropdowns. The no-param /scopes endpoint returns the names directly.
-export function getScopes(): Promise<string[]> {
-  return request("/scopes");
+// Transport scope names (e.g. "#bc", "#west") for the scope filter dropdowns. With IATAs the server
+// returns only that region's scopes (manual config + its MeshMapper catalogue); bare, every stored name.
+export function getScopes(iatas?: string[]): Promise<string[]> {
+  return request("/scopes", { iatas: iatasParam(iatas) });
 }
 
 // Wrap a bare-array endpoint into a CursorPage so it can drive the cursor-paginated hooks. A page that

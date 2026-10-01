@@ -129,6 +129,14 @@ describe("getScopes", () => {
     expect(url).not.toContain("?"); // no query params on the authoritative list
     expect(scopes).toEqual(["#bc", "#west"]);
   });
+
+  it("asks for the selected region's scopes by IATA", async () => {
+    const getUrl = mockFetchOnce(["#yow"]);
+
+    await getScopes(["YOW", "YYZ"]);
+
+    expect(new URL(getUrl()).searchParams.get("iatas")).toBe("YOW,YYZ");
+  });
 });
 
 describe("getKnownRoutesPage", () => {

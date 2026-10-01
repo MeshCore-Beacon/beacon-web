@@ -152,8 +152,7 @@ export function ObserverTable({ wsManager, selectedObserverId, onSelectObserver,
     return [...types].sort();
   }, [observers]);
 
-  // scope options are the configured scopes; the filter itself is applied client-side on obs.scopes
-  const scopeOptions = useScopes();
+  const scopeOptions = useScopes(scope);
 
   const displayObservers = useMemo(
     () => (scope ? observers.filter((o) => o.scopes?.includes(scope)) : observers),

@@ -39,6 +39,7 @@ const multiLineMsg: ChannelMessage = {
   sentAt: 4000,
 };
 
+vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => ({ iatas: undefined, regionKey: "*" }) }));
 vi.mock("../../../src/api/client", () => ({
   getScopes: vi.fn(async () => []),
   getChannelMessagesPage: vi.fn(() =>

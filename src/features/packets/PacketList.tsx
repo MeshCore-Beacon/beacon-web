@@ -47,7 +47,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   // single-value selections go to the server so scrolling pages through matching history
   const serverFilter = useMemo(() => toServerFilter(filters), [filters]);
   const pathSearch = useMemo(() => parsePathSearch(filters.search), [filters.search]);
-  const scopeNames = useScopes();
+  const scopeNames = useScopes(filters.scopes);
   const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
   const { regionKey } = useRegion();
 

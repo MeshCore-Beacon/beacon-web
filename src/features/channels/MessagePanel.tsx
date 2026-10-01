@@ -43,7 +43,7 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
         <Timestamp value={msg.sentAt} className="text-[11px] text-text-dim" />
         {reach > 0 && <Badge variant="text">×{reach}</Badge>}
         {/* Unscoped is the default, so only a named or unresolved scope earns a chip. */}
-        {msg.scope ? <ScopeTag className="max-w-full break-all">{msg.scope}</ScopeTag>
+        {msg.scope ? <ScopeTag boxed className="max-w-full break-all">{msg.scope}</ScopeTag>
           : msg.scopeStatus === "unknown" && <span className="rounded-sm bg-text-normal/5 px-1.5 py-px font-mono text-[11px] text-text-dim">{t("channelMessages.unknownScope")}</span>}
         {onAnalyze && <button type="button" aria-label={t("channelMessages.inspect", { sender: msg.senderName })}
           className="ml-auto shrink-0 cursor-pointer font-mono text-[11px] text-text-dim transition-colors hover:text-primary group-hover:text-primary"
@@ -68,7 +68,7 @@ interface MessagePanelProps {
 
 export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze, onBack, scope = "", onScopeChange }: MessagePanelProps) {
   const { t } = useTranslation();
-  const scopeNames = useScopes();
+  const scopeNames = useScopes(scope);
   const { data, isLoading, isError, isFetching, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["channel-messages", channel?.id, regionKey, scope],
     queryFn: ({ pageParam }) => getChannelMessagesPage(channel!.id, { iatas, cursor: pageParam, limit: 50, scope }),
