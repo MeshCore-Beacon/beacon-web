@@ -70,5 +70,8 @@ export const ENABLED_THEME_IDS = new Set(
 export const APP_NAME = import.meta.env.VITE_APP_NAME || "BEACON";
 export const GITHUB_URL = "https://github.com/MeshCore-Beacon";
 
+// Notice shown above the header on every page; unset = no banner.
+export const BANNER = import.meta.env.VITE_BANNER ?? "";
+
 // Skip the once-per-session load splash entirely (e.g. an embedded/branded deployment).
 export const SKIP_SPLASH = parseEnvBool(import.meta.env.VITE_SKIP_SPLASH);

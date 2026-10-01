@@ -26,4 +26,6 @@ services:
       - VITE_APP_NAME=${VITE_APP_NAME:-BEACON}
       # Skip the once-per-session load splash; unset = shown
       - VITE_SKIP_SPLASH=${VITE_SKIP_SPLASH:-}
+      # Notice above the header, e.g. on a dev instance; unset = none
+      - VITE_BANNER=${VITE_BANNER:-}
     restart: unless-stopped

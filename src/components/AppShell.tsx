@@ -14,7 +14,8 @@ import { LanguageOptions, LanguagePicker } from "./LanguagePicker";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
-import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL } from "../lib/constants";
+import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL, BANNER } from "../lib/constants";
+import { InstanceBanner } from "./InstanceBanner";
 import type { WsManager } from "../api/ws-manager";
 
 // header widgets: WS status, region picker, theme picker
@@ -430,6 +431,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
   const isMobile = useIsMobile();
   return (
     <div className="flex flex-col h-dvh">
+      <InstanceBanner text={BANNER} />
       {isMobile ? (
         <header className="flex items-center gap-2 px-3 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
           <BeaconWordmark iconSize={20} textClassName="text-sm" className="shrink-0" />

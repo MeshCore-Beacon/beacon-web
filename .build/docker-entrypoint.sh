@@ -12,6 +12,8 @@ ENABLED_THEMES="${VITE_ENABLED_THEMES:-}"
 SKIP_SPLASH="${VITE_SKIP_SPLASH:-}"
 # APP_NAME is substituted verbatim; avoid '&' and '|' (sed replacement metachar and delimiter).
 APP_NAME="${VITE_APP_NAME:-BEACON}"
+# Same caveat as APP_NAME, plus no quotes (it lands inside a JS string).
+BANNER="${VITE_BANNER:-}"
 
 find /srv -name '*.js' -exec sed -i \
   -e "s|__VITE_API_BASE__|${API_BASE}|g" \
@@ -22,6 +24,7 @@ find /srv -name '*.js' -exec sed -i \
   -e "s|__VITE_ENABLED_THEMES__|${ENABLED_THEMES}|g" \
   -e "s|__VITE_APP_NAME__|${APP_NAME}|g" \
   -e "s|__VITE_SKIP_SPLASH__|${SKIP_SPLASH}|g" \
+  -e "s|__VITE_BANNER__|${BANNER}|g" \
   {} +
 
 exec "$@"
