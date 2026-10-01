@@ -80,7 +80,7 @@ export function ObserverPage({ wsManager }: { wsManager: WsManager }) {
         </span>}
     />
     <div className="relative flex min-h-0 min-w-0 flex-1">
-      <div className="flex min-h-0 w-full shrink-0 flex-col p-4 md:w-[260px] md:pr-0">
+      <div className="flex min-h-0 w-full shrink-0 flex-col md:w-[260px] md:p-4 md:pr-0">
         <ObserverSidebar observers={observers} filtered={Boolean(search || status || type || broker || scope)} isPending={directory.isPending} isError={directory.isError}
           onRetry={() => void directory.refetch()} range={range} selectedId={id} onSelect={select} />
       </div>
