@@ -126,7 +126,7 @@ export function getRegion(regionId: number): Promise<Region> {
 }
 
 // Preserve the server cursor rather than deriving it from the displayed channel order.
-export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number | string }): Promise<ChannelPage> {
+export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number | string; keyKnown?: boolean }): Promise<ChannelPage> {
   const iatas = params?.iatas ?? [];
   return request("/channels", {
     iata: iatas.length === 1 ? iatas[0] : undefined,
@@ -134,6 +134,7 @@ export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     cursor: typeof params?.cursor === "number" ? params.cursor : undefined,
     pageCursor: typeof params?.cursor === "string" ? params.cursor : undefined,
+    keyKnown: params?.keyKnown === undefined ? undefined : String(params.keyKnown),
   });
 }
 

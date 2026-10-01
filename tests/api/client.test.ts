@@ -252,6 +252,15 @@ describe("getChannels", () => {
     expect(url.searchParams.has("iata")).toBe(false);
   });
 
+  it.each([true, false])("sends keyKnown=%s and omits it when unset", async (keyKnown) => {
+    const getUrl = mockFetchOnce({ items: [] });
+    await getChannels({ keyKnown });
+    expect(new URL(getUrl()).searchParams.get("keyKnown")).toBe(String(keyKnown));
+    const getUnset = mockFetchOnce({ items: [] });
+    await getChannels();
+    expect(new URL(getUnset()).searchParams.has("keyKnown")).toBe(false);
+  });
+
   it("omits both iata params for all regions", async () => {
     const getUrl = mockFetchOnce({ items: [] });
 

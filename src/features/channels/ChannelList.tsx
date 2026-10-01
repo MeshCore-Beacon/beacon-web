@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from "react";
 import { useInfiniteQuery, useIsFetching, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { isRateLimited, subscribeRateLimit } from "../../api/rate-limit";
@@ -20,6 +20,10 @@ interface ChannelListProps {
   onAnalyze: (hash: string | null) => void;
 }
 
+// keyed channels are few, so they load in big pages; the rest page on demand
+const KEYED_PAGE_SIZE = 200;
+const nextChannelPage = (last: ChannelPage) => last.hasMore ? last.nextPageCursor ?? last.nextCursor ?? undefined : undefined;
+
 function appendMessages(old: InfiniteData<CursorPage<ChannelMessage>> | undefined, messages: ChannelMessage[]) {
   if (!old) return old;
   const known = new Set(old.pages.flatMap((page) => page.items.map((message) => message.packetHash)));
@@ -40,6 +44,9 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const [searchField, setSearchField] = useState("name");
   const [keyFilter, setKeyFilter] = useState<ChannelKeyFilter>("");
   const [hashtagFilter, setHashtagFilter] = useState<ChannelHashtagFilter>("");
+  // tied to the region it was opened in, so a region switch never fetches the new region's other channels
+  const [othersRegion, setOthersRegion] = useState<string | null>(null);
+  const showOthers = othersRegion === regionKey;
   const queryClient = useQueryClient();
   const refreshPending = useRef(false);
   const pendingMessages = useRef(new Map<string, ChannelMessage>());
@@ -85,31 +92,53 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     }
   }, [regionKey]);
 
-  const { data, isLoading, isFetching, isError, fetchNextPage, hasNextPage, refetch } = useInfiniteQuery({
-    queryKey: ["channels", regionKey],
-    queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam }),
+  const keyedKey = useMemo(() => ["channels", regionKey, "keyed"], [regionKey]);
+  const keyed = useInfiniteQuery({
+    queryKey: keyedKey,
+    queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam, keyKnown: true, limit: KEYED_PAGE_SIZE }),
     initialPageParam: undefined as number | string | undefined,
-    getNextPageParam: (last) => last.hasMore ? last.nextPageCursor ?? last.nextCursor ?? undefined : undefined,
+    getNextPageParam: nextChannelPage,
     maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
   });
+  const others = useInfiniteQuery({
+    queryKey: ["channels", regionKey, "other"],
+    queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam, keyKnown: false }),
+    initialPageParam: undefined as number | string | undefined,
+    getNextPageParam: nextChannelPage,
+    maxPages: MAX_INFINITE_PAGES,
+    staleTime: 60_000,
+    enabled: showOthers || keyFilter === "unknown",
+  });
+
+  // A server without the keyKnown filter mixes unkeyed channels in; don't page through all of them.
+  const keyedUnfiltered = keyed.data?.pages.some((p) => p.items.some((ch) => !ch.keyKnown)) ?? false;
+  const { hasNextPage: keyedHasMore, isFetching: keyedFetching, isError: keyedError, fetchNextPage: fetchKeyed } = keyed;
+  useEffect(() => {
+    if (keyedHasMore && !keyedFetching && !keyedError && !keyedUnfiltered) void fetchKeyed();
+  }, [keyedHasMore, keyedFetching, keyedError, keyedUnfiltered, fetchKeyed]);
 
   useEffect(() => {
-    if (!isFetching && refreshPending.current) {
+    if (!keyedFetching && refreshPending.current) {
       refreshPending.current = false;
-      void queryClient.resetQueries({ queryKey: ["channels", regionKey], exact: true });
+      void queryClient.resetQueries({ queryKey: keyedKey, exact: true });
     }
-  }, [isFetching, queryClient, regionKey]);
+  }, [keyedFetching, queryClient, keyedKey]);
 
   const channels = useMemo(() => {
     const byId = new Map<number, ChannelSummary>();
-    for (const page of data?.pages ?? []) {
+    for (const page of keyed.data?.pages ?? []) {
+      for (const channel of page.items) {
+        if (channel.keyKnown && !byId.has(channel.id)) byId.set(channel.id, channel);
+      }
+    }
+    for (const page of others.data?.pages ?? []) {
       for (const channel of page.items) {
         if (!byId.has(channel.id)) byId.set(channel.id, channel);
       }
     }
     return [...byId.values()];
-  }, [data]);
+  }, [keyed.data, others.data]);
 
   const handleSelect = useCallback((id: number) => {
     pendingMessages.current.clear();
@@ -124,10 +153,11 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     setMessageScope(scope);
   }, []);
 
-  // "Public" pinned first, then named channels, then unnamed by most recent
+  // keyed first; within each, "Public" pinned first, then named channels, then unnamed by most recent
   const sortedChannels = useMemo(
     () =>
       [...channels].sort((a, b) => {
+        if (a.keyKnown !== b.keyKnown) return a.keyKnown ? -1 : 1;
         const aPub = a.name === "Public" ? 1 : 0;
         const bPub = b.name === "Public" ? 1 : 0;
         if (aPub !== bPub) return bPub - aPub;
@@ -147,22 +177,22 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
 
   const handleChannelMessage = useCallback(
     (data: ChannelMessage) => {
-      const key = ["channels", regionKey];
-      const cached = queryClient.getQueryData<InfiniteData<ChannelPage>>(key);
-      const cachedChannels = cached?.pages.flatMap((p) => p.items) ?? [];
+      const listKey = ["channels", regionKey];
+      const cachedChannels = queryClient.getQueriesData<InfiniteData<ChannelPage>>({ queryKey: listKey })
+        .flatMap(([, cached]) => cached?.pages.flatMap((p) => p.items) ?? []);
       const matchesChannel = (ch: ChannelSummary) => data.channelId !== undefined ? ch.id === data.channelId : ch.channelHash === data.channelHash;
       const known = cachedChannels.find(matchesChannel);
       if (known) {
         // Display timestamps may change; the server's page cursors must not.
-        queryClient.setQueryData<InfiniteData<ChannelPage>>(key, (old) => old && ({
+        queryClient.setQueriesData<InfiniteData<ChannelPage>>({ queryKey: listKey }, (old) => old && ({
           ...old,
           pages: old.pages.map((p) => ({ ...p, items: p.items.map((ch) => ch.id === known.id
             ? { ...ch, lastSeen: Math.max(ch.lastSeen, data.sentAt) } : ch) })),
         }));
       } else if (!isRateLimited()) {
-        // An unknown live channel needs a fresh first page, not a replay of every loaded page.
-        if (queryClient.isFetching({ queryKey: key, exact: true })) refreshPending.current = true;
-        else void queryClient.resetQueries({ queryKey: key, exact: true });
+        // A decrypted message means a keyed channel; refetch that list from its first page.
+        if (queryClient.isFetching({ queryKey: keyedKey, exact: true })) refreshPending.current = true;
+        else void queryClient.resetQueries({ queryKey: keyedKey, exact: true });
       }
 
       const selected = cachedChannels.find((ch) => ch.id === selectedId) ?? selection;
@@ -186,7 +216,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         );
       }
     },
-    [queryClient, selectedId, selection, regionKey, messageScope, messageKey, flushPending],
+    [queryClient, selectedId, selection, regionKey, keyedKey, messageScope, messageKey, flushPending],
   );
 
   useWsChannelMessageHandler(wsManager, handleChannelMessage);
@@ -211,7 +241,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       <div className="flex flex-1 min-h-0">
         {showList && (
           <div className="flex flex-col min-h-0 w-full md:w-56 md:min-w-56 border-r border-border bg-bg-surface">
-            {isLoading ? (
+            {keyed.isLoading ? (
               <SkeletonRows rows={8} />
             ) : (
               <ChannelSidebar
@@ -220,19 +250,20 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
                 onSelect={handleSelect}
               />
             )}
-            {!isLoading && filteredChannels.length === 0 && (
+            {!keyed.isLoading && filteredChannels.length === 0 && (
               <p className="px-3 py-2 text-xs font-mono text-text-muted">No matching channels loaded.</p>
             )}
-            {isError && <p role="alert" className="px-3 py-2 text-xs text-danger">Could not load channels.</p>}
-            {(hasNextPage || isError) && (
-              <button
-                type="button"
-                disabled={isFetching}
-                onClick={() => hasNextPage ? fetchNextPage() : refetch()}
-                className="m-2 shrink-0 rounded border border-border px-3 py-1.5 text-xs font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isFetching ? "Loading channels..." : isError ? "Retry loading channels" : "Load more channels"}
-              </button>
+            {(keyed.isError || others.isError) && <p role="alert" className="px-3 py-2 text-xs text-danger">Could not load channels.</p>}
+            {keyed.isError ? (
+              <PagerButton disabled={keyed.isFetching} onClick={() => void keyed.refetch()}>
+                {keyed.isFetching ? "Loading channels..." : "Retry loading channels"}
+              </PagerButton>
+            ) : !others.isEnabled ? (
+              !keyed.isLoading && <PagerButton onClick={() => setOthersRegion(regionKey)}>Load other channels</PagerButton>
+            ) : (others.hasNextPage || others.isError) && (
+              <PagerButton disabled={others.isFetching} onClick={() => void (others.hasNextPage ? others.fetchNextPage() : others.refetch())}>
+                {others.isFetching ? "Loading channels..." : others.isError ? "Retry loading channels" : "Load more channels"}
+              </PagerButton>
             )}
           </div>
         )}
@@ -250,5 +281,18 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
         )}
       </div>
     </div>
+  );
+}
+
+function PagerButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="m-2 shrink-0 rounded border border-border px-3 py-1.5 text-xs font-mono text-text-normal hover:bg-text-normal/3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+    >
+      {children}
+    </button>
   );
 }
