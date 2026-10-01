@@ -426,7 +426,7 @@
       "noKey": "sans clé",
       "hashtag": "mot-dièse",
       "keyMissing": "Aucune clé de déchiffrement n’est configurée pour ce canal.",
-      "scope": "Portée de transport",
+      "scope": "Portée",
       "allScopes": "Toutes les portées",
       "unknownScope": "Portée non résolue",
       "inspect": "Inspecter le paquet de {{sender}}",

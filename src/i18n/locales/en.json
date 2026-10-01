@@ -422,7 +422,7 @@
       "noKey": "no key",
       "hashtag": "hashtag",
       "keyMissing": "No decryption key is configured for this channel.",
-      "scope": "Transport scope",
+      "scope": "Scope",
       "allScopes": "All scopes",
       "unknownScope": "Unresolved scope",
       "inspect": "Inspect packet from {{sender}}",

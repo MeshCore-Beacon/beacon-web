@@ -85,7 +85,7 @@ describe("channel scope evidence", () => {
     const { client } = show(<ChannelList wsManager={{} as WsManager} onAnalyze={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /#test/ }));
     await screen.findByText("Unresolved scope");
-    fireEvent.click(screen.getByRole("button", { name: /Transport scope.*All scopes/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Scope.*All scopes/ }));
     fireEvent.click(screen.getByRole("option", { name: "#yow", exact: true }));
     await waitFor(() =>
       expect(getChannelMessagesPage).toHaveBeenLastCalledWith(1, expect.objectContaining({ scope: "#yow" })),

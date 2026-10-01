@@ -184,7 +184,9 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
           </span>
           <span className="text-text-dim text-[11px] font-mono truncate">{t("channelMessages.hash", { hash: channel.channelHash })}</span>
         </div>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1 shrink-0">
+          {onScopeChange && <SelectDropdown label={t("channelMessages.scope")} value={scope} onChange={onScopeChange}
+            allLabel={t("channelMessages.allScopes")} options={scopeNames.map((name) => ({ value: name, label: name }))} align="right" />}
           {channel.keyKnown ? (
             <Badge variant="advert">{t("channelMessages.keyKnown")}</Badge>
           ) : (
@@ -200,10 +202,6 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
         </div>
       )}
 
-      <div className="px-3 py-2 border-b border-border-subtle text-xs text-text-muted space-y-2">
-        {onScopeChange && <SelectDropdown label={t("channelMessages.scope")} value={scope} onChange={onScopeChange}
-          allLabel={t("channelMessages.allScopes")} options={scopeNames.map((name) => ({ value: name, label: name }))} align="left" />}
-      </div>
       {isError && <div role="alert" className="px-3 py-2 text-xs text-danger">{t("channelMessages.error")} <button type="button" disabled={isFetching} className="underline cursor-pointer" onClick={() => void refetch()}>{t("channelMessages.retry")}</button></div>}
 
       <div
