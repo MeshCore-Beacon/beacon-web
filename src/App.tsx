@@ -35,6 +35,7 @@ import type { PacketDetail } from "./types/api";
 
 // Map is the only heavy tab (maplibre-gl is ~1MB), so lazy-load it — its chunk is fetched the
 // first time someone opens the Map tab instead of bloating the initial bundle.
+const MyAtlasPage = lazy(() => import("./features/atlas/MyAtlasPage").then(m => ({ default: m.MyAtlasPage })));
 const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ default: m.MapView })));
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
@@ -301,6 +302,7 @@ function AppInner() {
   }, []);
 
   const tabContent: Record<string, React.ReactNode> = {
+    MyAtlas: <MyAtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}

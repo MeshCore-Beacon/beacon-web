@@ -22,6 +22,7 @@ export interface NodeSummary {
   observerId?: string;
   // Server verdict against its configured local border union; absence is unknown/disabled.
   possiblyForeign?: boolean;
+  stale?: boolean; // server-configured freshness threshold; absent on older servers
 }
 
 export interface Node extends NodeSummary {
