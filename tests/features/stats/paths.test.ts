@@ -16,6 +16,7 @@ describe("path analytics charts", () => {
     expect(hours.map((h) => h.hour)).toEqual([0, hour, 2 * hour]);
     expect(hours.map((h) => h.oneByte)).toEqual([2, null, 0]);
     expect(hours.map((h) => h.twoByte)).toEqual([3, null, 0]);
+    expect(hours.map((h) => h.receptions)).toEqual([8, null, 2]);
     expect(JSON.stringify(fixture)).toBe(before);
     expect(pathHours(undefined)).toEqual([]);
     expect(pathHours({ ...fixture, until: 30 * 24 * hour + hour / 2 })).toHaveLength(721);

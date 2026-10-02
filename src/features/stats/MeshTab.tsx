@@ -108,8 +108,12 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
     [scopesData],
   );
 
-  const obsSpark = useMemo(() => spark(ov, (v) => v.observations), [ov]);
-  const observerSpark = useMemo(() => spark(ov, (v) => v.activeObservers), [ov]);
+  const sparks = useMemo(() => ({
+    packets: spark(ov, (v) => v.uniquePackets),
+    observations: spark(ov, (v) => v.observations),
+    observers: spark(ov, (v) => v.activeObservers),
+    iatas: spark(ov, (v) => v.activeIatas),
+  }), [ov]);
 
   // top-row KPIs are the last 24 rollable hours, so they lag the clock by 35–95 min; range only drives the charts below
   const ovWindow = ov
@@ -119,10 +123,10 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.summary.uniquePackets)} />
-        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.summary.observations)} spark={obsSpark} />
-        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.summary.activeObservers ?? "—"} spark={observerSpark} />
-        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={ov?.summary.activeIatas ?? "—"} />
+        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.summary.uniquePackets)} spark={sparks.packets} />
+        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.summary.observations)} spark={sparks.observations} />
+        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.summary.activeObservers ?? "—"} spark={sparks.observers} />
+        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={ov?.summary.activeIatas ?? "—"} spark={sparks.iatas} />
       </div>
 
       <ChartCard

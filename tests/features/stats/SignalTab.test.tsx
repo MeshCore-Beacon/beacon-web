@@ -82,3 +82,11 @@ it("shows a translated empty state without implying an outage or displaying samp
   expect(screen.getAllByText("Aucune donnée").length).toBeGreaterThan(0);
   expect(screen.queryAllByTestId("chart")).toHaveLength(0);
 });
+
+it("draws hourly sparks for observations, SNR and RSSI, and a presence strip for hours with records", () => {
+  const hour = (h: number) => ({ hour: h * 3600000, receptions: 10 + h, snrSamples: 5, snrAverage: h, rssiSamples: 5, rssiAverage: -100 - h });
+  query.data = { ...originalData, until: 3 * 3600000, hourly: [hour(0), hour(1), hour(2)] };
+  const { container } = render(<SignalTab range="24h" />);
+  expect(container.querySelectorAll("polyline")).toHaveLength(3);
+  expect(container.querySelectorAll("rect")).toHaveLength(1);
+});

@@ -17,6 +17,7 @@ describe("traffic exploration", () => {
     expect(model.hours).toHaveLength(24);
     expect(model.hours.at(-2)?.total).toBeNull();
     expect(model.hours.at(-3)?.total).toBe(5);
+    expect(model.hours.slice(-3).map((h) => h.areas)).toEqual([2, null, 1]);
     expect(model.total).toBe(12);
     expect(model.reportedHours).toBe(2);
     expect(model.areas.map((area) => [area.name, area.total])).toEqual([["YVR", 9], ["YOW", 3]]);

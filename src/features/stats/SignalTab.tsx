@@ -23,16 +23,22 @@ export function SignalTab({ range }: { range: StatsRange }) {
     snrTrend: signalTrendOption(hours, "snr", c, t), rssiTrend: signalTrendOption(hours, "rssi", c, t), coverage: signalCoverageOption(data, c, t),
   }), [data, hours, c, t]);
   const state = { isLoading: loading, isError: query.isError };
+  const sparks = useMemo(() => data && {
+    receptions: hours.map((h) => h.receptions),
+    snr: hours.map((h) => h.snrAverage),
+    rssi: hours.map((h) => h.rssiAverage),
+    reported: hours.map((h) => h.receptions !== null),
+  }, [data, hours]);
 
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <SectionInfo text={[t("signal.subtitle"), t("signal.measurement"), data && t("signal.window", { since: formatUtc(data.since), until: formatUtc(data.until) })]} />
       {query.isError && <p role="alert" className="text-sm text-danger">{t("signal.error")}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={t("signal.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} />
-        <StatCard label={t("signal.meanSnr")} value={average(data?.snr.average, "dB")} accent={c.secondary} />
-        <StatCard label={t("signal.meanRssi")} value={average(data?.rssi.average, "dBm")} accent={c.green} />
-        <StatCard label={t("signal.hoursWithRecords")} value={data ? `${data.hourly.length}/${hours.length}` : "—"} accent={c.warn} />
+        <StatCard label={t("signal.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} spark={sparks?.receptions} />
+        <StatCard label={t("signal.meanSnr")} value={average(data?.snr.average, "dB")} accent={c.secondary} spark={sparks?.snr} />
+        <StatCard label={t("signal.meanRssi")} value={average(data?.rssi.average, "dBm")} accent={c.green} spark={sparks?.rssi} />
+        <StatCard label={t("signal.hoursWithRecords")} value={data ? `${data.hourly.length}/${hours.length}` : "—"} accent={c.warn} presence={sparks?.reported} />
       </div>
       <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
         <ChartCard title={t("signal.histogramTitle", { metric: "SNR", unit: "dB" })} option={charts.snr} height={280} isEmpty={!data?.snr.samples} {...state} />

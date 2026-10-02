@@ -10,7 +10,7 @@ export function pathHours(data: PathStats | undefined) {
   const rows = new Map(data.hourly.map((row) => [row.hour, row]));
   return Array.from({ length: Math.min(721, Math.ceil((data.until - first) / HOUR)) }, (_, i) => {
     const hour = first + i * HOUR, row = rows.get(hour);
-    return { hour, oneByte: row?.oneByte ?? null, twoByte: row?.twoByte ?? null, threeByte: row?.threeByte ?? null };
+    return { hour, receptions: row?.receptions ?? null, oneByte: row?.oneByte ?? null, twoByte: row?.twoByte ?? null, threeByte: row?.threeByte ?? null };
   });
 }
 

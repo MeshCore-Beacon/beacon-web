@@ -32,6 +32,15 @@ export function PathsTab({ range }: { range: StatsRange }) {
     };
   }, [data, c, categories, hours, t]);
   const state = { isLoading: loading, isError: query.isError };
+  const sparks = useMemo(() => {
+    const counts = hours.map(({ oneByte, twoByte, threeByte }) =>
+      oneByte === null || twoByte === null || threeByte === null ? null : { hashed: oneByte + twoByte + threeByte, multi: twoByte + threeByte });
+    return {
+      receptions: hours.map((h) => h.receptions),
+      hashed: counts.map((n) => n?.hashed ?? null),
+      multiShare: counts.map((n) => n?.hashed ? n.multi / n.hashed : null),
+    };
+  }, [hours]);
   const multi = data?.hashWidths.filter((bin) => bin.bytes > 1).reduce((n, bin) => n + bin.receptions, 0) ?? 0;
   const largest = data?.pathLengths.at(-1)?.entries;
 
@@ -39,9 +48,9 @@ export function PathsTab({ range }: { range: StatsRange }) {
     <SectionInfo text={[t("paths.subtitle"), t("paths.measurement"), data && t("paths.window", { since: formatUtc(data.since), until: formatUtc(data.until) })]} />
     {query.isError && <p role="alert" className="text-sm text-danger">{t("paths.error")}</p>}
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label={t("paths.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} />
-      <StatCard label={t("paths.withHashPaths")} value={data ? formatCount(data.hashed) : "—"} accent={c.green} />
-      <StatCard label={t("paths.multiByteShare")} value={data?.hashed ? `${(100 * multi / data.hashed).toFixed(1)}%` : "—"} accent={c.secondary} />
+      <StatCard label={t("paths.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} spark={sparks.receptions} />
+      <StatCard label={t("paths.withHashPaths")} value={data ? formatCount(data.hashed) : "—"} accent={c.green} spark={sparks.hashed} />
+      <StatCard label={t("paths.multiByteShare")} value={data?.hashed ? `${(100 * multi / data.hashed).toFixed(1)}%` : "—"} accent={c.secondary} spark={sparks.multiShare} />
       <StatCard label={t("paths.mostEntries")} value={largest ?? "—"} accent={c.warn} />
     </div>
     <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">

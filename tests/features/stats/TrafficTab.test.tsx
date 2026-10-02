@@ -102,3 +102,12 @@ describe("Traffic page", () => {
     expect(screen.queryByText("YOW")).not.toBeInTheDocument();
   });
 });
+
+it("draws hourly sparks for observations, areas and the busiest hour, and a presence strip for active hours", () => {
+  const at = (h: number, iata: string, n: number) => ({ hour: Date.UTC(2026, 8, 19, h), iata, observationCount: n, uniquePackets: 0, activeObservers: 0 });
+  query.data = [at(10, "YOW", 5), at(11, "YOW", 9), at(11, "YUL", 2), at(12, "YOW", 3)];
+  const { container } = render(<TrafficTab range="24h" />);
+  expect(container.querySelectorAll("polyline")).toHaveLength(3);
+  expect(container.querySelectorAll("[data-peak]")).toHaveLength(1);
+  expect(container.querySelectorAll("rect")).toHaveLength(1);
+});

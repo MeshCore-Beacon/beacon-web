@@ -26,7 +26,7 @@ export function trafficModel(points: ObservationPoint[], range: StatsRange, asOf
   const hours = Array.from({ length }, (_, i) => {
     const hour = start + i * HOUR;
     const bucket = buckets.get(hour);
-    return { hour, total: bucket ? [...bucket.values()].reduce((a, b) => a + b, 0) : null };
+    return { hour, total: bucket ? [...bucket.values()].reduce((a, b) => a + b, 0) : null, areas: bucket ? bucket.size : null };
   });
   const series = names.map((name) => ({
     name, total: totals.get(name) ?? 0,

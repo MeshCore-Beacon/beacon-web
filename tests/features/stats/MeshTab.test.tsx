@@ -91,7 +91,7 @@ it("hides pending range charts while retaining fixed-24h KPIs, sparklines and po
   expect(screen.queryByText("17 obs")).not.toBeInTheDocument();
   expect(screen.getAllByTestId("chart")).toHaveLength(2);
   expect(within(card("Total packets")).getByText("111")).toBeInTheDocument();
-  expect(container.querySelectorAll("polyline")).toHaveLength(2);
+  expect(container.querySelectorAll("polyline")).toHaveLength(4);
   expect(getStatsSeries).toHaveBeenCalledTimes(2);
   expect(getTopNodes).toHaveBeenCalledTimes(2);
 });
@@ -114,7 +114,7 @@ it("hides failed series values and sparklines without discarding the cache or he
 it("draws sparklines from complete hours only", async () => {
   const { container } = mount(); await loaded();
   const lines = [...container.querySelectorAll("polyline")].map((l) => l.getAttribute("points")!.split(" ").length);
-  expect(lines).toEqual([2, 2]);
+  expect(lines).toEqual([2, 2, 2, 2]);
 });
 
 it("breaks sparklines at missing hours instead of joining across them", async () => {
@@ -122,7 +122,7 @@ it("breaks sparklines at missing hours instead of joining across them", async ()
   vi.mocked(getStatsSeries).mockResolvedValue({ ...series, hours: [ok(0), ok(1), { hour: 2 * H, status: "missing", values: null }, ok(3), ok(4)] });
   const { container } = mount(); await loaded();
   const lines = [...container.querySelectorAll("polyline")].map((l) => l.getAttribute("points")!.split(" "));
-  expect(lines.map((pts) => pts.length)).toEqual([2, 2, 2, 2]);
+  expect(lines.map((pts) => pts.length)).toEqual([2, 2, 2, 2, 2, 2, 2, 2]);
   expect(lines[1]![0]!.split(",")[0]).toBe("90");
 });
 
@@ -161,7 +161,7 @@ it("retains valid values, series, sparklines and observer navigation during same
   await act(async () => { refresh = client.refetchQueries({ queryKey: ["stats-series"] }); });
   expect(within(card("Total packets")).getByText("111")).toBeInTheDocument();
   expect(screen.getAllByTestId("chart")).toHaveLength(6);
-  expect(container.querySelectorAll("polyline")).toHaveLength(2);
+  expect(container.querySelectorAll("polyline")).toHaveLength(4);
   fireEvent.click(within(card("Top observers · 24h")).getByTestId("chart"));
   expect(onSelectObserver).toHaveBeenCalledWith("observer-id");
   await act(async () => { next.resolve(withSummary({ uniquePackets: 555 })); await refresh; });
