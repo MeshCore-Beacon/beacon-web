@@ -35,7 +35,7 @@ export interface PacketSummary {
   observationCount: number;
   latestObserver?: LatestObserver;
   scope?: string; // matched transport scope name, e.g. "#bc"
-  summary?: string; // packet-derived display text, currently the advertised name
+  summary?: string; // packet-derived display text (advert name, TRACE tag, ACK checksum, …)
 }
 
 export interface ResolvedNode {

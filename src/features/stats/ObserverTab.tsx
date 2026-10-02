@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { InfoTip } from "../../components/InfoTip";
 import { EmptyState } from "../../components/EmptyState";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatRadioParts } from "../../lib/formatters";
 import { ObserverComparison } from "../observers/ObserverComparison";
-import { ObserverSummary, ObserverDeviceDetails } from "../observers/ObserverSummary";
+import { ObserverSummary } from "../observers/ObserverSummary";
 import { useChartColors } from "./chartTheme";
 import { activityParamsFor, useObserver, useObserverActivity, useObserverTelemetry } from "./useTelemetry";
 import {
@@ -33,8 +35,10 @@ interface ObserverTabProps {
   onSelectObserver: (id: string) => void;
   wsManager: WsManager;
   comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => number };
+  // observer-level controls the host page puts on the header's name row
+  actions?: ReactNode;
 }
-export function ObserverTab({ range, selectedObserverId, wsManager, comparison }: ObserverTabProps) {
+export function ObserverTab({ range, selectedObserverId, wsManager, comparison, actions }: ObserverTabProps) {
   const { t } = useTranslation();
   const colors = useChartColors();
   useLiveObserver(wsManager, selectedObserverId, range);
@@ -52,8 +56,8 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
     () => (bucketMs == null && hasTelemetry(points) ? latestAirtimePct(points, null) : { rx: null, tx: null }),
     [points, bucketMs],
   );
-  const battery = useMemo(() => batteryOption(points, colors, t("observerPage.battery") + " V"), [points, colors, t]);
-  const noise = useMemo(() => noiseFloorOption(points, colors, t("observerPage.noise") + " dBm"), [points, colors, t]);
+  const battery = useMemo(() => batteryOption(points, colors, t("observerPage.batteryV")), [points, colors, t]);
+  const noise = useMemo(() => noiseFloorOption(points, colors, t("observerPage.noiseDbm")), [points, colors, t]);
   const queue = useMemo(() => queueOption(points, colors, t("observerPage.queue")), [points, colors, t]);
   const recvErrors = useMemo(
     () => receiveErrorsOption(points, colors, bucketed, t("observerPage.errors")),
@@ -84,8 +88,8 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
     [heardData, intervalMs, heardWindow],
   );
   const busy = useMemo(
-    () => busyOption(heard, colors, intervalMs, heardWindow),
-    [heard, colors, intervalMs, heardWindow],
+    () => busyOption(heard, colors, intervalMs, heardWindow, t("charts.busy")),
+    [heard, colors, intervalMs, heardWindow, t],
   );
   const heardCount = useMemo(
     () => heardOption(heard, colors, heardWindow, t("observerPage.packets")),
@@ -124,7 +128,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
     return (
       <div className="p-4" role="alert">
         <p>{t("observerPage.loadFailed")}</p>
-        <button className="min-h-11 text-primary" onClick={() => void observer.refetch()}>
+        <button className={ACTION_BUTTON_CLASS} onClick={() => void observer.refetch()}>
           {t("observerPage.retry")}
         </button>
       </div>
@@ -142,6 +146,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
         activity={heardData}
         points={points}
         pending={heardLoading || (!heardData && activity.isError)}
+        actions={actions}
       />
       {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => {
         const nextUntil = comparison.onRefresh();
@@ -186,7 +191,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
             />
           </div>
           {activity.isError && (
-            <button className="min-h-11 text-sm text-primary" onClick={() => void activity.refetch()}>
+            <button className={ACTION_BUTTON_CLASS} onClick={() => void activity.refetch()}>
               {t("observerPage.retry")}
             </button>
           )}
@@ -194,8 +199,8 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
       )}
       <h2 className="mt-2 text-lg font-semibold text-text-bright">{t("observerPage.device")}</h2>
       {noTelemetry ? (
-        <Card title={t("observerPage.noTelemetry")}>
-          <p className="text-sm text-text-muted">{t("observerPage.noTelemetryHelp")}</p>
+        <Card title={t("observerPage.noTelemetry")} right={<InfoTip text={t("observerPage.noTelemetryHelp")} />}>
+          {null}
         </Card>
       ) : (
         <>
@@ -246,7 +251,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
             />
           </div>
           {telemetry.isError && (
-            <button className="min-h-11 text-primary" onClick={() => void telemetry.refetch()}>
+            <button className={ACTION_BUTTON_CLASS} onClick={() => void telemetry.refetch()}>
               {t("observerPage.retry")}
             </button>
           )}
@@ -262,7 +267,6 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison }
           isError={!heardData && activity.isError}
         />
       )}
-      <ObserverDeviceDetails observer={observer.data} />
     </section>
   );
 }

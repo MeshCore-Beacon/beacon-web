@@ -40,10 +40,10 @@ it("retains the same cached path request and window when only the language chang
     hashed: 0, empty: 0, trace: 0, unclassified: 0, hashWidths: [], pathLengths: [], hourly: [] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const { unmount } = render(<QueryClientProvider client={client}><PathsTab range="7d" /></QueryClientProvider>);
-  await screen.findByText("No retained receptions in this window.");
+  await screen.findByText("No observations in this window.");
   expect(getPathStats).toHaveBeenCalledOnce();
   await act(() => i18n.changeLanguage("fr"));
-  expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
+  expect(screen.getByText("Aucune observation dans cette période.")).toBeInTheDocument();
   expect(getPathStats).toHaveBeenCalledOnce();
   expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-paths", "YVR", "7d"]]);
   unmount(); client.clear();

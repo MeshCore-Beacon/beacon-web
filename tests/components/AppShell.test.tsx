@@ -8,6 +8,7 @@ import { getIatas, getRegions, getRegion } from "../../src/api/client";
 import type { WsManager } from "../../src/api/ws-manager";
 import { noteRateLimited, noteRequestOk } from "../../src/api/rate-limit";
 import pkg from "../../package.json";
+import i18n from "../../src/i18n";
 
 vi.mock("../../src/api/client", () => ({
   getIatas: vi.fn(),
@@ -68,7 +69,8 @@ describe("AppShell", () => {
   it("region picker shows an error state when the IATA list fails to load", async () => {
     vi.mocked(getIatas).mockRejectedValue(new Error("boom"));
     renderShell();
-    fireEvent.click(screen.getByRole("button", { name: /REGION/ }));
+    expect(screen.getByText("Region")).toHaveClass("uppercase");
+    fireEvent.click(screen.getByRole("button", { name: /Region/ }));
 
     await waitFor(() => expect(screen.getByText("Failed to load")).toBeInTheDocument());
     expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
@@ -92,11 +94,11 @@ const REGIONS = [
 // Opens the picker and returns the filter input, once both region and IATA lists have landed.
 // The trigger is focused first because a real browser click focuses the button; jsdom's does not.
 async function openPicker() {
-  const trigger = screen.getByRole("button", { name: /REGION/ });
+  const trigger = screen.getByRole("button", { name: /Region/ });
   trigger.focus();
   fireEvent.click(trigger);
   await waitFor(() => expect(screen.getByText("Western Canada")).toBeInTheDocument());
-  return screen.getByPlaceholderText(/Filter/);
+  return screen.getByPlaceholderText(/Search region or area code/);
 }
 
 describe("region picker filter", () => {
@@ -110,16 +112,16 @@ describe("region picker filter", () => {
     renderShell();
     fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
     fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
-    fireEvent.click(await screen.findByRole("button", { name: /RÉGION/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Région/ }));
     await screen.findByText("Western Canada");
-    const input = screen.getByRole("textbox", { name: "Filtrer par IATA ou nom…" });
+    const input = screen.getByRole("textbox", { name: "Rechercher une région ou un code de zone…" });
     fireEvent.change(input, { target: { value: "toutes" } });
     expect(screen.getByText("Toutes les régions")).toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: "yvr" } });
     expect(screen.queryByText("Toutes les régions")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Vancouver International/ }));
-    expect(screen.getByRole("button", { name: /RÉGION\s*YVR/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Région\s*YVR/ })).toBeInTheDocument();
   });
 
   it("focuses the filter input when the picker opens", async () => {
@@ -134,7 +136,7 @@ describe("region picker filter", () => {
     expect(input).toHaveFocus();
 
     fireEvent.keyDown(input, { key: "Escape" }); // empty query, so this closes
-    expect(screen.getByRole("button", { name: /REGION/ })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /Region/ })).toHaveFocus();
   });
 
   it("narrows the IATA list by code, ignoring surrounding whitespace", async () => {
@@ -158,7 +160,7 @@ describe("region picker filter", () => {
     // no region name or member code contains "toronto"
     expect(screen.queryByText("Regions")).not.toBeInTheDocument();
     // nothing above it, so the header must not draw a divider
-    expect(screen.getByText("IATA")).not.toHaveClass("border-t");
+    expect(screen.getByText("Areas")).not.toHaveClass("border-t");
   });
 
   it("surfaces a region whose member IATA matches, tagged with the matching code", async () => {
@@ -170,7 +172,7 @@ describe("region picker filter", () => {
     expect(screen.getByText("· YVR")).toBeInTheDocument();
     expect(screen.queryByText("Eastern Canada")).not.toBeInTheDocument();
     // something is above it now, so the header does draw a divider
-    expect(screen.getByText("IATA")).toHaveClass("border-t");
+    expect(screen.getByText("Areas")).toHaveClass("border-t");
   });
 
   it("tags a code match but not a name match, for the same query", async () => {
@@ -191,7 +193,7 @@ describe("region picker filter", () => {
     expect(screen.getByText("Western Canada")).toBeInTheDocument();
     expect(screen.queryByText("· YVR")).not.toBeInTheDocument();
     // nothing in the IATA group matches, so its header goes too
-    expect(screen.queryByText("IATA")).not.toBeInTheDocument();
+    expect(screen.queryByText("Areas")).not.toBeInTheDocument();
   });
 
   it("keeps an IATA with no display name matchable by code", async () => {
@@ -225,7 +227,7 @@ describe("region picker filter", () => {
 
     expect(screen.getByText("No matches")).toBeInTheDocument();
     expect(screen.queryByText("Regions")).not.toBeInTheDocument();
-    expect(screen.queryByText("IATA")).not.toBeInTheDocument();
+    expect(screen.queryByText("Areas")).not.toBeInTheDocument();
     expect(screen.queryByText("All Regions")).not.toBeInTheDocument();
   });
 
@@ -235,10 +237,10 @@ describe("region picker filter", () => {
     fireEvent.change(input, { target: { value: "yvr" } });
 
     fireEvent.keyDown(input, { key: "Escape" });
-    expect(screen.getByPlaceholderText(/Filter/)).toHaveValue("");
+    expect(screen.getByPlaceholderText(/Search region or area code/)).toHaveValue("");
     expect(screen.getByText("All Regions")).toBeInTheDocument();
 
-    fireEvent.keyDown(screen.getByPlaceholderText(/Filter/), { key: "Escape" });
+    fireEvent.keyDown(screen.getByPlaceholderText(/Search region or area code/), { key: "Escape" });
     expect(screen.queryByText("All Regions")).not.toBeInTheDocument();
   });
 
@@ -247,10 +249,10 @@ describe("region picker filter", () => {
     const input = await openPicker();
     fireEvent.change(input, { target: { value: "yvr" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /REGION/ }));
-    fireEvent.click(screen.getByRole("button", { name: /REGION/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Region/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Region/ }));
 
-    await waitFor(() => expect(screen.getByPlaceholderText(/Filter/)).toHaveValue(""));
+    await waitFor(() => expect(screen.getByPlaceholderText(/Search region or area code/)).toHaveValue(""));
     expect(screen.getByText("Eastern Canada")).toBeInTheDocument();
   });
 });
@@ -299,9 +301,28 @@ describe("AppShell region picker alignment", () => {
   it("opens rightward only below md so the desktop row's controls stay visible", async () => {
     vi.mocked(getIatas).mockResolvedValue([]);
     renderShell();
-    fireEvent.click(screen.getByRole("button", { name: /REGION/ }));
-    const panel = screen.getByPlaceholderText("Filter IATA or name…").closest(".absolute")!;
+    fireEvent.click(screen.getByRole("button", { name: /Region/ }));
+    const panel = screen.getByPlaceholderText("Search region or area code…").closest(".absolute")!;
     expect(panel.className).toContain("left-0");
     expect(panel.className).toContain("md:right-0");
+  });
+});
+
+describe("AppShell on a phone", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("keeps the header to one row and folds theme, language and GitHub into a settings menu", async () => {
+    const media = window.matchMedia("(max-width: 767px)");
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ ...media, media: query, matches: query === "(max-width: 767px)" }));
+    vi.mocked(getIatas).mockResolvedValue([]);
+    renderShell();
+    expect(screen.getByRole("button", { name: /Region/ })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "LIVE" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Language:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("link", { name: "GitHub" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Français" }));
+    await waitFor(() => expect(document.documentElement.lang).toBe("fr"));
+    await act(() => i18n.changeLanguage("en"));
   });
 });

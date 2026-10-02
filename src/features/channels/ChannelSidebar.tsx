@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
 import { channelDisplayName } from "./types";
@@ -10,6 +11,7 @@ interface ChannelSidebarProps {
 }
 
 export function ChannelSidebar({ channels, selectedId, onSelect }: ChannelSidebarProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="flex flex-col divide-y divide-border/40">
@@ -33,11 +35,11 @@ export function ChannelSidebar({ channels, selectedId, onSelect }: ChannelSideba
               </div>
               <div className="flex gap-1 mt-1">
                 {ch.keyKnown ? (
-                  <Badge variant="advert">key</Badge>
+                  <Badge variant="advert">{t("channels.key")}</Badge>
                 ) : (
-                  <Badge variant="offline">no key</Badge>
+                  <Badge variant="offline">{t("channelMessages.noKey")}</Badge>
                 )}
-                {ch.isHashtag && <Badge variant="group">hashtag</Badge>}
+                {ch.isHashtag && <Badge variant="group">{t("channelMessages.hashtag")}</Badge>}
               </div>
             </button>
           );

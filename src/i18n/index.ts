@@ -31,6 +31,8 @@ i18n.on("languageChanged", () => {
   const language = i18n.resolvedLanguage ?? "en";
   document.documentElement.lang = language;
   document.documentElement.dir = i18n.dir(language);
+  // init() itself fires this event before any user choice exists — don't persist that first, implicit one.
+  if (!i18n.isInitialized) return;
   try {
     localStorage.setItem("beacon-language", language);
   } catch {

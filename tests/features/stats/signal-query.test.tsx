@@ -40,10 +40,10 @@ it("keeps the cached query and time window when only the display language change
     snr: { samples: 0, average: null, histogram: [] }, rssi: { samples: 0, average: null, histogram: [] }, hourly: [] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const { unmount } = render(<QueryClientProvider client={client}><SignalTab range="24h" /></QueryClientProvider>);
-  await screen.findByText("No retained receptions in this window.");
+  await screen.findByText("No observations in this window.");
   expect(getSignalStats).toHaveBeenCalledOnce();
   await act(() => i18n.changeLanguage("fr"));
-  expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
+  expect(screen.getByText("Aucune observation dans cette période.")).toBeInTheDocument();
   expect(getSignalStats).toHaveBeenCalledOnce();
   expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-signal", "YVR", "24h"]]);
   unmount(); client.clear();

@@ -16,6 +16,7 @@ import {
   AriaComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import langFR from "echarts/lib/i18n/langFR.js";
 
 echarts.use([
   LineChart,
@@ -35,6 +36,9 @@ echarts.use([
   AriaComponent,
   CanvasRenderer,
 ]);
+
+// time-axis month/day names; EN is built in
+echarts.registerLocale("FR", langFR);
 
 export { echarts };
 export type EChartsInstance = ReturnType<typeof echarts.init>;

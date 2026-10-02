@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { PacketVirtualList } from "../../../src/features/packets/PacketVirtualList";
+import i18n from "../../../src/i18n";
 import type { PacketSummary } from "../../../src/types/api";
 
 // PacketExpansion fetches through usePacketDetail; stub it so the list renders without a query client.
@@ -143,7 +144,7 @@ describe("PacketVirtualList expansion", () => {
 
     // clicking an observation is what opens the analyzer now — there is no button for it
     fireEvent.click(screen.getByText("o1"));
-    fireEvent.click(screen.getByRole("button", { name: "View path on map" }));
+    fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
 
     expect(handlers.onSelectObservation).toHaveBeenCalledWith(1);
     expect(handlers.onOpenAnalyzer).toHaveBeenCalledTimes(1);
@@ -321,5 +322,14 @@ describe("PacketVirtualList responsive row", () => {
     render(<PacketVirtualList packets={[pkt("AA11")]} expandedHash="AA11" {...makeHandlers()} />);
 
     expect(screen.getByTestId("packet-expansion")).toBeInTheDocument();
+  });
+});
+
+describe("PacketVirtualList in French", () => {
+  it("translates the empty state and the load-older button", async () => {
+    await i18n.changeLanguage("fr");
+    render(<PacketVirtualList packets={[]} expandedHash={null} {...makeHandlers()} hasNextPage />);
+    expect(screen.getByText("Aucun paquet correspondant chargé.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Charger des paquets plus anciens" })).toBeInTheDocument();
   });
 });

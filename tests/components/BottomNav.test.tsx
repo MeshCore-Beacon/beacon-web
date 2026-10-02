@@ -4,13 +4,16 @@ import { BottomNav } from "../../src/components/BottomNav";
 import i18n from "../../src/i18n";
 
 describe("BottomNav", () => {
-  it("offers My Atlas in More and preserves its canonical identifier in French", async () => {
+  it("puts My Atlas first and preserves its canonical identifier in French", async () => {
     const onTabChange = vi.fn();
     render(<BottomNav activeTab="MyAtlas" onTabChange={onTabChange} />);
-    fireEvent.click(screen.getByText("More"));
+    expect(screen.getAllByRole("tab")[0]).toHaveTextContent("My Atlas");
     await act(() => i18n.changeLanguage("fr"));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Mon Atlas" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Mon Atlas" }));
     expect(onTabChange).toHaveBeenCalledWith("MyAtlas");
+    fireEvent.click(screen.getByText("Plus"));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Nœuds" }));
+    expect(onTabChange).toHaveBeenCalledWith("Nodes");
   });
   it("translates an open More sheet without changing the selected tab identifier", async () => {
     const onTabChange = vi.fn();

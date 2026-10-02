@@ -5,11 +5,9 @@ import { hasMapLocation } from "./location";
 // LiveViz) and the path map share them. No maplibre import, so they stay unit-testable; the hook
 // owns the layers, the rAF loop, and the node flashes.
 
-// The full chain for one observation: source → relay hops → destination. Both maps plot one marker
-// per hop, so an ambiguous endpoint (a 1-byte prefix matching several candidate nodes) would force
-// us to guess which node actually sent or received the packet — only plot endpoints the backend
-// resolved unambiguously. Rendering also checks relay confidence and location. WS types the
-// endpoints nullable where REST leaves them optional, hence both here.
+// The full chain for one observation: source → relay hops → destination. An ambiguous endpoint
+// (a 1-byte prefix matching several candidate nodes) would force us to guess which node sent or
+// received the packet, so only plot endpoints the backend resolved unambiguously.
 export function packetChain(
   source: ResolvedHop | null | undefined,
   path: ResolvedHop[],

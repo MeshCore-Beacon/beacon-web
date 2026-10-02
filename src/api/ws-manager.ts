@@ -257,7 +257,8 @@ export class WsManager {
   }
 
   private sendSubscribe(): void {
-    if (!this.filter) return;
+    // the server reads an empty IATA list as "all", so a region with no IATAs subscribes to nothing
+    if (!this.filter || this.filter.iatas?.length === 0) return;
     const id = `sub-${this.nextId()}`;
     this.lastSubscribeId = id;
     this.send({

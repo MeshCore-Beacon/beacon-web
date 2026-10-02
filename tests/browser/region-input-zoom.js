@@ -2,7 +2,7 @@
 // jsdom does not load Tailwind's generated CSS; inspect the rendered input instead.
 // Also check on iOS Safari: opening, filtering and closing must leave zoom unchanged.
 (function checkRegionInputZoom() {
-  const input = document.querySelector('header input[placeholder="Filter IATA or name…"]');
+  const input = document.querySelector('header input[placeholder="Search region or area code…"]');
   if (!input) throw new Error("Open the region picker first");
   const fontSize = Number.parseFloat(getComputedStyle(input).fontSize);
   if (fontSize < 16 || !Number.isFinite(fontSize)) {

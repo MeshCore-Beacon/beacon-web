@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Dropdown } from "./Dropdown";
 
 export interface SearchFieldOption {
@@ -20,6 +21,7 @@ interface SearchBarProps {
 // debounced search input with field dropdown
 
 export function SearchBar({ value, onChange, fields, field, onFieldChange, hideField = false, inputLabel }: SearchBarProps) {
+  const { t } = useTranslation();
   const [localValue, setLocalValue] = useState(value);
   const [prevValue, setPrevValue] = useState(value);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,8 +114,8 @@ export function SearchBar({ value, onChange, fields, field, onFieldChange, hideF
           value={localValue}
           aria-label={inputLabel}
           onChange={(e) => handleChange(e.target.value)}
-          placeholder={inputLabel ?? `Search by ${(currentField?.label ?? "").toLowerCase()}...`}
-          className={`w-full font-mono bg-bg-surface border border-border pl-7 pr-7 py-1 text-text-bright placeholder:text-text-dim transition-colors ${hideField ? "min-h-11 rounded-sm text-base md:text-sm" : "rounded-r-sm text-[11px]"}`}
+          placeholder={inputLabel ?? t("search.placeholder", { field: (currentField?.label ?? "").toLowerCase() })}
+          className={`w-full font-mono bg-bg-surface border border-border pl-7 pr-7 py-1 text-text-bright placeholder:text-text-dim transition-colors ${hideField ? "rounded-sm text-[11px]" : "rounded-r-sm text-[11px]"}`}
         />
         {localValue && (
           <button

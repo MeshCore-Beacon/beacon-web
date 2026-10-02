@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { InfoTip } from "../../components/InfoTip";
 import type { PacketDetail } from "../../types/api";
 import { ModalOverlay } from "../../components/ModalOverlay";
 import { CloseButton } from "../../components/CloseButton";
@@ -49,7 +50,7 @@ export function PacketPathMapModal({ detail, onClose, initialSelectedKey, inacti
     <ModalOverlay label={t("investigation.mapDialog")} onClose={onClose} inactive={inactive}>
       <div className="h-full w-full md:w-[860px] md:max-w-[92vw] bg-bg-surface flex flex-col">
         <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle shrink-0">
-          <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{t("investigation.mapTitle")}</span>
+          <span className="flex items-center gap-2 text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{t("investigation.mapTitle")}<InfoTip text={t("investigation.mapNote")} /></span>
           <div className="flex items-center gap-1.5">
             <CopyLinkButton
               preserveParams={["regions", "iata", "region"]}
@@ -60,7 +61,6 @@ export function PacketPathMapModal({ detail, onClose, initialSelectedKey, inacti
           </div>
         </div>
 
-        <p className="border-b border-border-subtle px-3 py-2 text-xs text-text-muted">{t("investigation.mapNote")}</p>
         {unavailable && <p role="status" className="px-3 py-2 text-sm text-warn">{t("investigation.unavailableMap")}</p>}
         {paths.length === 0 && !unavailable && <p role="status" className="px-3 py-2 text-sm text-text-muted">{t("investigation.unmappable")}</p>}
         <div className="flex-1 min-h-0 flex flex-col md:flex-row">

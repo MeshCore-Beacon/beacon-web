@@ -23,7 +23,7 @@ vi.mock("../../../src/features/stats/useLiveStats", () => ({
 
 // ECharts needs a real canvas; the tab's behaviour is in which cards it renders, not the pixels
 vi.mock("../../../src/features/stats/EChart", () => ({
-  EChart: () => <div data-testid="chart" />,
+  EChart: ({ option }: { option: unknown }) => <div data-testid="chart" data-option={JSON.stringify(option)} />,
 }));
 
 const telemetryResult = { data: undefined as ObserverTelemetry | undefined, isLoading: false, isError: false };
@@ -125,7 +125,7 @@ describe("ObserverTab", () => {
   it("renders the heard charts when the server has activity for the observer", () => {
     renderTab();
     expect(screen.getByText(/channel busy/i)).toBeInTheDocument();
-    expect(screen.getByText(/recorded packets per 15 min/i)).toBeInTheDocument();
+    expect(screen.getByText(/packets heard per 15 min/i)).toBeInTheDocument();
     expect(screen.getByText(/received signal/i)).toBeInTheDocument();
     expect(screen.getByText(/packet-type mix/i)).toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe("ObserverTab", () => {
     activityResult.error = new ApiError(404, "not_found", "no route");
     renderTab();
     expect(screen.queryByText(/channel busy/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/heard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/heard per/i)).not.toBeInTheDocument();
   });
 
   it("leaves the header airtime stat out when the observer reports no telemetry", () => {
@@ -155,7 +155,7 @@ describe("ObserverTab", () => {
     activityResult.isError = true;
     activityResult.error = new Error("temporary failure");
     renderTab();
-    expect(screen.getByText(/recorded packets per 15 min/i)).toBeInTheDocument();
+    expect(screen.getByText(/packets heard per 15 min/i)).toBeInTheDocument();
     expect(screen.queryByText(/Failed to load/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
@@ -163,7 +163,7 @@ describe("ObserverTab", () => {
   it("shows one empty card instead of flat charts when nothing was heard", () => {
     activityResult.data = { ...activity, payloadTypes: [], points: [] };
     renderTab();
-    expect(screen.getByText(/no packets recorded/i)).toBeInTheDocument();
+    expect(screen.getByText(/no packets heard/i)).toBeInTheDocument();
     expect(screen.queryByText(/channel busy/i)).not.toBeInTheDocument();
   });
 });
@@ -190,44 +190,53 @@ describe("Observer dashboard hierarchy", () => {
     expect(within(cards).getAllByRole("listitem")).toHaveLength(6);
     expect(within(cards).queryByText("12")).not.toBeInTheDocument();
     expect(
-      screen.getByText("Recorded packets per 15 min").compareDocumentPosition(screen.getByText(/Airtime TX/)) &
+      screen.getByText("Packets heard per 15 min").compareDocumentPosition(screen.getByText(/Airtime TX/)) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
   it("does not invent zero packet metrics on an older server", () => {
     renderTab();
-    expect(screen.getByText(/Packet summary unavailable/)).toBeInTheDocument();
+    expect(screen.getByText(/Packet totals unavailable/)).toBeInTheDocument();
   });
   it("provides French monitoring labels", async () => {
     await i18n.changeLanguage("fr");
     renderTab();
-    expect(screen.getByText("Paquets enregistrés")).toBeInTheDocument();
-    expect(screen.getByText("Détails de l’appareil")).toBeInTheDocument();
+    expect(screen.getByText("Paquets reçus")).toBeInTheDocument();
+    expect(screen.queryByText("Détails de l’appareil")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Copier la clé publique/ })).toBeInTheDocument();
   });
-});
 
-it("keeps packet metrics without the removed traffic text badge", () => {
-  const now = Date.now();
-  observer.brokers = [{ name: "one", lastSeenAt: now, lastPacketAt: now }];
-  activityResult.data = {
-    ...activity,
-    summary: {
-      recordedPackets: 9,
-      lastCompleteHour: 2,
-      lastCompleteHourStart: now - 7200000,
-      lastCompleteHourEnd: now - 3600000,
-      latestRecordedAt: now - 3600000,
-    },
-  };
-  renderTab();
-  expect(screen.queryByText("Recent packet traffic")).not.toBeInTheDocument();
-  expect(within(screen.getByRole("list", { name: "Observer metrics" })).getByText("9")).toBeInTheDocument();
-});
+  it("names the busy series in French", async () => {
+    await i18n.changeLanguage("fr");
+    renderTab();
+    const options = screen.getAllByTestId("chart").map((c) => c.getAttribute("data-option") ?? "");
+    expect(options.some((o) => o.includes('"name":"Occupation"'))).toBe(true);
+    expect(options.some((o) => o.includes('"name":"Busy"'))).toBe(false);
+  });
 
-it("omits the duplicate observer picker and marked explanatory sections", () => {
-  renderTab();
-  expect(screen.queryByRole("searchbox", { name: "Find an observer" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("combobox", { name: "Choose an observer" })).not.toBeInTheDocument();
-  expect(screen.queryByText("Exact activity values")).not.toBeInTheDocument();
-  expect(screen.queryByText(/History for this observer across all received regions/)).not.toBeInTheDocument();
+  it("keeps packet metrics without the removed traffic text badge", () => {
+    const now = Date.now();
+    observer.brokers = [{ name: "one", lastSeenAt: now, lastPacketAt: now }];
+    activityResult.data = {
+      ...activity,
+      summary: {
+        recordedPackets: 9,
+        lastCompleteHour: 2,
+        lastCompleteHourStart: now - 7200000,
+        lastCompleteHourEnd: now - 3600000,
+        latestRecordedAt: now - 3600000,
+      },
+    };
+    renderTab();
+    expect(screen.queryByText("Recent packet traffic")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Observer metrics" })).getByText("9")).toBeInTheDocument();
+  });
+
+  it("omits the duplicate observer picker and marked explanatory sections", () => {
+    renderTab();
+    expect(screen.queryByRole("searchbox", { name: "Find an observer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Choose an observer" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Exact activity values")).not.toBeInTheDocument();
+    expect(screen.queryByText(/History for this observer across all received regions/)).not.toBeInTheDocument();
+  });
 });

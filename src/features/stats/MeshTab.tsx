@@ -1,59 +1,42 @@
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
-import { formatCount } from "../../lib/formatters";
+import { formatCount, formatUtc } from "../../lib/formatters";
 import { useChartColors, nodeTypeColor } from "./chartTheme";
-import { useStatsOverview, useStatsObservations, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
+import { useStatsSeries, usePayloadBreakdown, useTopNodes, useTopObservers, useRadioPresets, useScopes, useNodeTypes } from "./useStats";
 import { observationsAreaOption, leaderboardOption, typeBarOption, donutOption, presetBarsOption } from "./chartOptions";
 import { ChartCard, StatCard } from "./cards";
-import { useLiveOverview } from "./useLiveStats";
 import { aggregatePresets, formatPreset, payloadBarItems } from "./transforms";
-import type { WsManager } from "../../api/ws-manager";
-import type { ObservationPoint, StatsRange } from "./types";
+import type { StatsRange, StatsSeries, SeriesValues } from "./types";
 
 // Keep unavailable values in the cache, but do not display them under the current filters.
 function readyData<T>(query: { data: T | undefined; isSuccess: boolean; isPlaceholderData: boolean }) {
   return query.isSuccess && !query.isPlaceholderData ? query.data : undefined;
 }
 
-// The observations endpoint returns one row per hour+iata; collapse to one row per hour (a no-op for a
-// single selected region). uniquePackets / activeObservers summed across iatas are approximate.
-function aggregateByHour(points: ObservationPoint[]) {
-  const byHour = new Map<number, { hour: number; observationCount: number; uniquePackets: number; activeObservers: number }>();
-  for (const p of points) {
-    const cur = byHour.get(p.hour) ?? { hour: p.hour, observationCount: 0, uniquePackets: 0, activeObservers: 0 };
-    cur.observationCount += p.observationCount;
-    cur.uniquePackets += p.uniquePackets;
-    cur.activeObservers += p.activeObservers;
-    byHour.set(p.hour, cur);
-  }
-  return [...byHour.values()].sort((a, b) => a.hour - b.hour);
+// Missing and partial hours carry no values; keep their slot as null so the sparkline shows a gap.
+function spark(series: StatsSeries | undefined, pick: (v: SeriesValues) => number) {
+  return series?.hours.map((h) => (h.values ? pick(h.values) : null));
 }
 
 interface MeshTabProps {
   range: StatsRange;
   onSelectObserver: (observerId: string) => void;
-  wsManager: WsManager;
 }
 
-export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
+export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
   const { t } = useTranslation();
   const colors = useChartColors();
-  useLiveOverview(wsManager);
-  const overview = useStatsOverview();
-  const observations = useStatsObservations(range);
-  // top-row KPIs are a fixed 24h snapshot, so their sparklines use a dedicated
-  // 24h series rather than the range-driven one (deduped by query key when range is 24h)
-  const overviewObs = useStatsObservations("24h");
+  const series = useStatsSeries("24h");
+  const observations = useStatsSeries(range);
   const payload = usePayloadBreakdown(range);
-  const topNodes = useTopNodes(10);
+  const topNodes = useTopNodes(range, 10);
   const topObservers = useTopObservers(range, 8);
   const radioPresets = useRadioPresets();
-  const scopes = useScopes();
+  const scopes = useScopes(range);
   const nodeTypes = useNodeTypes();
 
-  const ov = readyData(overview);
+  const ov = readyData(series);
   const observationsData = readyData(observations);
-  const overviewObsData = readyData(overviewObs);
   const payloadData = readyData(payload);
   const topNodesData = readyData(topNodes);
   const topObserversData = readyData(topObservers);
@@ -61,13 +44,19 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
   const scopesData = readyData(scopes);
   const nodeTypesData = readyData(nodeTypes);
 
-  const obs = useMemo(() => aggregateByHour(observationsData ?? []), [observationsData]);
-  const obsOption = useMemo(() => observationsAreaOption(obs, colors), [obs, colors]);
+  const obs = useMemo(
+    () => (observationsData?.hours ?? []).map((h) => ({ hour: h.hour, observations: h.values?.observations ?? null, uniquePackets: h.values?.uniquePackets ?? null })),
+    [observationsData],
+  );
+  const obsOption = useMemo(
+    () => observationsAreaOption(obs, colors, { observations: t("mesh.observations"), uniquePackets: t("charts.uniquePackets") }),
+    [obs, colors, t],
+  );
 
   const nodeRows = useMemo(
     () =>
       (topNodesData ?? []).map((n) => ({
-        name: n.nodeName ?? n.nodeId.slice(0, 8),
+        name: n.nodeName ?? n.publicKey.slice(0, 8),
         value: n.observationCount,
         color: nodeTypeColor(n.nodeTypeName, colors),
       })),
@@ -103,80 +92,83 @@ export function MeshTab({ range, onSelectObserver, wsManager }: MeshTabProps) {
     [nodeTypesData, colors],
   );
   const typeTotal = useMemo(() => typeRows.reduce((a, t) => a + t.value, 0), [typeRows]);
-  const typesOption = useMemo(() => donutOption(typeRows, colors, formatCount(typeTotal), "NODES"), [typeRows, colors, typeTotal]);
+  const typesOption = useMemo(() => donutOption(typeRows, colors, formatCount(typeTotal), t("mesh.nodesCenter")), [typeRows, colors, typeTotal, t]);
 
   const presetRows = useMemo(
     () => aggregatePresets(radioPresetsData ?? []).slice(0, 8).map((r) => ({ name: formatPreset(r.preset), nodes: r.nodes, observers: r.observers })),
     [radioPresetsData],
   );
-  const presetsOption = useMemo(() => presetBarsOption(presetRows, colors), [presetRows, colors]);
+  const presetsOption = useMemo(
+    () => presetBarsOption(presetRows, colors, undefined, { nodes: t("mesh.nodes"), observers: t("mesh.observers") }),
+    [presetRows, colors, t],
+  );
 
   const scopeRows = useMemo(
     () => [...(scopesData ?? [])].sort((a, b) => b.packetCount - a.packetCount),
     [scopesData],
   );
 
-  const kpiObs = useMemo(() => aggregateByHour(overviewObsData ?? []), [overviewObsData]);
-  const obsSpark = useMemo(() => kpiObs.slice(-24).map((p) => p.observationCount), [kpiObs]);
-  const observerSpark = useMemo(() => kpiObs.slice(-24).map((p) => p.activeObservers), [kpiObs]);
+  const obsSpark = useMemo(() => spark(ov, (v) => v.observations), [ov]);
+  const observerSpark = useMemo(() => spark(ov, (v) => v.activeObservers), [ov]);
 
-  // top-row KPIs are the overview endpoint's fixed 24h snapshot; range only drives the charts below
-  const ovWindow = `${ov?.windowHours ?? 24}h`;
+  // top-row KPIs are the last 24 rollable hours, so they lag the clock by 35–95 min; range only drives the charts below
+  const ovWindow = ov
+    ? t("mesh.lastHoursTo", { hours: Math.round((ov.until - ov.since) / 3_600_000), time: formatUtc(ov.until, { timeOnly: true }) })
+    : t("mesh.lastHours", { hours: 24 });
 
   return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-3.5 px-4 py-4">
+    <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total packets" sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.totalPackets)} />
-        <StatCard label="Observations" sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.totalObservations)} spark={obsSpark} />
-        <StatCard label="Active observers" sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.activeObservers ?? "—"} spark={observerSpark} />
-        <StatCard label="Active IATAs" sublabel={ovWindow} accent="var(--color-warn)" value={ov?.activeIatas ?? "—"} />
+        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.summary.uniquePackets)} />
+        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.summary.observations)} spark={obsSpark} />
+        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.summary.activeObservers ?? "—"} spark={observerSpark} />
+        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={ov?.summary.activeIatas ?? "—"} />
       </div>
 
       <ChartCard
-        title={<>Observations · {range}</>}
+        title={t("mesh.observationsTitle", { range })}
         height={200}
         option={obsOption}
         isLoading={observations.isPending || observations.isPlaceholderData}
         isError={observations.isError}
-        isEmpty={obs.length === 0}
+        isEmpty={!observationsData?.completeHours}
       />
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* range-driven charts lead the grid; the all-time ones follow below */}
         <div className="min-w-0">
-          <ChartCard title={<>Top observers · {range}</>} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
+          <ChartCard title={t("mesh.topObservers", { range })} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
         </div>
         <ChartCard
-          title={<>Payload types · {range}</>}
-          right={<span className="font-mono text-[10px] text-text-muted">{formatCount(payloadData === undefined ? undefined : payloadTotal)} obs</span>}
+          title={t("mesh.payloadTypes", { range })}
+          right={<span className="font-mono text-[10px] text-text-muted">{t("mesh.obs", { value: formatCount(payloadData === undefined ? undefined : payloadTotal) })}</span>}
           height={208}
           option={payloadOption}
           isLoading={payload.isPending || payload.isPlaceholderData}
           isError={payload.isError}
           isEmpty={payloadItems.length === 0}
         />
-        {/* counts are all-time; the server's 7d filter only prunes the roster to recently-heard nodes */}
-        <ChartCard title="Top nodes · all time" height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
-        <ChartCard title="Node types · all time" height={208} option={typesOption} isLoading={nodeTypes.isPending || nodeTypes.isPlaceholderData} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
-        <ChartCard title="Radio presets · all time" height={208} option={presetsOption} isLoading={radioPresets.isPending || radioPresets.isPlaceholderData} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
+        <ChartCard title={t("mesh.topNodes", { range })} height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
+        <ChartCard title={t("mesh.nodeTypes")} height={208} option={typesOption} isLoading={nodeTypes.isPending || nodeTypes.isPlaceholderData} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
+        <ChartCard title={t("mesh.radioPresets")} height={208} option={presetsOption} isLoading={radioPresets.isPending || radioPresets.isPlaceholderData} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 
-        <details className="self-start rounded-lg border border-border bg-bg-surface p-4">
-          <summary className="cursor-pointer font-mono text-xs font-semibold uppercase tracking-wide text-text-normal">{t("stats.tabs.scopes")}</summary>
+        <details className="self-start rounded-lg border border-border bg-bg-surface p-3.5">
+          <summary className="cursor-pointer font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{t("stats.tabs.scopes")}</summary>
           <div className="mt-3 max-h-96 overflow-auto">
           {scopes.isError ? (
-            <div className="py-4 text-center font-mono text-[11px] text-text-dim">Failed to load</div>
+            <div className="py-4 text-center font-mono text-[11px] text-text-dim">{t("common.loadFailed")}</div>
           ) : scopes.isPending || scopes.isLoading || scopes.isPlaceholderData ? (
-            <div className="py-4 text-center font-mono text-[11px] text-text-dim">Loading…</div>
+            <div className="py-4 text-center font-mono text-[11px] text-text-dim">{t("common.loading")}</div>
           ) : scopeRows.length === 0 ? (
-            <div className="py-4 text-center font-mono text-[11px] text-text-dim">No data</div>
+            <div className="py-4 text-center font-mono text-[11px] text-text-dim">{t("common.noData")}</div>
           ) : (
             <table className="w-full font-mono text-[11px]">
               <thead>
                 <tr className="text-text-muted">
-                  <th className="pb-1.5 text-left font-semibold uppercase tracking-wider">Scope</th>
-                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">Packets</th>
-                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">Observers</th>
-                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">Nodes</th>
+                  <th className="pb-1.5 text-left font-semibold uppercase tracking-wider">{t("mesh.scope")}</th>
+                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">{t("mesh.packets")}</th>
+                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">{t("mesh.observers")}</th>
+                  <th className="pb-1.5 text-right font-semibold uppercase tracking-wider">{t("mesh.nodes")}</th>
                 </tr>
               </thead>
               <tbody>

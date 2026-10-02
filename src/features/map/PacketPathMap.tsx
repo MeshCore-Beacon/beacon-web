@@ -13,6 +13,7 @@ import type { Point } from "geojson";
 import type { PacketPath } from "./packet-path";
 import { packetPathsToFeatures } from "./packet-path";
 import { resolveMapStyle, DEFAULT_CENTER, DEFAULT_ZOOM, IATA_ZOOM } from "./types";
+import { mapLocale } from "./useMapLibre";
 
 // Private ids — this map instance is dedicated to the popup, so they can't collide with the main map.
 const LINE_SOURCE = "pp-lines";
@@ -45,6 +46,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
       attributionControl: false,
+      locale: mapLocale(),
     });
     mapRef.current = map;
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");

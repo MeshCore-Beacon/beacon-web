@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map as MapLibreMap, NavigationControl, ScaleControl, AttributionControl, LngLatBounds } from "maplibre-gl";
 import type { RasterDEMSourceSpecification } from "maplibre-gl";
 import "./maplibre-worker";
+import i18n from "../../i18n";
 import {
   DEM_TILES,
   DEM_ATTRIBUTION,
@@ -15,6 +16,19 @@ import {
   IATA_PITCH,
   resolveMapStyle,
 } from "./types";
+
+// MapLibre reads its control tooltips once at construction, so a language switch applies on next mount.
+export function mapLocale(): Record<string, string> {
+  return {
+    "AttributionControl.ToggleAttribution": i18n.t("map.controls.toggleAttribution"),
+    "AttributionControl.MapFeedback": i18n.t("map.controls.mapFeedback"),
+    "Map.Title": i18n.t("map.controls.map"),
+    "NavigationControl.ResetBearing": i18n.t("map.controls.resetBearing"),
+    "NavigationControl.ZoomIn": i18n.t("map.controls.zoomIn"),
+    "NavigationControl.ZoomOut": i18n.t("map.controls.zoomOut"),
+    "Popup.Close": i18n.t("map.controls.closePopup"),
+  };
+}
 
 // serialized fit target, so the fit effect can skip redundant re-fits
 const fitKey = (points: [number, number][] | null) =>
@@ -114,6 +128,7 @@ export function useMapLibre(
       bearing: DEFAULT_BEARING,
       maxPitch: MAX_PITCH,
       attributionControl: false, // replaced below with a compact (always-collapsed) control
+      locale: mapLocale(),
     });
     mapRef.current = map;
     lastStyleIdRef.current = styleIdRef.current;

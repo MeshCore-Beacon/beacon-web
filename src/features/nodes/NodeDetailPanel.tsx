@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
@@ -7,10 +8,12 @@ import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
 import { formatHex, formatSnr, snrLevel, formatRadio, formatClockDrift, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
+import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
+  const { t } = useTranslation();
   return (
     <div
       className={`bg-bg-base border border-border rounded px-3 py-2 ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`}
@@ -27,13 +30,14 @@ function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClic
       <div className="font-mono text-[11px] text-text-muted mt-1 flex items-center gap-2">
         <span className="truncate" title={neighbor.publicKey}>{neighbor.publicKey}</span>
         <span className="shrink-0 text-text-dim">·</span>
-        <span className="shrink-0">{neighbor.observationCount.toLocaleString()} obs</span>
+        <span className="shrink-0">{t("nodeDetail.observations", { count: neighbor.observationCount, formatted: neighbor.observationCount.toLocaleString() })}</span>
       </div>
     </div>
   );
 }
 
 function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: () => void }) {
+  const { t } = useTranslation();
   const level = snrLevel(obs.snr);
   return (
     <div
@@ -59,7 +63,7 @@ function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: 
           </span>
         </div>
         <div className="flex flex-col">
-          <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">Hops</span>
+          <span className="text-text-dim text-[10px] font-medium uppercase tracking-wider">{t("nodeDetail.hops")}</span>
           <span className="font-medium text-text-normal">{obs.hopCount ?? "—"}</span>
         </div>
       </div>
@@ -73,9 +77,11 @@ interface NodeDetailPanelProps {
   onViewObserver: (observerId: string) => void;
   onViewNode?: (nodeId: string) => void;
   onAnalyzePacket?: (hash: string) => void;
+  onViewOnMap?: (lat: number, lng: number) => void;
 }
 
-export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket, onViewOnMap }: NodeDetailPanelProps) {
+  const { t } = useTranslation();
   const { data: node, isLoading } = useQuery({
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
@@ -94,17 +100,17 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     staleTime: 30_000,
   });
 
-  const hasLocation = node != null && node.lat != null && node.lng != null;
+  const hasLocation = hasMapLocation(node);
 
   return (
     <DetailPanel
-      title="Node Detail"
+      title={t("nodeDetail.title")}
       onClose={onClose}
       collapsible
-      headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel="Copy node link" />}
+      headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel={t("nodeDetail.copyLink")} />}
       isLoading={isLoading}
       notFound={!node}
-      notFoundLabel="Node not found"
+      notFoundLabel={t("nodeDetail.notFound")}
       notFoundIcon={
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-border">
           <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.2" />
@@ -113,7 +119,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     >
       {node && (
         <>
-          <Section title="Summary" first>
+          <Section title={t("nodeDetail.summary")} first>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   {node.name ?? formatHex(node.id)}
@@ -125,7 +131,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>
                   {node.publicKey}
                 </div>
-                <CopyButton value={node.publicKey} ariaLabel="Copy public key" className="shrink-0" />
+                <CopyButton value={node.publicKey} ariaLabel={t("nodeDetail.copyKey")} className="shrink-0" />
               </div>
               {node.observerId && (
                 <button
@@ -133,46 +139,55 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   onClick={() => onViewObserver(node.observerId!)}
                   className="mt-2 block font-mono text-[11px] text-primary hover:underline"
                 >
-                  View observer →
+                  {t("nodeDetail.viewObserver")}
                 </button>
               )}
             </Section>
 
             {(hasLocation || node.locationSource) && (
-              <Section title="Location">
+              <Section title={t("nodeDetail.location")}>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[13px]">
-                  {node.lat != null && <Field label="Lat" value={node.lat.toFixed(5)} />}
-                  {node.lng != null && <Field label="Lng" value={node.lng.toFixed(5)} />}
-                  {node.locationSource && <Field label="Source" value={node.locationSource} />}
+                  {hasLocation && <Field label={t("nodeDetail.lat")} value={node.lat!.toFixed(5)} />}
+                  {hasLocation && <Field label={t("nodeDetail.lng")} value={node.lng!.toFixed(5)} />}
+                  {node.locationSource && <Field label={t("nodeDetail.source")} value={node.locationSource} />}
                 </div>
+                {hasMapLocation(node) && onViewOnMap && (
+                  <button
+                    type="button"
+                    onClick={() => onViewOnMap(node.lat, node.lng)}
+                    className="mt-2 block font-mono text-[11px] text-primary hover:underline"
+                  >
+                    {t("nodeDetail.viewOnMap")}
+                  </button>
+                )}
               </Section>
             )}
 
-            <Section title="Capabilities">
+            <Section title={t("nodeDetail.capabilities")}>
               <div className="flex flex-col gap-0.5 font-mono text-[13px]">
-                {node.minFirmwareVersion && <Field label="Min firmware" value={node.minFirmwareVersion} />}
-                <Field label="Multibyte paths" value={node.supportsMultibytePaths ? "yes" : "no"} />
-                <Field label="Multibyte traces" value={node.supportsMultibyteTraces ? "yes" : "no"} />
-                {node.radio && <Field label="Radio" value={formatRadio(node.radio) ?? "—"} />}
-                {node.defaultScope && <Field label="Scope" value={node.defaultScope} />}
+                {node.minFirmwareVersion && <Field label={t("nodeDetail.minFirmware")} value={node.minFirmwareVersion} />}
+                <Field label={t("nodeDetail.multibytePaths")} value={node.supportsMultibytePaths ? t("nodeDetail.yes") : t("nodeDetail.no")} />
+                <Field label={t("nodeDetail.multibyteTraces")} value={node.supportsMultibyteTraces ? t("nodeDetail.yes") : t("nodeDetail.no")} />
+                {node.radio && <Field label={t("nodeDetail.radio")} value={formatRadio(node.radio) ?? "—"} />}
+                {node.defaultScope && <Field label={t("nodeDetail.scope")} value={node.defaultScope} />}
               </div>
             </Section>
 
-            <Section title="Timestamps">
+            <Section title={t("nodeDetail.timestamps")}>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[13px]">
-                <Field label="First" value={<Timestamp value={node.firstSeen} />} />
-                <Field label="Last" value={<Timestamp value={node.lastSeen} />} />
-                {node.lastAdvertAt != null && <Field label="Advert" value={<Timestamp value={node.lastAdvertAt} />} />}
+                <Field label={t("nodeDetail.first")} value={<Timestamp value={node.firstSeen} />} />
+                <Field label={t("nodeDetail.last")} value={<Timestamp value={node.lastSeen} />} />
+                {node.lastAdvertAt != null && <Field label={t("nodeDetail.advert")} value={<Timestamp value={node.lastAdvertAt} />} />}
                 {node.clockDriftSeconds != null && (
                   <Field
-                    label="Clock drift"
-                    value={<span className={node.clockOutOfSync ? "text-warn" : "text-green"}>{formatClockDrift(node.clockDriftSeconds)}</span>}
+                    label={t("nodeDetail.clockDrift")}
+                    value={<span className={node.clockOutOfSync ? "text-warn" : "text-green"}>{formatClockDrift(node.clockDriftSeconds, { inSync: t("clockDrift.inSync"), ahead: t("clockDrift.ahead"), behind: t("clockDrift.behind") })}</span>}
                   />
                 )}
               </div>
             </Section>
 
-            <Section title={node.knownNeighborCount > 0 ? `Neighbors (${node.knownNeighborCount})` : "Neighbors"}>
+            <Section title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
               {neighbors && neighbors.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {neighbors.map((n) => (
@@ -185,11 +200,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   ))}
                 </div>
               ) : (
-                <div className="font-mono text-[13px] text-text-dim">No known neighbors</div>
+                <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noNeighbors")}</div>
               )}
             </Section>
 
-            <Section title="Observations">
+            <Section title={t("nodeDetail.recentPackets")}>
               {observations && observations.items.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {observations.items.map((obs) => (
@@ -201,7 +216,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   ))}
                 </div>
               ) : (
-                <div className="font-mono text-[13px] text-text-dim">No recent observations</div>
+                <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noRecentPackets")}</div>
               )}
             </Section>
         </>

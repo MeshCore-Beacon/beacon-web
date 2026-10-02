@@ -26,4 +26,28 @@ describe("border refresh", () => {
     rerender();
     expect(result.current.features).toHaveLength(1);
   });
+  it("keeps the same reference when a refetch returns the same data object", () => {
+    const same = border(0);
+    state.data = same; state.updated = 1;
+    const { result, rerender } = renderHook(() => useMapBordersData(["YKF"], true));
+    const previous = result.current;
+    state.updated = 2;
+    rerender();
+    expect(result.current).toBe(previous);
+  });
+  it("keeps the same reference when a null-border query refetches", () => {
+    state.data = null; state.updated = 1;
+    const { result, rerender } = renderHook(() => useMapBordersData(["YOW"], true));
+    const previous = result.current;
+    state.updated = 2;
+    rerender();
+    expect(result.current).toBe(previous);
+  });
+  it("returns no borders once toggled off, even with cached data", () => {
+    state.data = border(0); state.updated = 1;
+    const { result, rerender } = renderHook(({ on }) => useMapBordersData(["YKF"], on), { initialProps: { on: true } });
+    expect(result.current.features).toHaveLength(1);
+    rerender({ on: false });
+    expect(result.current.features).toHaveLength(0);
+  });
 });

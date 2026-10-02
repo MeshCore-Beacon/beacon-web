@@ -49,40 +49,125 @@ describe("packet reception evidence", () => {
   it("restores a shared report and targets its observer and map", () => {
     const onViewObserver = vi.fn(); const onViewPath = vi.fn();
     render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=2&q=keep"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewObserver={onViewObserver} onViewPath={onViewPath} /><LocationProbe /></MemoryRouter>);
-    const section = screen.getByRole("region", { name: "Reception evidence" });
+    const section = screen.getByRole("region", { name: "Observations" });
     expect(within(section).getByText("Path 1").closest("details")).toHaveAttribute("open");
     const beta = within(section).getByText(/Beta/).closest("li")!;
-    expect(within(beta).getByRole("button", { name: "Inspect report" })).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta");
-    fireEvent.click(within(beta).getByRole("button", { name: "Map report" })); expect(onViewPath).toHaveBeenCalledWith("beta");
+    expect(within(beta).getByRole("button", { name: /Select observation.*Beta/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(beta).getByText("SNR")).toBeInTheDocument();
+    expect(screen.queryByText(/^Observations \(/)).not.toBeInTheDocument();
+    for (const name of ["Inspect observer", "Map path"]) expect(within(beta).getByRole("button", { name })).toHaveClass("border", "border-border", "text-primary");
+    fireEvent.click(within(beta).getByRole("button", { name: "Inspect observer" })); expect(onViewObserver).toHaveBeenCalledWith("beta", 2);
+    fireEvent.click(within(beta).getByRole("button", { name: "Map path" })); expect(onViewPath).toHaveBeenCalledWith("beta");
     expect(screen.getByTestId("search")).toHaveTextContent("observation=2"); expect(screen.getByTestId("search")).toHaveTextContent("q=keep");
+  });
+  it("collapses the observations list unless a report was picked", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const section = screen.getByRole("region", { name: "Observations" });
+    const toggle = within(section).getByRole("button", { name: "Observations" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(section).toHaveTextContent("Heard by 2 observers");
+    expect(within(section).queryByText("Path 1")).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(section).getByText("Path 1")).toBeInTheDocument();
+  });
+  it("keeps the evidence notes in an info tip instead of paragraphs", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={null} onClose={() => {}} onViewPath={() => {}} /></MemoryRouter>);
+    const section = screen.getByRole("region", { name: "Observations" });
+    expect(within(section).getByRole("button", { name: /Grouped by the repeaters.*One entry per observer/ })).toBeInTheDocument();
+    expect(within(section).queryByText(/Grouped by the repeaters/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).queryByText(/One entry per observer/, { selector: "p" })).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Needs at least two repeaters/, { selector: "p" })).not.toBeInTheDocument();
+  });
+  it("shows the selected report only in the observations list, above the raw packet", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
+    const list = screen.getByRole("region", { name: "Observations" });
+    expect(screen.queryByText("Observation", { exact: true })).not.toBeInTheDocument();
+    expect(within(list).getByRole("button", { name: /Select observation.*Alpha/ })).toHaveAttribute("aria-pressed", "true");
+    const raw = screen.getByText("Raw Packet");
+    expect(list.compareDocumentPosition(raw) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it("reports an expired selection without quietly showing another report", () => {
     render(<MemoryRouter initialEntries={["/?tab=Packets&hash=abcdef12&analyze=1&observation=99"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
-    expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
+    expect(screen.getByRole("alert")).toHaveTextContent("That observation is no longer available");
     expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
   });
   it("keeps route evidence selections strict without requiring packet URL state", () => {
     render(<MemoryRouter initialEntries={["/?tab=Routes&route=keep"]}><PacketAnalyzerDrawer detail={reports()} selectedObservationId={99} requireSelectedObservation onClose={() => {}} /></MemoryRouter>);
-    expect(screen.getByRole("alert")).toHaveTextContent("Selected report is unavailable");
+    expect(screen.getByRole("alert")).toHaveTextContent("That observation is no longer available");
     expect(screen.queryByText("Raw Packet")).not.toBeInTheDocument();
   });
   it("explains TRACE and missing-report semantics in French", async () => {
     const d = reports(); d.header.payloadType = PayloadType.TRACE; d.observations = [];
     await i18n.changeLanguage("fr");
     render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
-    expect(screen.getByRole("region", { name: "Rapports de réception" })).toHaveTextContent("itinéraire prévu");
-    expect(screen.getByText("Aucun rapport conservé pour ce paquet.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Observations" })).toHaveTextContent("itinéraire prévu");
+    expect(screen.getByText("Aucune observation pour ce paquet.")).toBeInTheDocument();
   });
   it("keeps a later selected path visible while bounding the initial list", () => {
     const d = reports();
     d.observations = Array.from({ length: 12 }, (_, i) => ({ ...d.observations[0], id: i + 1, observerId: `observer-${i}`, pathBytes: i.toString(16).padStart(4, "0") }));
     render(<MemoryRouter initialEntries={["/?hash=abcdef12&analyze=1&observation=12"]}><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
-    const section = screen.getByRole("region", { name: "Reception evidence" });
+    const section = screen.getByRole("region", { name: "Observations" });
     expect(within(section).getByText("Path 12").closest("details")).toHaveAttribute("open");
     expect(within(section).queryByText("Path 4")).not.toBeInTheDocument();
-    fireEvent.click(within(section).getByRole("button", { name: "Show all 12 path groups" }));
+    fireEvent.click(within(section).getByRole("button", { name: "Load more (9 left)" }));
     expect(within(section).getByText("Path 4")).toBeInTheDocument();
+    expect(within(section).getByText("Path 6")).toBeInTheDocument();
+    expect(within(section).queryByText("Path 7")).not.toBeInTheDocument();
+  });
+});
+
+describe("PacketAnalyzerDrawer in French", () => {
+  it("translates the empty state and close control", async () => {
+    await i18n.changeLanguage("fr");
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={undefined} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByText("Analyseur de paquets")).toBeInTheDocument();
+    expect(screen.getByText("Sélectionnez un paquet à analyser")).toBeInTheDocument();
+    expect(screen.getByLabelText("Fermer l’analyseur")).toBeInTheDocument();
+  });
+  it("translates the structure section and payload fields", async () => {
+    const d = makeDetail([]);
+    d.observations[0].pathBytes = "aabb";
+    d.header = { ...d.header, raw: "14", routeType: RouteType.TRANSPORT_FLOOD, routeTypeName: "TRANSPORT_FLOOD" };
+    d.transportCodes = { regionCode: 49240, subRegionCode: 0 };
+    d.parsedPayload = { type: "TEXT_MESSAGE", destinationHash: "aa", sourceHash: "bb", ciphertext: "0011" };
+    await i18n.changeLanguage("fr");
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={1} onClose={() => {}} /></MemoryRouter>);
+    for (const text of ["Résumé", "Paquet brut", "Structure du paquet", "Octet d’en-tête", "Longueur du trajet", "Données du trajet", "Détail de la charge utile"]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("Code de portée 58C0 (2B) = 49240");
+    expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("aucune portée connue");
+    expect(screen.getByText("sauts=2")).toBeInTheDocument();
+    expect(screen.getByText("Chiffré — clé non disponible")).toBeInTheDocument();
+  });
+});
+
+describe("transport scope", () => {
+  const transport = () => {
+    const d = makeDetail([]);
+    d.header = { ...d.header, raw: "14", routeType: RouteType.TRANSPORT_FLOOD, routeTypeName: "TRANSPORT_FLOOD" };
+    d.transportCodes = { regionCode: 49240, subRegionCode: 0 };
+    d.scope = "#yow";
+    return d;
+  };
+  it("boxes the summary scope chip like the type badge", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={transport()} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const chip = within(screen.getByText("Summary").parentElement!).getByText("#yow");
+    expect((chip.getAttribute("class") ?? "").split(/\s+/)).toEqual(expect.arrayContaining(["border", "px-2", "py-0.5"]));
+  });
+  it("breaks the transport codes out of the frame and shows the matched scope", () => {
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={transport()} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    const field = screen.getByText("Transport Codes").parentElement!;
+    expect(field).toHaveTextContent("Scope code 58C0 (2B) = 49240");
+    expect(within(field).getByText("#yow")).toBeInTheDocument();
+    expect(field).toHaveTextContent("Code 2 0000 (2B) = 0");
+  });
+  it("says when a scope code matched no known scope", () => {
+    const d = transport(); delete d.scope;
+    render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
+    expect(screen.getByText("Transport Codes").parentElement!).toHaveTextContent("no known scope");
   });
 });
 
@@ -132,7 +217,7 @@ describe("PacketAnalyzerDrawer view-path button", () => {
         <PacketAnalyzerDrawer detail={makeDetail([hop("a", -79, 43), hop("b", -75, 45)])} selectedObservationId={null} onClose={() => {}} onViewPath={onViewPath} />
       </MemoryRouter>,
     );
-    const btn = screen.getByRole("button", { name: /view path on map/i });
+    const btn = screen.getByRole("button", { name: /map all paths/i });
     expect(btn).toBeEnabled();
     fireEvent.click(btn);
     expect(onViewPath).toHaveBeenCalledOnce();
@@ -144,7 +229,7 @@ describe("PacketAnalyzerDrawer view-path button", () => {
         <PacketAnalyzerDrawer detail={makeDetail([hop("a", -79, 43)])} selectedObservationId={null} onClose={() => {}} onViewPath={() => {}} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("button", { name: /view path on map/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /map all paths/i })).toBeDisabled();
   });
 });
 

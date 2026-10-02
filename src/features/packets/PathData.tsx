@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useHasHover } from "../../hooks/useMediaQuery";
 import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import type { ResolvedHop, ResolvedNode } from "../../types/api";
@@ -23,6 +24,7 @@ export function HopPopover({ hop, onViewNode, showSnr = true, children }: {
   showSnr?: boolean;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const hasHover = useHasHover();
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
@@ -94,7 +96,6 @@ export function HopPopover({ hop, onViewNode, showSnr = true, children }: {
       onMouseEnter={hasHover ? open : undefined}
       onMouseLeave={hasHover ? scheduleClose : undefined}
       onClick={hasHover ? undefined : toggle}
-      title={nodes.map(nodeLabel).join(", ") || "No Path Resolutions Available"}
       className="inline-flex min-w-0 max-w-full"
     >
       {children}
@@ -109,7 +110,7 @@ export function HopPopover({ hop, onViewNode, showSnr = true, children }: {
             className={`fixed z-50 flex flex-col gap-0.5 whitespace-nowrap rounded border border-border bg-bg-raised px-2 py-1 font-mono text-[11px] text-text-normal shadow-lg ${clickable ? "" : "pointer-events-none"}`}
           >
             {nodes.length === 0 ? (
-              "No Path Resolutions Available"
+              t("packetRow.noResolution")
             ) : clickable ? (
               nodes.map((node) => (
                 <button

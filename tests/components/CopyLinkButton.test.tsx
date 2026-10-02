@@ -18,9 +18,9 @@ afterEach(() => {
 });
 
 describe("CopyLinkButton", () => {
-  it("shows the default 'Copy Link' label", () => {
+  it("shows the default 'Copy link' label", () => {
     render(<CopyLinkButton params={{ tab: "Nodes", node: "abc" }} />);
-    expect(screen.getByRole("button")).toHaveTextContent("Copy Link");
+    expect(screen.getByRole("button")).toHaveTextContent("Copy link");
   });
 
   it("copies a URL carrying the given params on click", () => {
@@ -42,7 +42,7 @@ describe("CopyLinkButton", () => {
       act(() => {
         vi.advanceTimersByTime(1500);
       });
-      expect(button).toHaveTextContent("Copy Link");
+      expect(button).toHaveTextContent("Copy link");
     } finally {
       vi.useRealTimers();
     }

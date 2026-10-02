@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MessagePanel } from "../../../src/features/channels/MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "../../../src/features/channels/types";
+import i18n from "../../../src/i18n";
 
 // Older live WS messages have no id — preserve that compatible runtime shape.
 const restMsg: ChannelMessage = {
@@ -39,6 +40,7 @@ const multiLineMsg: ChannelMessage = {
   sentAt: 4000,
 };
 
+vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => ({ iatas: undefined, regionKey: "*" }) }));
 vi.mock("../../../src/api/client", () => ({
   getScopes: vi.fn(async () => []),
   getChannelMessagesPage: vi.fn(() =>
@@ -96,5 +98,26 @@ describe("MessagePanel multi-line messages", () => {
     const body = await screen.findByText(multiLineMsg.content, { normalizer: (s) => s });
     expect(body.className).toContain("whitespace-pre-wrap");
     expect(body.className).toContain("break-words");
+  });
+});
+
+describe("MessagePanel heard badge", () => {
+  const mount = () => render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MessagePanel channel={channel} heardCounts={{ "ph-rest": 3, "ph-live-a": 1 }} regionKey="*" />
+    </QueryClientProvider>,
+  );
+
+  it("labels the repeat count", async () => {
+    mount();
+    expect(await screen.findByTitle("Heard 3 times")).toHaveTextContent("×3");
+    expect(screen.getByTitle("Heard 1 time")).toBeInTheDocument();
+  });
+
+  it("labels the repeat count in French", async () => {
+    await i18n.changeLanguage("fr");
+    mount();
+    expect(await screen.findByTitle("Entendu 3 fois")).toBeInTheDocument();
+    expect(screen.getByTitle("Entendu 1 fois")).toBeInTheDocument();
   });
 });

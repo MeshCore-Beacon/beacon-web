@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DetailPanel } from "../../src/components/DetailPanel";
+import i18n from "../../src/i18n";
 
 function renderPanel(props: { collapsible?: boolean; onClose?: () => void } = {}) {
   const onClose = props.onClose ?? vi.fn();
@@ -39,5 +40,15 @@ describe("DetailPanel", () => {
     const { onClose } = renderPanel({ collapsible: true });
     fireEvent.click(screen.getByRole("button", { name: "Close detail panel" }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses French defaults for its controls and states", async () => {
+    await i18n.changeLanguage("fr");
+    const { rerender } = render(<DetailPanel title="Nœud" onClose={vi.fn()} collapsible isLoading><p /></DetailPanel>);
+    expect(screen.getByRole("button", { name: "Fermer le panneau de détails" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Réduire le panneau de détails" })).toBeTruthy();
+    expect(screen.getByText("Chargement…")).toBeTruthy();
+    rerender(<DetailPanel title="Nœud" onClose={vi.fn()} notFound><p /></DetailPanel>);
+    expect(screen.getByText("Introuvable")).toBeTruthy();
   });
 });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { TrafficTab } from "../../../src/features/stats/TrafficTab";
 import { useStatsObservations } from "../../../src/features/stats/useStats";
 import { EChart } from "../../../src/features/stats/EChart";
@@ -19,16 +19,16 @@ describe("Traffic page", () => {
   it("translates the page and exact table without changing reception counts, IATA codes or ranges", async () => {
     await act(() => i18n.changeLanguage("fr"));
     render(<TrafficTab range="7d" />);
-    expect(screen.getByRole("heading", { name: "Trafic" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(useStatsObservations).toHaveBeenCalledWith("7d");
     expect(screen.getByText("Activité horaire · 7 j")).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "Réceptions par IATA" });
+    const table = screen.getByRole("table", { name: "Observations par zone" });
     expect(within(table).getByRole("row", { name: /YOW.*1,200.*100.0%/ })).toBeInTheDocument();
     expect(screen.queryByText("9,999")).not.toBeInTheDocument();
-    expect(screen.getByText(/heure UTC/)).toHaveTextContent("partielle");
-    expect(screen.getByText(/ne prouvent pas une panne/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Actualiser le trafic" }));
-    expect(query.refetch).toHaveBeenCalledOnce();
+    expect(screen.getByText(/Heures en UTC/)).toHaveTextContent("pas les paquets uniques");
+    expect(screen.getByText(/pas une panne/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pas une panne/ })).toBeInTheDocument();
+    expect(screen.queryByText(/pas une panne/, { selector: "p" })).not.toBeInTheDocument();
   });
 
   it("redraws grouped and unassigned chart labels on language change without altering data", async () => {
@@ -44,11 +44,11 @@ describe("Traffic page", () => {
     const after = chartOptions();
     expect(numbers(after)).toEqual(values);
     after.forEach((option, i) => expect(option.aria).not.toEqual(before[i]!.aria));
-    expect(after[0]).toMatchObject({ series: expect.arrayContaining([expect.objectContaining({ name: "Non attribué" }), expect.objectContaining({ name: "Autres IATA" })]) });
-    expect(after[2]).toMatchObject({ series: [{ data: expect.arrayContaining([expect.objectContaining({ name: "Autres IATA", value: 6 }), expect.objectContaining({ name: "Non attribué", value: 9000 })]) }] });
+    expect(after[0]).toMatchObject({ series: expect.arrayContaining([expect.objectContaining({ name: "Non attribué" }), expect.objectContaining({ name: "Autres zones" })]) });
+    expect(after[2]).toMatchObject({ series: [{ data: expect.arrayContaining([expect.objectContaining({ name: "Autres zones", value: 6 }), expect.objectContaining({ name: "Non attribué", value: 9000 })]) }] });
     expect(screen.getByRole("row", { name: /Non attribué.*9,000/ })).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /YOW.*1,200/ })).toBeInTheDocument();
-    expect(screen.queryByRole("row", { name: /Autres IATA/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("row", { name: /Autres zones/ })).not.toBeInTheDocument();
     expect(query.refetch).not.toHaveBeenCalled();
   });
 
@@ -69,22 +69,22 @@ describe("Traffic page", () => {
     query.data = [];
     await act(() => i18n.changeLanguage("fr"));
     render(<TrafficTab range="24h" />);
-    expect(screen.getByText("Aucune réception conservée dans cette période.")).toBeInTheDocument();
-    expect(screen.getByText(/ne prouvent pas une panne/)).toBeInTheDocument();
+    expect(screen.getByText("Aucune observation dans cette période.")).toBeInTheDocument();
+    expect(screen.getByText(/pas une panne/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /pas une panne/ })).toBeInTheDocument();
+    expect(screen.queryByText(/pas une panne/, { selector: "p" })).not.toBeInTheDocument();
     expect(screen.getAllByText("Aucune donnée")).toHaveLength(3);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("shows exact reception counts, UTC/missing-history guidance and a refresh action", () => {
+  it("shows exact reception counts and UTC/missing-history guidance without a refresh action", () => {
     render(<TrafficTab range="24h" />);
     expect(useStatsObservations).toHaveBeenCalledWith("24h");
-    const table = screen.getByRole("table", { name: "Receptions by IATA" });
+    const table = screen.getByRole("table", { name: "Observations by area" });
     expect(within(table).getByRole("row", { name: /YOW.*1,200.*100.0%/ })).toBeInTheDocument();
     expect(screen.queryByText("9,999")).not.toBeInTheDocument();
-    expect(screen.getByText(/Blank hours/)).toHaveTextContent("retained");
-    expect(screen.getByText(/UTC/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh traffic" }));
-    expect(query.refetch).toHaveBeenCalledOnce();
+    expect(screen.getByText(/not unique packets/)).toHaveTextContent(/UTC.*outage/);
+    expect(screen.queryByRole("button", { name: /Refresh/ })).not.toBeInTheDocument();
   });
 
   it("does not display previous-region data while a new query is loading", () => {
@@ -95,12 +95,10 @@ describe("Traffic page", () => {
     expect(screen.queryAllByTestId("chart")).toHaveLength(0);
   });
 
-  it("provides a visible error state and retry without stale chart values", () => {
+  it("provides a visible error state without stale chart values", () => {
     query.isError = true;
     render(<TrafficTab range="30d" />);
     expect(screen.getByRole("alert")).toHaveTextContent("Could not load traffic");
     expect(screen.queryByText("YOW")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh traffic" }));
-    expect(query.refetch).toHaveBeenCalledOnce();
   });
 });

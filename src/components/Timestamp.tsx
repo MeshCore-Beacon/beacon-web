@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useTick } from "../hooks/useTick";
 import { Tooltip } from "./Tooltip";
-import { timeAgoMs, formatAbsolute } from "../lib/formatters";
+import { timeAgoParts, formatAbsolute } from "../lib/formatters";
 
 interface TimestampProps {
   value: number; // epoch ms
@@ -18,7 +18,8 @@ export function Timestamp({ value, mode = "relative", ms, className }: Timestamp
   const { t } = useTranslation();
   useTick(); // keep the relative label fresh
 
-  const relative = t("timestamp.ago", { duration: timeAgoMs(value) });
+  const { count, unit } = timeAgoParts(value);
+  const relative = t("timestamp.ago", { duration: t(`timestamp.unit.${unit}`, { count }) });
   const absolute = formatAbsolute(value, { ms });
 
   return (

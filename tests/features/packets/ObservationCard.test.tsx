@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ObservationCard } from "../../../src/features/packets/ObservationCard";
 import type { Observation } from "../../../src/types/api";
+import i18n from "../../../src/i18n";
 
 const obs = (over: Partial<Observation> = {}): Observation => ({
   id: 1, observerId: "o1", observerName: "Observer 1", iata: "YVR",
@@ -18,6 +19,14 @@ describe("ObservationCard", () => {
 
     const name = screen.getByText("a-very-long-observer-station-name");
     expect(tokens(name)).toEqual(expect.arrayContaining(["flex-1", "min-w-0", "truncate"]));
+  });
+
+  it("shows the observer's radio settings", () => {
+    render(<ObservationCard observation={obs({ radio: { freqMhz: 910.525, spreadFactor: 7, bandwidthKhz: 62.5, codingRate: 5 } })} />);
+    expect(screen.getByText("910.525 MHz")).toBeInTheDocument();
+    expect(screen.getByText("SF7")).toBeInTheDocument();
+    expect(screen.getByText("62.5 kHz")).toBeInTheDocument();
+    expect(screen.getByText("CR 4/5")).toBeInTheDocument();
   });
 
   it("lays the four stats out as equal grid columns that can shrink", () => {
@@ -48,7 +57,7 @@ describe("ObservationCard", () => {
   it("lets selection override the signal edge", () => {
     const { container } = render(<ObservationCard observation={obs({ snr: 12 })} selected />);
     const cls = tokens(container.firstElementChild!);
-    expect(cls).toContain("border-l-secondary");
+    expect(cls).toEqual(expect.arrayContaining(["border-l-primary", "bg-primary/6"]));
     expect(cls).not.toContain("border-l-green");
   });
 
@@ -68,5 +77,11 @@ describe("ObservationCard", () => {
     expect(screen.getByText("41")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Observer 1"));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels the stats and path in French", async () => {
+    await i18n.changeLanguage("fr");
+    render(<ObservationCard observation={obs({ pathBytes: "41", radio: { freqMhz: 910.525 } })} />);
+    for (const label of ["Prop.", "Sauts", "Radio", "Trajet"]) expect(screen.getByText(label)).toBeInTheDocument();
   });
 });

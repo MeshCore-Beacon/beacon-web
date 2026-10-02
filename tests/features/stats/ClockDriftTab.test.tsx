@@ -21,8 +21,8 @@ it("translates clock labels and direction without changing signs, thresholds or 
   expect(screen.getByRole("button", { name: /^Dérive\s*▼$/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^Nœud\s*▲$/ })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /^Vérifié\s*▲$/ })).toBeInTheDocument();
-  expect(screen.getByText("+59m 59s en avance")).toHaveClass("text-warn");
-  expect(screen.getByText("-1h 0m en retard")).toHaveClass("text-danger");
+  expect(screen.getByText("+59 min 59 s en avance")).toHaveClass("text-warn");
+  expect(screen.getByText("-1 h 0 min en retard")).toHaveClass("text-danger");
   expect(screen.getByText("YVR")).toBeInTheDocument();
   expect(screen.getByText("YOW")).toBeInTheDocument();
   expect([...container.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent)).toEqual(["BetaRoom", "AlphaRepeater"]);
@@ -65,4 +65,20 @@ it("retains valid values during a healthy background refresh", () => {
   expect(screen.getByText("Alpha")).toBeInTheDocument();
   expect(screen.getByText("+59m 59s ahead")).toHaveClass("text-warn");
   expect(screen.getByText("-1h 0m behind")).toHaveClass("text-danger");
+});
+
+it("shows compact cards instead of a wide table on a phone, worst first", async () => {
+  await act(() => i18n.changeLanguage("en"));
+  const media = window.matchMedia("(max-width: 767px)");
+  const spy = vi.spyOn(window, "matchMedia").mockImplementation((q) => ({ ...media, media: q, matches: q === "(max-width: 767px)" }));
+  try {
+    const { container } = render(<ClockDriftTab />);
+    expect(container.querySelector("table")).toBeNull();
+    const cards = screen.getAllByRole("button", { name: /Beta|Alpha/ });
+    expect(cards.map((c) => c.textContent)).toEqual([expect.stringContaining("Beta"), expect.stringContaining("Alpha")]);
+    expect(cards[0]).toHaveTextContent("-1h 0m behind");
+    expect(cards[0]).toHaveTextContent("YOW");
+  } finally {
+    spy.mockRestore();
+  }
 });

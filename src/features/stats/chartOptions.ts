@@ -29,19 +29,19 @@ function valueAxis(c: ChartColors, extra: Record<string, unknown> = {}) {
 
 // ---- Mesh ----
 
+// null values are hours the server hasn't rolled (or never can); echarts breaks the line there.
 export function observationsAreaOption(
-  points: { hour: number; observationCount: number; uniquePackets: number }[],
+  points: { hour: number; observations: number | null; uniquePackets: number | null }[],
   c: ChartColors,
+  labels = { observations: "Observations", uniquePackets: "Unique packets" },
 ): EChartsOption {
-  const obs = points.map((p) => [p.hour, p.observationCount]);
-  const uniq = points.map((p) => [p.hour, p.uniquePackets]);
   return {
     animation: false,
     backgroundColor: "transparent",
     grid: { left: 48, right: 14, top: 12, bottom: 24 },
     tooltip: { trigger: "axis", ...tooltipStyle(c), axisPointer: { type: "line", lineStyle: { color: c.primary } } },
     legend: {
-      data: ["Observations", "Unique packets"],
+      data: [labels.observations, labels.uniquePackets],
       right: 8,
       top: 0,
       itemWidth: 10,
@@ -53,11 +53,11 @@ export function observationsAreaOption(
     yAxis: valueAxis(c),
     series: [
       {
-        name: "Observations",
+        name: labels.observations,
         type: "line",
         smooth: true,
         symbol: "none",
-        data: obs,
+        data: points.map((p) => [p.hour, p.observations]),
         lineStyle: { color: c.primary, width: 2 },
         itemStyle: { color: c.primary },
         areaStyle: {
@@ -72,11 +72,11 @@ export function observationsAreaOption(
         },
       },
       {
-        name: "Unique packets",
+        name: labels.uniquePackets,
         type: "line",
         smooth: true,
         symbol: "none",
-        data: uniq,
+        data: points.map((p) => [p.hour, p.uniquePackets]),
         lineStyle: { color: c.secondary, width: 1.3, type: "dashed" },
         itemStyle: { color: c.secondary },
       },
@@ -154,6 +154,7 @@ export function presetBarsOption(
   rows: { name: string; nodes: number; observers: number }[],
   c: ChartColors,
   gridLeft = 172, // fits a full "910.525 · 62.5k · SF7" label
+  labels = { nodes: "Nodes", observers: "Observers" },
 ): EChartsOption {
   const totals = rows.map((r) => r.nodes + r.observers);
   const segment = (data: number[], color: string) => ({
@@ -170,7 +171,7 @@ export function presetBarsOption(
     grid: { left: gridLeft, right: 56, top: 22, bottom: 6 },
     tooltip: { trigger: "axis", ...tooltipStyle(c), axisPointer: { type: "shadow" } },
     legend: {
-      data: ["Nodes", "Observers"],
+      data: [labels.nodes, labels.observers],
       right: 8,
       top: 0,
       itemWidth: 10,
@@ -196,9 +197,9 @@ export function presetBarsOption(
       },
     },
     series: [
-      { name: "Nodes", ...segment(rows.map((r) => r.nodes), c.primary) },
+      { name: labels.nodes, ...segment(rows.map((r) => r.nodes), c.primary) },
       {
-        name: "Observers",
+        name: labels.observers,
         ...segment(rows.map((r) => r.observers), c.secondary),
         // outer segment carries the row total so it sits at the end of the whole stack
         label: {
@@ -401,7 +402,7 @@ function busySpanMs(t: number, intervalMs: number, w: TimeWindow): number {
   return t < w.end && t + intervalMs > w.end ? w.end - t : intervalMs;
 }
 
-export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: number | null, w: TimeWindow): EChartsOption {
+export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: number | null, w: TimeWindow, name = "Busy"): EChartsOption {
   const pct = (p: ActivityPoint) => (intervalMs == null ? null : busyPct(p.airtimeMs, busySpanMs(p.t, intervalMs, w)));
   return {
     animation: false,
@@ -412,7 +413,7 @@ export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: 
     yAxis: percentAxis(c),
     series: [
       {
-        name: "Busy",
+        name,
         type: "line",
         symbol: "none",
         connectNulls: false,

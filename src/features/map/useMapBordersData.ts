@@ -3,6 +3,17 @@ import { useQueries } from "@tanstack/react-query";
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from "geojson";
 import { getIataBorder, type IataBorder } from "../../api/client";
 
+// Identity ids for border data objects, so the sig below reflects a real data change rather than a
+// refetch timestamp (TanStack's structural sharing keeps unchanged geometry referentially equal).
+const idsByData = new WeakMap<object, number>();
+let nextId = 1;
+function idOf(data: unknown): number {
+  if (data == null || typeof data !== "object") return 0;
+  let id = idsByData.get(data);
+  if (id == null) { id = nextId++; idsByData.set(data, id); }
+  return id;
+}
+
 export type BorderProps = { iata: string; [key: string]: unknown };
 export type BorderFeatureCollection = FeatureCollection<Polygon | MultiPolygon, BorderProps>;
 
@@ -30,10 +41,11 @@ export function useMapBordersData(iataCodes: string[], enabled: boolean): Border
   });
 
   // Keep the collection stable between renders, but replace geometry after a successful refresh.
-  const sig = iataCodes.map((iata, i) => `${iata}:${results[i]?.data ? 1 : 0}:${results[i]?.dataUpdatedAt ?? 0}`).join("|");
+  // disabled queries keep their cached data, so an off toggle has to empty the collection itself
+  const sig = enabled ? iataCodes.map((iata, i) => `${iata}:${idOf(results[i]?.data)}`).join("|") : "off";
   return useMemo(
-    () => mergeBorders(iataCodes.map((iata, i) => ({ iata, border: results[i]?.data ?? null }))),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sig captures iataCodes + which borders loaded
+    () => mergeBorders(enabled ? iataCodes.map((iata, i) => ({ iata, border: results[i]?.data ?? null })) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sig captures enabled + iataCodes + which borders loaded
     [sig],
   );
 }

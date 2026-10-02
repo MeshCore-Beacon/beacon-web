@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
 
   beacon-web:
-    image: ghcr.io/meshcore-beacon/beacon-web:latest
+    image: ${BEACON_WEB_IMAGE:?Set BEACON_WEB_IMAGE to a reviewed release tag or digest}
     environment:
       - VITE_API_BASE=${VITE_API_BASE:?VITE_API_BASE environment variable is required}
       - VITE_WS_URL=${VITE_WS_URL:?VITE_WS_URL environment variable is required}
@@ -26,4 +26,6 @@ services:
       - VITE_APP_NAME=${VITE_APP_NAME:-BEACON}
       # Skip the once-per-session load splash; unset = shown
       - VITE_SKIP_SPLASH=${VITE_SKIP_SPLASH:-}
+      # Notice above the header, e.g. on a dev instance; unset = none
+      - VITE_BANNER=${VITE_BANNER:-}
     restart: unless-stopped

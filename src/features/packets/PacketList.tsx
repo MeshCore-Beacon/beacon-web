@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePackets } from "./usePackets";
 import { usePacketDetail } from "./usePacketDetail";
@@ -42,12 +43,13 @@ interface PacketListProps {
 
 export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservationId, onSelectObservation }: PacketListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   // single-value selections go to the server so scrolling pages through matching history
   const serverFilter = useMemo(() => toServerFilter(filters), [filters]);
   const pathSearch = useMemo(() => parsePathSearch(filters.search), [filters.search]);
-  const scopeNames = useScopes();
+  const scopeNames = useScopes(filters.scopes);
   const scopeOptions = useMemo(() => scopeNames.map((s) => ({ value: s, label: s })), [scopeNames]);
   const { regionKey } = useRegion();
 
@@ -178,35 +180,35 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
         {filters.searchField === "path" && (
           <p role={pathSearch === null ? "alert" : undefined} className={`px-4 py-1.5 text-xs font-mono ${pathSearch === null ? "text-danger" : "text-text-muted"}`}>
             {pathSearch === null
-              ? "Enter whole hop hashes of the same length, separated by spaces, commas or → (e.g. 7f a4)."
-              : "Searches the latest relay path in loaded packets. Use whole hop hashes, e.g. 7f a4 (spaces, commas or →). Trace packets are excluded."}
+              ? t("packetList.pathSearchInvalid")
+              : t("packetList.pathSearchHint")}
           </p>
         )}
 
         {/* A hash-only link still selects a row; offer the existing analyzer when there is no row. */}
         {expandedHash && !isLoading && searchParams.get("analyze") !== "1" && !packets.some(p => p.packetHash === expandedHash) && (
-          <section aria-label="Selected packet" className="mx-4 my-2 px-3 py-2 border border-border rounded-sm bg-bg-surface flex items-start justify-between gap-3 text-xs text-text-muted">
+          <section aria-label={t("packetList.selectedPacket")} className="mx-4 my-2 px-3 py-2 border border-border rounded-sm bg-bg-surface flex items-start justify-between gap-3 text-xs text-text-muted">
             <div>
               {selectedError ? (
                 <>
-                  <p role="alert">{detailStatus === 400 ? "Invalid packet hash." : detailStatus === 404 ? "Packet not found." : "Failed to load selected packet."}</p>
-                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={() => retryDetail()} aria-label="Retry selected packet">Retry</button>
+                  <p role="alert">{detailStatus === 400 ? t("packetList.invalidHash") : detailStatus === 404 ? t("packetList.notFound") : t("packetList.loadFailed")}</p>
+                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={() => retryDetail()} aria-label={t("packetList.retryLabel")}>{t("packetList.retry")}</button>
                 </>
               ) : expandedDetail ? (
                 <>
-                  <p>Selected packet is outside the loaded results.</p>
-                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={() => handleOpenAnalyzer()}>Open analyzer</button>
+                  <p>{t("packetList.outsideResults")}</p>
+                  <button type="button" className="mt-1 px-2 py-1 border border-border rounded-sm hover:bg-bg-raised cursor-pointer" onClick={() => handleOpenAnalyzer()}>{t("packetList.openAnalyzer")}</button>
                 </>
-              ) : <p role="status">Loading selected packet…</p>}
+              ) : <p role="status">{t("packetList.loadingSelected")}</p>}
             </div>
-            <CloseButton label="Dismiss selected packet" onClose={() => handleToggleExpand(expandedHash)} />
+            <CloseButton label={t("packetList.dismissSelected")} onClose={() => handleToggleExpand(expandedHash)} />
           </section>
         )}
 
         {laggedCount > 0 && (
           <div className="mx-4 px-3 py-1.5 bg-warn/6 border border-warn/12 text-warn text-xs font-medium font-mono rounded-b flex items-center justify-between">
-            <span>{laggedCount} packet{laggedCount === 1 ? "" : "s"} dropped — data may be incomplete</span>
-            <button type="button" className="underline cursor-pointer" onClick={dismissLagged}>dismiss</button>
+            <span>{t("packetList.dropped", { count: laggedCount })}</span>
+            <button type="button" className="underline cursor-pointer" onClick={dismissLagged}>{t("packetList.dismiss")}</button>
           </div>
         )}
 
@@ -217,13 +219,13 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
             onClick={handleScrollToTop}
           >
             <span aria-hidden>▲</span>
-            {bannerCount} new packet{bannerCount === 1 ? "" : "s"}
-            <span className="text-primary/60 font-normal">· scroll to top</span>
+            {t("packetList.newPackets", { count: bannerCount })}
+            <span className="text-primary/60 font-normal">{t("packetList.scrollToTop")}</span>
           </button>
         ) : (
           <div className="mx-4 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary/8 border border-primary/15 border-t-0 text-primary text-[11px] font-medium tracking-wide font-mono rounded-b">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Live Packets
+            {t("packetList.live")}
           </div>
         )}
 

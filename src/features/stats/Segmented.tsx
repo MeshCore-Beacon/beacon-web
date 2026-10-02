@@ -11,7 +11,7 @@ interface SegmentedProps {
   value: string;
   onChange: (value: string) => void;
   ariaLabel: string;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
   className?: string;
 }
 
@@ -19,7 +19,8 @@ interface SegmentedProps {
 // tint + inset ring, inactive pills are muted. Used for the Stats sub-tabs (md, with icons) and the
 // time-range selector (sm). Active state is conveyed with aria-pressed, not color alone.
 export function Segmented({ options, value, onChange, ariaLabel, size = "sm", className }: SegmentedProps) {
-  const pad = size === "md" ? "px-3 py-1.5 text-xs" : "px-2.5 py-1 text-[11px]";
+  // xs matches the 28px filter-bar controls it sits beside
+  const pad = size === "md" ? "px-3 py-1.5 text-xs" : size === "xs" ? "px-2.5 py-[3px] text-[11px] leading-4" : "px-2.5 py-1 text-[11px]";
   return (
     <div
       role="group"

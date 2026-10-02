@@ -8,11 +8,9 @@ Real-time LoRa mesh packet analyzer. Desktop-first, dark-mode-primary, dense inf
 
 Built with React 19, TypeScript, Tailwind CSS 4, TanStack Query, and TanStack Virtual.
 
-[My Atlas](docs/my-atlas.md) provides saved node cards with compact reception activity
-bars, received-signal meters, and expandable observer evidence. Selections persist
-in the visitor's browser; English and French are supported.
-
 ## Deployment
+
+The `docker/` example serves only the frontend; it needs a separately reachable beacon-server backend.
 
 ### 1. Copy the `docker/` folder to your server
 
@@ -25,15 +23,17 @@ scp -r docker/ user@your-server:/opt/docker/beacon-web
 ```bash
 cd /opt/docker/beacon-web
 cat > .env << 'EOF'
-DOMAIN=dev.meshcore.ca
-VITE_API_BASE=https://dev.meshcore.ca/api/v1
-VITE_WS_URL=wss://dev.meshcore.ca/ws
+DOMAIN=web.example.com
+BEACON_WEB_IMAGE=ghcr.io/meshcore-beacon/beacon-web:2.0.0
+VITE_API_BASE=https://api.example.com/api/v1
+VITE_WS_URL=wss://api.example.com/ws
 EOF
 ```
 
 | Variable | Description |
 |---|---|
 | `DOMAIN` | Domain for HTTPS (Caddy auto-provisions Let's Encrypt certs) |
+| `BEACON_WEB_IMAGE` | Image to run: a release tag (e.g. `:2.0.0`), `:latest`, or `:dev` |
 | `VITE_API_BASE` | Backend REST API base URL |
 | `VITE_WS_URL` | Backend WebSocket URL |
 
@@ -49,6 +49,10 @@ Private; a maintainer needs to set it back to Public (see the troubleshooting no
 in [beacon-docs](https://github.com/MeshCore-Beacon/beacon-docs)).
 
 Caddy will automatically obtain a TLS certificate for your domain. Ensure DNS is pointed at your server before starting.
+
+Image tags: `latest` is the newest `main` build, each `vX.Y.Z` release tag publishes `X.Y.Z` and `X.Y`,
+and `dev` tracks the `dev` branch. Web and server releases share major.minor versions
+(web `2.0.x` pairs with server `2.0.x`); patch levels are independent.
 
 ## Local Development
 

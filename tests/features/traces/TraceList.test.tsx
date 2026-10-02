@@ -8,6 +8,7 @@ import { ALL_REGIONS } from "../../../src/hooks/region-selection";
 import { getTraces, getTraceDetail, getRegions } from "../../../src/api/client";
 import { timeAgoMs } from "../../../src/lib/formatters";
 import type { TraceTagSummary, TraceDetail } from "../../../src/types/api";
+import i18n from "../../../src/i18n";
 
 vi.mock("../../../src/api/client", () => ({
   getTraces: vi.fn(),
@@ -174,11 +175,33 @@ describe("TraceList", () => {
     await waitFor(() => expect(mockGetTraces.mock.calls.at(-1)?.[1]).toMatchObject({ type: "PING" }));
   });
 
+  it("explains that the type filter classifies whole tags", async () => {
+    mockGetTraces.mockResolvedValue([]);
+
+    renderTraces();
+
+    expect(await screen.findByText(/TRACE if any packet in the tag is multi-hop/)).toBeInTheDocument();
+  });
+
   it("shows an empty state when there are no traces", async () => {
     mockGetTraces.mockResolvedValue([]);
 
     renderTraces();
 
     expect(await screen.findByText("No traces")).toBeInTheDocument();
+  });
+
+  it("translates the list and the detail panel", async () => {
+    await i18n.changeLanguage("fr");
+    mockGetTraces.mockResolvedValue([tag("3f2a11c0", 2)]);
+    mockGetTraceDetail.mockResolvedValue(detail);
+    renderTraces();
+    expect(await screen.findByText("1 étiquette")).toBeInTheDocument();
+    expect(screen.getByText("2 paq. · 1 iata")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tous" })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("3F2A11C0"));
+    expect(await screen.findByText("Paquets")).toBeInTheDocument();
+    expect(await screen.findByText("2 paquets")).toBeInTheDocument();
+    expect(screen.getAllByText("analyser →")).toHaveLength(2);
   });
 });

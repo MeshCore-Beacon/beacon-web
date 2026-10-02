@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { getTraceDetail } from "../../api/client";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { Badge } from "../../components/Badge";
@@ -17,7 +18,8 @@ function TraceHopChain({ rawPath, resolvedRoute, onViewNode }: {
   resolvedRoute: ResolvedHop[];
   onViewNode?: (nodeId: string) => void;
 }) {
-  if (rawPath.length === 0) return <span className="text-text-dim text-[11px] font-mono">no path</span>;
+  const { t } = useTranslation();
+  if (rawPath.length === 0) return <span className="text-text-dim text-[11px] font-mono">{t("traces.noPath")}</span>;
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 font-mono text-[13px]">
       {rawPath.map((raw, i) => {
@@ -49,6 +51,7 @@ function TracePacketRow({ pkt, onAnalyze, onViewNode }: {
   onAnalyze: (hash: string) => void;
   onViewNode?: (nodeId: string) => void;
 }) {
+  const { t } = useTranslation();
   // A div, not a button: the hop popover nests clickable node buttons, so the row can't itself be a
   // button. Mirrors TraceTagCard's role/tabIndex/onKeyDown; hop clicks stopPropagation so they don't analyze.
   return (
@@ -65,13 +68,13 @@ function TracePacketRow({ pkt, onAnalyze, onViewNode }: {
       }}
     >
       <div className="flex items-center gap-2 text-[11px] text-text-dim">
-        <Badge variant="default">{pkt.routeTypeName || "Unknown"}</Badge>
+        <Badge variant="default">{pkt.routeTypeName || t("traces.unknown")}</Badge>
         {pkt.scope && <ScopeTag>{pkt.scope}</ScopeTag>}
-        <span className="ml-auto font-mono text-text-dim">analyze →</span>
+        <span className="ml-auto font-mono text-text-dim">{t("traces.analyze")}</span>
       </div>
       <div className="mt-1.5 flex flex-col gap-0.5 font-mono text-[11px]">
-        <Field label="First" value={<Timestamp value={pkt.firstHeardAt} ms />} />
-        <Field label="Last" value={<Timestamp value={pkt.lastHeardAt} ms />} />
+        <Field label={t("traces.first")} value={<Timestamp value={pkt.firstHeardAt} ms />} />
+        <Field label={t("traces.last")} value={<Timestamp value={pkt.lastHeardAt} ms />} />
       </div>
       <div className="mt-1.5">
         <TraceHopChain rawPath={pkt.rawPath} resolvedRoute={pkt.resolvedRoute} onViewNode={onViewNode} />
@@ -91,6 +94,7 @@ interface TraceDetailPanelProps {
 // packets stand in for the packet analyzer's "Observations": a "Packets" section listing each packet,
 // any of which opens the packet analyzer.
 export function TraceDetailPanel({ tag, onClose, onAnalyze, onViewNode }: TraceDetailPanelProps) {
+  const { t } = useTranslation();
   const { data: detail, isLoading } = useQuery({
     queryKey: ["trace", tag],
     queryFn: () => getTraceDetail(tag),
@@ -102,18 +106,18 @@ export function TraceDetailPanel({ tag, onClose, onAnalyze, onViewNode }: TraceD
 
   return (
     <DetailPanel title={tag.toUpperCase()} onClose={onClose} isLoading={isLoading}>
-      <Section title="Packets" first>
+      <Section title={t("traces.packets")} first>
         {packets.length > 0 ? (
           <div className="flex flex-col gap-2">
             <span className="text-text-dim text-[11px] font-mono">
-              {packets.length} packet{packets.length === 1 ? "" : "s"}
+              {t("traces.packetCount", { count: packets.length })}
             </span>
             {packets.map((pkt) => (
               <TracePacketRow key={pkt.packetHash} pkt={pkt} onAnalyze={onAnalyze} onViewNode={onViewNode} />
             ))}
           </div>
         ) : (
-          <span className="text-text-dim text-[11px] font-mono">No packets</span>
+          <span className="text-text-dim text-[11px] font-mono">{t("traces.noPackets")}</span>
         )}
       </Section>
     </DetailPanel>

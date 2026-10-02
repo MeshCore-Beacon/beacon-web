@@ -4,7 +4,7 @@ import { useHasHover } from "../hooks/useMediaQuery";
 
 // Portals to <body> with fixed positioning so overflow parents (the data tables) can't clip it.
 // Hover reveals with a mouse; on touch it toggles on tap and dismisses on an outside tap.
-export function Tooltip({ label, children, className = "" }: { label: ReactNode; children: ReactNode; className?: string }) {
+export function Tooltip({ label, children, className = "", wrap = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean }) {
   const hasHover = useHasHover();
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
@@ -60,6 +60,8 @@ export function Tooltip({ label, children, className = "" }: { label: ReactNode;
       onMouseEnter={hasHover ? show : undefined}
       onMouseLeave={hasHover ? hide : undefined}
       onClick={hasHover ? undefined : toggle}
+      onFocus={hasHover ? show : undefined}
+      onBlur={hasHover ? hide : undefined}
       className={`inline-flex ${className}`}
     >
       {children}
@@ -69,7 +71,7 @@ export function Tooltip({ label, children, className = "" }: { label: ReactNode;
             ref={tipRef}
             role="tooltip"
             style={{ left: pos.left, top: pos.top }}
-            className="fixed z-50 pointer-events-none whitespace-nowrap rounded border border-border bg-bg-raised px-2 py-1 font-mono text-[11px] text-text-normal shadow-lg"
+            className={`fixed z-50 pointer-events-none ${wrap ? "max-w-xs whitespace-normal leading-relaxed" : "whitespace-nowrap"} rounded border border-border bg-bg-raised px-2 py-1 font-mono text-[11px] text-text-normal shadow-lg`}
           >
             {label}
           </span>,

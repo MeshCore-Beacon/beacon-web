@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapLibre } from "./useMapLibre";
@@ -37,6 +38,7 @@ interface MapViewProps {
 }
 
 export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProps) {
+  const { t } = useTranslation();
   // Deep-link params, read once at mount (like the region's ?iata seed). Each setting below is seeded
   // URL -> localStorage -> default; the URL wins for this session but is never written back to
   // localStorage, so a shared link can't clobber the visitor's saved prefs.
@@ -171,7 +173,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const fitPoints = useMemo<[number, number][] | null>(() => {
     const withCoords = (iatas ?? []).filter((i) => i.lat != null && i.lon != null);
     if (withCoords.length === 0) return null;
-    const scope = selectedIatas && selectedIatas.length > 0 ? new Set(selectedIatas) : null;
+    const scope = selectedIatas ? new Set(selectedIatas) : null;
     const chosen = scope ? withCoords.filter((i) => scope.has(i.iata)) : withCoords;
     return chosen.length > 0 ? chosen.map((i) => [i.lon!, i.lat!]) : null;
   }, [iatas, selectedIatas]);
@@ -180,7 +182,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // which resolves to a 204 and is dropped). Only fetched while the layer is toggled on.
   const borderIatas = useMemo(() => {
     const all = (iatas ?? []).map((i) => i.iata);
-    return selectedIatas && selectedIatas.length > 0 ? all.filter((c) => selectedIatas.includes(c)) : all;
+    return selectedIatas ? all.filter((c) => selectedIatas.includes(c)) : all;
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 
@@ -235,7 +237,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       {error && (
         // z-20 so the failure overlay covers the settings card (z-10) instead of it floating on top
         <div className="absolute inset-0 z-20 bg-bg-base">
-          <EmptyState title="Map failed to load" subtitle="Check your connection and reload" />
+          <EmptyState title={t("map.loadFailed")} subtitle={t("map.loadFailedHint")} />
         </div>
       )}
     </div>

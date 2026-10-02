@@ -6,29 +6,31 @@ import i18n from "../../../src/i18n";
 afterEach(() => vi.restoreAllMocks());
 
 describe("translated analytics controls", () => {
-  it("keeps archived analytics ranges without the legacy Observer destination", async () => {
+  it("keeps archived analytics ranges and has no Observer section", async () => {
     const props = { onTabChange: vi.fn(), onRangeChange: vi.fn() };
-    const { rerender } = render(<StatsSubHeader {...props} tab="mesh" range="3d" />);
-    expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+    const { rerender } = render(<StatsSubHeader {...props} tab="mesh" range="7d" />);
+    expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "3d" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "30d" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Observer", exact: true })).not.toBeInTheDocument();
     await act(() => i18n.changeLanguage("fr"));
-    fireEvent.click(screen.getByRole("button", { name: "3 j" }));
-    expect(props.onRangeChange).toHaveBeenCalledWith("3d");
-    rerender(<StatsSubHeader {...props} tab="traffic" range="3d" />);
-    expect(screen.queryByRole("button", { name: "7 j" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "7 j" }));
+    expect(props.onRangeChange).toHaveBeenCalledWith("7d");
+    rerender(<StatsSubHeader {...props} tab="traffic" range="7d" />);
+    expect(screen.queryByRole("button", { name: "3 j" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30 j" })).toBeInTheDocument();
+    rerender(<StatsSubHeader {...props} tab="scopes" range="7d" />);
     expect(screen.getByRole("button", { name: "30 j" })).toBeInTheDocument();
   });
 
   it("keeps section and range identifiers when labels change", async () => {
     const onTabChange = vi.fn(), onRangeChange = vi.fn();
-    render(<StatsSubHeader tab="signal" range="3d" onTabChange={onTabChange} onRangeChange={onRangeChange} />);
-    expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
+    render(<StatsSubHeader tab="signal" range="7d" onTabChange={onTabChange} onRangeChange={onRangeChange} />);
+    expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
     await act(() => i18n.changeLanguage("fr"));
     expect(screen.getByRole("group", { name: "Section des statistiques" })).toBeInTheDocument();
     const range = screen.getByRole("group", { name: "Période" });
-    expect(within(range).getByRole("button", { name: "3 j" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(range).getByRole("button", { name: "7 j" })).toHaveAttribute("aria-pressed", "true");
     expect(onTabChange).not.toHaveBeenCalled();
     expect(onRangeChange).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Chemins et hachages" }));

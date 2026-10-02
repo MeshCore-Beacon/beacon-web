@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TalkersTab } from "../../../src/features/stats/TalkersTab";
 import { getTopAdvertisers, getTopTalkers } from "../../../src/api/client";
 import type { StatsRange, TopAdvertiser, TopTalker } from "../../../src/features/stats/types";
 import type { EChartsOption } from "../../../src/features/stats/echarts-setup";
+import i18n from "../../../src/i18n";
 
 const region = { iatas: ["YVR"], regionKey: "YVR" };
-const advertisers: TopAdvertiser[] = [{ nodeId: "fixture-node", nodeName: "Old advertiser", nodeType: 2, nodeTypeName: "Repeater", iata: "YVR", advertCount: 14, floodAdvertCount: 10, directAdvertCount: 4, lastHeard: 0 }];
+const advertisers: TopAdvertiser[] = [{ nodeId: "fixture-node", publicKey: "aa11bb22cc33dd44", nodeName: "Old advertiser", nodeType: 2, nodeTypeName: "Repeater", iata: "YVR", advertCount: 14, floodAdvertCount: 10, directAdvertCount: 4, lastHeard: 0 }];
 const talkers: TopTalker[] = [{ senderName: "Old sender", messageCount: 42, lastSent: 0 }];
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
 vi.mock("../../../src/api/client", () => ({ getTopAdvertisers: vi.fn(), getTopTalkers: vi.fn() }));
@@ -30,10 +31,10 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function mount() {
+function mount(onViewNode?: (id: string) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
-  const view = (range: StatsRange) => <QueryClientProvider client={client}><TalkersTab range={range} /></QueryClientProvider>;
+  const view = (range: StatsRange) => <QueryClientProvider client={client}><TalkersTab range={range} onViewNode={onViewNode} /></QueryClientProvider>;
   const result = render(view("24h"));
   return { client, rerender: (range: StatsRange) => result.rerender(view(range)) };
 }
@@ -117,4 +118,28 @@ it("distinguishes initial loading from successful empty results", async () => {
   await act(() => { nextAdvertisers.resolve([]); nextTalkers.resolve([]); });
   await screen.findByText("No advertisers");
   expect(screen.getByText("No data")).toBeInTheDocument();
+});
+
+it("opens the clicked advertiser's node", async () => {
+  const onViewNode = vi.fn();
+  mount(onViewNode);
+  fireEvent.click(await screen.findByText("Old advertiser"));
+  expect(onViewNode).toHaveBeenCalledWith("fixture-node");
+});
+
+it("lists a deleted node by public key without opening it", async () => {
+  vi.mocked(getTopAdvertisers).mockResolvedValue([...advertisers, { ...advertisers[0]!, nodeId: null, publicKey: "deadbeef00112233", nodeName: null }]);
+  const onViewNode = vi.fn();
+  mount(onViewNode);
+  fireEvent.click(await screen.findByText("deadbeef"));
+  expect(onViewNode).not.toHaveBeenCalled();
+});
+
+it("renders the leaderboards in French", async () => {
+  await i18n.changeLanguage("fr");
+  mount();
+  await screen.findByText("Old advertiser");
+  expect(screen.getByText("Principaux annonceurs · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Principaux émetteurs · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Nœud")).toBeInTheDocument();
 });

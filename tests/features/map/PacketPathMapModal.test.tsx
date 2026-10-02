@@ -69,7 +69,7 @@ describe("PacketPathMapModal", () => {
   it("does not silently substitute all paths for an unavailable selected path", async () => {
     render(<PacketPathMapModal detail={detail} onClose={() => {}} initialSelectedKey="nope" />);
     expect(await screen.findByTestId("mini-map")).toHaveTextContent("nope");
-    expect(screen.getByRole("status")).toHaveTextContent("selected path cannot be mapped");
+    expect(screen.getByRole("status")).toHaveTextContent("This path can't be mapped");
     fireEvent.click(screen.getByText("All paths"));
     expect(await screen.findByTestId("mini-map")).toHaveTextContent("all");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();

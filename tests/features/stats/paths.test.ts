@@ -44,7 +44,7 @@ describe("path analytics charts", () => {
     const data = (option: typeof before) => (Array.isArray(option.series) ? option.series : [option.series]).map((series) => series?.data);
     expect(data(after)).toEqual(data(before));
     const length = pathLengthOption(fixture.pathLengths, c, fr);
-    expect(length).toMatchObject({ xAxis: { name: "Entrées du chemin" }, series: [{ name: "Réceptions" }], aria: { label: { description: expect.stringContaining("Zéro") } } });
+    expect(length).toMatchObject({ xAxis: { name: "Entrées du chemin" }, series: [{ name: "Observations" }], aria: { label: { description: expect.stringContaining("Zéro") } } });
     expect(data(length)).toEqual(data(pathLengthOption(fixture.pathLengths, c, en)));
   });
 });

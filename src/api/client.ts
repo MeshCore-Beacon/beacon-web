@@ -5,7 +5,7 @@ import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
 import type {
-  StatsOverview,
+  StatsSeries,
   SignalStats,
   PathStats,
   ObserverComparison,
@@ -71,11 +71,11 @@ async function request<T>(path: string, params?: Record<string, string | number 
 // endpoint functions
 
 export function getObserverComparison(
-  iatas: string[] | undefined,
+  iatas: StatsRegion,
   params: { observerA: string; observerB: string; since: number; until: number },
   signal?: AbortSignal,
 ): Promise<ObserverComparison> {
-  return request("/stats/observer-comparison", { ...params, iatas: iatasParam(iatas) }, signal);
+  return request("/stats/observer-comparison", { ...params, ...statsRegionParams(iatas) }, signal);
 }
 
 // The region filter travels as the comma-separated `iatas` param; undefined/empty means all regions.
@@ -83,10 +83,22 @@ function iatasParam(iatas?: string[]): string | undefined {
   return iatas && iatas.length > 0 ? iatas.join(",") : undefined;
 }
 
+// An empty list is a region with no IATAs. These endpoints would answer it with every IATA, so skip them.
+const noIatas = (iatas?: string[]) => iatas?.length === 0;
+const emptyPage = <T>(): CursorPage<T> => ({ items: [], nextCursor: null, hasMore: false });
+
+// Stats endpoints also take a region slug, which the server answers with zeros when it has no IATAs.
+export type StatsRegion = string[] | { region: string } | undefined;
+
+function statsRegionParams(r: StatsRegion): { iatas?: string; region?: string } {
+  return Array.isArray(r) || r === undefined ? { iatas: iatasParam(r) } : { region: r.region };
+}
+
 export function getPackets(
   iatas: string[] | undefined,
   params?: { cursor?: number; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[] },
 ): Promise<CursorPage<PacketSummary>> {
+  if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/packets", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
@@ -126,7 +138,8 @@ export function getRegion(regionId: number): Promise<Region> {
 }
 
 // Preserve the server cursor rather than deriving it from the displayed channel order.
-export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number | string }): Promise<ChannelPage> {
+export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?: number | string; keyKnown?: boolean }): Promise<ChannelPage> {
+  if (noIatas(params?.iatas)) return Promise.resolve(emptyPage());
   const iatas = params?.iatas ?? [];
   return request("/channels", {
     iata: iatas.length === 1 ? iatas[0] : undefined,
@@ -134,6 +147,7 @@ export function getChannels(params?: { iatas?: string[]; limit?: number; cursor?
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     cursor: typeof params?.cursor === "number" ? params.cursor : undefined,
     pageCursor: typeof params?.cursor === "string" ? params.cursor : undefined,
+    keyKnown: params?.keyKnown === undefined ? undefined : String(params.keyKnown),
   });
 }
 
@@ -144,6 +158,7 @@ export async function getChannelMessagesPage(
   channelId: number,
   params?: { iatas?: string[]; cursor?: number; limit?: number; scope?: string },
 ): Promise<CursorPage<ChannelMessage>> {
+  if (noIatas(params?.iatas)) return emptyPage();
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
   const page = await request<{ items: ChannelMessage[]; nextCursor?: number | null; hasMore?: boolean }>(`/channels/${channelId}/messages`, {
     iatas: iatasParam(params?.iatas),
@@ -159,10 +174,11 @@ export function getBrokers(): Promise<BrokerStatus[]> {
   return request("/brokers");
 }
 
-// The authoritative list of configured transport scope names (e.g. "#bc", "#west"), used to populate
-// the scope filter dropdowns. The no-param /scopes endpoint returns the names directly.
-export function getScopes(): Promise<string[]> {
-  return request("/scopes");
+// Transport scope names (e.g. "#bc", "#west") for the scope filter dropdowns. With IATAs the server
+// returns only that region's scopes (manual config + its MeshMapper catalogue); bare, every stored name.
+export function getScopes(iatas?: string[]): Promise<string[]> {
+  if (noIatas(iatas)) return Promise.resolve([]);
+  return request("/scopes", { iatas: iatasParam(iatas) });
 }
 
 // Wrap a bare-array endpoint into a CursorPage so it can drive the cursor-paginated hooks. A page that
@@ -216,6 +232,7 @@ export function getTraces(
   iatas: string[] | undefined,
   params?: { scope?: string; type?: TraceType; since?: number; until?: number; cursor?: number; limit?: number },
 ): Promise<TraceTagSummary[]> {
+  if (noIatas(iatas)) return Promise.resolve([]);
   return request("/traces", {
     iatas: iatasParam(iatas),
     scope: params?.scope,
@@ -233,7 +250,7 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
 
 export async function getObserver(observerId: string): Promise<Observer> {
   const observer = await request<Observer>(`/observers/${observerId}`);
-  // Older servers marshal the stored JSON byte slice as base64 instead of an object.
+  // Servers before json.RawMessage (and cache entries written by them) send the stored JSON as base64.
   let metadata: unknown = observer.statusMetadata;
   if (typeof metadata === "string") {
     try { metadata = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(metadata), c => c.charCodeAt(0)))); }
@@ -268,6 +285,7 @@ export function getNodesPage(
   },
   signal?: AbortSignal,
 ): Promise<CursorPage<NodeSummary>> {
+  if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/nodes", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
@@ -286,6 +304,7 @@ export function getObserversPage(
   iatas: string[] | undefined,
   params?: { cursor?: number; limit?: number; type?: string; broker?: string; status?: string; name?: string },
 ): Promise<CursorPage<ObserverSummary>> {
+  if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/observers", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
@@ -318,60 +337,60 @@ export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {
 
 // stats endpoints
 
-export function getStatsOverview(iatas?: string[]): Promise<StatsOverview> {
-  return request("/stats/overview", { iatas: iatasParam(iatas) });
+export function getStatsSeries(since: number, until: number, iatas?: StatsRegion, signal?: AbortSignal): Promise<StatsSeries> {
+  return request("/stats/series", { since, until, ...statsRegionParams(iatas) }, signal);
 }
 
-export function getStatsObservations(iatas?: string[], since?: number, signal?: AbortSignal): Promise<ObservationPoint[]> {
-  return request("/stats/observations", { iatas: iatasParam(iatas), since }, signal);
+export function getStatsObservations(iatas?: StatsRegion, since?: number, signal?: AbortSignal): Promise<ObservationPoint[]> {
+  return request("/stats/observations", { ...statsRegionParams(iatas), since }, signal);
 }
 
-export function getSignalStats(since: number, until: number, iatas?: string[], signal?: AbortSignal): Promise<SignalStats> {
-  return request("/stats/signal", { since, until, iatas: iatasParam(iatas) }, signal);
+export function getSignalStats(since: number, until: number, iatas?: StatsRegion, signal?: AbortSignal): Promise<SignalStats> {
+  return request("/stats/signal", { since, until, ...statsRegionParams(iatas) }, signal);
 }
 
-export function getPathStats(since: number, until: number, iatas?: string[], signal?: AbortSignal): Promise<PathStats> {
-  return request("/stats/paths", { since, until, iatas: iatasParam(iatas) }, signal);
+export function getPathStats(since: number, until: number, iatas?: StatsRegion, signal?: AbortSignal): Promise<PathStats> {
+  return request("/stats/paths", { since, until, ...statsRegionParams(iatas) }, signal);
 }
 
-export function getPayloadBreakdown(iatas?: string[], since?: number): Promise<PayloadBreakdownItem[]> {
-  return request("/stats/payload-breakdown", { iatas: iatasParam(iatas), since });
+export function getPayloadBreakdown(iatas?: StatsRegion, since?: number): Promise<PayloadBreakdownItem[]> {
+  return request("/stats/payload-breakdown", { ...statsRegionParams(iatas), since });
 }
 
-export function getTopNodes(iatas?: string[], limit = 10): Promise<TopNode[]> {
-  return request("/stats/top-nodes", { iatas: iatasParam(iatas), limit });
+export function getTopNodes(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopNode[]> {
+  return request("/stats/top-nodes", { ...statsRegionParams(iatas), since, limit });
 }
 
-export function getTopObservers(iatas?: string[], since?: number, limit = 10): Promise<TopObserver[]> {
-  return request("/stats/top-observers", { iatas: iatasParam(iatas), since, limit });
+export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopObserver[]> {
+  return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit });
 }
 
-export function getTopAdvertisers(iatas?: string[], since?: number, limit = 10): Promise<TopAdvertiser[]> {
-  return request("/stats/top-advertisers", { iatas: iatasParam(iatas), since, limit });
+export function getTopAdvertisers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopAdvertiser[]> {
+  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, limit });
 }
 
-export function getTopTalkers(iatas?: string[], since?: number, limit = 10): Promise<TopTalker[]> {
-  return request("/stats/top-talkers", { iatas: iatasParam(iatas), since, limit });
+export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopTalker[]> {
+  return request("/stats/top-talkers", { ...statsRegionParams(iatas), since, limit });
 }
 
-export function getRadioPresets(iatas?: string[]): Promise<RadioPreset[]> {
-  return request("/stats/radio-presets", { iatas: iatasParam(iatas) });
+export function getRadioPresets(iatas?: StatsRegion): Promise<RadioPreset[]> {
+  return request("/stats/radio-presets", { ...statsRegionParams(iatas) });
 }
 
-export function getStatsNodeTypes(iatas?: string[]): Promise<NodeTypeCount[]> {
-  return request("/stats/node-types", { iatas: iatasParam(iatas) });
+export function getStatsNodeTypes(iatas?: StatsRegion): Promise<NodeTypeCount[]> {
+  return request("/stats/node-types", { ...statsRegionParams(iatas) });
 }
 
 // Repeaters/room servers whose clock has drifted past the server threshold, worst-first. Not
 // time-windowed and top-N only (no cursor), so callers pass a generous limit and page client-side.
-export function getClockDrift(iatas?: string[], limit = 100): Promise<ClockDriftEntry[]> {
-  return request("/stats/clock-drift", { iatas: iatasParam(iatas), limit });
+export function getClockDrift(iatas?: StatsRegion, limit = 100): Promise<ClockDriftEntry[]> {
+  return request("/stats/clock-drift", { ...statsRegionParams(iatas), limit });
 }
 
 // renamed from getScopes to avoid colliding with the /scopes name list; this is the /stats/scopes
 // aggregate (packet/observer/node counts), filtered by the selected IATAs.
-export function getStatsScopes(iatas?: string[], signal?: AbortSignal): Promise<ScopeStats[]> {
-  return request("/stats/scopes", { iatas: iatasParam(iatas) }, signal);
+export function getStatsScopes(iatas?: StatsRegion, since?: number, signal?: AbortSignal): Promise<ScopeStats[]> {
+  return request("/stats/scopes", { ...statsRegionParams(iatas), since }, signal);
 }
 
 export function getObserverTelemetry(

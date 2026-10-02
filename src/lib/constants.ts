@@ -22,7 +22,7 @@ export const RATE_LIMIT_DEFAULT_MS = 10_000;
 export const RATE_LIMIT_MAX_MS = 300_000;
 
 // app tab names, in display order; the ?tab URL param is validated against this list
-export const TABS = ["Observers", "MyAtlas", "Packets", "Channels", "Map", "Nodes", "Routes", "Traces", "Analytics"] as const;
+export const TABS = ["MyAtlas", "Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Analytics"] as const;
 
 // Per-deployment .env config (VITE_* prefix is required so the build can expose it to the browser;
 // the Docker entrypoint sed-substitutes each sentinel at container start — see .build/).
@@ -69,6 +69,9 @@ export const ENABLED_THEME_IDS = new Set(
 // "||" (not "??") so an empty sed substitution falls back to the default too.
 export const APP_NAME = import.meta.env.VITE_APP_NAME || "BEACON";
 export const GITHUB_URL = "https://github.com/MeshCore-Beacon";
+
+// Notice shown above the header on every page; unset = no banner.
+export const BANNER = import.meta.env.VITE_BANNER ?? "";
 
 // Skip the once-per-session load splash entirely (e.g. an embedded/branded deployment).
 export const SKIP_SPLASH = parseEnvBool(import.meta.env.VITE_SKIP_SPLASH);

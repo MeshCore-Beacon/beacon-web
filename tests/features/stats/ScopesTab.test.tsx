@@ -14,20 +14,19 @@ beforeEach(() => { vi.clearAllMocks(); query.data = originalData; query.isError 
 
 it("translates scope counts and membership guidance without changing scope names or values", async () => {
   await act(() => i18n.changeLanguage("fr"));
-  render(<ScopesTab />);
-  expect(screen.getByRole("heading", { name: "Scopes de transport" })).toBeInTheDocument();
+  render(<ScopesTab range="24h" />);
+  expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   const table = screen.getByRole("table", { name: "Effectifs des scopes" });
   expect(within(table).getByRole("row", { name: /#west.*3.*2.*2/ })).toBeInTheDocument();
   expect(within(table).getByRole("row", { name: /#east.*2.*2.*3/ })).toBeInTheDocument();
-  expect(screen.getByText("Appartenances d’observateurs")).toBeInTheDocument();
-  expect(screen.getByText(/plusieurs scopes/)).toHaveTextContent("sans période sélectionnée");
+  expect(screen.getByText("Observateurs par scope")).toBeInTheDocument();
+  expect(screen.getByText(/plusieurs scopes/)).toHaveTextContent("couvrent la période sélectionnée");
   expect(screen.getByText("2 sur 2 scopes")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Actualiser les scopes" }));
-  expect(query.refetch).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("button", { name: /Actualiser/ })).not.toBeInTheDocument();
 });
 
 it("keeps the current search and chart values when changing language", async () => {
-  render(<ScopesTab />);
+  render(<ScopesTab range="24h" />);
   fireEvent.change(screen.getByRole("searchbox", { name: "Find a scope" }), { target: { value: " EAST " } });
   const charts = () => vi.mocked(EChart).mock.calls.slice(-3).map(([{ option }]) => option);
   const bars = (chart: ReturnType<typeof charts>[number]) => (Array.isArray(chart.series) ? chart.series : [chart.series]).map((series) => series?.data);
@@ -48,7 +47,7 @@ it("keeps the current search and chart values when changing language", async () 
 it.each(["isPending", "isPlaceholderData", "isError"] as const)("translates %s and hides stale regional scopes", async (state) => {
   query[state] = true;
   await act(() => i18n.changeLanguage("fr"));
-  render(<ScopesTab />);
+  render(<ScopesTab range="24h" />);
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
   expect(screen.queryAllByTestId("chart")).toHaveLength(0);
   expect(screen.queryByText("#west")).not.toBeInTheDocument();
@@ -60,39 +59,39 @@ it.each(["isPending", "isPlaceholderData", "isError"] as const)("translates %s a
 
 it("distinguishes a translated empty dataset from a search with no match", async () => {
   await act(() => i18n.changeLanguage("fr"));
-  const { rerender } = render(<ScopesTab />);
+  const { rerender } = render(<ScopesTab range="24h" />);
   const search = screen.getByRole("searchbox", { name: "Rechercher un scope" });
   fireEvent.change(search, { target: { value: "#absent" } });
   expect(screen.getByText("Aucun scope ne correspond à cette recherche.")).toBeInTheDocument();
   expect(screen.getByText("0 sur 2 scopes")).toBeInTheDocument();
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
   fireEvent.change(search, { target: { value: "" } });
-  query.data = []; rerender(<ScopesTab />);
+  query.data = []; rerender(<ScopesTab range="24h" />);
   expect(screen.getByText("Aucune donnée de scope disponible.")).toBeInTheDocument();
   expect(screen.getAllByText("Aucune donnée")).toHaveLength(3);
   expect(screen.queryAllByTestId("chart")).toHaveLength(0);
 });
 
 it("shows exact scope counts, keeps membership semantics explicit and filters the whole view", () => {
-  render(<ScopesTab />);
+  render(<ScopesTab range="24h" />);
   const table = screen.getByRole("table", { name: "Scope counts" });
   expect(within(table).getByRole("row", { name: /#west.*3.*2.*2/ })).toBeInTheDocument();
-  expect(screen.getByText("Observer memberships")).toBeInTheDocument();
-  expect(screen.getByText(/An observer can appear/)).toBeInTheDocument();
-  expect(screen.getByText(/Retained data/)).toBeInTheDocument();
+  expect(screen.getByText("Observers by scope")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /an observer can belong/ })).toBeInTheDocument();
+  expect(screen.queryByText(/an observer can belong/, { selector: "p" })).not.toBeInTheDocument();
+  expect(screen.getByText(/Scope activity/)).toBeInTheDocument();
   fireEvent.change(screen.getByRole("searchbox", { name: "Find a scope" }), { target: { value: "WEST" } });
   expect(screen.queryByText("#east")).not.toBeInTheDocument();
   expect(screen.getByText(/1 of 2 scopes/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Refresh scopes" }));
-  expect(query.refetch).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("button", { name: /Refresh/ })).not.toBeInTheDocument();
 });
 
 it("hides stale values while a region change is pending and on errors", () => {
   query.isPlaceholderData = true;
-  const { rerender } = render(<ScopesTab />);
+  const { rerender } = render(<ScopesTab range="24h" />);
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
   expect(screen.queryAllByTestId("chart")).toHaveLength(0);
-  query.isPlaceholderData = false; query.isError = true; rerender(<ScopesTab />);
+  query.isPlaceholderData = false; query.isError = true; rerender(<ScopesTab range="24h" />);
   expect(screen.getByRole("alert")).toHaveTextContent("Could not load scopes");
   expect(screen.queryByText("#west")).not.toBeInTheDocument();
 });

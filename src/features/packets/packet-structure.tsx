@@ -1,10 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PacketDetail, Observation } from "../../types/api";
 import { RouteType, PayloadType } from "../../types/enums";
-import { formatSnr, snrLevel, formatPropagation, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
-import { Timestamp } from "../../components/Timestamp";
-import { IataChip } from "../../components/IataChip";
 
 // Advert device-role (ADV_TYPE) low-nibble names, shared with the DISCOVER payload renderers.
 export const DEVICE_ROLE_NAMES: Record<number, string> = {
@@ -23,15 +21,21 @@ export interface ByteRange {
   end: number;
 }
 
+// A transport code as its two on-air bytes (little-endian uint16).
+export function transportCodeHex(code: number): string {
+  return [code & 0xff, (code >> 8) & 0xff].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 // Reconstruct the full on-air frame for one observer:
-//   header.raw + pathLength.raw + pathBytes + rawPayload
+//   header.raw + transport codes + pathLength.raw + pathBytes + rawPayload
 // Header/payload are packet-scope (observer-independent); the path is per-observer.
 export function buildObservationFrame(detail: PacketDetail, obs: Observation | null): string {
   // Header and path-length are each one on-air byte that computeFieldRanges always reserves, so force
   // every value to a full 2-char byte: pad a stray nibble, and coerce a missing/empty value to "00"
   // rather than dropping a byte and shifting every field after it out of alignment.
   const pad = (b?: string) => (!b ? "00" : b.length === 1 ? "0" + b : b);
-  const header = pad(detail.header.raw);
+  const tc = detail.transportCodes;
+  const header = pad(detail.header.raw) + (tc ? transportCodeHex(tc.regionCode) + transportCodeHex(tc.subRegionCode) : "");
   const payload = detail.rawPayload ?? "";
   if (!obs) return header + payload;
   const pathLen = pad(obs.pathLength.raw);
@@ -276,6 +280,7 @@ export function ColoredHexDump({
 }
 
 export function HeaderBitBreakdown({ headerHex }: { headerHex: string }) {
+  const { t } = useTranslation();
   const value = parseInt(headerHex, 16);
   if (Number.isNaN(value)) return null;
 
@@ -290,17 +295,17 @@ export function HeaderBitBreakdown({ headerHex }: { headerHex: string }) {
         <span className="text-text-dim leading-none pt-px">0x{headerHex.toUpperCase()} = [</span>
         <span className="flex flex-col items-center leading-none">
           <span className="text-secondary">{ver}</span>
-          <span className="text-secondary text-[11px] mt-0.5">ver</span>
+          <span className="text-secondary text-[11px] mt-0.5">{t("packetAnalyzer.bits.ver")}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">|</span>
         <span className="flex flex-col items-center leading-none">
           <span className="text-warn">{typ}</span>
-          <span className="text-warn text-[11px] mt-0.5">type</span>
+          <span className="text-warn text-[11px] mt-0.5">{t("packetAnalyzer.bits.type")}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">|</span>
         <span className="flex flex-col items-center leading-none">
           <span className="text-green">{route}</span>
-          <span className="text-green text-[11px] mt-0.5">route</span>
+          <span className="text-green text-[11px] mt-0.5">{t("packetAnalyzer.bits.route")}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">]</span>
       </div>
@@ -309,6 +314,7 @@ export function HeaderBitBreakdown({ headerHex }: { headerHex: string }) {
 }
 
 export function PathLengthBitBreakdown({ pathLengthByte }: { pathLengthByte: number }) {
+  const { t } = useTranslation();
   if (Number.isNaN(pathLengthByte)) return null;
   const bits = formatBinary(pathLengthByte);
   const hashBits = bits.slice(0, 2);
@@ -323,12 +329,12 @@ export function PathLengthBitBreakdown({ pathLengthByte }: { pathLengthByte: num
         <span className="text-text-dim leading-none pt-px">0x{pathLengthByte.toString(16).toUpperCase().padStart(2, "0")} = [</span>
         <span className="flex flex-col items-center leading-none">
           <span className="text-secondary">{hashBits}</span>
-          <span className="text-secondary text-[11px] mt-0.5">hash={hashSize + 1}B</span>
+          <span className="text-secondary text-[11px] mt-0.5">{t("packetAnalyzer.bits.hash", { size: hashSize + 1 })}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">|</span>
         <span className="flex flex-col items-center leading-none">
           <span className="text-green">{hopBits}</span>
-          <span className="text-green text-[11px] mt-0.5">hops={hopCount}</span>
+          <span className="text-green text-[11px] mt-0.5">{t("packetAnalyzer.bits.hops", { value: hopCount })}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">]</span>
       </div>
@@ -337,6 +343,7 @@ export function PathLengthBitBreakdown({ pathLengthByte }: { pathLengthByte: num
 }
 
 export function AdvertFlagsBitBreakdown({ flagsByte }: { flagsByte: number }) {
+  const { t } = useTranslation();
   const bits = formatBinary(flagsByte);
   const roleBits = bits.slice(4, 8);
   const loc = bits[3];
@@ -358,7 +365,7 @@ export function AdvertFlagsBitBreakdown({ flagsByte }: { flagsByte: number }) {
         <span className="text-text-dim leading-none pt-px">|</span>
         <span className="flex flex-col items-center leading-none">
           <span className={loc === "1" ? "text-green" : "text-text-dim"}>{loc}</span>
-          <span className={`text-[11px] mt-0.5 ${loc === "1" ? "text-green" : "text-text-dim"}`}>loc</span>
+          <span className={`text-[11px] mt-0.5 ${loc === "1" ? "text-green" : "text-text-dim"}`}>{t("packetAnalyzer.bits.loc")}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">|</span>
         <span className="flex flex-col items-center leading-none">
@@ -373,7 +380,7 @@ export function AdvertFlagsBitBreakdown({ flagsByte }: { flagsByte: number }) {
         <span className="text-text-dim leading-none pt-px">|</span>
         <span className="flex flex-col items-center leading-none">
           <span className={nm === "1" ? "text-green" : "text-text-dim"}>{nm}</span>
-          <span className={`text-[11px] mt-0.5 ${nm === "1" ? "text-green" : "text-text-dim"}`}>name</span>
+          <span className={`text-[11px] mt-0.5 ${nm === "1" ? "text-green" : "text-text-dim"}`}>{t("packetAnalyzer.bits.name")}</span>
         </span>
         <span className="text-text-dim leading-none pt-px">]</span>
       </div>
@@ -393,39 +400,6 @@ export function ColorAccentField({
   return (
     <div className={`pl-2 -mx-1 py-0.5 -my-0.5 border-l-2 ${FIELD_COLORS[field].accent} ${className ?? ""}`}>
       {children}
-    </div>
-  );
-}
-
-export function ObservationDetail({ observation }: { observation: Observation }) {
-  const level = snrLevel(observation.snr);
-  const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
-
-  return (
-    <div className="flex flex-col gap-1.5 font-mono text-[13px]">
-      <div className="flex items-center gap-2">
-        <span className="text-text-normal font-semibold">{observation.observerName ?? observation.observerId.slice(0, 8)}</span>
-        <IataChip>{observation.iata}</IataChip>
-        <Timestamp value={observation.heardAt} className="text-text-dim ml-auto text-[13px]" />
-      </div>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[13px]">
-        <span><span className="text-text-dim">SNR </span><span className={sigClass}>{formatSnr(observation.snr)}</span></span>
-        <span><span className="text-text-dim">RSSI </span><span className={sigClass}>{observation.rssi ?? "—"}</span></span>
-        <span><span className="text-text-dim">Prop </span><span className="text-text-normal">{formatPropagation(observation.propagationTimeMs)}</span></span>
-        <span><span className="text-text-dim">Hops </span><span className="text-text-normal">{observation.pathLength.hopCount}</span></span>
-      </div>
-
-      {observation.radio && (
-        <div className="flex items-center gap-1.5 text-[13px] text-text-muted">
-          <span className="text-text-dim text-xs font-medium uppercase tracking-wider mr-0.5">Radio</span>
-          {observation.radio.freqMhz != null && <span>{observation.radio.freqMhz} MHz</span>}
-          {observation.radio.spreadFactor != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>SF{observation.radio.spreadFactor}</span></>}
-          {observation.radio.bandwidthKhz != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>{observation.radio.bandwidthKhz} kHz</span></>}
-          {observation.radio.codingRate != null && <><span className="text-[6px] text-border" aria-hidden>·</span><span>CR 4/{observation.radio.codingRate}</span></>}
-        </div>
-      )}
-
     </div>
   );
 }

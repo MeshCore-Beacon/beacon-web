@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { PacketExpansion } from "../../../src/features/packets/PacketExpansion";
 import type { PacketSummary, Observation, PacketDetail } from "../../../src/types/api";
 import { PayloadType, RouteType } from "../../../src/types/enums";
+import i18n from "../../../src/i18n";
 
 const usePacketDetail = vi.fn();
 vi.mock("../../../src/features/packets/usePacketDetail", () => ({
@@ -21,7 +22,7 @@ const obs = (id: number, over: Partial<Observation> = {}): Observation => ({
   sourceBroker: "b1", resolvedPath: [], ...over,
 });
 
-// minimal header so buildPacketPaths(data) (View path on map's hasPath check) doesn't crash on a
+// minimal header so buildPacketPaths(data) (Map all paths's hasPath check) doesn't crash on a
 // partial detail fixture — any non-TRACE payload type does
 const header = () => ({ raw: "12", routeType: RouteType.FLOOD, routeTypeName: "FLOOD", payloadType: PayloadType.ADVERT, payloadTypeName: "ADVERT", payloadVersion: 1 });
 
@@ -158,28 +159,28 @@ describe("PacketExpansion", () => {
     expect(onOpenAnalyzer).toHaveBeenCalledTimes(1);
   });
 
-  it("disables View path on map while loading", () => {
+  it("disables Map all paths while loading", () => {
     usePacketDetail.mockReturnValue({ isLoading: true });
     render(<PacketExpansion {...props} />);
-    expect(screen.getByRole("button", { name: "View path on map" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Map all paths" })).toBeDisabled();
   });
 
-  it("disables View path on map on error", () => {
+  it("disables Map all paths on error", () => {
     usePacketDetail.mockReturnValue({ isError: true, refetch: vi.fn() });
     render(<PacketExpansion {...props} />);
-    expect(screen.getByRole("button", { name: "View path on map" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Map all paths" })).toBeDisabled();
   });
 
-  it("enables View path on map once the fetch resolves with a drawable path", () => {
+  it("enables Map all paths once the fetch resolves with a drawable path", () => {
     usePacketDetail.mockReturnValue({ data: detailWithPath() });
     render(<PacketExpansion {...props} />);
-    expect(screen.getByRole("button", { name: "View path on map" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Map all paths" })).not.toBeDisabled();
   });
 
-  it("disables View path on map when the loaded detail has no resolvable path", () => {
+  it("disables Map all paths when the loaded detail has no resolvable path", () => {
     usePacketDetail.mockReturnValue({ data: { packetHash: "AA11", header: header(), observations: [obs(1)] } });
     render(<PacketExpansion {...props} />);
-    const viewPathBtn = screen.getByRole("button", { name: "View path on map" });
+    const viewPathBtn = screen.getByRole("button", { name: "Map all paths" });
     expect(viewPathBtn).toBeDisabled();
     expect(viewPathBtn).toHaveAttribute("title", "No resolved path to map");
   });
@@ -188,7 +189,18 @@ describe("PacketExpansion", () => {
     const onViewPath = vi.fn();
     usePacketDetail.mockReturnValue({ data: detailWithPath() });
     render(<PacketExpansion {...props} onViewPath={onViewPath} />);
-    fireEvent.click(screen.getByRole("button", { name: "View path on map" }));
+    fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
     expect(onViewPath).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the timing strip and error state in French", async () => {
+    await i18n.changeLanguage("fr");
+    usePacketDetail.mockReturnValue({ isError: true, refetch: vi.fn() });
+    render(<PacketExpansion {...props} />);
+    expect(screen.getByText("Impossible de charger les observations")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Réessayer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Carte de tous les trajets" })).toBeInTheDocument();
+    expect(screen.getByText(/^premier/)).toBeInTheDocument();
+    expect(screen.getByText("n/d")).toBeInTheDocument();
   });
 });

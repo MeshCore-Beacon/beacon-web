@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { PacketTableHeader } from "../../../src/features/packets/PacketTableHeader";
+import i18n from "../../../src/i18n";
 import { GRID_TEMPLATE } from "../../../src/features/packets/packet-grid";
 
 describe("PacketTableHeader", () => {
   it("declares every column heading", () => {
     render(<PacketTableHeader />);
-    for (const h of ["Hash", "Type", "Route", "Obs", "Hops", "Hash Size", "Summary / Src → Dst", "IATA", "Age"]) {
+    for (const h of ["Hash", "Type", "Route", "Obs", "Hops", "Hash Size", "Summary / Src → Dst", "Area", "Age"]) {
       expect(screen.getByText(h)).toBeInTheDocument();
     }
   });
@@ -46,5 +47,16 @@ describe("PacketTableHeader", () => {
     const first = container.firstElementChild?.children[0];
     expect(first).toHaveAttribute("aria-hidden");
     expect(first?.textContent).toBe("");
+  });
+});
+
+describe("PacketTableHeader in French", () => {
+  it("translates the column headings", async () => {
+    await i18n.changeLanguage("fr");
+    render(<PacketTableHeader />);
+    for (const h of ["Routage", "Sauts", "Taille du hash", "Zone", "Âge"]) {
+      expect(screen.getByText(h)).toBeInTheDocument();
+    }
+    expect(screen.getByTitle("Résumé et source / destination")).toHaveTextContent("Résumé / Src → Dst");
   });
 });

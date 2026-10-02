@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { PacketTableRow } from "../../../src/features/packets/PacketTableRow";
+import i18n from "../../../src/i18n";
 import type { LatestObserver, PacketSummary, ResolvedHop } from "../../../src/types/api";
 
 const pkt = (over: Partial<PacketSummary> = {}): PacketSummary => ({
@@ -123,12 +124,21 @@ describe("PacketTableRow", () => {
     render(<PacketTableRow packet={pkt({ routeTypeName: "" })} expanded={false} onToggle={() => {}} />);
     expect(screen.getByText("Unknown")).toBeInTheDocument();
   });
+
+  it("keeps long route labels inside their dedicated track beside a scope", () => {
+    render(<PacketTableRow packet={pkt({ routeTypeName: "TRANSPORT_FLOOD", scope: "#ykf" })} expanded={false} onToggle={() => {}} />);
+    const route = screen.getByText("TRANSPORT_FLOOD");
+    expect(route).toHaveClass("truncate");
+    expect(route.parentElement).toHaveClass("min-w-0");
+    expect(screen.getByText("#ykf")).toBeInTheDocument();
+  });
 });
 
-it("keeps long route labels inside their dedicated track beside a scope", () => {
-  render(<PacketTableRow packet={pkt({ routeTypeName: "TRANSPORT_FLOOD", scope: "#ykf" })} expanded={false} onToggle={() => {}} />);
-  const route = screen.getByText("TRANSPORT_FLOOD");
-  expect(route).toHaveClass("truncate");
-  expect(route.parentElement).toHaveClass("min-w-0");
-  expect(screen.getByText("#ykf")).toBeInTheDocument();
+describe("PacketTableRow in French", () => {
+  it("translates the unknown route and n/a fallbacks", async () => {
+    await i18n.changeLanguage("fr");
+    render(<PacketTableRow packet={pkt({ routeTypeName: "" })} expanded={false} onToggle={() => {}} />);
+    expect(screen.getByText("Inconnu")).toBeInTheDocument();
+    expect(screen.queryByText("n/a")).not.toBeInTheDocument();
+  });
 });

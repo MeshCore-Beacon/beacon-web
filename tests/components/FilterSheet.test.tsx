@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { FilterSheet, FiltersButton } from "../../src/components/FilterSheet";
+import i18n from "../../src/i18n";
 
 describe("FiltersButton", () => {
   it("shows the active count only when there are active filters", () => {
@@ -70,5 +71,18 @@ describe("FilterSheet", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Filters" });
     expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
+});
+
+describe("FilterSheet in French", () => {
+  it("translates the trigger, title and actions", async () => {
+    await i18n.changeLanguage("fr");
+    render(<FiltersButton activeCount={0} onClick={() => {}} />);
+    expect(screen.getByRole("button", { name: "Filtres" })).toBeInTheDocument();
+    render(<FilterSheet onClose={() => {}} onClear={() => {}}><div /></FilterSheet>);
+    expect(screen.getByRole("dialog", { name: "Filtres" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fermer les filtres" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tout effacer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Terminé" })).toBeInTheDocument();
   });
 });

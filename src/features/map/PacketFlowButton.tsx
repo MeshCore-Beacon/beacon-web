@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface PacketFlowButtonProps {
   active: boolean;
   onToggle: () => void;
@@ -7,13 +9,15 @@ interface PacketFlowButtonProps {
 // border either way so it reads as a control, not decoration. Bottom-center, clear of the corner
 // map controls. Labelled "Live Map" to distinguish it from the header's LIVE websocket badge.
 export function PacketFlowButton({ active, onToggle }: PacketFlowButtonProps) {
+  const { t } = useTranslation();
+  const label = active ? t("map.stopFlow") : t("map.playFlow");
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-pressed={active}
-      aria-label={active ? "Stop live map packet flow" : "Play live map packet flow"}
-      title={active ? "Stop live map packet flow" : "Play live map packet flow"}
+      aria-label={label}
+      title={label}
       className={`absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-lg font-mono text-[11px] uppercase tracking-wider transition-colors cursor-pointer ${
         active
           ? "bg-primary/15 border-primary text-text-bright"
@@ -30,7 +34,7 @@ export function PacketFlowButton({ active, onToggle }: PacketFlowButtonProps) {
           <path d="M2 1.5v7l6-3.5z" />
         </svg>
       )}
-      Live Map
+      {t("map.liveMap")}
     </button>
   );
 }

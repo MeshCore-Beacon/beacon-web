@@ -1,14 +1,17 @@
+import { useTranslation } from "react-i18next";
+
 // Shared dismiss control: a bold X with a hover background. Larger tap target on mobile, compact at md+.
-export function CloseButton({ onClose, label = "Close", className }: {
+export function CloseButton({ onClose, label, className }: {
   onClose: () => void;
   label?: string;
   className?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClose}
-      aria-label={label}
+      aria-label={label ?? t("common.close")}
       className={`flex items-center justify-center w-9 h-9 md:w-7 md:h-7 rounded text-text-muted hover:text-text-bright hover:bg-text-normal/5 cursor-pointer transition-colors ${className ?? ""}`}
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

@@ -52,23 +52,29 @@ beforeEach(() => {
 });
 
 describe("channel scope evidence", () => {
-  it("distinguishes matched, unscoped, unresolved and legacy metadata, with keyboard packet inspection", async () => {
+  it("chips matched and unresolved scopes, leaves the unscoped default and legacy rows unlabelled, and offers packet inspection", async () => {
     const inspect = vi.fn();
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" onAnalyze={inspect} />);
     expect(await screen.findByText("#yow")).toBeInTheDocument();
-    expect(screen.getByText("No transport scope")).toBeInTheDocument();
-    expect(screen.getByText("Unresolved scope")).toBeInTheDocument();
-    expect(screen.getByText("Scope unavailable")).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole("button", { name: "Inspect packet from Fixture" })[0]!);
+    expect(screen.getByText("Unknown scope")).toBeInTheDocument();
+    expect(screen.queryByText("No transport scope")).not.toBeInTheDocument();
+    expect(screen.queryByText("Scope unavailable")).not.toBeInTheDocument();
+    const view = screen.getAllByRole("button", { name: "Inspect packet from Fixture" })[0]!;
+    expect(view).toHaveTextContent("View packet");
+    expect(view).not.toHaveClass("underline");
+    fireEvent.click(view);
     expect(inspect).toHaveBeenCalledTimes(1);
+  });
+  it("sizes the scope chip like the heard-count badge", async () => {
+    show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
+    const chip = await screen.findByText("#yow");
+    expect(chip).toHaveClass("border", "px-2", "py-0.5", "font-semibold");
   });
   it("switches French labels without refetching or changing protocol names", async () => {
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
     await screen.findByText("#yow");
     await act(() => i18n.changeLanguage("fr"));
-    expect(screen.getByText("Sans portée de transport")).toBeInTheDocument();
-    expect(screen.getByText("Portée non résolue")).toBeInTheDocument();
-    expect(screen.getByText("Portée indisponible")).toBeInTheDocument();
+    expect(screen.getByText("Portée inconnue")).toBeInTheDocument();
     expect(screen.getByText("#yow")).toBeInTheDocument();
     expect(getChannelMessagesPage).toHaveBeenCalledTimes(1);
   });
@@ -78,13 +84,13 @@ describe("channel scope evidence", () => {
     );
     const { client } = show(<ChannelList wsManager={{} as WsManager} onAnalyze={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /#test/ }));
-    await screen.findByText("No transport scope");
-    fireEvent.click(screen.getByRole("button", { name: /Transport scope.*All scopes/ }));
+    await screen.findByText("Unknown scope");
+    fireEvent.click(screen.getByRole("button", { name: /Scope.*All scopes/ }));
     fireEvent.click(screen.getByRole("option", { name: "#yow", exact: true }));
     await waitFor(() =>
       expect(getChannelMessagesPage).toHaveBeenLastCalledWith(1, expect.objectContaining({ scope: "#yow" })),
     );
-    await waitFor(() => expect(screen.queryByText("No transport scope")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText("Unknown scope")).not.toBeInTheDocument());
     await waitFor(() => expect(client.getQueryData(["channel-messages", 1, "YOW", "#yow"])).toBeDefined());
     const event = {
       ...base,
@@ -121,7 +127,7 @@ describe("channel scope evidence", () => {
   it("explains an empty filtered history", async () => {
     vi.mocked(getChannelMessagesPage).mockResolvedValue(page([]));
     show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" scope="#yow" onScopeChange={() => {}} />);
-    expect(await screen.findByText("No retained messages match #yow.")).toBeInTheDocument();
+    expect(await screen.findByText("No messages match #yow.")).toBeInTheDocument();
   });
   it("keeps messages received during history loading without an extra request", async () => {
     let resolveHistory!: (value: ReturnType<typeof page>) => void;
@@ -149,33 +155,33 @@ describe("channel scope evidence", () => {
     vi.mocked(getChannelMessagesPage).mockResolvedValue(page([]));
     show(<MessagePanel channel={{ ...channel, keyKnown: false }} heardCounts={{}} regionKey="YOW" />);
     expect(
-      await screen.findByText("No decrypted messages are available without a known channel key."),
+      await screen.findByText("Messages can't be decrypted without the channel key."),
     ).toBeInTheDocument();
     expect(screen.queryByText("No transport scope")).not.toBeInTheDocument();
   });
-});
 
-it("preserves the newest/live page after more than twenty older pages", async () => {
-  vi.mocked(getChannelMessagesPage).mockImplementation(async (_id, params) => {
-    const index = params?.cursor ?? 0;
-    return page(
-      [
-        {
-          ...base,
-          id: 1000 - index,
-          packetHash: `history-${index}`,
-          content: `History ${index}`,
-          sentAt: 1000 - index,
-        },
-      ],
-      index + 1,
-    );
+  it("preserves the newest/live page after more than twenty older pages", async () => {
+    vi.mocked(getChannelMessagesPage).mockImplementation(async (_id, params) => {
+      const index = params?.cursor ?? 0;
+      return page(
+        [
+          {
+            ...base,
+            id: 1000 - index,
+            packetHash: `history-${index}`,
+            content: `History ${index}`,
+            sentAt: 1000 - index,
+          },
+        ],
+        index + 1,
+      );
+    });
+    show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
+    await screen.findByText("History 0");
+    for (let index = 1; index <= 21; index++) {
+      fireEvent.click(screen.getByRole("button", { name: /Load older/ }));
+      await screen.findByText(`History ${index}`);
+    }
+    expect(screen.getByText("History 0")).toBeInTheDocument();
   });
-  show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" />);
-  await screen.findByText("History 0");
-  for (let index = 1; index <= 21; index++) {
-    fireEvent.click(screen.getByRole("button", { name: /Load older/ }));
-    await screen.findByText(`History ${index}`);
-  }
-  expect(screen.getByText("History 0")).toBeInTheDocument();
 });

@@ -10,15 +10,17 @@ import { useRateLimit } from "../hooks/useRateLimit";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
 import { BottomNav } from "./BottomNav";
-import { LanguagePicker } from "./LanguagePicker";
+import { LanguageOptions, LanguagePicker } from "./LanguagePicker";
+import { useIsMobile } from "../hooks/useMediaQuery";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
-import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL } from "../lib/constants";
+import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL, BANNER } from "../lib/constants";
+import { InstanceBanner } from "./InstanceBanner";
 import type { WsManager } from "../api/ws-manager";
 
 // header widgets: WS status, region picker, theme picker
 
-function LiveBadge({ wsManager }: { wsManager: WsManager }) {
+function LiveBadge({ wsManager, compact = false }: { wsManager: WsManager; compact?: boolean }) {
   const { t } = useTranslation();
   const { status } = useWsStatus(wsManager);
   const [staleStr, setStaleStr] = useState("");
@@ -27,14 +29,19 @@ function LiveBadge({ wsManager }: { wsManager: WsManager }) {
     if (status !== "connecting") return;
     function update() {
       const staleSec = Math.floor((Date.now() - wsManager.getLastEventTimestamp()) / 1000);
-      setStaleStr(staleSec > 60 ? `${Math.floor(staleSec / 60)}m` : `${staleSec}s`);
+      setStaleStr(staleSec > 60 ? t("timestamp.unit.m", { count: Math.floor(staleSec / 60) }) : t("timestamp.unit.s", { count: staleSec }));
     }
     update();
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [status, wsManager]);
+  }, [status, wsManager, t]);
 
   if (status === "connected") {
+    if (compact) return (
+      <span role="status" aria-label={t("connection.live")} title={t("connection.live")} className="flex h-6 w-6 items-center justify-center">
+        <span className="h-2 w-2 rounded-full bg-green animate-pulse" />
+      </span>
+    );
     return (
       <div className="flex items-center gap-1.5 font-mono text-[11px] text-green bg-green/8 border border-green/15 px-2 py-0.5 rounded-sm">
         <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
@@ -99,7 +106,7 @@ function CheckBox({ checked }: { checked: boolean }) {
   );
 }
 
-// Compact header summary of the active selection, e.g. "ALL", "YVR, YYJ", "2 regions", "1 region · 3 IATA".
+// Compact header summary of the active selection, e.g. "ALL", "YVR, YYJ", "2 regions", "1 region · 3 areas".
 function regionSummaryLabel(selection: RegionSelection, t: TFunction): string {
   if (isAllRegions(selection)) return t("region.allShort");
   const parts: string[] = [];
@@ -128,7 +135,7 @@ function RegionSelector() {
           className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-3 py-1 text-text-bright font-mono text-xs font-semibold hover:border-text-dim/30 transition-colors"
           onClick={toggle}
         >
-          <span className="text-text-muted font-normal text-[11px]">{t("region.label")}</span>
+          <span className="text-text-muted font-normal text-[11px] uppercase">{t("region.label")}</span>
           {regionSummaryLabel(selection, t)}
           <span className="text-text-dim text-[11px]">▾</span>
         </button>
@@ -207,7 +214,7 @@ function RegionSelectorPanel() {
   return (
     <>
       <div className="sticky -top-1 z-10 -mt-1 bg-bg-raised px-2 pt-1 pb-1.5">
-        {/* Keep focused text at 16px so iOS Safari does not zoom the page. */}
+        {/* 16px on phones so iOS Safari does not zoom the page on focus. */}
         <input
           ref={inputRef}
           type="text"
@@ -222,7 +229,7 @@ function RegionSelectorPanel() {
           }}
           aria-label={t("region.filter")}
           placeholder={t("region.filter")}
-          className="w-full text-[16px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
+          className="w-full text-[16px] sm:text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
         />
       </div>
 
@@ -270,7 +277,7 @@ function RegionSelectorPanel() {
         <>
           <div className={`px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim ${
             hasRowsAbove ? "border-t border-border-subtle mt-1" : ""
-          }`}>IATA</div>
+          }`}>{t("region.areaGroup")}</div>
           {iatas ? (
             shownIatas.map((i) => {
               const checked = selection.iatas.includes(i.iata);
@@ -306,9 +313,8 @@ function RegionSelectorPanel() {
 
 function ThemePicker() {
   const { t } = useTranslation();
-  const { themeId, themes, setThemeId } = useTheme();
+  const { themeId, themes } = useTheme();
   const current = themes.find((t) => t.id === themeId);
-  const list = selectableThemes(themes, ENABLED_THEME_IDS);
 
   return (
     <Dropdown
@@ -327,29 +333,85 @@ function ThemePicker() {
         </button>
       )}
     >
+      {(close) => <ThemeOptions onPick={close} />}
+    </Dropdown>
+  );
+}
+
+function ThemeOptions({ onPick }: { onPick?: () => void }) {
+  const { themeId, themes, setThemeId } = useTheme();
+  return (
+    <>
+      {selectableThemes(themes, ENABLED_THEME_IDS).map((theme) => (
+        <button
+          key={theme.id}
+          type="button"
+          aria-pressed={theme.id === themeId}
+          className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
+            theme.id === themeId ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
+          }`}
+          onClick={() => {
+            setThemeId(theme.id);
+            onPick?.();
+          }}
+        >
+          <span className="w-3 h-3 rounded-full shrink-0 border border-text-normal/20" style={{ background: theme.vars["--palette-primary"] }} />
+          {theme.name}
+        </button>
+      ))}
+    </>
+  );
+}
+
+function GitHubLink() {
+  const { t } = useTranslation();
+  return (
+    <a
+      href={GITHUB_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t("header.github")}
+      className="text-text-muted hover:text-text-normal transition-colors shrink-0"
+    >
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+      </svg>
+    </a>
+  );
+}
+
+const MENU_GROUP = "px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim";
+
+// Phones fold theme, language and the repo link into one menu so the header stays a single row.
+function SettingsMenu() {
+  const { t } = useTranslation();
+  return (
+    <Dropdown
+      width="w-56"
+      renderTrigger={({ open, toggle }) => (
+        <button
+          type="button"
+          aria-label={t("header.settings")}
+          aria-expanded={open}
+          onClick={toggle}
+          className="flex h-7 w-7 items-center justify-center rounded border border-border bg-bg-raised text-text-muted hover:text-text-normal"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+            <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+          </svg>
+        </button>
+      )}
+    >
       {(close) => (
         <>
-          {list.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-                t.id === themeId
-                  ? "text-text-bright bg-primary/10"
-                  : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
-              }`}
-              onClick={() => {
-                setThemeId(t.id);
-                close();
-              }}
-            >
-              <span
-                className="w-3 h-3 rounded-full shrink-0 border border-text-normal/20"
-                style={{ background: t.vars["--palette-primary"] }}
-              />
-              {t.name}
-            </button>
-          ))}
+          <div className={MENU_GROUP}>{t("language.label")}</div>
+          <LanguageOptions onPick={close} />
+          <div className={`${MENU_GROUP} mt-1 border-t border-border-subtle`}>{t("theme.label")}</div>
+          <ThemeOptions onPick={close} />
+          <div className="mt-1 flex items-center gap-2 border-t border-border-subtle px-3 py-2 font-mono text-xs text-text-muted">
+            <GitHubLink />
+            <span>{APP_NAME} v{__APP_VERSION__}</span>
+          </div>
         </>
       )}
     </Dropdown>
@@ -367,31 +429,37 @@ interface AppShellProps {
 
 export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShellProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   return (
     <div className="flex flex-col h-dvh">
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 min-h-[42px] md:flex md:gap-3 md:px-4 bg-bg-surface border-b border-border shrink-0">
-        <BeaconWordmark iconSize={22} textClassName="text-sm truncate" className="min-w-0" />
-        <div className="col-span-2 row-start-2 flex flex-wrap items-center justify-between gap-1.5 min-w-0 md:ml-auto md:flex-nowrap md:justify-start md:gap-3">
-          <RegionSelector />
-          <ThemePicker />
-          <LanguagePicker />
-        </div>
-        <div className="col-start-2 row-start-1 flex items-center gap-1.5 md:gap-3">
-          <LiveBadge wsManager={wsManager} />
-          <RateLimitBadge />
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub"
-            className="text-text-muted hover:text-text-normal transition-colors shrink-0"
-          >
-            <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-            </svg>
-          </a>
-        </div>
-      </header>
+      <InstanceBanner text={BANNER} />
+      {isMobile ? (
+        <header className="flex items-center gap-2 px-3 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
+          <BeaconWordmark iconSize={20} textClassName="text-sm" className="shrink-0" />
+          <div className="min-w-0">
+            <RegionSelector />
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <RateLimitBadge />
+            <LiveBadge wsManager={wsManager} compact />
+            <SettingsMenu />
+          </div>
+        </header>
+      ) : (
+        <header className="flex items-center gap-3 px-4 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
+          <BeaconWordmark iconSize={22} textClassName="text-sm truncate" className="min-w-0" />
+          <div className="ml-auto flex items-center gap-3">
+            <RegionSelector />
+            <ThemePicker />
+            <LanguagePicker />
+          </div>
+          <div className="flex items-center gap-3">
+            <LiveBadge wsManager={wsManager} />
+            <RateLimitBadge />
+            <GitHubLink />
+          </div>
+        </header>
+      )}
 
       <nav className="hidden md:flex bg-bg-surface border-b border-border px-4 shrink-0" role="tablist">
         {ENABLED_TABS.map((tab) => (

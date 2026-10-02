@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsOverview, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -129,6 +129,14 @@ describe("getScopes", () => {
     expect(url).not.toContain("?"); // no query params on the authoritative list
     expect(scopes).toEqual(["#bc", "#west"]);
   });
+
+  it("asks for the selected region's scopes by IATA", async () => {
+    const getUrl = mockFetchOnce(["#yow"]);
+
+    await getScopes(["YOW", "YYZ"]);
+
+    expect(new URL(getUrl()).searchParams.get("iatas")).toBe("YOW,YYZ");
+  });
 });
 
 describe("getKnownRoutesPage", () => {
@@ -242,6 +250,15 @@ describe("getChannels", () => {
     const url = new URL(getUrl());
     expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
     expect(url.searchParams.has("iata")).toBe(false);
+  });
+
+  it.each([true, false])("sends keyKnown=%s and omits it when unset", async (keyKnown) => {
+    const getUrl = mockFetchOnce({ items: [] });
+    await getChannels({ keyKnown });
+    expect(new URL(getUrl()).searchParams.get("keyKnown")).toBe(String(keyKnown));
+    const getUnset = mockFetchOnce({ items: [] });
+    await getChannels();
+    expect(new URL(getUnset()).searchParams.has("keyKnown")).toBe(false);
   });
 
   it("omits both iata params for all regions", async () => {
@@ -385,12 +402,12 @@ describe("getObserversPage", () => {
 
 describe("stats endpoints", () => {
   it("joins the region's IATAs into the iatas param", async () => {
-    const getUrl = mockFetchOnce({ totalPackets: 0 });
+    const getUrl = mockFetchOnce({ hours: [] });
 
-    await getStatsOverview(["YOW", "YYZ"]);
+    await getStatsSeries(0, 1000, ["YOW", "YYZ"]);
 
     const url = new URL(getUrl());
-    expect(url.pathname).toContain("/stats/overview");
+    expect(url.pathname).toContain("/stats/series");
     expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
   });
 
@@ -437,6 +454,16 @@ describe("stats endpoints", () => {
     const url = new URL(getUrl());
     expect(url.pathname).toContain("/stats/node-types");
     expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
+  });
+
+  it("sends an empty region as region= so the server returns zeros instead of every IATA", async () => {
+    const getUrl = mockFetchOnce([]);
+
+    await getStatsNodeTypes({ region: "empty-region" });
+
+    const url = new URL(getUrl());
+    expect(url.searchParams.get("region")).toBe("empty-region");
+    expect(url.searchParams.has("iatas")).toBe(false);
   });
 
   it("hits /stats/clock-drift with iatas/limit", async () => {
@@ -599,5 +626,22 @@ describe("isNotFound", () => {
 
     expect(isNotFound(err)).toBe(true);
     expect(isNotFound(new Error("network down"))).toBe(false);
+  });
+});
+
+describe("a region with no IATAs", () => {
+  it("returns empty results without asking the server, which would answer for every IATA", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const empty = { items: [], nextCursor: null, hasMore: false };
+
+    await expect(getPackets([])).resolves.toEqual(empty);
+    await expect(getNodesPage([])).resolves.toEqual(empty);
+    await expect(getObserversPage([])).resolves.toEqual(empty);
+    await expect(getChannels({ iatas: [] })).resolves.toEqual(empty);
+    await expect(getChannelMessagesPage(1, { iatas: [] })).resolves.toEqual(empty);
+    await expect(getTraces([])).resolves.toEqual([]);
+    await expect(getScopes([])).resolves.toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

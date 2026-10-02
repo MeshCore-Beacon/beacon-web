@@ -15,10 +15,10 @@ afterEach(() => { vi.clearAllMocks(); region.iatas = ["YVR"]; region.regionKey =
 
 it("sends the selected IATAs and fetches a separate global query when the filter is cleared", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const { rerender, unmount } = renderHook(() => useScopes(), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
-  await waitFor(() => expect(getStatsScopes).toHaveBeenCalledWith(["YVR"], expect.any(AbortSignal)));
+  const { rerender, unmount } = renderHook(() => useScopes("7d"), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  await waitFor(() => expect(getStatsScopes).toHaveBeenCalledWith(["YVR"], expect.any(Number), expect.any(AbortSignal)));
   region.iatas = undefined; region.regionKey = "*"; rerender();
-  await waitFor(() => expect(getStatsScopes).toHaveBeenCalledWith(undefined, expect.any(AbortSignal)));
+  await waitFor(() => expect(getStatsScopes).toHaveBeenCalledWith(undefined, expect.any(Number), expect.any(AbortSignal)));
   expect(client.getQueryCache().findAll({ queryKey: ["stats-scopes"] })).toHaveLength(2);
   unmount(); client.clear();
 });
@@ -26,19 +26,30 @@ it("sends the selected IATAs and fetches a separate global query when the filter
 it("does not fetch a global fallback for unresolved selected regions", () => {
   region.isResolved = false;
   const client = new QueryClient();
-  const { unmount } = renderHook(() => useScopes(), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  const { unmount } = renderHook(() => useScopes("7d"), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
   expect(getStatsScopes).not.toHaveBeenCalled();
   unmount(); client.clear();
 });
 
-it("reuses the regional query without a time-window key when only the language changes", async () => {
+it("reuses the regional query when only the language changes", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const { unmount } = render(<QueryClientProvider client={client}><ScopesTab /></QueryClientProvider>);
+  const { unmount } = render(<QueryClientProvider client={client}><ScopesTab range="7d" /></QueryClientProvider>);
   await screen.findByText("No scope data available.");
   expect(getStatsScopes).toHaveBeenCalledOnce();
   await act(() => i18n.changeLanguage("fr"));
   expect(screen.getByText("Aucune donnée de scope disponible.")).toBeInTheDocument();
   expect(getStatsScopes).toHaveBeenCalledOnce();
-  expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-scopes", "YVR"]]);
+  expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-scopes", "YVR", "7d"]]);
+  unmount(); client.clear();
+});
+
+it("windows scope counts by the selected range", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const before = Date.now();
+  const { unmount } = renderHook(() => useScopes("24h"), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+  await waitFor(() => expect(getStatsScopes).toHaveBeenCalledOnce());
+  const since = vi.mocked(getStatsScopes).mock.calls[0]![1]!;
+  expect(since).toBeGreaterThanOrEqual(before - 24 * 3_600_000);
+  expect(since).toBeLessThanOrEqual(Date.now() - 24 * 3_600_000);
   unmount(); client.clear();
 });

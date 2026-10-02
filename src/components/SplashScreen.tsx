@@ -6,6 +6,7 @@
 // <SplashScreen /> line from src/App.tsx. Nothing else references it.
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { BeaconLogo } from "./BeaconLogo";
 import { SKIP_SPLASH } from "../lib/constants";
 
@@ -14,6 +15,7 @@ const VISIBLE_MS = 2000;
 const FADE_MS = 400;
 
 export function SplashScreen() {
+  const { t } = useTranslation();
   // Synchronous gate: decided before first paint so StrictMode's double-mount
   // (and any same-session reload) never re-shows it.
   const [render, setRender] = useState(() => {
@@ -64,7 +66,7 @@ export function SplashScreen() {
             className="text-text-muted text-xs tracking-[0.12em]"
             style={{ fontFamily: "'Chakra Petch', sans-serif" }}
           >
-            MeshCore Network Analyzer
+            {t("splash.tagline")}
           </span>
         </span>
       </span>

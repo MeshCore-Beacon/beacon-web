@@ -90,22 +90,24 @@ const TAB_OPTIONS = [
   { value: "graph", icon: <GraphIcon /> },
 ];
 
-const RANGES: StatsRange[] = ["24h", "3d", "30d"];
+const RANGES: StatsRange[] = ["24h", "7d", "30d"];
 
 interface Props {
   tab: StatsTab;
   onTabChange: (tab: StatsTab) => void;
   range: StatsRange;
   onRangeChange: (range: StatsRange) => void;
+  infoSlot?: (element: HTMLElement | null) => void;
 }
 
-export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props) {
+export function StatsSubHeader({ tab, onTabChange, range, onRangeChange, infoSlot }: Props) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const tabOptions = TAB_OPTIONS.map((option) => ({ ...option, label: t(`stats.tabs.${option.value}`) }));
   const rangeOptions = RANGES.map((value) => ({ value, label: t(`stats.ranges.${value}`) }));
   return (
     <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
+      <div className="flex min-w-0 items-center gap-2">
       {/* pills don't scale on a phone as sections grow — swap to a compact dropdown there */}
       {isMobile ? (
         <SelectDropdown
@@ -127,8 +129,10 @@ export function StatsSubHeader({ tab, onTabChange, range, onRangeChange }: Props
           />
         </div>
       )}
+      <span ref={infoSlot} data-section-info className="flex shrink-0 empty:hidden" />
+      </div>
       {/* Comparison has explicit dates; graph and clock drift have no rolling window. */}
-      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && tab !== "scopes" && (
+      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && (
         <Segmented
           className="shrink-0"
           options={rangeOptions}

@@ -3,6 +3,7 @@ import {
   ALL_REGIONS,
   isAllRegions,
   resolveIatas,
+  emptyRegionSlug,
   regionKey,
   parseSelection,
   selectionToParams,
@@ -14,6 +15,7 @@ import {
 const regionIatas = new Map<string, string[]>([
   ["western-canada", ["YVR", "YYJ"]],
   ["cascadia", ["YVR", "SEA"]], // intentionally overlaps YVR with western-canada
+  ["empty", []],
 ]);
 
 describe("isAllRegions", () => {
@@ -115,5 +117,18 @@ describe("serialize/deserialize", () => {
     expect(deserializeSelection(null)).toEqual(ALL_REGIONS);
     expect(deserializeSelection("not json")).toEqual(ALL_REGIONS);
     expect(deserializeSelection('{"regions":"oops"}')).toEqual(ALL_REGIONS);
+  });
+});
+
+describe("emptyRegionSlug", () => {
+  it("names the selected region when it resolves to no IATAs", () => {
+    expect(emptyRegionSlug({ regions: ["empty"], iatas: [] }, regionIatas)).toBe("empty");
+  });
+
+  it("is undefined for all regions, a populated selection, or regions still loading", () => {
+    expect(emptyRegionSlug(ALL_REGIONS, regionIatas)).toBeUndefined();
+    expect(emptyRegionSlug({ regions: ["empty", "cascadia"], iatas: [] }, regionIatas)).toBeUndefined();
+    expect(emptyRegionSlug({ regions: ["empty"], iatas: ["YVR"] }, regionIatas)).toBeUndefined();
+    expect(emptyRegionSlug({ regions: ["empty", "unloaded"], iatas: [] }, regionIatas)).toBeUndefined();
   });
 });

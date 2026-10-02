@@ -1,17 +1,9 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { SelectDropdown } from "../../components/SelectDropdown";
 import { FilterSheet, FiltersButton } from "../../components/FilterSheet";
 import { useIsMobile } from "../../hooks/useMediaQuery";
-
-const STATUS_OPTIONS = [
-  { value: "online", label: "Online" },
-  { value: "offline", label: "Offline" },
-];
-
-const SEARCH_FIELDS: SearchFieldOption[] = [
-  { value: "name", label: "Name" },
-];
 
 interface ObserverFilterBarProps {
   search: string;
@@ -29,6 +21,7 @@ interface ObserverFilterBarProps {
   scopeFilter: string;
   onScopeChange: (s: string) => void;
   scopeOptions: string[];
+  trailing?: ReactNode;
 }
 
 export function ObserverFilterBar({
@@ -47,8 +40,15 @@ export function ObserverFilterBar({
   scopeFilter,
   onScopeChange,
   scopeOptions,
+  trailing,
 }: ObserverFilterBarProps) {
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const statusOptions = [
+    { value: "online", label: t("observerFilters.online") },
+    { value: "offline", label: t("observerFilters.offline") },
+  ];
+  const searchFields: SearchFieldOption[] = [{ value: "name", label: t("observerFilters.name") }];
   const [sheetOpen, setSheetOpen] = useState(false);
   // close the sheet when leaving mobile — derive during render, not in an effect
   if (sheetOpen && !isMobile) setSheetOpen(false);
@@ -64,24 +64,25 @@ export function ObserverFilterBar({
   // shared by the desktop inline bar and the mobile filter sheet
   const controls = (fullWidth: boolean) => (
     <>
-      <SelectDropdown label="Status" options={STATUS_OPTIONS} value={statusFilter} onChange={onStatusChange} fullWidth={fullWidth} />
+      <SelectDropdown label={t("observerFilters.status")} options={statusOptions} value={statusFilter} onChange={onStatusChange} fullWidth={fullWidth} />
       {typeOptions.length > 0 && (
-        <SelectDropdown label="Type" options={typeOptions.map((t) => ({ value: t, label: t }))} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
+        <SelectDropdown label={t("observerFilters.type")} options={typeOptions.map((o) => ({ value: o, label: o }))} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
       )}
       {brokerOptions.length > 0 && (
-        <SelectDropdown label="Broker" options={brokerOptions.map((b) => ({ value: b, label: b }))} value={brokerFilter} onChange={onBrokerChange} fullWidth={fullWidth} />
+        <SelectDropdown label={t("observerFilters.broker")} options={brokerOptions.map((b) => ({ value: b, label: b }))} value={brokerFilter} onChange={onBrokerChange} fullWidth={fullWidth} />
       )}
       {scopeOptions.length > 0 && (
-        <SelectDropdown label="Scope" options={scopeOptions.map((s) => ({ value: s, label: s }))} value={scopeFilter} onChange={onScopeChange} fullWidth={fullWidth} />
+        <SelectDropdown label={t("observerFilters.scope")} options={scopeOptions.map((s) => ({ value: s, label: s }))} value={scopeFilter} onChange={onScopeChange} fullWidth={fullWidth} />
       )}
     </>
   );
 
   if (isMobile) {
     return (
-      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label="Observer filters">
-        <SearchBar value={search} onChange={onSearchChange} fields={SEARCH_FIELDS} field={searchField} onFieldChange={onSearchFieldChange} />
+      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label={t("observerFilters.label")}>
+        <SearchBar value={search} onChange={onSearchChange} fields={searchFields} field={searchField} onFieldChange={onSearchFieldChange} />
         <FiltersButton activeCount={activeCount} onClick={() => setSheetOpen(true)} />
+        {trailing}
         {sheetOpen && (
           <FilterSheet onClose={() => setSheetOpen(false)} onClear={activeCount > 0 ? clearAll : undefined}>
             {controls(true)}
@@ -95,12 +96,12 @@ export function ObserverFilterBar({
     <div
       className="flex flex-wrap items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0"
       role="toolbar"
-      aria-label="Observer filters"
+      aria-label={t("observerFilters.label")}
     >
       <SearchBar
         value={search}
         onChange={onSearchChange}
-        fields={SEARCH_FIELDS}
+        fields={searchFields}
         field={searchField}
         onFieldChange={onSearchFieldChange}
       />
@@ -108,6 +109,7 @@ export function ObserverFilterBar({
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>
 
       {controls(false)}
+      {trailing}
     </div>
   );
 }

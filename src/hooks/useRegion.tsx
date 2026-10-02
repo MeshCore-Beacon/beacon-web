@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRegions, getRegion } from "../api/client";
 import {
   resolveIatas,
+  emptyRegionSlug,
   regionKey as toRegionKey,
   serializeSelection,
   type RegionSelection,
@@ -78,9 +79,10 @@ export function useRegions(): RegionsData {
 }
 
 export interface RegionFilter {
-  iatas: string[] | undefined; // resolved member IATAs to query; undefined = all regions
+  iatas: string[] | undefined; // resolved member IATAs to query; undefined = all regions, [] = a region with none
   regionKey: string; // stable query-key fragment ("*" = all)
   isResolved?: boolean; // false while a selected region's member IATAs are unavailable
+  emptyRegion?: string; // slug of a selected region that has no member IATAs
 }
 
 // The resolved geographic filter consumers pass to queries: the flattened IATA list plus a stable key.
@@ -90,6 +92,12 @@ export function useRegion(): RegionFilter {
 
   return useMemo(() => {
     const iatas = resolveIatas(selection, regionIatas);
-    return { iatas, regionKey: toRegionKey(iatas), isResolved: selection.regions.every((slug) => regionIatas.has(slug)) };
+    const emptyRegion = emptyRegionSlug(selection, regionIatas);
+    return {
+      iatas: emptyRegion ? [] : iatas,
+      regionKey: emptyRegion ? `region:${emptyRegion}` : toRegionKey(iatas),
+      isResolved: selection.regions.every((slug) => regionIatas.has(slug)),
+      emptyRegion,
+    };
   }, [selection, regionIatas]);
 }

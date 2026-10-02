@@ -1,4 +1,5 @@
-import type { PacketSummary, ResolvedHop } from "../../types/api";
+import { useTranslation } from "react-i18next";
+import type { PacketSummary, ResolvedHop, ResolvedNode } from "../../types/api";
 import { PayloadType, type PathConfidence } from "../../types/enums";
 import { HopPopover } from "./PathData";
 
@@ -9,19 +10,28 @@ const CONFIDENCE_CLASSES: Record<PathConfidence, string> = {
   none: "bg-text-muted/8 text-text-dim",
 };
 
+const nodeLabel = (node: ResolvedNode) => node.name ?? node.publicKey.slice(0, 8);
+
 function Chip({ hop }: { hop: ResolvedHop }) {
+  const { t } = useTranslation();
   const node = hop.nodes[0];
-  const label = node ? node.name ?? node.publicKey.slice(0, 8) : "?";
+  const label = node ? nodeLabel(node) : "?";
   return (
     <HopPopover hop={hop} showSnr={false}>
-      <span className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[hop.confidence]}`}>
+      <span
+        title={hop.nodes.map(nodeLabel).join(", ") || t("packetRow.noResolution")}
+        className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[hop.confidence]}`}
+      >
         {label}{hop.nodes.length > 1 ? ` +${hop.nodes.length - 1}` : ""}
       </span>
     </HopPopover>
   );
 }
 
-const Na = () => <span className="text-text-dim">n/a</span>;
+function Na() {
+  const { t } = useTranslation();
+  return <span className="text-text-dim">{t("packetEndpoints.na")}</span>;
+}
 
 // Keep every candidate: a short endpoint hash can match several nodes.
 export function PacketEndpoints({ packet }: { packet: PacketSummary }) {

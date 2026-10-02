@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { CompareObserversTab } from "../../../src/features/stats/CompareObserversTab";
 import { getObserverComparison, getObserversPage, getObserver } from "../../../src/api/client";
+import i18n from "../../../src/i18n";
 
 const region = { iatas: ["YVR"], regionKey: "YVR" };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
@@ -11,6 +12,8 @@ vi.mock("../../../src/api/client", () => ({
   getObserverComparison: vi.fn(), getObserversPage: vi.fn(), getObserver: vi.fn(),
 }));
 vi.mock("../../../src/features/stats/EChart", () => ({ EChart: () => null }));
+// resetAllMocks below also wipes the global matchMedia stub the tooltip hover check reads
+vi.mock("../../../src/hooks/useMediaQuery", async (orig) => ({ ...(await orig<object>()), useHasHover: () => true }));
 
 const a = "11111111-1111-1111-1111-111111111111";
 const b = "22222222-2222-2222-2222-222222222222";
@@ -18,6 +21,10 @@ const query = `?tab=Analytics&statsTab=compare&compareA=${a}&compareB=${b}&compa
 const counts = { observerA: a, observerB: b, since: 1000, until: 2000, totalPackets: 4, onlyA: 1, onlyB: 2, both: 1 };
 
 function Location() { return <output aria-label="Current URL">{useLocation().search}</output>; }
+async function pick(label: string, name: RegExp) {
+  fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}:`) }));
+  fireEvent.click(await within(screen.getByRole("listbox", { name: label })).findByRole("option", { name }));
+}
 function mount(url = "?statsTab=compare") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[url]}><CompareObserversTab /><Location /></MemoryRouter></QueryClientProvider>);
@@ -35,23 +42,21 @@ beforeEach(() => {
 });
 
 describe("observer comparison", () => {
-  it("rejects a raw packet comparison beyond three days", async () => {
+  it("accepts a comparison longer than three days", async () => {
     mount();
-    await screen.findAllByRole("option", { name: /Rooftop/ });
-    fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: a } });
-    fireEvent.change(screen.getByLabelText("Observer B"), { target: { value: b } });
+    await pick("Observer A", /Rooftop/);
+    await pick("Observer B", /Hilltop/);
     fireEvent.change(screen.getByLabelText("Start (local time)"), { target: { value: "2026-01-01T00:00" } });
     fireEvent.change(screen.getByLabelText("End (local time)"), { target: { value: "2026-01-05T00:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Compare" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("3 days or less");
-    expect(getObserverComparison).not.toHaveBeenCalled();
+    await waitFor(() => expect(getObserverComparison).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
   it("waits for Compare, sends explicit dates and region, and puts the selection in the URL", async () => {
     mount();
-    await screen.findAllByRole("option", { name: /Rooftop/ });
     expect(getObserverComparison).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: a } });
-    fireEvent.change(screen.getByLabelText("Observer B"), { target: { value: b } });
+    await pick("Observer A", /Rooftop/);
+    await pick("Observer B", /Hilltop/);
     fireEvent.change(screen.getByLabelText("Start (local time)"), { target: { value: "2026-01-01T00:00" } });
     fireEvent.change(screen.getByLabelText("End (local time)"), { target: { value: "2026-01-03T00:00" } });
     expect(getObserverComparison).not.toHaveBeenCalled();
@@ -68,14 +73,16 @@ describe("observer comparison", () => {
     expect(within(table).getByRole("row", { name: /Only A.*1.*25.0%/ })).toBeInTheDocument();
     expect(within(table).getByRole("row", { name: /Only B.*2.*50.0%/ })).toBeInTheDocument();
     expect(within(table).getByRole("row", { name: /Both.*1.*25.0%/ })).toBeInTheDocument();
-    expect(screen.getByText(/Percentages use the union/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Percentages are of all flood packets/ })).toBeInTheDocument();
   });
 
-  it("rejects equal observers without sending an expensive query", async () => {
+  it("offers only a different observer and rejects an incomplete pair without querying", async () => {
     mount();
-    await screen.findAllByRole("option", { name: /Rooftop/ });
-    fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: a } });
-    fireEvent.change(screen.getByLabelText("Observer B"), { target: { value: a } });
+    await pick("Observer A", /Rooftop/);
+    fireEvent.click(screen.getByRole("button", { name: /^Observer B:/ }));
+    const list = screen.getByRole("listbox", { name: "Observer B" });
+    await within(list).findByRole("option", { name: /Hilltop/ });
+    expect(within(list).queryByRole("option", { name: /Rooftop/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Compare" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/different observers/);
     expect(getObserverComparison).not.toHaveBeenCalled();
@@ -84,13 +91,14 @@ describe("observer comparison", () => {
   it("renders an empty period without NaN percentages", async () => {
     vi.mocked(getObserverComparison).mockResolvedValue({ ...counts, totalPackets: 0, onlyA: 0, onlyB: 0, both: 0 });
     mount(query);
-    expect(await screen.findByText(/No flood packets were reported/)).toBeInTheDocument();
+    expect(await screen.findByText(/Neither observer heard a flood packet/)).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("NaN");
   });
 
   it("searches the server beyond the initial observer page", async () => {
     mount();
-    fireEvent.change(screen.getByLabelText("Search Observer A"), { target: { value: "Distant station" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Observer A:/ }));
+    fireEvent.change(screen.getByRole("searchbox", { name: /Observer A/ }), { target: { value: "Distant station" } });
     await waitFor(() => expect(getObserversPage).toHaveBeenCalledWith(["YVR"], { name: "Distant station", limit: 50 }));
   });
 
@@ -98,7 +106,7 @@ describe("observer comparison", () => {
     mount(query);
     await screen.findByRole("table", { name: "Flood packet comparison" });
     expect(await screen.findByText("A: Rooftop · B: Hilltop")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Observer A"), { target: { value: b } });
+    fireEvent.change(screen.getByLabelText("Start (local time)"), { target: { value: "2026-01-02T00:00" } });
     expect(screen.getByText("A: Rooftop · B: Hilltop")).toBeInTheDocument();
     expect(getObserverComparison).toHaveBeenCalledTimes(1);
   });
@@ -106,8 +114,8 @@ describe("observer comparison", () => {
   it("rejects malformed shared dates without issuing a comparison", async () => {
     mount(query.replace("compareUntil=2000", "compareUntil=bad"));
     expect(screen.getByRole("alert")).toHaveTextContent(/invalid or missing/);
-    await screen.findAllByRole("option", { name: /Rooftop/ });
-    expect(getObserverComparison).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /^Observer A:/ })).toBeInTheDocument();
+    await waitFor(() => expect(getObserverComparison).not.toHaveBeenCalled());
   });
 
   it("shows query failures and retries only when requested", async () => {
@@ -117,5 +125,27 @@ describe("observer comparison", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry comparison" }));
     await screen.findByRole("table", { name: "Flood packet comparison" });
     expect(getObserverComparison).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses minute precision and flags a start older than packet retention", async () => {
+    mount();
+    const start = screen.getByLabelText("Start (local time)");
+    expect(start).toHaveAttribute("step", "60");
+    expect(screen.getByLabelText("End (local time)")).toHaveAttribute("step", "60");
+    expect((start as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(screen.queryByText(/Only recent packets are kept/)).not.toBeInTheDocument();
+    fireEvent.change(start, { target: { value: "2020-01-01T00:00" } });
+    expect(screen.getByText(/Only recent packets are kept/)).toBeInTheDocument();
+  });
+
+  it("renders the comparison in French", async () => {
+    await i18n.changeLanguage("fr");
+    mount(query);
+    const table = await screen.findByRole("table", { name: "Comparaison des paquets flood" });
+    expect(within(table).getByRole("row", { name: /A seulement.*1.*25.0%/ })).toBeInTheDocument();
+    expect(screen.queryByText("Comparer les observateurs")).not.toBeInTheDocument();
+    expect(screen.getByText("A : Rooftop · B : Hilltop")).toBeInTheDocument();
+    expect(screen.getByText(/4 paquets flood/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Comparer" })).toBeInTheDocument();
   });
 });

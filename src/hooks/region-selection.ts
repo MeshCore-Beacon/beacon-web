@@ -32,6 +32,16 @@ export function resolveIatas(
   return [...set].sort();
 }
 
+// A selection of loaded regions with no member IATAs (and no picked IATAs) resolves like "all"; return
+// one of its slugs so callers can ask the server for that region instead of every IATA.
+export function emptyRegionSlug(
+  selection: RegionSelection,
+  regionIatas: ReadonlyMap<string, string[]>,
+): string | undefined {
+  if (isAllRegions(selection) || !selection.regions.every((slug) => regionIatas.has(slug))) return undefined;
+  return resolveIatas(selection, regionIatas) ? undefined : selection.regions[0];
+}
+
 // Stable query-key fragment for a resolved IATA list. "*" stands in for "all regions".
 export function regionKey(iatas: string[] | undefined): string {
   return iatas && iatas.length > 0 ? iatas.join(",") : "*";
