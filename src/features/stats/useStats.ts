@@ -43,7 +43,7 @@ export function rolledWindow(range: StatsRange, now = Date.now()) {
 export function useStatsSeries(range: StatsRange) {
   const { where, regionKey, isResolved } = useStatsRegion();
   return useQuery({
-    queryKey: ["stats-series", isResolved === false ? `${regionKey}:pending` : regionKey, range],
+    queryKey: ["stats-series", regionKey, range],
     enabled: isResolved !== false,
     queryFn: ({ signal }) => {
       if (isResolved === false) throw new Error("Selected region is not available yet");
@@ -58,7 +58,7 @@ export function useStatsSeries(range: StatsRange) {
 export function useStatsObservations(range: StatsRange) {
   const { where, regionKey, isResolved } = useStatsRegion();
   return useQuery({
-    queryKey: ["stats-observations", isResolved === false ? `${regionKey}:pending` : regionKey, range],
+    queryKey: ["stats-observations", regionKey, range],
     enabled: isResolved !== false,
     queryFn: ({ signal }) => {
       if (isResolved === false) throw new Error("Selected region is not available yet");
@@ -148,7 +148,7 @@ export function useClockDrift(limit = 100) {
 export function useScopes(range: StatsRange) {
   const { where, regionKey, isResolved } = useStatsRegion();
   return useQuery({
-    queryKey: ["stats-scopes", isResolved === false ? `${regionKey}:pending` : regionKey, range],
+    queryKey: ["stats-scopes", regionKey, range],
     enabled: isResolved !== false,
     queryFn: ({ signal }) => {
       if (isResolved === false) throw new Error("Selected region is not available yet");

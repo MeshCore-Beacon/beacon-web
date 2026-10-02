@@ -124,7 +124,8 @@ class LivePacketStore {
 // combines live WS stream with paginated history
 
 export function usePackets(frozen: boolean = false, serverFilter: PacketServerFilter | null = null) {
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
+  const pending = isResolved === false;
   const queryClient = useQueryClient();
   const [store] = useState(() => new LivePacketStore());
   const [laggedCount, setLaggedCount] = useState(0);
@@ -221,6 +222,7 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     initialPageParam: undefined as number | undefined,
     staleTime: Infinity,
     maxPages: MAX_INFINITE_PAGES,
+    enabled: !pending,
   });
 
   const allPackets = useMemo(
@@ -255,7 +257,7 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     hasNextPage: hasNextPage ?? false,
     isFetching,
     isFetchingNextPage,
-    isLoading,
+    isLoading: isLoading || pending,
     isError,
     observersByHash,
     handlePacketObservation,

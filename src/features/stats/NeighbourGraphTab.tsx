@@ -17,11 +17,12 @@ const CAP = 1000;
 
 export function NeighbourGraphTab() {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
+  const pending = isResolved === false;
   // "All regions" is 5k+ nodes — too heavy for the canvas force layout, so gate the fetch off and
   // prompt for a region instead of freezing the browser.
   const isAll = regionKey === "*";
-  const { nodes, loadedCount, isPaging, isError } = useMapNodesData(iatas, regionKey, { enabled: !isAll });
+  const { nodes, loadedCount, isPaging, isError } = useMapNodesData(iatas, regionKey, { enabled: !isAll && !pending });
   const colors = useChartColors();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -74,7 +75,7 @@ export function NeighbourGraphTab() {
     );
   if (isError) return <EmptyState title={t("stats.tabs.graph")} subtitle={t("neighbourGraph.loadFailed")} />;
   // build only once the pager settles, or the force layout would restart on every streamed page
-  if (isPaging) return <EmptyState title={t("neighbourGraph.loadingMesh")} subtitle={t("neighbourGraph.nodes", { count: loadedCount })} />;
+  if (isPaging || pending) return <EmptyState title={t("neighbourGraph.loadingMesh")} subtitle={t("neighbourGraph.nodes", { count: loadedCount })} />;
   if (graph.nodes.length === 0) return <EmptyState title={t("stats.tabs.graph")} subtitle={t("neighbourGraph.noNodes")} />;
 
   return (

@@ -90,7 +90,7 @@ function TraceTagCard({ tag, selected, onSelect }: {
 
 export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
   // "" = both; the backend takes TRACE or PING and omits the param to mean all.
   const typeOptions = useMemo(() => [
     { value: "", label: t("traces.all") },
@@ -113,6 +113,7 @@ export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
     queryKey: ["traces", regionKey, typeFilter],
     queryFn: () => getTraces(iatas, { limit: TRACE_LIST_LIMIT, type: typeFilter || undefined }),
     staleTime: 30_000,
+    enabled: isResolved !== false,
   });
 
   return (
@@ -133,7 +134,7 @@ export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-          {isLoading ? (
+          {isLoading || isResolved === false ? (
             <SkeletonRows rows={8} />
           ) : (tags?.length ?? 0) === 0 ? (
             <EmptyState title={t("traces.empty")} />

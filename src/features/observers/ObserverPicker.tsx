@@ -7,7 +7,7 @@ import { Dropdown } from "../../components/Dropdown";
 
 function PickerPanel({ id, onPick, excludeId, label }: { id: string; onPick: (id: string) => void; excludeId?: string; label: string }) {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
   const [query, setQuery] = useState("");
   // debounce so the server-side lookup fires once per pause, not once per keystroke
   const [q, setQ] = useState("");
@@ -18,6 +18,7 @@ function PickerPanel({ id, onPick, excludeId, label }: { id: string; onPick: (id
   const options = useQuery({
     queryKey: ["observer-picker", regionKey, q],
     queryFn: () => getObserversPage(iatas, { name: q || undefined, limit: 50 }),
+    enabled: isResolved !== false,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
   });

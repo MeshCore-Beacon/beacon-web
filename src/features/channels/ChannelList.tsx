@@ -35,7 +35,8 @@ function appendMessages(old: InfiniteData<CursorPage<ChannelMessage>> | undefine
 
 export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
+  const regionPending = isResolved === false;
   const isMobile = useIsMobile();
   // Keep the open channel available when a directory page is evicted or refreshed.
   const [selection, setSelection] = useState<ChannelSummary | null>(null);
@@ -102,7 +103,9 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     getNextPageParam: nextChannelPage,
     maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
+    enabled: !regionPending,
   });
+  const keyedLoading = keyed.isLoading || regionPending;
   const others = useInfiniteQuery({
     queryKey: ["channels", regionKey, "other"],
     queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam, keyKnown: false }),
@@ -110,7 +113,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     getNextPageParam: nextChannelPage,
     maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
-    enabled: showOthers || keyFilter === "unknown",
+    enabled: !regionPending && (showOthers || keyFilter === "unknown"),
   });
 
   // A server without the keyKnown filter mixes unkeyed channels in; don't page through all of them.
@@ -243,7 +246,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
       <div className="flex flex-1 min-h-0">
         {showList && (
           <div className="flex flex-col min-h-0 w-full md:w-56 md:min-w-56 border-r border-border bg-bg-surface">
-            {keyed.isLoading ? (
+            {keyedLoading ? (
               <SkeletonRows rows={8} />
             ) : (
               <ChannelSidebar
@@ -252,7 +255,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
                 onSelect={handleSelect}
               />
             )}
-            {!keyed.isLoading && filteredChannels.length === 0 && (
+            {!keyedLoading && filteredChannels.length === 0 && (
               <p className="px-3 py-2 text-xs font-mono text-text-muted">{t("channels.noMatches")}</p>
             )}
             {(keyed.isError || others.isError) && <p role="alert" className="px-3 py-2 text-xs text-danger">{t("channels.loadError")}</p>}
@@ -261,7 +264,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
                 {keyed.isFetching ? t("channels.loadingChannels") : t("channels.retryChannels")}
               </PagerButton>
             ) : !others.isEnabled ? (
-              !keyed.isLoading && <PagerButton onClick={() => setOthersRegion(regionKey)}>{t("channels.loadOthers")}</PagerButton>
+              !keyedLoading && <PagerButton onClick={() => setOthersRegion(regionKey)}>{t("channels.loadOthers")}</PagerButton>
             ) : (others.hasNextPage || others.isError) && (
               <PagerButton disabled={others.isFetching} onClick={() => void (others.hasNextPage ? others.fetchNextPage() : others.refetch())}>
                 {others.isFetching ? t("channels.loadingChannels") : others.isError ? t("channels.retryChannels") : t("channels.loadMore")}

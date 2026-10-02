@@ -70,9 +70,10 @@ function computeInitialSelection(params: URLSearchParams): RegionSelection {
 // null-render component -- easiest way to sync region changes into the WS manager
 
 function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
 
   useEffect(() => {
+    if (isResolved === false) return;
     mgr.updateSubscription({ iatas, events: WS_EVENTS });
     // regionKey is the stable identity of the resolved iatas
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -289,9 +290,10 @@ function AppInner() {
   }, [navigate, searchParams, setPanels, isMobile]);
 
   useEffect(() => {
-    // Region slugs can't be expanded yet (region details load async) — connect with the directly
-    // selected IATAs; RegionWatcher narrows the subscription once useRegion resolves the slugs.
-    wsManager.connect({ iatas: resolveIatas(initialSelection, new Map()), events: WS_EVENTS });
+    // Region slugs can't be expanded until region details load, so hold the subscription (an empty
+    // list subscribes to nothing) and let RegionWatcher subscribe once useRegion resolves them.
+    const iatas = initialSelection.regions.length > 0 ? [] : resolveIatas(initialSelection, new Map());
+    wsManager.connect({ iatas, events: WS_EVENTS });
     return () => wsManager.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

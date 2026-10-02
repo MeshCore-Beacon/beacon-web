@@ -104,7 +104,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     [urlView],
   );
 
-  const { iatas: selectedIatas, regionKey } = useRegion();
+  const { iatas: selectedIatas, regionKey, isResolved } = useRegion();
+  const regionPending = isResolved === false;
   const queryClient = useQueryClient();
   // marker/cluster icons are canvas-drawn from the active --palette-* vars, so useMapNodes has to
   // re-register them whenever the palette changes: on a theme switch, and once on load when the async
@@ -116,7 +117,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // nodes for the selected region (its own key, independent of the Nodes-table filters/page cap).
   // Pages in 50 at a time so the map fills batch by batch; nodesKey matches the hook's query key.
   const nodesKey = useMemo(() => ["map-nodes", regionKey], [regionKey]);
-  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey);
+  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey, { enabled: !regionPending });
 
   // patch-or-insert the live update into the paged node cache (the shared helper preserves refs
   // when nothing changed, so a same-values re-advert doesn't trigger a full map repaint); brand-new
@@ -233,7 +234,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       />
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
-      <LoadingPill loading={isPaging} error={nodesError} count={loadedCount} noun="nodes" />
+      <LoadingPill loading={isPaging || regionPending} error={nodesError} count={loadedCount} noun="nodes" />
       {error && (
         // z-20 so the failure overlay covers the settings card (z-10) instead of it floating on top
         <div className="absolute inset-0 z-20 bg-bg-base">

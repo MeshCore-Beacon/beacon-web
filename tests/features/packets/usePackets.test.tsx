@@ -10,8 +10,9 @@ import type { PacketSummary } from "../../../src/types/api";
 import type { WsPacketObservation } from "../../../src/types/ws";
 import { noteRateLimited, noteRequestOk } from "../../../src/api/rate-limit";
 
+const region: { iatas: string[] | undefined; regionKey: string; isResolved: boolean } = { iatas: ["YOW"], regionKey: "YOW", isResolved: true };
 vi.mock("../../../src/hooks/useRegion", () => ({
-  useRegion: () => ({ iatas: ["YOW"], regionKey: "YOW" }),
+  useRegion: () => region,
 }));
 
 const getPackets = vi.fn();
@@ -502,5 +503,26 @@ describe("usePackets freeze while scrolled away", () => {
 
     act(() => result.current.acknowledgeNewPackets());
     expect(result.current.newPacketCount).toBe(0);
+  });
+});
+
+describe("usePackets while the region loads", () => {
+  afterEach(() => { Object.assign(region, { iatas: ["YOW"], regionKey: "YOW", isResolved: true }); });
+
+  it("fetches nothing until the region resolves, then fetches only its IATAs", async () => {
+    getPackets.mockReset();
+    getPackets.mockResolvedValue({ items: [], nextCursor: null });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+    Object.assign(region, { iatas: undefined, regionKey: "pending:onqc", isResolved: false });
+
+    const { result, rerender } = renderHook(() => usePackets(), { wrapper });
+    await new Promise((done) => setTimeout(done, 50));
+    expect(getPackets).not.toHaveBeenCalled();
+    expect(result.current.isLoading).toBe(true);
+
+    Object.assign(region, { iatas: ["YOW"], regionKey: "YOW", isResolved: true });
+    rerender();
+    await waitFor(() => expect(getPackets).toHaveBeenCalledWith(["YOW"], expect.anything()));
   });
 });

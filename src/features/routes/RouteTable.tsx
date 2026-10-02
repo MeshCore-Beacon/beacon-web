@@ -158,7 +158,8 @@ const renderRouteCard = (r: KnownRoute) => <RouteCard route={r} />;
 export function RouteTable(actions: RouteActions) {
   const { t } = useTranslation();
   const columns = useMemo(() => buildColumns(t), [t]);
-  const { iatas } = useRegion();
+  const { iatas, isResolved } = useRegion();
+  const regionPending = isResolved === false;
   const { selection } = useRegionSelection();
   const [params, setParams] = useSearchParams();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -203,6 +204,7 @@ export function RouteTable(actions: RouteActions) {
       getId: routeId,
       keepPrevious: true,
       auto: false,
+      enabled: !regionPending,
     });
 
   const { data: searchRoutes, isLoading: searchLoading } = useQuery({
@@ -240,10 +242,11 @@ export function RouteTable(actions: RouteActions) {
   // region = all). Filtering by IATA stays client-side, consistent with the other tabs.
   const rows = useMemo(() => {
     if (search) return isCross ? [] : searchRoutes;
+    if (regionPending) return [];
     if (!iatas) return listRoutes;
     const set = new Set(iatas);
     return listRoutes.filter((r) => set.has(r.iata));
-  }, [search, isCross, searchRoutes, listRoutes, iatas]);
+  }, [search, isCross, searchRoutes, listRoutes, iatas, regionPending]);
 
   const selectedRoute = useMemo(
     () => rows?.find((r) => String(r.id) === selectedKey),
@@ -364,7 +367,7 @@ export function RouteTable(actions: RouteActions) {
               rowKey={(r) => String(r.id)}
               selectedKey={pathKey ? String(rows?.find(row => row.pathKey === pathKey && row.iata === routeIata)?.id ?? "") : selectedKey}
               onSelect={selectRoute}
-              isLoading={search ? searchLoading : listLoading}
+              isLoading={search ? searchLoading : listLoading || regionPending}
               emptyLabel={t(search ? "routes.noMatches" : "routes.empty")}
               defaultSort={{ id: "lastSeen", direction: "desc" }}
               onEndReached={search ? undefined : loadMore}

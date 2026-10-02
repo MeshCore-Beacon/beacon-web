@@ -51,6 +51,7 @@ export interface RegionsData {
   regions: Region[]; // full detail (member IATAs + map-focus hints), ordered by the API
   bySlug: ReadonlyMap<string, Region>;
   regionIatas: ReadonlyMap<string, string[]>; // slug → member IATA codes, for selection resolution
+  settled: boolean; // the region list has loaded
 }
 
 // Loads the region list and each region's detail (member IATAs). Regions are near-static, so this is
@@ -74,7 +75,7 @@ export function useRegions(): RegionsData {
       bySlug.set(r.slug, r);
       regionIatas.set(r.slug, r.iatas);
     }
-    return { regions, bySlug, regionIatas };
+    return { regions, bySlug, regionIatas, settled: data !== undefined };
   }, [data]);
 }
 
@@ -88,16 +89,20 @@ export interface RegionFilter {
 // The resolved geographic filter consumers pass to queries: the flattened IATA list plus a stable key.
 export function useRegion(): RegionFilter {
   const { selection } = useRegionSelection();
-  const { regionIatas } = useRegions();
+  const { regionIatas, settled } = useRegions();
 
   return useMemo(() => {
     const iatas = resolveIatas(selection, regionIatas);
     const emptyRegion = emptyRegionSlug(selection, regionIatas);
+    // a slug missing from a loaded list (deleted region, stale link) must not hold everything up
+    const isResolved = settled || selection.regions.every((slug) => regionIatas.has(slug));
+    const key = emptyRegion ? `region:${emptyRegion}` : toRegionKey(iatas);
     return {
       iatas: emptyRegion ? [] : iatas,
-      regionKey: emptyRegion ? `region:${emptyRegion}` : toRegionKey(iatas),
-      isResolved: selection.regions.every((slug) => regionIatas.has(slug)),
+      // a pending key keeps half-resolved results out of the resolved region's cache
+      regionKey: isResolved ? key : `${key}:pending`,
+      isResolved,
       emptyRegion,
     };
-  }, [selection, regionIatas]);
+  }, [selection, regionIatas, settled]);
 }

@@ -12,7 +12,7 @@ export function useWindowedStats<T>(
 ) {
   const { where, regionKey, isResolved } = useStatsRegion();
   return useQuery({
-    queryKey: [key, isResolved === false ? `${regionKey}:pending` : regionKey, range],
+    queryKey: [key, regionKey, range],
     enabled: isResolved !== false,
     queryFn: ({ signal }) => {
       if (isResolved === false) throw new Error("Selected region is not available yet");

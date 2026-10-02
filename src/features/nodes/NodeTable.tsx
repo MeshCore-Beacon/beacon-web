@@ -84,7 +84,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
 
 export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { iatas, regionKey, isResolved } = useRegion();
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState("");
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
@@ -191,6 +191,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       }),
     getId: nodeId,
     keepPrevious: true,
+    enabled: isResolved !== false,
   });
 
   const scopeOptions = useScopes(scopeFilter);
@@ -239,7 +240,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           rowKey={(n) => n.id}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
-          isLoading={isLoading}
+          isLoading={isLoading || isResolved === false}
           emptyLabel={t("nodes.empty")}
           defaultSort={{ id: "name" }}
           renderCard={(node) => renderNodeCard(node, t)}
