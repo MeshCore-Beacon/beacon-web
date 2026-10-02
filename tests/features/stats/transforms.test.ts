@@ -109,6 +109,12 @@ describe("fillActivity", () => {
     expect(out[3]!.airtimeMs).toBeNull();
   });
 
+  it("treats everything before the raw tail as a gap when nothing has been rolled yet", () => {
+    const H = 3_600_000;
+    const out = fillActivity([activity(4 * H, { observations: 2 })], H, { start: 0, end: 5 * H }, { rawFrom: 3 * H });
+    expect(out.map((p) => p.observations)).toEqual([null, null, null, 0, 2, 0]);
+  });
+
   it("starts at the first complete bucket and ends at the one in progress", () => {
     // the server rounds the window start up to the next bucket, so a floored first bucket would be a fake zero
     const out = fillActivity([], I, { start: I + 1, end: 3 * I - 1 });

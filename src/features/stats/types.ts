@@ -180,7 +180,8 @@ export interface ObserverActivity {
   windowEnd?: number;
   generatedAt?: number;
   source?: "raw" | "hourly";
-  // hourly only: rollups cover buckets before rolledUntil, raw rows from rawFrom; hours between are unread
+  // hourly only: rollups cover buckets before rolledUntil (absent before the first rollup), raw rows
+  // from rawFrom; hours between are unread
   rolledUntil?: number;
   rawFrom?: number;
   summary?: ObserverActivitySummary;
