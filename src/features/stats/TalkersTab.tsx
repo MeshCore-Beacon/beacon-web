@@ -48,13 +48,13 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
         cell: (a) => (
           <div className="flex min-w-0 items-center gap-2">
             <span className={`truncate ${a.nodeName ? "text-text-normal" : "italic text-text-dim"}`}>
-              {a.nodeName ?? a.nodeId.slice(0, 8)}
+              {a.nodeName ?? a.publicKey.slice(0, 8)}
             </span>
             <Badge variant="default">{a.nodeTypeName}</Badge>
             <IataChip>{a.iata}</IataChip>
           </div>
         ),
-        sortValue: (a) => a.nodeName ?? a.nodeId,
+        sortValue: (a) => a.nodeName ?? a.publicKey,
       },
       { header: t("talkers.flood"), className: "tabular-nums", cell: (a) => split(a.floodAdvertCount), sortValue: (a) => a.floodAdvertCount },
       { header: t("talkers.direct"), className: "tabular-nums", cell: (a) => split(a.directAdvertCount), sortValue: (a) => a.directAdvertCount },
@@ -75,9 +75,9 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
           <DataTable
             columns={advertiserColumns}
             rows={advertisers}
-            rowKey={(a) => a.nodeId}
+            rowKey={(a) => a.publicKey}
             selectedKey={null}
-            onSelect={(id) => { if (id) onViewNode?.(id); }}
+            onSelect={(key) => { const id = advertisers.find((a) => a.publicKey === key)?.nodeId; if (id) onViewNode?.(id); }}
             isLoading={advertisersLoading}
             emptyLabel={topAdvertisers.isError ? t("common.loadFailed") : t("talkers.noAdvertisers")}
           />

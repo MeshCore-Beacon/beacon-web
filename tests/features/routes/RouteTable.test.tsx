@@ -201,3 +201,15 @@ it("translates the search bar, headers and empty state", async () => {
   expect(screen.getByRole("button", { name: "Rechercher" })).toBeInTheDocument();
   expect(await screen.findByText("Aucun trajet")).toBeInTheDocument();
 });
+
+it("shows no routes for a region with no IATAs", async () => {
+  vi.mocked(getRegions).mockResolvedValue([{ id: 2, slug: "empty", name: "Empty" }]);
+  vi.mocked(getRegion).mockResolvedValue({ id: 2, slug: "empty", name: "Empty", iatas: [] });
+  mockGetKnownRoutesPage.mockResolvedValue({ items: [{ id: 1, iata: "CCC", hopCount: 1, hops: [], firstSeen: 1, lastSeen: 5, observationCount: 9 }], nextCursor: null, hasMore: false });
+
+  renderTable({ regions: ["empty"], iatas: [] });
+
+  await waitFor(() => expect(getRegion).toHaveBeenCalled());
+  expect(await screen.findByText("No routes")).toBeInTheDocument();
+  expect(screen.queryByText("9")).not.toBeInTheDocument();
+});

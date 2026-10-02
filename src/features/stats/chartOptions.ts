@@ -29,13 +29,12 @@ function valueAxis(c: ChartColors, extra: Record<string, unknown> = {}) {
 
 // ---- Mesh ----
 
+// null values are hours the server hasn't rolled (or never can); echarts breaks the line there.
 export function observationsAreaOption(
-  points: { hour: number; observationCount: number; uniquePackets: number }[],
+  points: { hour: number; observations: number | null; uniquePackets: number | null }[],
   c: ChartColors,
   labels = { observations: "Observations", uniquePackets: "Unique packets" },
 ): EChartsOption {
-  const obs = points.map((p) => [p.hour, p.observationCount]);
-  const uniq = points.map((p) => [p.hour, p.uniquePackets]);
   return {
     animation: false,
     backgroundColor: "transparent",
@@ -58,7 +57,7 @@ export function observationsAreaOption(
         type: "line",
         smooth: true,
         symbol: "none",
-        data: obs,
+        data: points.map((p) => [p.hour, p.observations]),
         lineStyle: { color: c.primary, width: 2 },
         itemStyle: { color: c.primary },
         areaStyle: {
@@ -77,7 +76,7 @@ export function observationsAreaOption(
         type: "line",
         smooth: true,
         symbol: "none",
-        data: uniq,
+        data: points.map((p) => [p.hour, p.uniquePackets]),
         lineStyle: { color: c.secondary, width: 1.3, type: "dashed" },
         itemStyle: { color: c.secondary },
       },

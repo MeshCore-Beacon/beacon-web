@@ -173,7 +173,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const fitPoints = useMemo<[number, number][] | null>(() => {
     const withCoords = (iatas ?? []).filter((i) => i.lat != null && i.lon != null);
     if (withCoords.length === 0) return null;
-    const scope = selectedIatas && selectedIatas.length > 0 ? new Set(selectedIatas) : null;
+    const scope = selectedIatas ? new Set(selectedIatas) : null;
     const chosen = scope ? withCoords.filter((i) => scope.has(i.iata)) : withCoords;
     return chosen.length > 0 ? chosen.map((i) => [i.lon!, i.lat!]) : null;
   }, [iatas, selectedIatas]);
@@ -182,7 +182,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // which resolves to a 204 and is dropped). Only fetched while the layer is toggled on.
   const borderIatas = useMemo(() => {
     const all = (iatas ?? []).map((i) => i.iata);
-    return selectedIatas && selectedIatas.length > 0 ? all.filter((c) => selectedIatas.includes(c)) : all;
+    return selectedIatas ? all.filter((c) => selectedIatas.includes(c)) : all;
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 

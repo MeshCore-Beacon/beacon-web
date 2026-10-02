@@ -6,6 +6,7 @@ import { InfoTip } from "../../components/InfoTip";
 import { SectionInfo } from "./SectionInfo";
 import { getObserver, getObserverComparison } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
+import { useStatsRegion } from "./useStats";
 import { OBSERVER_UUID } from "../observers/observer-id";
 import { ObserverPicker } from "../observers/ObserverPicker";
 import { Card } from "./cards";
@@ -82,7 +83,8 @@ function ComparisonForm({ initial, onCompare }: { initial: Selection | null; onC
 
 export function CompareObserversTab() {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { iatas, emptyRegion } = useRegion();
+  const { where, regionKey } = useStatsRegion();
   const [params, setParams] = useSearchParams();
   const keys = ["compareA", "compareB", "compareSince", "compareUntil"];
   const supplied = keys.some((key) => params.has(key));
@@ -94,7 +96,7 @@ export function CompareObserversTab() {
   const selection = valid ? parsed : null;
   const result = useQuery({
     queryKey: ["observer-comparison", regionKey, selection],
-    queryFn: ({ signal }) => getObserverComparison(iatas, selection!, signal),
+    queryFn: ({ signal }) => getObserverComparison(where, selection!, signal),
     enabled: selection !== null,
     retry: false, staleTime: 30_000, refetchOnWindowFocus: false,
   });
@@ -133,7 +135,7 @@ export function CompareObserversTab() {
       </Card>
       {selection && <Card title={t("observerCompare.floodHeard")}>
         <p className="mb-2 break-words text-sm text-text-normal">{t("observerCompare.pair", { a: observerA.data?.displayName ?? selection.observerA, b: observerB.data?.displayName ?? selection.observerB })}</p>
-        <p className="mb-3 flex flex-wrap items-center gap-x-2 break-words text-sm text-text-muted">{new Date(selection.since).toLocaleString()} – {new Date(selection.until).toLocaleString()} · {iatas?.join(", ") || t("observerCompare.allRegions")}<InfoTip text={t("observerCompare.localTimeNote")} /></p>
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 break-words text-sm text-text-muted">{new Date(selection.since).toLocaleString()} – {new Date(selection.until).toLocaleString()} · {iatas ? iatas.join(", ") || emptyRegion : t("observerCompare.allRegions")}<InfoTip text={t("observerCompare.localTimeNote")} /></p>
         {result.isFetching && <p role="status" className="text-sm text-text-muted">{t("observerCompare.comparing")}</p>}
         {result.isError && <div role="alert" className="text-sm text-danger"><p>{result.error.message}</p><button type="button" onClick={() => void result.refetch()} className="mt-2 text-primary">{t("observerCompare.retryComparison")}</button></div>}
         {data && !result.isError && <>

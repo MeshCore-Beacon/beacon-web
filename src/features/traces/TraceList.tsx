@@ -7,6 +7,7 @@ import { SkeletonRows } from "../../components/SkeletonRows";
 import { EmptyState } from "../../components/EmptyState";
 import { Timestamp } from "../../components/Timestamp";
 import { Badge } from "../../components/Badge";
+import { InfoTip } from "../../components/InfoTip";
 import { Segmented } from "../stats/Segmented";
 import { snrLevel, SIGNAL_LEVEL_CLASSES, formatSnr } from "../../lib/formatters";
 import { TraceDetailPanel } from "./TraceDetailPanel";
@@ -121,12 +122,15 @@ export function TraceList({ onAnalyze, onViewNode }: TraceListProps) {
           <span className="font-mono text-[11px] text-text-dim">
             {tags ? t("traces.tagCount", { count: tags.length }) : ""}
           </span>
-          <Segmented
-            options={typeOptions}
-            value={typeFilter}
-            onChange={(v) => setTypeFilter(v as "" | TraceType)}
-            ariaLabel={t("traces.typeLabel")}
-          />
+          <div className="flex items-center gap-2">
+            <InfoTip text={t("traces.typeHint")} />
+            <Segmented
+              options={typeOptions}
+              value={typeFilter}
+              onChange={(v) => setTypeFilter(v as "" | TraceType)}
+              ariaLabel={t("traces.typeLabel")}
+            />
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
           {isLoading ? (

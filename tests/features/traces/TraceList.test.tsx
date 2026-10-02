@@ -175,6 +175,14 @@ describe("TraceList", () => {
     await waitFor(() => expect(mockGetTraces.mock.calls.at(-1)?.[1]).toMatchObject({ type: "PING" }));
   });
 
+  it("explains that the type filter classifies whole tags", async () => {
+    mockGetTraces.mockResolvedValue([]);
+
+    renderTraces();
+
+    expect(await screen.findByText(/TRACE if any packet in the tag is multi-hop/)).toBeInTheDocument();
+  });
+
   it("shows an empty state when there are no traces", async () => {
     mockGetTraces.mockResolvedValue([]);
 

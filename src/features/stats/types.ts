@@ -16,20 +16,40 @@ export interface ObserverComparison {
   both: number;
 }
 
-export interface StatsOverview {
-  totalPackets: number;
-  totalObservations: number;
+// beacon-server /stats/series: hourly rollups. Only complete hours carry values; the summary covers
+// those, and observers/IATAs/scopes are distinct across the window so they don't sum from the hours.
+export interface SeriesValues {
+  observations: number;
+  uniquePackets: number;
   activeObservers: number;
   activeIatas: number;
-  windowHours: number;
+  scopedPackets: number;
+  activeScopes: number;
+  maxPathEntries: number;
+  snrSum: number;
+  snrSamples: number;
+  rssiSum: number;
+  rssiSamples: number;
+}
+export interface SeriesHour {
+  hour: number; // epoch ms, UTC hour start
+  status: "complete" | "partial" | "missing";
+  values: SeriesValues | null;
+}
+export interface StatsSeries {
+  since: number;
+  until: number;
+  revision: number;
+  earliestComplete: number | null;
+  completeHours: number;
+  hours: SeriesHour[];
+  summary: SeriesValues;
 }
 
 export interface ObservationPoint {
   hour: number; // epoch ms, start of the hourly bucket
   iata: string;
   observationCount: number;
-  uniquePackets: number;
-  activeObservers: number;
 }
 
 export interface PayloadBreakdownItem {
@@ -39,7 +59,8 @@ export interface PayloadBreakdownItem {
 }
 
 export interface TopNode {
-  nodeId: string;
+  nodeId: string | null; // null once the node row is deleted; key rows by publicKey
+  publicKey: string;
   nodeName: string | null;
   nodeType: number;
   nodeTypeName: string;
@@ -57,7 +78,8 @@ export interface TopObserver {
 }
 
 export interface TopAdvertiser {
-  nodeId: string;
+  nodeId: string | null; // null once the node row is deleted; key rows by publicKey
+  publicKey: string;
   nodeName: string | null;
   nodeType: number;
   nodeTypeName: string;

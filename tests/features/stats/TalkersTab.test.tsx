@@ -8,7 +8,7 @@ import type { EChartsOption } from "../../../src/features/stats/echarts-setup";
 import i18n from "../../../src/i18n";
 
 const region = { iatas: ["YVR"], regionKey: "YVR" };
-const advertisers: TopAdvertiser[] = [{ nodeId: "fixture-node", nodeName: "Old advertiser", nodeType: 2, nodeTypeName: "Repeater", iata: "YVR", advertCount: 14, floodAdvertCount: 10, directAdvertCount: 4, lastHeard: 0 }];
+const advertisers: TopAdvertiser[] = [{ nodeId: "fixture-node", publicKey: "aa11bb22cc33dd44", nodeName: "Old advertiser", nodeType: 2, nodeTypeName: "Repeater", iata: "YVR", advertCount: 14, floodAdvertCount: 10, directAdvertCount: 4, lastHeard: 0 }];
 const talkers: TopTalker[] = [{ senderName: "Old sender", messageCount: 42, lastSent: 0 }];
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
 vi.mock("../../../src/api/client", () => ({ getTopAdvertisers: vi.fn(), getTopTalkers: vi.fn() }));
@@ -125,6 +125,14 @@ it("opens the clicked advertiser's node", async () => {
   mount(onViewNode);
   fireEvent.click(await screen.findByText("Old advertiser"));
   expect(onViewNode).toHaveBeenCalledWith("fixture-node");
+});
+
+it("lists a deleted node by public key without opening it", async () => {
+  vi.mocked(getTopAdvertisers).mockResolvedValue([...advertisers, { ...advertisers[0]!, nodeId: null, publicKey: "deadbeef00112233", nodeName: null }]);
+  const onViewNode = vi.fn();
+  mount(onViewNode);
+  fireEvent.click(await screen.findByText("deadbeef"));
+  expect(onViewNode).not.toHaveBeenCalled();
 });
 
 it("renders the leaderboards in French", async () => {

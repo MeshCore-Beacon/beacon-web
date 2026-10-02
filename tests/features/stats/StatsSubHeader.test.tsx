@@ -19,6 +19,8 @@ describe("translated analytics controls", () => {
     rerender(<StatsSubHeader {...props} tab="traffic" range="7d" />);
     expect(screen.queryByRole("button", { name: "3 j" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "30 j" })).toBeInTheDocument();
+    rerender(<StatsSubHeader {...props} tab="scopes" range="7d" />);
+    expect(screen.getByRole("button", { name: "30 j" })).toBeInTheDocument();
   });
 
   it("keeps section and range identifiers when labels change", async () => {

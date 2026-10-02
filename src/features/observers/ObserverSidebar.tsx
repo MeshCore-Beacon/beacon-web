@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getTopObservers } from "../../api/client";
-import { useRegion } from "../../hooks/useRegion";
 import { formatCount } from "../../lib/formatters";
 import { Segmented } from "../stats/Segmented";
+import { useStatsRegion } from "../stats/useStats";
 import { RANGE_MS, type StatsRange } from "../stats/types";
 import { observerName as nameOf } from "./observer-filter";
 import { deriveObserverStatus } from "./observer-status";
@@ -18,12 +18,12 @@ export function ObserverSidebar({ observers, filtered, isPending, isError, onRet
   range: StatsRange; selectedId: string | null; onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const { iatas, regionKey } = useRegion();
+  const { where, regionKey } = useStatsRegion();
   const [sort, setSort] = useState<Sort>("activity");
 
   const activity = useQuery({
     queryKey: ["observer-sidebar-activity", regionKey, range],
-    queryFn: () => getTopObservers(iatas, Date.now() - RANGE_MS[range], TOP),
+    queryFn: () => getTopObservers(where, Date.now() - RANGE_MS[range], TOP),
     staleTime: 30_000,
   });
 

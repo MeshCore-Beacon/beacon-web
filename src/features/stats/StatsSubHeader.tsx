@@ -132,7 +132,7 @@ export function StatsSubHeader({ tab, onTabChange, range, onRangeChange, infoSlo
       <span ref={infoSlot} data-section-info className="flex shrink-0 empty:hidden" />
       </div>
       {/* Comparison has explicit dates; graph and clock drift have no rolling window. */}
-      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && tab !== "scopes" && (
+      {tab !== "graph" && tab !== "clockdrift" && tab !== "compare" && (
         <Segmented
           className="shrink-0"
           options={rangeOptions}

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { WsManager } from "../../api/ws-manager";
 import { StatsSubHeader } from "./StatsSubHeader";
 import { SectionInfoSlot } from "./section-info-slot";
 import { MeshTab } from "./MeshTab";
@@ -22,13 +21,12 @@ const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v
 const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRange) ? (v as StatsRange) : "7d");
 
 interface StatsOverviewProps {
-  wsManager: WsManager;
   onViewNode?: (nodeId: string) => void;
 }
 
 // Stats page shell: an analytics sub-header and range over the active sub-tab. Sub-tab and range live
 // in the URL (?statsTab/?range) so the view is shareable.
-export function StatsOverview({ wsManager, onViewNode }: StatsOverviewProps) {
+export function StatsOverview({ onViewNode }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const tab = asTab(params.get("statsTab"));
@@ -67,11 +65,11 @@ export function StatsOverview({ wsManager, onViewNode }: StatsOverviewProps) {
       <StatsSubHeader tab={tab} onTabChange={handleTab} range={range} onRangeChange={handleRange} infoSlot={setInfoSlot} />
       <SectionInfoSlot.Provider value={infoSlot}>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} wsManager={wsManager} />}
+        {tab === "mesh" && <MeshTab range={range} onSelectObserver={handleSelectObserver} />}
         {tab === "traffic" && <TrafficTab range={range} />}
         {tab === "signal" && <SignalTab range={range} />}
         {tab === "paths" && <PathsTab range={range} />}
-        {tab === "scopes" && <ScopesTab />}
+        {tab === "scopes" && <ScopesTab range={range} />}
         {tab === "talkers" && <TalkersTab range={range} onViewNode={onViewNode} />}
         {tab === "clockdrift" && <ClockDriftTab />}
         {tab === "graph" && <NeighbourGraphTab />}

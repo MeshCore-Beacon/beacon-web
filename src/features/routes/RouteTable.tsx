@@ -240,7 +240,7 @@ export function RouteTable(actions: RouteActions) {
   // region = all). Filtering by IATA stays client-side, consistent with the other tabs.
   const rows = useMemo(() => {
     if (search) return isCross ? [] : searchRoutes;
-    if (!iatas || iatas.length === 0) return listRoutes;
+    if (!iatas) return listRoutes;
     const set = new Set(iatas);
     return listRoutes.filter((r) => set.has(r.iata));
   }, [search, isCross, searchRoutes, listRoutes, iatas]);

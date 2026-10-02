@@ -26,19 +26,25 @@ export function Card({
   );
 }
 
-function Sparkline({ values, color }: { values: number[]; color: string }) {
-  if (values.length < 2) return <div className="mt-1.5 h-[20px]" />;
+function Sparkline({ values, color }: { values: (number | null)[]; color: string }) {
+  const known = values.filter((v): v is number => v !== null);
+  if (values.length < 2 || known.length < 2) return <div className="mt-1.5 h-[20px]" />;
   const w = 120;
   const h = 20;
-  const max = Math.max(...values);
-  const min = Math.min(...values);
+  const max = Math.max(...known);
+  const min = Math.min(...known);
   const range = max - min || 1;
-  const pts = values
-    .map((v, i) => `${(i / (values.length - 1)) * w},${h - 1 - ((v - min) / range) * (h - 2)}`)
-    .join(" ");
+  // A null hour breaks the line, so an outage shows as a gap rather than a straight join.
+  const runs: string[][] = [[]];
+  values.forEach((v, i) => {
+    if (v === null) runs.push([]);
+    else runs[runs.length - 1]!.push(`${(i / (values.length - 1)) * w},${h - 1 - ((v - min) / range) * (h - 2)}`);
+  });
   return (
     <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="mt-1.5" aria-hidden>
-      <polyline fill="none" stroke={color} strokeWidth="1.5" points={pts} />
+      {runs.filter((run) => run.length > 1).map((run) => (
+        <polyline key={run[0]} fill="none" stroke={color} strokeWidth="1.5" points={run.join(" ")} />
+      ))}
     </svg>
   );
 }
@@ -54,7 +60,7 @@ export function StatCard({
   label: string;
   value: ReactNode;
   accent: string; // CSS color for the sparkline, e.g. "var(--color-primary)"
-  spark?: number[];
+  spark?: (number | null)[];
   sublabel?: ReactNode;
 }) {
   return (

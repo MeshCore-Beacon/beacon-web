@@ -183,6 +183,21 @@ describe("WsManager", () => {
     ).not.toThrow();
   });
 
+  it("drops the subscription without resubscribing for a region with no IATAs", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 123, connectionId: "abc" });
+    ws.simulateMessage({ v: 1, type: "subscribed", id: "sub-1", subscriptionId: "s-1" });
+
+    mgr.updateSubscription({ iatas: [] });
+
+    const types = ws.sent.slice(1).map((m) => JSON.parse(m).type);
+    expect(types).toEqual(["unsubscribe"]);
+  });
+
   it("updates subscription without reconnecting", () => {
     const mgr = new WsManager("ws://test/ws");
     mgr.connect({ iatas: ["YOW"] });

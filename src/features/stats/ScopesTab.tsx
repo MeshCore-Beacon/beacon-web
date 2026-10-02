@@ -7,10 +7,11 @@ import { useChartColors } from "./chartTheme";
 import { Card, ChartCard, StatCard } from "./cards";
 import { scopeChartOption, scopeSummary } from "./scopes";
 import { formatCount } from "../../lib/formatters";
+import type { StatsRange } from "./types";
 
-export function ScopesTab() {
+export function ScopesTab({ range }: { range: StatsRange }) {
   const { t } = useTranslation();
-  const query = useScopes();
+  const query = useScopes(range);
   const colors = useChartColors();
   const [search, setSearch] = useState("");
   const loading = query.isPending || query.isLoading || query.isPlaceholderData;
