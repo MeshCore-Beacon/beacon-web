@@ -39,6 +39,8 @@ export class WsManager {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private msgCounter = 0;
   private lastEventTimestamp: number = Date.now();
+  // liveness for the ping check; unlike lastEventTimestamp it restarts with each connection
+  private lastHeardAt: number = Date.now();
 
   private packetHandlers: PacketHandler[] = [];
   private laggedHandlers: LaggedHandler[] = [];
@@ -190,6 +192,7 @@ export class WsManager {
       case "hello": {
         const isReconnect = this.everConnected;
         this.everConnected = true;
+        this.lastHeardAt = Date.now();
         this.setStatus("connected");
         this.startPing();
         this.sendSubscribe();
@@ -219,11 +222,11 @@ export class WsManager {
 
       case "pong":
         // a pong proves the link is alive, so it counts as recent activity
-        this.lastEventTimestamp = Date.now();
+        this.lastEventTimestamp = this.lastHeardAt = Date.now();
         break;
 
       case "event":
-        this.lastEventTimestamp = Date.now();
+        this.lastEventTimestamp = this.lastHeardAt = Date.now();
         if (msg.event === "packetObservation") {
           for (const handler of this.packetHandlers) {
             handler(msg.data);
@@ -245,7 +248,7 @@ export class WsManager {
 
       case "lagged":
         // a lag notice is still server traffic, so it counts as recent activity
-        this.lastEventTimestamp = Date.now();
+        this.lastEventTimestamp = this.lastHeardAt = Date.now();
         for (const handler of this.laggedHandlers) {
           handler(msg);
         }
@@ -257,6 +260,8 @@ export class WsManager {
   }
 
   private sendSubscribe(): void {
+    // any subscribe still awaiting its ack is superseded, even when nothing replaces it
+    this.lastSubscribeId = null;
     // the server reads an empty IATA list as "all", so a region with no IATAs subscribes to nothing
     if (!this.filter || this.filter.iatas?.length === 0) return;
     const id = `sub-${this.nextId()}`;
@@ -276,7 +281,7 @@ export class WsManager {
   private startPing(): void {
     if (this.pingTimer) clearInterval(this.pingTimer); // a second hello must not double the interval
     this.pingTimer = setInterval(() => {
-      if (Date.now() - this.lastEventTimestamp > WS_PING_INTERVAL_MS * 2 + 5_000) {
+      if (Date.now() - this.lastHeardAt > WS_PING_INTERVAL_MS * 2 + 5_000) {
         // pongs stopped coming back — the link is half-open, rebuild it
         this.forceReconnect();
         return;

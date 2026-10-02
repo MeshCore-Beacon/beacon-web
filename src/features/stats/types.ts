@@ -153,7 +153,7 @@ export interface ObserverTelemetry {
 // GET /observers/{id}/activity: what the observer heard per `interval`. The tab hides these charts on a 404.
 export interface ActivityPoint {
   t: number; // epoch ms, bucket start
-  observations: number;
+  observations: number | null; // null only for a filled gap the server never read
   airtimeMs: number | null; // summed LoRa time-on-air; null when no row in the bucket could be costed
   snrAvg: number | null;
   snrMin: number | null;
@@ -180,6 +180,9 @@ export interface ObserverActivity {
   windowEnd?: number;
   generatedAt?: number;
   source?: "raw" | "hourly";
+  // hourly only: rollups cover buckets before rolledUntil, raw rows from rawFrom; hours between are unread
+  rolledUntil?: number;
+  rawFrom?: number;
   summary?: ObserverActivitySummary;
   range: string;
   interval: string;

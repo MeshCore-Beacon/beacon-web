@@ -183,26 +183,32 @@ export function getScopes(iatas?: string[]): Promise<string[]> {
 
 // Wrap a bare-array endpoint into a CursorPage so it can drive the cursor-paginated hooks. A page that
 // fills the limit may have more behind it; the next cursor is the last (boundary) row's sort key.
-function toCursorPage<T>(items: T[], limit: number, cursorOf: (last: T) => number): CursorPage<T> {
+function toCursorPage<T, C = number>(items: T[], limit: number, cursorOf: (last: T) => C): CursorPage<T, C> {
   const hasMore = items.length === limit;
   return { items, nextCursor: hasMore ? cursorOf(items[items.length - 1]!) : null, hasMore };
 }
 
-// Known routes. /routes returns a bare array ordered last_seen DESC; its cursor pages by last_seen (ms),
-// so the last row carries the page's smallest last_seen — the cursor for the next (older) batch. We wrap
+// Known routes. /routes returns a bare array ordered last_seen DESC, id DESC; the next (older) batch
+// starts after the last row's lastSeen (ms), with its id breaking ties inside that millisecond. We wrap
 // it into a CursorPage here so RouteTable can stream pages via useInfinitePages. `iata` is a single code
 // ("" = all), unlike the comma-separated `iatas` used elsewhere.
+export interface RouteCursor {
+  lastSeen: number;
+  id: number;
+}
+
 export async function getKnownRoutesPage(
-  params?: { iata?: string; hopCount?: number; cursor?: number; limit?: number },
-): Promise<CursorPage<KnownRoute>> {
+  params?: { iata?: string; hopCount?: number; cursor?: RouteCursor; limit?: number },
+): Promise<CursorPage<KnownRoute, RouteCursor>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
   const items = await request<KnownRoute[]>("/routes", {
     iata: params?.iata,
     hopCount: params?.hopCount,
-    cursor: params?.cursor,
+    cursor: params?.cursor?.lastSeen,
+    cursorId: params?.cursor?.id,
     limit,
   });
-  return toCursorPage(items, limit, (r) => r.lastSeen);
+  return toCursorPage(items, limit, (r) => ({ lastSeen: r.lastSeen, id: r.id }));
 }
 
 export function getRouteEvidence(iata: string, pathKey: string, params: { range?: string; since?: number; until?: number; pageCursor?: string; limit?: number }, signal?: AbortSignal): Promise<RouteEvidence> {

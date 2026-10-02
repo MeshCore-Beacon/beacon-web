@@ -75,7 +75,7 @@ export function useMapBorders(
     if (src) src.setData(data);
   }, [mapRef, isReady, data]);
 
-  // remove layers (before the source) on unmount; runs before useMapLibre tears the map down
+  // remove layers (before the source) on unmount; useMapLibre's map.remove() runs first, hence the try
   useEffect(() => {
     const map = mapRef.current;
     return () => {

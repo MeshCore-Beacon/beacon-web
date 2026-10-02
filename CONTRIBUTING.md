@@ -76,7 +76,6 @@ because the root `tsconfig.json` has `files: []`.
 - Keep components small and single-purpose
 - Comments state the non-obvious *why* in one terse line; a wrong comment is
   worse than none
-- See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full project conventions
 
 ---
 
@@ -111,7 +110,8 @@ docs: expand CONTRIBUTING.md
 ```
 
 Scopes are optional but helpful. Common scopes mirror the feature folders:
-`packets`, `nodes`, `observers`, `channels`, `map`, `stats`.
+`packets`, `nodes`, `observers`, `channels`, `map`, `routes`, `traces`, `stats`,
+`i18n`.
 
 ---
 
@@ -121,9 +121,11 @@ Scopes are optional but helpful. Common scopes mirror the feature folders:
 src/
   api/          — typed REST client and WebSocket manager (singleton)
   components/    — shared UI primitives (DataTable, DetailPanel, Badge, …)
-  features/      — one folder per domain: packets, nodes, observers, channels,
-                   map, stats — each with its components, types.ts, and hooks
+  features/      — one folder per domain (packets, nodes, observers, channels,
+                   map, routes, traces, stats), each with its components,
+                   types.ts, and hooks
   hooks/         — shared hooks (useRegion, useTheme, useWsHandlers, …)
+  i18n/          — i18next setup and locale catalogs
   lib/           — constants, formatters, theme utilities
   types/         — REST shapes (api.ts), enums (enums.ts), WS union (ws.ts)
   App.tsx        — providers, routing, region watcher, WS init
@@ -137,8 +139,9 @@ Key patterns to understand before contributing:
 - **Live + historical merge:** the WebSocket pushes into a capped live buffer;
   history comes from cursor-paginated `useInfiniteQuery`. A `useMemo` merges and
   dedupes by `packetHash`.
-- **Filters are client-side**, applied in a `useMemo` over the cached region
-  dataset — they are not part of the query key, so toggling is instant.
+- **Packet filters:** payload-type, route-type and scope filters go to the
+  server and into the query key, so paging covers the full filtered history.
+  The observer filter and hash/path search stay client-side in a `useMemo`.
 - **Payload rendering** switches on `parsedPayload.type` in
   `features/packets/payload-renderers.tsx`. When the server adds a payload type,
   add a matching renderer.

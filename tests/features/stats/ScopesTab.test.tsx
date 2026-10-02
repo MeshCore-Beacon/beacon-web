@@ -113,3 +113,14 @@ it("draws hourly sparks on all four scope cards from the scopes left after searc
   expect(points()).toHaveLength(4);
   expect(points()).not.toEqual(before);
 });
+
+it("shows no scoped packet total before any hour is rolled, keeping the membership counts", async () => {
+  await act(() => i18n.changeLanguage("en"));
+  const saved = seriesQuery.data;
+  seriesQuery.data = { ...saved, completeHours: 0 } as typeof saved;
+  try {
+    render(<ScopesTab range="24h" />);
+    expect(within(screen.getByText("Scoped packets").parentElement!.parentElement!).getByText("—")).toBeInTheDocument();
+    expect(within(screen.getAllByText("Observers")[0]!.parentElement!.parentElement!).getByText("4")).toBeInTheDocument();
+  } finally { seriesQuery.data = saved; }
+});

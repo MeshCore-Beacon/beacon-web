@@ -200,7 +200,7 @@ export function useMapPacketFlow(
     clearFlows(mapRef.current);
   }, [resetKey, mapRef, clearFlows]);
 
-  // remove layers + sources on unmount (runs before useMapLibre's map.remove())
+  // remove layers + sources on unmount (after useMapLibre's map.remove(), hence the try)
   useEffect(() => {
     const map = mapRef.current;
     return () => {

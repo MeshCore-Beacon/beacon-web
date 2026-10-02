@@ -173,13 +173,22 @@ export function ResolvedHopBlock({ hop, label, onViewNode, showSnr = true }: {
   );
 }
 
+// SNR sub-line under a trace hop; a "-" placeholder keeps the row aligned when there's no reading.
+export function HopSnr({ snr }: { snr: number | undefined }) {
+  if (snr == null) return <span className="text-[11px] text-text-dim" aria-hidden>-</span>;
+  const level = snrLevel(snr);
+  return <span className={`text-[11px] ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal"}`}>{formatSnr(snr)} dB</span>;
+}
+
 // resolvedPath[i] lines up with the i-th hash (backend appends one hop per hash, in order).
-export function PathData({ pathBytes, hashSize, resolvedPath, size = "md", onViewNode }: {
+// snrValues turns on the trace layout: each hop gets its SNR (or a placeholder) underneath.
+export function PathData({ pathBytes, hashSize, resolvedPath, size = "md", onViewNode, snrValues }: {
   pathBytes: string;
   hashSize: number;
   resolvedPath: ResolvedHop[];
   size?: "sm" | "md";
   onViewNode?: (nodeId: string) => void;
+  snrValues?: number[];
 }) {
   const chars = hashSize * 2;
   if (chars <= 0) return null; // splitter would be an invalid `.{1,0}` RegExp, and there's nothing to show anyway
@@ -187,13 +196,21 @@ export function PathData({ pathBytes, hashSize, resolvedPath, size = "md", onVie
   const textClass = size === "sm" ? "text-[11px]" : "text-[13px]";
 
   return (
-    <div className={`flex flex-wrap items-center gap-1 font-mono ${textClass}`}>
-      {hops.map((hop, i) => (
-        <span key={i} className="contents">
-          {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
-          <ResolvedHopBlock hop={resolvedPath[i]} label={hop.toUpperCase()} onViewNode={onViewNode} />
-        </span>
-      ))}
+    <div className={`flex flex-wrap items-center gap-1 font-mono ${textClass} ${snrValues ? "gap-y-2" : ""}`}>
+      {hops.map((hop, i) => {
+        const block = <ResolvedHopBlock hop={resolvedPath[i]} label={hop.toUpperCase()} onViewNode={onViewNode} showSnr={!snrValues} />;
+        return (
+          <span key={i} className="contents">
+            {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
+            {snrValues ? (
+              <span className="inline-flex flex-col items-center gap-0.5">
+                {block}
+                <HopSnr snr={snrValues[i]} />
+              </span>
+            ) : block}
+          </span>
+        );
+      })}
     </div>
   );
 }

@@ -79,6 +79,33 @@ describe("ObservationCard", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  // the server swaps a TRACE's pathBytes to its hop hashes; per-hop SNR comes from the parsed payload
+  it("renders a TRACE path as resolvable hops with each hop's SNR underneath", () => {
+    render(
+      <ObservationCard
+        observation={obs({
+          pathBytes: "abcdef", pathLength: { raw: "03", hashSize: 1, hopCount: 3 },
+          resolvedPath: [{ confidence: "high", nodes: [{ id: "n1", publicKey: "ab", name: "Alpha" }] }],
+        })}
+        isTrace
+        snrValues={[-5, 7.25]}
+      />,
+    );
+
+    expect(screen.getByText("Path")).toBeInTheDocument();
+    expect(screen.queryByText("ABCDEF")).not.toBeInTheDocument();
+    for (const hop of ["AB", "CD", "EF"]) expect(screen.getByText(hop)).toBeInTheDocument();
+    expect(screen.getByText("AB").className).toContain("text-green");
+    expect(screen.getByText("-5.00 dB")).toBeInTheDocument();
+    expect(screen.getByText("7.25 dB")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
+  });
+
+  it("keeps non-trace paths free of SNR sub-lines", () => {
+    render(<ObservationCard observation={obs({ pathBytes: "4142", pathLength: { raw: "02", hashSize: 1, hopCount: 2 } })} />);
+    expect(screen.queryByText("-")).not.toBeInTheDocument();
+  });
+
   it("labels the stats and path in French", async () => {
     await i18n.changeLanguage("fr");
     render(<ObservationCard observation={obs({ pathBytes: "41", radio: { freqMhz: 910.525 } })} />);

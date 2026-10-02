@@ -37,6 +37,7 @@ export function observationsAreaOption(
 ): EChartsOption {
   return {
     animation: false,
+    useUTC: true,
     backgroundColor: "transparent",
     grid: { left: 48, right: 14, top: 12, bottom: 24 },
     tooltip: { trigger: "axis", ...tooltipStyle(c), axisPointer: { type: "line", lineStyle: { color: c.primary } } },
@@ -318,6 +319,7 @@ const pctLabel = (v: unknown) => (typeof v === "number" ? `${v}%` : "—");
 export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketMs: number | null): EChartsOption {
   return {
     animation: false,
+    useUTC: true,
     backgroundColor: "transparent",
     grid: { left: 48, right: 14, top: 24, bottom: 22 },
     legend: { data: ["RX", "TX"], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },
@@ -351,6 +353,7 @@ function metricLineOption(
 ): EChartsOption {
   return {
     animation: false,
+    useUTC: true,
     backgroundColor: "transparent",
     grid: { left: 50, right: 14, top: 14, bottom: 22 },
     tooltip: { trigger: "axis", ...tooltipStyle(c) },
@@ -406,6 +409,7 @@ export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: 
   const pct = (p: ActivityPoint) => (intervalMs == null ? null : busyPct(p.airtimeMs, busySpanMs(p.t, intervalMs, w)));
   return {
     animation: false,
+    useUTC: true,
     backgroundColor: "transparent",
     grid: { left: 48, right: 14, top: 14, bottom: 22 },
     tooltip: { trigger: "axis", ...tooltipStyle(c), valueFormatter: pctLabel },
@@ -429,6 +433,7 @@ export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: 
 export function heardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow, name = "Heard"): EChartsOption {
   return {
     animation: false,
+    useUTC: true,
     backgroundColor: "transparent",
     grid: { left: 48, right: 14, top: 14, bottom: 22 },
     tooltip: { trigger: "axis", ...tooltipStyle(c) },
@@ -453,6 +458,7 @@ const dbLabel = (v: unknown) => (typeof v === "number" ? `${v} dB` : "—");
 export function snrHeardOption(points: ActivityPoint[], c: ChartColors, w: TimeWindow, labels = { average: "Avg", minimum: "Min" }): EChartsOption {
   return {
     animation: false,
+    useUTC: true,
     backgroundColor: "transparent",
     grid: { left: 54, right: 14, top: 24, bottom: 22 },
     legend: { data: [labels.average, labels.minimum], right: 6, top: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: c.textNormal, fontFamily: MONO, fontSize: 10 } },

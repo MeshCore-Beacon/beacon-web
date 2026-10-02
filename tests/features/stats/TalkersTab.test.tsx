@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TalkersTab } from "../../../src/features/stats/TalkersTab";
@@ -93,6 +93,10 @@ it("keeps advertisers usable when only the sender request fails", async () => {
 });
 
 it("retains valid rows and rates during an ordinary background refresh", async () => {
+  // past :35 the rolled window is a full 24h
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.UTC(2026, 9, 2, 12, 40));
+  onTestFinished(() => { vi.useRealTimers(); });
   const { client } = mount();
   await screen.findByText("Old advertiser"); await screen.findByText("Old sender");
   const next = deferred<TopAdvertiser[]>();
@@ -142,4 +146,15 @@ it("renders the leaderboards in French", async () => {
   expect(screen.getByText("Principaux annonceurs · 24 h")).toBeInTheDocument();
   expect(screen.getByText("Principaux émetteurs · 24 h")).toBeInTheDocument();
   expect(screen.getByText("Nœud")).toBeInTheDocument();
+});
+
+it("divides advert rates by the hours the rollup actually covers", async () => {
+  // at 12:10 UTC the 11:00 hour isn't rolled yet, so a 24h request covers 23 rolled hours
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.UTC(2026, 9, 2, 12, 10));
+  onTestFinished(() => { vi.useRealTimers(); });
+  vi.mocked(getTopAdvertisers).mockResolvedValue([{ ...advertisers[0]!, floodAdvertCount: 20, directAdvertCount: 4 }]);
+  mount();
+  expect(await screen.findByText("21/d")).toBeInTheDocument();
+  expect(screen.getByText("4.2/d")).toBeInTheDocument();
 });

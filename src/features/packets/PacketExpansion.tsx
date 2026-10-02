@@ -9,6 +9,7 @@ import { ObservationCard } from "./ObservationCard";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { PayloadType } from "../../types/enums";
 import { buildPacketPaths } from "../map/packet-path";
+import { traceSnrValues } from "./packet-investigation";
 
 // Roughly what fits the scroll cap; observations are unbounded server-side.
 const SKELETON_ROW_CAP = 12;
@@ -111,6 +112,7 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
                   selected={o.id === selectedObservationId}
                   onClick={() => handleSelectObservation(o.id)}
                   isTrace={data.header.payloadType === PayloadType.TRACE}
+                  snrValues={traceSnrValues(data)}
                 />
               ))}
             </div>

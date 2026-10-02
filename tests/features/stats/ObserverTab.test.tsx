@@ -202,6 +202,7 @@ describe("Observer dashboard hierarchy", () => {
     await i18n.changeLanguage("fr");
     renderTab();
     expect(screen.getByText("Paquets reçus")).toBeInTheDocument();
+    expect(screen.getByText("Temps radio TX / RX · 24 h")).toBeInTheDocument();
     expect(screen.queryByText("Détails de l’appareil")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Copier la clé publique/ })).toBeInTheDocument();
   });

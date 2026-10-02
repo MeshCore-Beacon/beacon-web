@@ -32,12 +32,13 @@ describe("CopyLinkButton", () => {
     expect(copied.searchParams.get("node")).toBe("abc123");
   });
 
-  it("swaps to 'Copied' after clicking, then reverts", () => {
+  it("swaps to 'Copied' after clicking, then reverts", async () => {
     vi.useFakeTimers();
     try {
       render(<CopyLinkButton params={{ tab: "Observers", observer: "xyz" }} />);
       const button = screen.getByRole("button");
       fireEvent.click(button);
+      await act(async () => {});
       expect(button).toHaveTextContent("Copied");
       act(() => {
         vi.advanceTimersByTime(1500);
@@ -71,6 +72,27 @@ describe("CopyLinkButton", () => {
     expect(copied.searchParams.has("node_type")).toBe(false);
     expect(copied.searchParams.get("keep")).toBe("1");
     expect(copied.searchParams.get("tab")).toBe("Map");
+  });
+
+  it("doesn't claim success when the clipboard API is missing (plain http)", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined, writable: true, configurable: true });
+    render(<CopyLinkButton params={{ tab: "Nodes", node: "abc" }} />);
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
+    await act(async () => {});
+    expect(button).not.toHaveTextContent("Copied");
+    expect(button).toHaveTextContent("Copy failed");
+  });
+
+  it("shows 'Copied' only once the write resolves, and a failure when it rejects", async () => {
+    let reject!: (e: Error) => void;
+    writeText.mockReturnValueOnce(new Promise((_, r) => (reject = r)));
+    render(<CopyLinkButton params={{ tab: "Nodes", node: "abc" }} />);
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
+    expect(button).not.toHaveTextContent("Copied");
+    await act(async () => reject(new Error("denied")));
+    expect(button).toHaveTextContent("Copy failed");
   });
 });
 

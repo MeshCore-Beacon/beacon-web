@@ -62,7 +62,13 @@ export function useRegions(): RegionsData {
     queryKey: ["regions"],
     queryFn: async () => {
       const summaries = await getRegions();
-      return Promise.all(summaries.map((s) => getRegion(s.id)));
+      // a listed region whose detail 404s is dropped like an unknown slug; 4xx is never retried,
+      // so failing the whole query would leave the selection unresolved for good
+      const regions = await Promise.all(summaries.map((s) => getRegion(s.id).catch((err: unknown) => {
+        if ((err as { status?: unknown } | null)?.status !== 404) throw err;
+        return null;
+      })));
+      return regions.filter((r): r is Region => r !== null);
     },
     staleTime: 5 * 60_000,
   });

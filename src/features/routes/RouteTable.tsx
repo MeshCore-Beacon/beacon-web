@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useSearchParams } from "react-router-dom";
-import { getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getIatas } from "../../api/client";
+import { getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getIatas, type RouteCursor } from "../../api/client";
 import { useRegion, useRegionSelection } from "../../hooks/useRegion";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
 import { Badge } from "../../components/Badge";
@@ -195,10 +195,10 @@ export function RouteTable(actions: RouteActions) {
   // client-side below (a region can span several IATAs, which the endpoint can't express).
   const serverIata = iatas && iatas.length === 1 ? iatas[0] : undefined;
 
-  // Page the route set on demand (50 at a time, cursor = last route's lastSeen ms) — the DataTable
+  // Page the route set on demand (50 at a time, cursor = last route's lastSeen + id) — the DataTable
   // pulls the next page via loadMore() as you scroll, instead of eagerly loading the whole set.
   const { items: listRoutes, loadedCount, isPaging, isError, isLoading: listLoading, loadMore, hasMore } =
-    useInfinitePages<KnownRoute>({
+    useInfinitePages<KnownRoute, RouteCursor>({
       queryKey: ["routes", serverIata ?? ""],
       queryFn: (cursor) => getKnownRoutesPage({ iata: serverIata, cursor }),
       getId: routeId,

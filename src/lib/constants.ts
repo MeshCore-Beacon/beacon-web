@@ -1,8 +1,9 @@
-export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8080/api/v1";
-export const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8080/ws";
+import { runtimeEnv } from "./runtime-env";
+
+export const API_BASE = runtimeEnv("VITE_API_BASE", import.meta.env.VITE_API_BASE) ?? "http://localhost:8080/api/v1";
+export const WS_URL = runtimeEnv("VITE_WS_URL", import.meta.env.VITE_WS_URL) ?? "ws://localhost:8080/ws";
 
 export const LIVE_BUFFER_CAP = 500;
-export const MAX_INFINITE_PAGES = 20;
 export const DEFAULT_PAGE_SIZE = 50;
 
 export const SCROLL_TOP_THRESHOLD_PX = 100;
@@ -24,11 +25,10 @@ export const RATE_LIMIT_MAX_MS = 300_000;
 // app tab names, in display order; the ?tab URL param is validated against this list
 export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Analytics"] as const;
 
-// Per-deployment .env config (VITE_* prefix is required so the build can expose it to the browser;
-// the Docker entrypoint sed-substitutes each sentinel at container start — see .build/).
+// Per-deployment config: read via runtimeEnv, so the Docker image's /config.js (written at container
+// start, see .build/) overrides the VITE_* build-time env.
 
-// Split a comma-separated env value into trimmed, non-empty entries. An unset var or an
-// un-substituted "__VITE_..__" sentinel yields a harmless single entry that matches nothing.
+// Split a comma-separated env value into trimmed, non-empty entries.
 export function parseEnvList(raw: string | undefined): string[] {
   return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
@@ -39,8 +39,8 @@ export function filterEnabledTabs(tabs: readonly string[], disabledRaw: string |
   return tabs.filter((t) => !disabled.has(t.toLowerCase()));
 }
 
-// Truthy env flag: "1"/"true"/"yes"/"on" (case-insensitive). Anything else — empty, unset, or an
-// un-substituted sentinel — is false, so the gated behaviour only turns on when explicitly asked for.
+// Truthy env flag: "1"/"true"/"yes"/"on" (case-insensitive). Anything else, empty or unset included,
+// is false, so the gated behaviour only turns on when explicitly asked for.
 export function parseEnvBool(raw: string | undefined): boolean {
   return ["1", "true", "yes", "on"].includes((raw ?? "").trim().toLowerCase());
 }
@@ -58,20 +58,19 @@ export function selectableThemes<T extends { id: string; hidden?: boolean }>(
   return themes.filter((t) => !t.hidden);
 }
 
-const enabledTabs = filterEnabledTabs(TABS, import.meta.env.VITE_DISABLED_TABS);
+const enabledTabs = filterEnabledTabs(TABS, runtimeEnv("VITE_DISABLED_TABS", import.meta.env.VITE_DISABLED_TABS));
 // Floor: an all-disabled misconfig would otherwise leave a blank app.
 export const ENABLED_TABS = enabledTabs.length > 0 ? enabledTabs : [...TABS];
 
 export const ENABLED_THEME_IDS = new Set(
-  parseEnvList(import.meta.env.VITE_ENABLED_THEMES).map((s) => s.toLowerCase()),
+  parseEnvList(runtimeEnv("VITE_ENABLED_THEMES", import.meta.env.VITE_ENABLED_THEMES)).map((s) => s.toLowerCase()),
 );
 
-// "||" (not "??") so an empty sed substitution falls back to the default too.
-export const APP_NAME = import.meta.env.VITE_APP_NAME || "BEACON";
+export const APP_NAME = runtimeEnv("VITE_APP_NAME", import.meta.env.VITE_APP_NAME) || "BEACON";
 export const GITHUB_URL = "https://github.com/MeshCore-Beacon";
 
 // Notice shown above the header on every page; unset = no banner.
-export const BANNER = import.meta.env.VITE_BANNER ?? "";
+export const BANNER = runtimeEnv("VITE_BANNER", import.meta.env.VITE_BANNER) ?? "";
 
 // Skip the once-per-session load splash entirely (e.g. an embedded/branded deployment).
-export const SKIP_SPLASH = parseEnvBool(import.meta.env.VITE_SKIP_SPLASH);
+export const SKIP_SPLASH = parseEnvBool(runtimeEnv("VITE_SKIP_SPLASH", import.meta.env.VITE_SKIP_SPLASH));

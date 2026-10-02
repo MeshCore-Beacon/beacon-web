@@ -89,7 +89,7 @@ export function useMapNeighbors(
   }, [mapRef, isReady, edges]);
 
   // remove the layer + source on unmount. Capturing map here is safe: it's the same instance for the
-  // component's life, and this cleanup runs before useMapLibre tears the map down.
+  // component's life. useMapLibre's map.remove() runs first, hence the try.
   useEffect(() => {
     const map = mapRef.current;
     return () => {

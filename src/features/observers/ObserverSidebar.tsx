@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { getTopObservers } from "../../api/client";
 import { formatCount } from "../../lib/formatters";
 import { Segmented } from "../stats/Segmented";
-import { useStatsRegion } from "../stats/useStats";
-import { RANGE_MS, type StatsRange } from "../stats/types";
+import { gatedOn, sinceFor, useStatsRegion } from "../stats/useStats";
+import type { StatsRange } from "../stats/types";
 import { observerName as nameOf } from "./observer-filter";
 import { deriveObserverStatus } from "./observer-status";
 import type { ObserverSummary } from "./types";
@@ -18,12 +18,12 @@ export function ObserverSidebar({ observers, filtered, isPending, isError, onRet
   range: StatsRange; selectedId: string | null; onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const { where, regionKey } = useStatsRegion();
+  const { where, regionKey, isResolved } = useStatsRegion();
   const [sort, setSort] = useState<Sort>("activity");
 
   const activity = useQuery({
     queryKey: ["observer-sidebar-activity", regionKey, range],
-    queryFn: () => getTopObservers(where, Date.now() - RANGE_MS[range], TOP),
+    ...gatedOn(isResolved, () => getTopObservers(where, sinceFor(range), TOP)),
     staleTime: 30_000,
   });
 

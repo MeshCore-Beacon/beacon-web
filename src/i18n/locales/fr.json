@@ -58,6 +58,7 @@
       "loadingDots": "Chargement…",
       "copyLink": "Copier le lien",
       "copied": "Copié",
+      "copyFailed": "Échec de la copie",
       "filters": "Filtres",
       "closeFilters": "Fermer les filtres",
       "clearAll": "Tout effacer",
@@ -702,7 +703,6 @@
     },
     "observation": {
       "prop": "Prop.",
-      "pathSnr": "SNR du trajet",
       "path": "Trajet",
       "observer": "Observateur",
       "area": "Zone",

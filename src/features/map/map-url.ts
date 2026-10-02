@@ -53,6 +53,12 @@ function parseBool(raw: string | null): boolean | undefined {
   return undefined;
 }
 
+// A canonical node-type name, or undefined for anything else (All, a label, a stale saved value).
+export function parseNodeType(raw: string | null | undefined): string | undefined {
+  const type = raw?.toLowerCase();
+  return type && NODE_TYPE_NAMES.includes(type as (typeof NODE_TYPE_NAMES)[number]) ? type : undefined;
+}
+
 export function parseMapView(params: URLSearchParams): ParsedMapView {
   const view: ParsedMapView = {};
 
@@ -65,8 +71,8 @@ export function parseMapView(params: URLSearchParams): ParsedMapView {
   const clustered = parseBool(params.get("clustering"));
   if (clustered !== undefined) view.clustered = clustered;
 
-  const type = params.get("node_type")?.toLowerCase();
-  if (type && NODE_TYPE_NAMES.includes(type as (typeof NODE_TYPE_NAMES)[number])) view.nodeType = type;
+  const type = parseNodeType(params.get("node_type"));
+  if (type) view.nodeType = type;
 
   const neighbor = params.get("neighbor_lines")?.toLowerCase();
   if (neighbor && NEIGHBOR_MODES.includes(neighbor as NeighborLinesMode)) {

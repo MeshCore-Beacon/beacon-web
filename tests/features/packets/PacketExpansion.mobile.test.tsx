@@ -92,15 +92,20 @@ describe("PacketExpansion below md", () => {
     expect(onOpenAnalyzer).toHaveBeenCalledTimes(1);
   });
 
-  // TRACE reuses the path field for per-hop SNR samples, so its bytes must never render as hops.
-  it("labels a TRACE packet's path bytes as SNR samples", () => {
+  // GET /packets/{hash} swaps a TRACE's pathBytes to its hop hashes; the SNR per hop rides on parsedPayload.
+  it("shows a TRACE packet's hops with the per-hop SNR from its payload", () => {
     usePacketDetail.mockReturnValue({
-      data: detail([obs(1, { pathBytes: "3201e0", pathLength: { raw: "3201e0", hashSize: 1, hopCount: 3 } })], PayloadType.TRACE),
+      data: {
+        ...detail([obs(1, { pathBytes: "abcd", pathLength: { raw: "02", hashSize: 1, hopCount: 2 } })], PayloadType.TRACE),
+        parsedPayload: { type: "TRACE", pathHashes: ["ab", "cd"], snrValues: [8] },
+      },
     });
     render(<PacketExpansion {...props} packet={pkt({ payloadType: PayloadType.TRACE })} />);
 
-    expect(screen.getByText("Path SNR")).toBeInTheDocument();
-    expect(screen.getByText("3201E0")).toBeInTheDocument();
+    expect(screen.queryByText("Path SNR")).not.toBeInTheDocument();
+    expect(screen.getByText("AB")).toBeInTheDocument();
+    expect(screen.getByText("CD")).toBeInTheDocument();
+    expect(screen.getByText("8.00 dB")).toBeInTheDocument();
   });
 
   // the expansion is the unfolded bottom half of the tapped card, not a separate square slab

@@ -6,7 +6,7 @@ import { Tooltip } from "../../components/Tooltip";
 import type { PacketDetail } from "../../types/api";
 import { PayloadType } from "../../types/enums";
 import { ObservationCard } from "./ObservationCard";
-import { groupPacketReports } from "./packet-investigation";
+import { groupPacketReports, traceSnrValues } from "./packet-investigation";
 
 const PAGE = 3;
 
@@ -51,6 +51,7 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
             onClick={() => onSelect(report.id)}
             onViewNode={onViewNode}
             isTrace={isTrace}
+            snrValues={traceSnrValues(detail)}
             selectLabel={`${t("investigation.inspect")}: ${name}`}
             actions={<>
               {onViewObserver && <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => { onSelect(report.id); onViewObserver(report.observerId, report.id); }}>{t("investigation.observer")}</button>}

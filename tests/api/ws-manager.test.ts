@@ -320,6 +320,24 @@ describe("WsManager", () => {
     expect(unsubs2[1].subscriptionId).toBe("s-yow");
   });
 
+  it("drops a pending subscribe's late ack after switching to a region with no IATAs", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    mgr.updateSubscription({ iatas: [] });
+
+    const sent = () => ws.sent.map((s) => JSON.parse(s));
+    const [sub] = sent().filter((m) => m.type === "subscribe");
+    ws.simulateMessage({ v: 1, type: "subscribed", id: sub.id, subscriptionId: "s-yow" });
+
+    const unsubs = sent().filter((m) => m.type === "unsubscribe");
+    expect(unsubs).toHaveLength(1);
+    expect(unsubs[0].subscriptionId).toBe("s-yow");
+  });
+
   it("ignores close events from a torn-down socket (no reconnect treadmill)", () => {
     const mgr = new WsManager("ws://test/ws");
     mgr.connect({ iatas: ["YOW"] });
@@ -358,6 +376,48 @@ describe("WsManager", () => {
     // pings go out but nothing ever comes back
     vi.advanceTimersByTime(120_000);
     expect(MockWebSocket.instances.length).toBeGreaterThan(1);
+  });
+
+  it("pings a fresh connection after a long outage instead of dropping it", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+
+    // the socket dies and stays down for longer than the liveness window
+    ws1.simulateClose(1006);
+    vi.setSystemTime(Date.now() + 120_000);
+    vi.advanceTimersByTime(1500);
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateMessage({ v: 1, type: "hello", serverTime: 2, connectionId: "c2" });
+
+    ws2.sent = [];
+    vi.advanceTimersByTime(30_000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(ws2.sent.map((s) => JSON.parse(s)).filter((m) => m.type === "ping")).toHaveLength(1);
+  });
+
+  it("still reports the pre-outage time as the lag start after a reconnect", () => {
+    const handler = vi.fn();
+    const mgr = new WsManager("ws://test/ws");
+    mgr.onLagged(handler);
+    mgr.connect({ iatas: ["YOW"] });
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateMessage({ v: 1, type: "hello", serverTime: 1, connectionId: "c1" });
+    ws1.simulateMessage({ v: 1, type: "pong", id: "p" });
+    const lastHeard = Date.now();
+
+    ws1.simulateClose(1006);
+    vi.setSystemTime(Date.now() + 120_000);
+    vi.advanceTimersByTime(1500);
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateMessage({ v: 1, type: "hello", serverTime: 2, connectionId: "c2" });
+
+    expect(handler.mock.calls[0]![0].since).toBe(lastHeard);
   });
 
   it("clears the stale subscriptionId across reconnects", () => {

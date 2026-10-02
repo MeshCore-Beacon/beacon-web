@@ -1,4 +1,4 @@
-import type { Observation } from "../../types/api";
+import type { Observation, PacketDetail } from "../../types/api";
 
 export interface ReportGroup {
   key: string;
@@ -36,4 +36,10 @@ export function reportSelection(reports: Observation[], params: URLSearchParams,
     return { selected, unavailable: selected == null };
   }
   return { selected: reports.find(o => o.id === fallback) ?? reports[0] ?? null, unavailable: false };
+}
+
+// a trace's per-hop SNR rides on the packet's payload, not on each observation's path bytes
+export function traceSnrValues(detail: PacketDetail): number[] | undefined {
+  const payload = detail.parsedPayload;
+  return payload && typeof payload === "object" && Array.isArray(payload.snrValues) ? payload.snrValues as number[] : undefined;
 }

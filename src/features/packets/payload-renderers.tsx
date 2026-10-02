@@ -5,7 +5,7 @@ import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters"
 import { Timestamp } from "../../components/Timestamp";
 import { ColorAccentField, AdvertFlagsBitBreakdown, PathLengthBitBreakdown, FIELD_COLORS, DEVICE_ROLE_NAMES } from "./packet-structure";
 import type { FieldId } from "./packet-structure";
-import { ResolvedHopBlock } from "./PathData";
+import { HopSnr, ResolvedHopBlock } from "./PathData";
 import type { ResolvedHop } from "../../types/api";
 
 // shared layout primitives for payload fields
@@ -260,9 +260,6 @@ function TracePayload({ payload, resolvedRoute, onViewNode }: PayloadProps & {
           <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">{t("packetAnalyzer.payload.tracePath")}</div>
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
             {pathHashes.map((hash, i) => {
-              const snr = snrValues?.[i];
-              const level = snr != null ? snrLevel(snr) : null;
-              const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
               // When the packet detail resolved this trace's route, overlay it onto each hash block:
               // tint by match confidence and reveal the resolved node(s) on hover. Falls back to the
               // plain hash badge when there's no resolution (e.g. live/WS view).
@@ -276,13 +273,7 @@ function TracePayload({ payload, resolvedRoute, onViewNode }: PayloadProps & {
                     ) : (
                       <HexBadge value={hash} />
                     )}
-                    {/* keep a sub-line on every hop (SNR, or a "-" placeholder when there's no reading)
-                        so the hash badges across the row stay aligned */}
-                    {snr != null ? (
-                      <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>
-                    ) : (
-                      <span className="text-[11px] text-text-dim" aria-hidden>-</span>
-                    )}
+                    <HopSnr snr={snrValues?.[i]} />
                   </span>
                 </span>
               );
@@ -713,7 +704,8 @@ export function PayloadBreakdown({ payload, resolvedRoute, resolvedSource, resol
   const endpoints: EndpointProps = { resolvedSource, resolvedDestination, onViewNode };
   switch (payload.type) {
     case "ADVERT": return <AdvertPayload payload={payload} />;
-    case "TRACE": return <TracePayload payload={payload} resolvedRoute={resolvedRoute} onViewNode={onViewNode} />;
+    case "TRACE":
+    case "PING": return <TracePayload payload={payload} resolvedRoute={resolvedRoute} onViewNode={onViewNode} />;
     case "GROUP_TEXT": return <GroupTextPayload payload={payload} />;
     case "TEXT_MESSAGE": return <TextPayload payload={payload} {...endpoints} />;
     case "REQUEST": return <RequestPayload payload={payload} {...endpoints} />;

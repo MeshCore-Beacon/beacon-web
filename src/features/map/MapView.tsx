@@ -13,12 +13,13 @@ import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
-import { parseMapView, buildMapParams, type MapViewSnapshot } from "./map-url";
+import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
-import { useRegion } from "../../hooks/useRegion";
+import { useRegion, useRegionSelection } from "../../hooks/useRegion";
+import { serializeSelection } from "../../hooks/region-selection";
 import { useTheme } from "../../hooks/useTheme";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { getIatas, getNodeNeighbors } from "../../api/client";
@@ -63,7 +64,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   }, []);
 
   const [typeFilter, setTypeFilter] = useState(
-    () => urlView.nodeType ?? localStorage.getItem(MAP_NODE_TYPE_STORAGE_KEY) ?? "",
+    () => urlView.nodeType ?? parseNodeType(localStorage.getItem(MAP_NODE_TYPE_STORAGE_KEY)) ?? "",
   ); // "" = All
   const handleTypeChange = useCallback((t: string) => {
     setTypeFilter(t);
@@ -105,6 +106,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   );
 
   const { iatas: selectedIatas, regionKey, isResolved } = useRegion();
+  const { selection } = useRegionSelection();
   const regionPending = isResolved === false;
   const queryClient = useQueryClient();
   // marker/cluster icons are canvas-drawn from the active --palette-* vars, so useMapNodes has to
@@ -170,7 +172,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   );
 
   // IATA coords to frame: the selection's airports, or every airport for "All". Regions carry no
-  // bounds from the API, so their member IATAs stand in for the extent. See CLAUDE.md (map framing).
+  // bounds from the API, so their member IATAs stand in for the extent.
   const fitPoints = useMemo<[number, number][] | null>(() => {
     const withCoords = (iatas ?? []).filter((i) => i.lat != null && i.lon != null);
     if (withCoords.length === 0) return null;
@@ -187,7 +189,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 
-  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera);
+  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection));
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.

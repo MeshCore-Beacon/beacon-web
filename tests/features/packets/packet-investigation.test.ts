@@ -1,6 +1,6 @@
-import { expect, it } from "vitest";
-import { groupPacketReports, reportSelection } from "../../../src/features/packets/packet-investigation";
-import type { Observation } from "../../../src/types/api";
+import { describe, expect, it } from "vitest";
+import { groupPacketReports, reportSelection, traceSnrValues } from "../../../src/features/packets/packet-investigation";
+import type { Observation, PacketDetail } from "../../../src/types/api";
 
 const observation = (id: number, pathBytes?: string, hashSize = 1, hopCount = 2): Observation => ({
   id, observerId: `observer-${id}`, iata: "YOW", heardAt: id * 1000, sourceBroker: "mqtt1",
@@ -27,4 +27,18 @@ it("validates a requested report instead of silently substituting another", () =
   }
   expect(reportSelection(rows, new URLSearchParams(), 9)).toMatchObject({ selected: { id: 1 }, unavailable: false });
   expect(reportSelection([], new URLSearchParams(), null).selected).toBeNull();
+});
+
+describe("traceSnrValues", () => {
+  const detail = (parsedPayload: PacketDetail["parsedPayload"]) => ({ parsedPayload } as PacketDetail);
+
+  it("reads the per-hop SNR off the parsed payload", () => {
+    expect(traceSnrValues(detail({ type: "TRACE", snrValues: [-5, 8] }))).toEqual([-5, 8]);
+  });
+
+  it("returns undefined when the payload has none or wasn't parsed", () => {
+    expect(traceSnrValues(detail({ type: "TRACE" }))).toBeUndefined();
+    expect(traceSnrValues(detail("raw"))).toBeUndefined();
+    expect(traceSnrValues(detail(undefined))).toBeUndefined();
+  });
 });

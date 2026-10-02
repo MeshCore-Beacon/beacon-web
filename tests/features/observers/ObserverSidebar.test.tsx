@@ -6,7 +6,8 @@ import { ObserverSidebar } from "../../../src/features/observers/ObserverSidebar
 import { getTopObservers } from "../../../src/api/client";
 import type { ObserverSummary } from "../../../src/features/observers/types";
 
-vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => ({ regionKey: "YOW", iatas: ["YOW"] }) }));
+const region = { regionKey: "YOW", iatas: ["YOW"], isResolved: true };
+vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
 vi.mock("../../../src/api/client", () => ({ getTopObservers: vi.fn() }));
 
 const observers: ObserverSummary[] = [
@@ -57,4 +58,12 @@ it("selects an observer on click", async () => {
 it("says when the filters match nothing", () => {
   view({ list: [], filtered: true });
   expect(screen.getByText("No matches")).toBeInTheDocument();
+});
+
+it("does not load activity counts for every IATA while the region is unresolved", async () => {
+  region.isResolved = false;
+  view();
+  await Promise.resolve();
+  expect(getTopObservers).not.toHaveBeenCalled();
+  region.isResolved = true;
 });

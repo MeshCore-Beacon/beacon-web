@@ -26,6 +26,13 @@ describe("observerDestination", () => {
     expect(p.has("compareB")).toBe(false);
     expect(p.has("compareSince")).toBe(false);
   });
+
+  it("drops the analytics compare end but keeps it for an open observer comparison", () => {
+    expect(observerDestination(new URLSearchParams("compareA=x&compareB=y&compareSince=1&compareUntil=2"), "b").has("compareUntil")).toBe(false);
+    const comparing = observerDestination(new URLSearchParams("observer=a&compareWith=c&compareUntil=2"), "b");
+    expect(comparing.get("compareWith")).toBe("c");
+    expect(comparing.get("compareUntil")).toBe("2");
+  });
 });
 
 describe("observerRange", () => {

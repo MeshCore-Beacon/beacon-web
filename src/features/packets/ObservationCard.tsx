@@ -8,8 +8,10 @@ import { useTranslation } from "react-i18next";
 
 // single observation with signal stats and resolved path
 
-export function ObservationCard({ observation: obs, selected, onClick, onViewNode, isTrace, selectLabel, actions }: {
+export function ObservationCard({ observation: obs, selected, onClick, onViewNode, isTrace, snrValues, selectLabel, actions }: {
   observation: Observation; selected?: boolean; onClick?: () => void; onViewNode?: (nodeId: string) => void; isTrace?: boolean;
+  // TRACE only: SNR per hop from the packet's parsed payload
+  snrValues?: number[];
   // when set, the summary becomes a keyboard-selectable button with this name
   selectLabel?: string;
   actions?: ReactNode;
@@ -79,18 +81,8 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
 
       {obs.pathBytes && (
         <div className="flex items-center gap-1 mt-2 font-mono text-[11px] pt-1.5 border-t border-border-subtle">
-          {isTrace ? (
-            // TRACE path bytes are per-hop SNR samples, not hop hashes — show them raw, never as a resolvable path.
-            <>
-              <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">{t("observation.pathSnr")}</span>
-              <span className="text-text-normal break-all">{obs.pathBytes.toUpperCase()}</span>
-            </>
-          ) : (
-            <>
-              <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">{t("observation.path")}</span>
-              <PathData pathBytes={obs.pathBytes} hashSize={obs.pathLength.hashSize} resolvedPath={obs.resolvedPath} size="sm" onViewNode={onViewNode} />
-            </>
-          )}
+          <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">{t("observation.path")}</span>
+          <PathData pathBytes={obs.pathBytes} hashSize={obs.pathLength.hashSize} resolvedPath={obs.resolvedPath} size="sm" onViewNode={onViewNode} snrValues={isTrace ? snrValues ?? [] : undefined} />
         </div>
       )}
       {actions && <div className="mt-2 flex flex-wrap items-center justify-end gap-1.5 border-t border-border-subtle pt-1.5" onClick={(e) => e.stopPropagation()}>{actions}</div>}

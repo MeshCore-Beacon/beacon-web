@@ -16,6 +16,7 @@ import {
   NODES_POINT_LAYER_ID,
   NODES_SELECTED_LAYER_ID,
   NODES_SELECTED_LEAF_LAYER_ID,
+  PACKET_FLOW_TRAIL_LAYER_ID,
   CLUSTER_RADIUS,
   CLUSTER_MAX_ZOOM,
   NODES_SOURCE_MAXZOOM,
@@ -179,6 +180,9 @@ export function useMapNodes(
       });
     }
 
+    // a clustering toggle re-adds these after packet flow built its layers; keep the flow on top
+    const beforeFlow = map.getLayer(PACKET_FLOW_TRAIL_LAYER_ID) ? PACKET_FLOW_TRAIL_LAYER_ID : undefined;
+
     // Cluster as a SYMBOL layer (hexagon icon + count) — spiderfy requires a symbol layer. The icon
     // is a density level picked by point_count; the count is drawn as centered text (the icon has
     // none baked in). text-size isn't scaled by icon-size, so both are interpolated together.
@@ -198,7 +202,7 @@ export function useMapNodes(
           "text-allow-overlap": true,
         },
         paint: { "text-color": "#FFFFFF", "text-halo-color": "rgba(0,0,0,0.55)", "text-halo-width": 1.2 },
-      } as SymbolLayerSpecification);
+      } as SymbolLayerSpecification, beforeFlow);
     }
 
     if (!map.getLayer(NODES_POINT_LAYER_ID)) {
@@ -224,7 +228,7 @@ export function useMapNodes(
           "text-halo-width": 1.3,
           "text-opacity": LABEL_OPACITY, // labels fade in only at high zoom
         },
-      } as SymbolLayerSpecification);
+      } as SymbolLayerSpecification, beforeFlow);
     }
 
     // Ring under the selected node's icon. Only matches an unclustered point (clusters carry no id);
@@ -358,9 +362,9 @@ export function useMapNodes(
   }, [mapRef, isReady, geojson]);
 
   // Build spiderfy + node/cluster interactions, and tear them down on cleanup. Re-runs on every
-  // style switch and clustering toggle, so body and cleanup must stay symmetric: setStyle does NOT
-  // drop delegated layer listeners (stable ids in maplibre's Evented registry), so every map.on
-  // must be matched by a map.off here or handlers pile up across switches.
+  // style switch, clustering toggle and dataset reset, so body and cleanup must stay symmetric:
+  // setStyle does NOT drop delegated layer listeners (stable ids in maplibre's Evented registry), so
+  // every map.on must be matched by a map.off here or handlers pile up across switches.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
@@ -434,15 +438,7 @@ export function useMapNodes(
         /* map may already be removed */
       }
     };
-    // themeKey is a dep so spiderfy rebuilds and its legs + leaf icons pick up the new palette
-  }, [mapRef, isReady, clustered, themeKey]);
-
-  // close any open fan when the dataset identity changes — its leaves no longer exist
-  useEffect(() => {
-    try {
-      spiderRef.current?.unspiderfyAll();
-    } catch {
-      /* map may already be removed */
-    }
-  }, [resetKey]);
+    // themeKey rebuilds the legs + leaf icons in the new palette; resetKey closes a fan whose leaves
+    // are gone (unspiderfyAll also unbinds the cluster click, so it has to be a full rebuild)
+  }, [mapRef, isReady, clustered, themeKey, resetKey]);
 }

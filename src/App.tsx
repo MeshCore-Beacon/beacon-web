@@ -246,6 +246,8 @@ function AppInner() {
     });
   };
 
+  // offered only off the Map tab, and only when the deployment has one
+  const canViewOnMap = activeTab !== "Map" && ENABLED_TABS.includes("Map");
   const handleViewOnMap = (nodeId: string, lat: number, lng: number) => {
     handleTabChange("Map", { lat, lng });
     if (!isMobile) setSelectedNodeId(nodeId);
@@ -356,10 +358,10 @@ function AppInner() {
               onViewObserver={viewObserver}
               onViewNode={setSelectedNodeId}
               onAnalyzePacket={viewPacket}
-              onViewOnMap={activeTab === "Map" ? undefined : (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng)}
+              onViewOnMap={canViewOnMap ? (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng) : undefined}
             />
           )}
-          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={activeTab === "Map" ? undefined : handleViewOnMap} />)}
+          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
         </div>
       </AppShell>
     </RegionProvider>

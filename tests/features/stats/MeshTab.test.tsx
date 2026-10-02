@@ -183,7 +183,13 @@ it("distinguishes initial loading from successful empty results and zero totals"
   await act(() => next.resolve({ ...series, completeHours: 0, hours: [], summary: values({}) }));
   await screen.findByText("0 obs");
   expect(screen.getAllByText("No data")).toHaveLength(7);
-  expect(within(card("Total packets")).getByText("0")).toBeInTheDocument();
+  for (const label of ["Total packets", "Observations", "Active observers", "Active areas"]) expect(within(card(label)).getByText("—")).toBeInTheDocument();
+});
+
+it("shows real zero KPIs once some hours are complete", async () => {
+  vi.mocked(getStatsSeries).mockResolvedValue({ ...series, summary: values({}) });
+  mount(); await loaded();
+  for (const label of ["Total packets", "Observations", "Active observers", "Active areas"]) expect(within(card(label)).getByText("0")).toBeInTheDocument();
 });
 
 it("keeps the scope list collapsed until requested", async () => {
@@ -206,8 +212,10 @@ it("shows French labels for the KPIs, chart titles and scope table", async () =>
   mount(); await loaded();
   expect(within(card("Paquets totaux")).getByText("111")).toBeInTheDocument();
   expect(screen.getAllByText("Dernières 24 h · jusqu’à 03:00 UTC")).toHaveLength(4);
-  expect(screen.getByText("Observations · 24h")).toBeInTheDocument();
-  expect(screen.getByText("Meilleurs nœuds · 24h")).toBeInTheDocument();
+  expect(screen.getByText("Observations · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Meilleurs nœuds · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Meilleurs observateurs · 24 h")).toBeInTheDocument();
+  expect(screen.getByText("Types de paquets · 24 h")).toBeInTheDocument();
   const typesChart = within(card("Types de nœuds · historique complet")).getByTestId("chart");
   expect(typesChart.textContent).toContain("NŒUDS");
   fireEvent.click(screen.getByText("Scopes", { exact: true }));
@@ -220,7 +228,7 @@ it("shows French labels for the KPIs, chart titles and scope table", async () =>
 it("names the observation and preset chart series in French", async () => {
   await act(() => i18n.changeLanguage("fr"));
   mount(); await loaded();
-  const obsChart = within(card("Observations · 24h")).getByTestId("chart").textContent;
+  const obsChart = within(card("Observations · 24 h")).getByTestId("chart").textContent;
   expect(obsChart).toContain('"legend":{"data":["Observations","Paquets uniques"]');
   const presetChart = within(card("Préréglages radio · historique complet")).getByTestId("chart").textContent;
   expect(presetChart).toContain('"Nœuds","Observateurs"');

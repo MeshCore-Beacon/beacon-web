@@ -46,6 +46,14 @@ describe("PayloadBreakdown — trace resolvedRoute overlay", () => {
   });
 });
 
+describe("PayloadBreakdown — PING", () => {
+  it("renders a single-hop PING with the trace layout", () => {
+    const ping = { type: "PING", flags: 0, pathHashes: ["ab"], snrValues: [-5] };
+    render(<PayloadBreakdown payload={ping} resolvedRoute={[resolvedRoute[0]!]} />);
+    expect(screen.getByText("AB").className).toContain("text-green");
+  });
+});
+
 describe("PayloadBreakdown — resolved source/destination endpoints", () => {
   const envelope = {
     type: "TEXT_MESSAGE",

@@ -202,47 +202,57 @@ describe("PacketList expanded row", () => {
   });
 
   it("expands a row from ?hash without opening the analyzer", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
 
-    const { onAnalyze } = renderList("/?tab=Packets&hash=AA11");
+    const { onAnalyze } = renderList("/?tab=Packets&hash=aa11");
 
-    expect(screen.getByRole("button", { name: /AA11/ })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /aa11/ })).toHaveAttribute("aria-expanded", "true");
     expect(onAnalyze).not.toHaveBeenCalled();
   });
 
+  // packet hashes are lowercase hex; a hand-typed or uppercased link must still match the row
+  it("expands the row from an uppercase ?hash", () => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
+
+    renderList("/?tab=Packets&hash=AA11");
+
+    expect(screen.getByRole("button", { name: /aa11/ })).toHaveAttribute("aria-expanded", "true");
+    expect(usePacketDetail).toHaveBeenLastCalledWith("aa11");
+  });
+
   it("clicking a row sets ?hash and does not open the analyzer", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
 
     const { onAnalyze } = renderList("/?tab=Packets");
 
-    fireEvent.click(screen.getByRole("button", { name: /AA11/ }));
+    fireEvent.click(screen.getByRole("button", { name: /aa11/ }));
     expect(onAnalyze).not.toHaveBeenCalled();
   });
 
   it("routes the expansion's Open analyzer through onAnalyze with the expanded hash", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
 
-    const { onAnalyze } = renderList("/?tab=Packets&hash=AA11");
+    const { onAnalyze } = renderList("/?tab=Packets&hash=aa11");
 
     fireEvent.click(screen.getByRole("button", { name: "Open analyzer" }));
-    expect(onAnalyze).toHaveBeenCalledWith("AA11");
+    expect(onAnalyze).toHaveBeenCalledWith("aa11");
   });
 
   it("hands the loaded detail to onViewPath", () => {
-    const detail = { packetHash: "AA11", observations: [] } as unknown as PacketDetail;
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
+    const detail = { packetHash: "aa11", observations: [] } as unknown as PacketDetail;
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
     usePacketDetail.mockReturnValue({ ...baseDetail(), data: detail });
 
-    const { onViewPath } = renderList("/?tab=Packets&hash=AA11");
+    const { onViewPath } = renderList("/?tab=Packets&hash=aa11");
 
     fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
     expect(onViewPath).toHaveBeenCalledWith(detail);
   });
 
   it("does not call onViewPath before the detail has loaded", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
 
-    const { onViewPath } = renderList("/?tab=Packets&hash=AA11");
+    const { onViewPath } = renderList("/?tab=Packets&hash=aa11");
 
     fireEvent.click(screen.getByRole("button", { name: "Map all paths" }));
     expect(onViewPath).not.toHaveBeenCalled();
@@ -257,23 +267,23 @@ describe("PacketList live observation invalidation", () => {
 
   it("refetches the expanded row's detail when an observation arrives for it", () => {
     const handlePacketObservation = vi.fn();
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")], handlePacketObservation }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")], handlePacketObservation }));
 
-    const { invalidate } = renderList("/?tab=Packets&hash=AA11");
+    const { invalidate } = renderList("/?tab=Packets&hash=aa11");
     invalidate.mockClear();
-    packetHandler!(observation("AA11"));
+    packetHandler!(observation("aa11"));
 
     expect(handlePacketObservation).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["packet-detail", "AA11"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["packet-detail", "aa11"] });
   });
 
   it("leaves the detail query alone for observations on other packets", () => {
     const handlePacketObservation = vi.fn();
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")], handlePacketObservation }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")], handlePacketObservation }));
 
-    const { invalidate } = renderList("/?tab=Packets&hash=AA11");
+    const { invalidate } = renderList("/?tab=Packets&hash=aa11");
     invalidate.mockClear();
-    packetHandler!(observation("BB22"));
+    packetHandler!(observation("bb22"));
 
     expect(handlePacketObservation).toHaveBeenCalledTimes(1);
     expect(invalidate).not.toHaveBeenCalled();
@@ -281,11 +291,11 @@ describe("PacketList live observation invalidation", () => {
 
   it("does not invalidate when no row is expanded", () => {
     const handlePacketObservation = vi.fn();
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")], handlePacketObservation }));
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")], handlePacketObservation }));
 
     const { invalidate } = renderList("/?tab=Packets");
     invalidate.mockClear();
-    packetHandler!(observation("AA11"));
+    packetHandler!(observation("aa11"));
 
     expect(invalidate).not.toHaveBeenCalled();
   });
@@ -300,55 +310,55 @@ describe("PacketList selected packet outside the loaded results", () => {
   it("offers the existing analyzer without scanning history for an unloaded packet", () => {
     const fetchNextPage = vi.fn();
     usePackets.mockImplementation(() => ({ ...basePackets(), hasNextPage: true, fetchNextPage }));
-    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "AA11" } as PacketDetail });
-    const { onAnalyze } = renderList("/?hash=AA11");
+    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "aa11" } as PacketDetail });
+    const { onAnalyze } = renderList("/?hash=aa11");
     const notice = screen.getByRole("region", { name: "Selected packet" });
     expect(notice).toHaveTextContent("outside the loaded results");
     fireEvent.click(within(notice).getByRole("button", { name: "Open analyzer" }));
-    expect(onAnalyze).toHaveBeenCalledWith("AA11");
+    expect(onAnalyze).toHaveBeenCalledWith("aa11");
     expect(fetchNextPage).not.toHaveBeenCalled();
   });
 
   it("offers the action when current filters hide a loaded selection", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
-    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "AA11" } as PacketDetail });
-    renderList("/?hash=AA11&q=other");
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
+    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "aa11" } as PacketDetail });
+    renderList("/?hash=aa11&q=other");
     expect(screen.getByRole("region", { name: "Selected packet" })).toHaveTextContent("outside the loaded results");
     fireEvent.click(screen.getByRole("button", { name: "Clear", exact: true }));
     expect(screen.queryByRole("region", { name: "Selected packet" })).toBeNull();
-    expect(screen.getByRole("button", { name: "AA11", exact: true })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "aa11", exact: true })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it.each(["/?hash=AA11", "/?hash=AA11&analyze=1", "/"])("does not duplicate a loaded row or an analyzer (%s)", (url) => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("AA11")] }));
+  it.each(["/?hash=aa11", "/?hash=aa11&analyze=1", "/"])("does not duplicate a loaded row or an analyzer (%s)", (url) => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
     renderList(url);
     expect(screen.queryByRole("region", { name: "Selected packet" })).toBeNull();
   });
 
   it("waits for the initial list before declaring the selection outside it", () => {
     usePackets.mockImplementation(() => ({ ...basePackets(), isLoading: true }));
-    renderList("/?hash=AA11");
+    renderList("/?hash=aa11");
     expect(screen.queryByRole("region", { name: "Selected packet" })).toBeNull();
   });
 
   it("shows the selected detail loading state", () => {
     usePacketDetail.mockReturnValue({ ...baseDetail(), isLoading: true });
-    renderList("/?hash=AA11");
+    renderList("/?hash=aa11");
     expect(screen.getByRole("region", { name: "Selected packet" })).toHaveTextContent("Loading selected packet");
   });
 
   it.each([[400, "Invalid packet hash"], [404, "Packet not found"], [503, "Failed to load selected packet"]])("explains HTTP %i and lets the user retry", (status, message) => {
     const refetch = vi.fn();
     usePacketDetail.mockReturnValue({ ...baseDetail(), isError: true, error: Object.assign(new Error("request failed"), { status }), refetch });
-    renderList("/?hash=AA11");
+    renderList("/?hash=aa11");
     expect(screen.getByRole("alert")).toHaveTextContent(message);
     fireEvent.click(screen.getByRole("button", { name: "Retry selected packet" }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("dismisses only the selection, leaving the current filters in place", () => {
-    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "AA11" } as PacketDetail });
-    renderList("/?hash=AA11&q=other&types=4");
+    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "aa11" } as PacketDetail });
+    renderList("/?hash=aa11&q=other&types=4");
     fireEvent.click(screen.getByRole("button", { name: "Dismiss selected packet" }));
     expect(screen.queryByRole("region", { name: "Selected packet" })).toBeNull();
     expect(screen.getByTestId("expanded")).toHaveTextContent("null");
@@ -361,8 +371,8 @@ describe("PacketList in French", () => {
   it("translates the banners and the selected-packet card", async () => {
     await i18n.changeLanguage("fr");
     usePackets.mockImplementation(() => ({ ...basePackets(), laggedCount: 2 }));
-    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "AA11" } as PacketDetail });
-    renderList("/?hash=AA11");
+    usePacketDetail.mockReturnValue({ ...baseDetail(), data: { packetHash: "aa11" } as PacketDetail });
+    renderList("/?hash=aa11");
     expect(screen.getByText("2 paquets perdus — les données peuvent être incomplètes")).toBeInTheDocument();
     expect(screen.getByText("Paquets en direct")).toBeInTheDocument();
     const card = screen.getByRole("region", { name: "Paquet sélectionné" });
@@ -375,7 +385,7 @@ describe("PacketList in French", () => {
     await i18n.changeLanguage("fr");
     usePackets.mockImplementation(basePackets);
     usePacketDetail.mockReturnValue({ ...baseDetail(), isError: true, error: Object.assign(new Error("x"), { status: 404 }) });
-    renderList("/?hash=AA11&sf=path");
+    renderList("/?hash=aa11&sf=path");
     expect(screen.getByText("Paquet introuvable.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Réessayer de charger le paquet sélectionné" })).toHaveTextContent("Réessayer");
     expect(screen.getByText(/Recherche dans le dernier trajet de relais/)).toBeInTheDocument();

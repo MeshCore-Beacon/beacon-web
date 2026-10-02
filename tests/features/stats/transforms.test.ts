@@ -101,6 +101,14 @@ describe("fillActivity", () => {
     expect(out[4]).toEqual(activity(4 * I));
   });
 
+  it("leaves hours neither the rollup nor the raw tail covered as gaps", () => {
+    const H = 3_600_000;
+    // rolled through hour 2, raw rows only from hour 5: hours 2-4 were never read
+    const out = fillActivity([activity(H, { observations: 4 })], H, { start: 0, end: 6 * H }, { rolledUntil: 2 * H, rawFrom: 5 * H });
+    expect(out.map((p) => p.observations)).toEqual([0, 4, null, null, null, 0, 0]);
+    expect(out[3]!.airtimeMs).toBeNull();
+  });
+
   it("starts at the first complete bucket and ends at the one in progress", () => {
     // the server rounds the window start up to the next bucket, so a floored first bucket would be a fake zero
     const out = fillActivity([], I, { start: I + 1, end: 3 * I - 1 });

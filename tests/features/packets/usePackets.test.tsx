@@ -283,7 +283,7 @@ describe("usePackets path and endpoint fields", () => {
         observation: {
           observerId: "obs-1",
           observerName: "Raven",
-          iata: "YVR",
+          iata: "YOW",
           heardAt: 1700000000,
           rssi: -94,
           snr: -7.5,
@@ -416,6 +416,44 @@ describe("usePackets live heard window", () => {
     expect(packet.latestObserver?.id).toBe("o2");
     expect(packet.observationCount).toBe(2);
   });
+
+  // the old subscription keeps delivering until the server takes the new one, after the buffer reset
+  it("drops observations from an IATA outside the current region", async () => {
+    Object.assign(region, { iatas: ["YVR"], regionKey: "YVR" });
+    try {
+      const { result } = renderHook(() => usePackets(), { wrapper });
+      await waitFor(() => expect(getPackets).toHaveBeenCalled());
+
+      act(() => {
+        result.current.handlePacketObservation(observation("stale"));
+        const fresh = observation("fresh");
+        fresh.observation.iata = "YVR";
+        result.current.handlePacketObservation(fresh);
+        flushRaf();
+      });
+
+      expect(result.current.allPackets.map((p) => p.packetHash)).toEqual(["fresh"]);
+    } finally {
+      Object.assign(region, { iatas: ["YOW"], regionKey: "YOW" });
+    }
+  });
+
+  it("keeps every observation when all regions are selected", async () => {
+    Object.assign(region, { iatas: undefined, regionKey: "*" });
+    try {
+      const { result } = renderHook(() => usePackets(), { wrapper });
+      await waitFor(() => expect(getPackets).toHaveBeenCalled());
+
+      act(() => {
+        result.current.handlePacketObservation(observation("any"));
+        flushRaf();
+      });
+
+      expect(result.current.allPackets.map((p) => p.packetHash)).toEqual(["any"]);
+    } finally {
+      Object.assign(region, { iatas: ["YOW"], regionKey: "YOW" });
+    }
+  });
 });
 
 describe("usePackets freeze while scrolled away", () => {
@@ -524,5 +562,28 @@ describe("usePackets while the region loads", () => {
     Object.assign(region, { iatas: ["YOW"], regionKey: "YOW", isResolved: true });
     rerender();
     await waitFor(() => expect(getPackets).toHaveBeenCalledWith(["YOW"], expect.anything()));
+  });
+});
+
+describe("usePackets deep paging", () => {
+  it("keeps the newest history page after many older pages load", async () => {
+    getPackets.mockReset();
+    getPackets.mockImplementation((_iatas: unknown, opts: { cursor?: number }) => {
+      const n = opts.cursor ?? 0;
+      return Promise.resolve({ items: [packet(`p${n}`)], nextCursor: n + 1 });
+    });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => usePackets(), { wrapper });
+    await waitFor(() => expect(result.current.allPackets).toHaveLength(1));
+
+    for (let i = 1; i <= 25; i++) {
+      await act(() => result.current.fetchNextPage());
+    }
+
+    await waitFor(() => expect(result.current.allPackets).toHaveLength(26));
+    expect(result.current.allPackets[0]!.packetHash).toBe("p0");
   });
 });

@@ -149,16 +149,17 @@ describe("getKnownRoutesPage", () => {
     lastSeen: 2,
   };
 
-  it("hits /routes, forwards iata/hopCount/cursor/limit", async () => {
+  it("hits /routes, forwards iata/hopCount/cursor/cursorId/limit", async () => {
     const getUrl = mockFetchOnce([route]);
 
-    await getKnownRoutesPage({ iata: "YYC", hopCount: 1, cursor: 1234, limit: 50 });
+    await getKnownRoutesPage({ iata: "YYC", hopCount: 1, cursor: { lastSeen: 1234, id: 7 }, limit: 50 });
 
     const url = getUrl();
     expect(url).toContain("/routes");
     expect(url).toContain("iata=YYC");
     expect(url).toContain("hopCount=1");
     expect(url).toContain("cursor=1234");
+    expect(url).toContain("cursorId=7");
     expect(url).toContain("limit=50");
   });
 
@@ -175,15 +176,15 @@ describe("getKnownRoutesPage", () => {
     expect(url).not.toContain("hopCount=");
   });
 
-  it("wraps a full page: nextCursor is the last route's lastSeen", async () => {
+  it("wraps a full page: nextCursor is the last route's lastSeen and id", async () => {
     mockFetchOnce([{ ...route, lastSeen: 9 }]);
 
-    // a page that fills the limit means there may be more — cursor = last (oldest) lastSeen
+    // a page that fills the limit means there may be more; the id breaks lastSeen ties
     const page = await getKnownRoutesPage({ limit: 1 });
 
     expect(page.items).toHaveLength(1);
     expect(page.hasMore).toBe(true);
-    expect(page.nextCursor).toBe(9);
+    expect(page.nextCursor).toEqual({ lastSeen: 9, id: 7 });
   });
 
   it("wraps a short page: nextCursor null, hasMore false", async () => {

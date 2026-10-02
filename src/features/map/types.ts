@@ -1,6 +1,8 @@
 // Map feature config: pure data and lookups, no maplibre import, so it stays unit-testable
 // without pulling in the WebGL engine.
 
+import { runtimeEnv } from "../../lib/runtime-env";
+
 export interface MapStyleOption {
   id: string;
   name: string;
@@ -40,7 +42,7 @@ export const TERRAIN_EXAGGERATION = 1.5;
 
 // The fallback/initial map view, configured per deployment via .env (VITE_MAP_CENTER as decimal
 // "lat,lon", VITE_MAP_ZOOM). Used before airports load and when a selection has no airport coords;
-// otherwise MapView fits bounds over the airports (see CLAUDE.md, map framing). With neither set,
+// otherwise MapView fits bounds over the airports. With neither set,
 // fall back to a wide world overview.
 const FALLBACK_CENTER: [number, number] = [0, 20]; // [lng, lat] — neutral world view
 const FALLBACK_ZOOM = 1.5;
@@ -72,9 +74,9 @@ export function parseMapZoom(raw: string | undefined): number {
 }
 
 export const DEFAULT_CENTER: [number, number] = parseMapCenter(
-  import.meta.env.VITE_MAP_CENTER as string | undefined,
+  runtimeEnv("VITE_MAP_CENTER", import.meta.env.VITE_MAP_CENTER),
 );
-export const DEFAULT_ZOOM = parseMapZoom(import.meta.env.VITE_MAP_ZOOM as string | undefined);
+export const DEFAULT_ZOOM = parseMapZoom(runtimeEnv("VITE_MAP_ZOOM", import.meta.env.VITE_MAP_ZOOM));
 export const DEFAULT_PITCH = 0; // flat overview, no tilt
 export const DEFAULT_BEARING = 0;
 export const MAX_PITCH = 85;

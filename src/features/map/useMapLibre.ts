@@ -34,6 +34,13 @@ export function mapLocale(): Record<string, string> {
 const fitKey = (points: [number, number][] | null) =>
   points && points.length ? points.map((p) => `${p[0]},${p[1]}`).join(";") : null;
 
+// Sprite/glyph fetches fail with their own url; only a urlless error (parse/validation) or one for the
+// style document itself means the style won't load.
+function isStyleLoadFailure(error: unknown, styleUrl: string): boolean {
+  const url = (error as { url?: unknown } | undefined)?.url;
+  return typeof url !== "string" || url === styleUrl;
+}
+
 // Keeps the imperative MapLibre lifecycle out of MapView; exposes mapRef + isReady for overlays.
 
 const TERRAIN_SOURCE_ID = "terrain-dem";
@@ -85,6 +92,8 @@ export function useMapLibre(
   // a deep-link camera ([lng, lat] + zoom); when set it opens the map here and wins over the initial
   // region fitBounds. Later region changes still auto-fit.
   initialCamera?: { center: [number, number]; zoom: number },
+  // identity of the selection being framed; the deep-link camera only wins while it's unchanged
+  fitScope?: string,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -97,6 +106,7 @@ export function useMapLibre(
   const onStyleErrorRef = useRef(onStyleError);
   const lastFitKeyRef = useRef<string | null>(null); // last applied fit target; skips redundant re-fits
   const skipInitialFitRef = useRef(!!initialCamera); // let a deep-link camera win over the first fit
+  const initialFitScopeRef = useRef(fitScope);
   const initialCameraRef = useRef(initialCamera); // read once at map creation (deep link is load-time only)
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -172,6 +182,8 @@ export function useMapLibre(
       // blip) is transient and non-fatal — the rest of the map stays usable — so never blank the map
       // for it. maplibre tags tile/source errors with a tile/sourceId; style-level errors have neither.
       if (err.sourceId != null || err.tile != null) return;
+      // a sprite 404 mid-swap is non-fatal too; the new style still loads without its icons
+      if (swapPendingRef.current && !isStyleLoadFailure(err.error, resolveMapStyle(lastStyleIdRef.current).url)) return;
       // The new basemap failed mid-swap. setStyle keeps the old style (and our node layers)
       // rendered, so roll back to the last good style and tell MapView to revert the picker rather
       // than blanking the map under a fatal overlay.
@@ -213,6 +225,8 @@ export function useMapLibre(
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
+    // the linked region never got its fit (e.g. it has no coords); don't spend the skip on another one
+    if (fitScope !== initialFitScopeRef.current) skipInitialFitRef.current = false;
     const key = fitKey(fitPoints);
     if (key === lastFitKeyRef.current) return;
     lastFitKeyRef.current = key;
@@ -222,8 +236,8 @@ export function useMapLibre(
       return;
     }
 
-    // First real fit after a deep-link camera: keep the URL-supplied view instead of framing the
-    // region. Consumed once, so later region changes fit normally.
+    // First real fit of the linked region: keep the URL-supplied view instead of framing it.
+    // Consumed once, so later region changes fit normally.
     if (skipInitialFitRef.current) {
       skipInitialFitRef.current = false;
       return;
@@ -239,7 +253,7 @@ export function useMapLibre(
       pitch: fitPoints.length === 1 ? IATA_PITCH : DEFAULT_PITCH,
       bearing: DEFAULT_BEARING,
     });
-  }, [fitPoints, isReady]);
+  }, [fitPoints, isReady, fitScope]);
 
   return { containerRef, mapRef, isReady, error, nodeIconResolverRef };
 }

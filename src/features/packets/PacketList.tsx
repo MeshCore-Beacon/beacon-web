@@ -83,7 +83,8 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
   );
 
   // ?hash is the selected packet — it expands the row inline. The analyzer is a separate state (?analyze=1).
-  const expandedHash = searchParams.get("hash");
+  // Lowercased because packet hashes are lowercase hex and a shared link may not be.
+  const expandedHash = searchParams.get("hash")?.toLowerCase() ?? null;
 
   const handleToggleExpand = useCallback((hash: string) => {
     const next = expandedHash === hash ? null : hash;

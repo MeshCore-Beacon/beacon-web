@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useIsFetching, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getChannels } from "../../api/client";
 import { isRateLimited, subscribeRateLimit } from "../../api/rate-limit";
-import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
+import { LIVE_BUFFER_CAP } from "../../lib/constants";
 import { useRegion } from "../../hooks/useRegion";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { useWsChannelMessageHandler } from "../../hooks/useWsHandlers";
@@ -101,7 +101,6 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam, keyKnown: true, limit: KEYED_PAGE_SIZE }),
     initialPageParam: undefined as number | string | undefined,
     getNextPageParam: nextChannelPage,
-    maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
     enabled: !regionPending,
   });
@@ -111,7 +110,6 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
     queryFn: ({ pageParam }) => getChannels({ iatas, cursor: pageParam, keyKnown: false }),
     initialPageParam: undefined as number | string | undefined,
     getNextPageParam: nextChannelPage,
-    maxPages: MAX_INFINITE_PAGES,
     staleTime: 60_000,
     enabled: !regionPending && (showOthers || keyFilter === "unknown"),
   });

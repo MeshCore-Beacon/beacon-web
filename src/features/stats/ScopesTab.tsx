@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
 import { SectionInfo } from "./SectionInfo";
-import { useScopes, useStatsSeries } from "./useStats";
+import { rolledWindow, useScopes, useStatsSeries } from "./useStats";
 import { useChartColors } from "./chartTheme";
 import { Card, ChartCard, StatCard } from "./cards";
 import { scopeChartOption, scopeHourly, scopeSummary } from "./scopes";
@@ -20,8 +20,13 @@ export function ScopesTab({ range }: { range: StatsRange }) {
   const all = useMemo(() => unavailable ? [] : (query.data ?? []), [query.data, unavailable]);
   const rows = useMemo(() => all.filter((row) => row.name.toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => b.packetCount - a.packetCount || a.name.localeCompare(b.name)), [all, search]);
   const totals = useMemo(() => scopeSummary(rows), [rows]);
-  const seriesHours = series.isSuccess && !series.isPlaceholderData ? series.data?.hours : undefined;
-  const sparks = useMemo(() => unavailable ? null : scopeHourly(rows, seriesHours), [rows, seriesHours, unavailable]);
+  const seriesData = series.isSuccess && !series.isPlaceholderData ? series.data : undefined;
+  const seriesHours = seriesData?.hours;
+  // packet counts come from rollups, so before the first rolled hour a zero means unknown
+  const packetsUnknown = seriesData?.completeHours === 0;
+  // the scopes fetch saw at most what was rolled when it landed, so its window can't reach past that
+  const scopeWindow = useMemo(() => query.dataUpdatedAt ? rolledWindow(range, query.dataUpdatedAt) : undefined, [query.dataUpdatedAt, range]);
+  const sparks = useMemo(() => unavailable ? null : scopeHourly(rows, seriesHours, scopeWindow), [rows, seriesHours, unavailable, scopeWindow]);
   const packets = useMemo(() => scopeChartOption(rows, "packetCount", colors, t), [rows, colors, t]);
   const observers = useMemo(() => scopeChartOption(rows, "observerCount", colors, t), [rows, colors, t]);
   const nodes = useMemo(() => scopeChartOption(rows, "nodeCount", colors, t), [rows, colors, t]);
@@ -37,7 +42,7 @@ export function ScopesTab({ range }: { range: StatsRange }) {
       {query.isError && <p role="alert" className="text-sm text-danger">{t("scopes.error")}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t("scopes.active")} value={value(totals.active)} accent={colors.secondary} spark={sparks?.active} />
-        <StatCard label={t("scopes.scopedPackets")} value={value(totals.packets)} accent={colors.primary} spark={sparks?.packets} />
+        <StatCard label={t("scopes.scopedPackets")} value={packetsUnknown ? "—" : value(totals.packets)} accent={colors.primary} spark={sparks?.packets} />
         <StatCard label={t("scopes.memberships")} value={value(totals.memberships)} accent={colors.green} spark={sparks?.observers} sublabel={sparks?.observers && t("scopes.observersLine")} />
         <StatCard label={t("scopes.defaultNodes")} value={value(totals.nodes)} accent={colors.warn} spark={sparks?.nodes} sublabel={sparks?.nodes && t("scopes.nodesLine")} />
       </div>

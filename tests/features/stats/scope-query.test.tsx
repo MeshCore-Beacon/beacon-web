@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useScopes } from "../../../src/features/stats/useStats";
+import { rolledWindow, useScopes } from "../../../src/features/stats/useStats";
 import { getStatsScopes } from "../../../src/api/client";
 import { ScopesTab } from "../../../src/features/stats/ScopesTab";
 import i18n from "../../../src/i18n";
@@ -43,13 +43,13 @@ it("reuses the regional query when only the language changes", async () => {
   unmount(); client.clear();
 });
 
-it("windows scope counts by the selected range", async () => {
+it("windows scope counts like the series, from the same rolled hour", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(Date.UTC(2026, 0, 2, 12, 10));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const before = Date.now();
   const { unmount } = renderHook(() => useScopes("24h"), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
   await waitFor(() => expect(getStatsScopes).toHaveBeenCalledOnce());
-  const since = vi.mocked(getStatsScopes).mock.calls[0]![1]!;
-  expect(since).toBeGreaterThanOrEqual(before - 24 * 3_600_000);
-  expect(since).toBeLessThanOrEqual(Date.now() - 24 * 3_600_000);
-  unmount(); client.clear();
+  expect(vi.mocked(getStatsScopes).mock.calls[0]![1]).toBe(rolledWindow("24h").since);
+  expect(rolledWindow("24h").since).toBe(Date.UTC(2026, 0, 1, 11));
+  unmount(); client.clear(); vi.useRealTimers();
 });

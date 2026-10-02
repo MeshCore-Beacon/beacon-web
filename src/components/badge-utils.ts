@@ -1,3 +1,5 @@
+import type { CopyState } from "../hooks/useCopyToClipboard";
+
 // variant styles for badge colors
 
 export type BadgeVariant = "advert" | "text" | "trace" | "ack" | "group" | "request" | "default" | "live" | "stale" | "offline";
@@ -14,6 +16,9 @@ export const VARIANT_CLASSES: Record<BadgeVariant, string> = {
   stale: "bg-warn/7 text-warn border-warn/15",
   offline: "bg-danger/8 text-danger border-danger/15",
 };
+
+// copy-button pill color per copy outcome
+export const COPY_STATE_VARIANT: Record<CopyState, BadgeVariant> = { idle: "text", copied: "live", failed: "offline" };
 
 // maps MeshCore payload type codes to badge variants
 

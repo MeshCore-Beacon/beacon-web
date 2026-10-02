@@ -25,6 +25,7 @@ interface MeshTabProps {
 
 export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
   const { t } = useTranslation();
+  const rangeLabel = t(`stats.ranges.${range}`);
   const colors = useChartColors();
   const series = useStatsSeries("24h");
   const observations = useStatsSeries(range);
@@ -115,6 +116,8 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
     iatas: spark(ov, (v) => v.activeIatas),
   }), [ov]);
 
+  // with no complete hours the summary is all zeros, which would read as a dead mesh
+  const kpis = ov?.completeHours ? ov.summary : undefined;
   // top-row KPIs are the last 24 rollable hours, so they lag the clock by 35–95 min; range only drives the charts below
   const ovWindow = ov
     ? t("mesh.lastHoursTo", { hours: Math.round((ov.until - ov.since) / 3_600_000), time: formatUtc(ov.until, { timeOnly: true }) })
@@ -123,14 +126,14 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(ov?.summary.uniquePackets)} spark={sparks.packets} />
-        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(ov?.summary.observations)} spark={sparks.observations} />
-        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={ov?.summary.activeObservers ?? "—"} spark={sparks.observers} />
-        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={ov?.summary.activeIatas ?? "—"} spark={sparks.iatas} />
+        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(kpis?.uniquePackets)} spark={sparks.packets} />
+        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(kpis?.observations)} spark={sparks.observations} />
+        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={kpis?.activeObservers ?? "—"} spark={sparks.observers} />
+        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={kpis?.activeIatas ?? "—"} spark={sparks.iatas} />
       </div>
 
       <ChartCard
-        title={t("mesh.observationsTitle", { range })}
+        title={t("mesh.observationsTitle", { range: rangeLabel })}
         height={200}
         option={obsOption}
         isLoading={observations.isPending || observations.isPlaceholderData}
@@ -141,10 +144,10 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* range-driven charts lead the grid; the all-time ones follow below */}
         <div className="min-w-0">
-          <ChartCard title={t("mesh.topObservers", { range })} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
+          <ChartCard title={t("mesh.topObservers", { range: rangeLabel })} height={208} option={observersOption} isLoading={topObservers.isPending || topObservers.isPlaceholderData} isError={topObservers.isError} isEmpty={observerRows.length === 0} onEvents={observerEvents} />
         </div>
         <ChartCard
-          title={t("mesh.payloadTypes", { range })}
+          title={t("mesh.payloadTypes", { range: rangeLabel })}
           right={<span className="font-mono text-[10px] text-text-muted">{t("mesh.obs", { value: formatCount(payloadData === undefined ? undefined : payloadTotal) })}</span>}
           height={208}
           option={payloadOption}
@@ -152,7 +155,7 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
           isError={payload.isError}
           isEmpty={payloadItems.length === 0}
         />
-        <ChartCard title={t("mesh.topNodes", { range })} height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
+        <ChartCard title={t("mesh.topNodes", { range: rangeLabel })} height={208} option={nodesOption} isLoading={topNodes.isPending || topNodes.isPlaceholderData} isError={topNodes.isError} isEmpty={nodeRows.length === 0} />
         <ChartCard title={t("mesh.nodeTypes")} height={208} option={typesOption} isLoading={nodeTypes.isPending || nodeTypes.isPlaceholderData} isError={nodeTypes.isError} isEmpty={typeRows.length === 0} />
         <ChartCard title={t("mesh.radioPresets")} height={208} option={presetsOption} isLoading={radioPresets.isPending || radioPresets.isPlaceholderData} isError={radioPresets.isError} isEmpty={presetRows.length === 0} />
 

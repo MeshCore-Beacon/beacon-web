@@ -84,7 +84,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison, 
     return { start: heardData?.windowStart ?? end - span, end };
   }, [heardData, activity.dataUpdatedAt, range]);
   const heard = useMemo(
-    () => (heardData && intervalMs ? fillActivity(heardData.points, intervalMs, heardWindow) : []),
+    () => (heardData && intervalMs ? fillActivity(heardData.points, intervalMs, heardWindow, heardData) : []),
     [heardData, intervalMs, heardWindow],
   );
   const busy = useMemo(
@@ -205,7 +205,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison, 
       ) : (
         <>
           <ChartCard
-            title={`${t("observerPage.airtime")} · ${range}`}
+            title={`${t("observerPage.airtime")} · ${t(`stats.ranges.${range}`)}`}
             right={<span className="text-xs text-text-muted">{airtimeLabel(latestAirtime)}</span>}
             height={200}
             option={airtime}
@@ -259,7 +259,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison, 
       )}
       {!heardUnavailable && costed && (
         <ChartCard
-          title={`${t("observerPage.busy")} · ${range}`}
+          title={`${t("observerPage.busy")} · ${t(`stats.ranges.${range}`)}`}
           right={<span className="text-xs text-text-muted">{radioLabel}</span>}
           height={180}
           option={busy}

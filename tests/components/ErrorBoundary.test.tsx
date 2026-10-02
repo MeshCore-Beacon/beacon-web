@@ -25,6 +25,23 @@ describe("ErrorBoundary", () => {
   });
 });
 
+describe("ErrorBoundary recovery", () => {
+  it("offers a reload for Safari's failed module import", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await i18n.changeLanguage("en");
+    render(<ErrorBoundary><Boom message="Importing a module script failed." /></ErrorBoundary>);
+    expect(screen.getByRole("button", { name: "reload" })).toBeInTheDocument();
+  });
+
+  it("clears the error when its reset key changes", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await i18n.changeLanguage("en");
+    const { rerender } = render(<ErrorBoundary resetKey="Map"><Boom message="bad" /></ErrorBoundary>);
+    rerender(<ErrorBoundary resetKey="Packets"><p>packets</p></ErrorBoundary>);
+    expect(screen.getByText("packets")).toBeInTheDocument();
+  });
+});
+
 describe("CloseButton", () => {
   it("defaults its label per language", async () => {
     const { unmount } = render(<CloseButton onClose={() => {}} />);

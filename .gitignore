@@ -24,9 +24,6 @@ build/
 coverage/
 .references/
 
-# Claude
-.claude/
-
 # OS
 .DS_Store
 Thumbs.db

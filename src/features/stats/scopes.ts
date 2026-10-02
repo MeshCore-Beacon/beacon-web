@@ -27,7 +27,8 @@ export function scopeChartOption(rows: ScopeStats[], metric: ScopeMetric, colors
 
 // Per-hour activity for the shown rows. The series says which hours are rolled: an hour missing from a
 // scope's hourly is zero, an unrolled hour is a gap. Like the cards, observers and nodes add up per scope.
-export function scopeHourly(rows: ScopeStats[], hours: { hour: number; status: string }[] | undefined) {
+// Hours outside `window` (what the scopes fetch covered) are gaps too, since its hourly can't speak for them.
+export function scopeHourly(rows: ScopeStats[], hours: { hour: number; status: string }[] | undefined, window?: { since: number; until: number }) {
   if (!hours || rows.some((row) => !row.hourly)) return null;
   const zero = { packets: 0, active: 0, observers: 0, nodes: 0 };
   const byHour = new Map<number, typeof zero>();
@@ -45,7 +46,8 @@ export function scopeHourly(rows: ScopeStats[], hours: { hour: number; status: s
       });
     }
   }
-  const slots = hours.map((h) => (h.status === "complete" ? (byHour.get(h.hour) ?? zero) : null));
+  const covered = (hour: number) => !window || (hour >= window.since && hour < window.until);
+  const slots = hours.map((h) => (h.status === "complete" && covered(h.hour) ? (byHour.get(h.hour) ?? zero) : null));
   const line = (key: keyof typeof zero) => slots.map((slot) => slot && slot[key]);
   return {
     packets: line("packets"),

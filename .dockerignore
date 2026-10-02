@@ -12,7 +12,6 @@ colour-palettes
 !.env.example
 
 .DS_Store
-.claude
 .github
 .gitignore
 .vscode

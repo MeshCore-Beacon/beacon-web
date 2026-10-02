@@ -44,8 +44,8 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   });
   const option = useMemo(() => {
     const window = { start, end };
-    const aPoints = activityA && aligned ? fillActivity(activityA.points, intervalMs, window) : [];
-    const bPoints = dataB && aligned ? fillActivity(dataB.points, intervalMs, window) : [];
+    const aPoints = activityA && aligned ? fillActivity(activityA.points, intervalMs, window, activityA) : [];
+    const bPoints = dataB && aligned ? fillActivity(dataB.points, intervalMs, window, dataB) : [];
     return { ...heardOption(aPoints, colors, window), grid: { left: 48, right: 14, top: 32, bottom: 22 },
       legend: { data: ["A", "B"], top: 0, textStyle: { color: colors.textNormal } },
       series: [["A", aPoints, colors.primary], ["B", bPoints, colors.secondary]].map(([name, points, color]) => ({

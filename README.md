@@ -37,6 +37,21 @@ EOF
 | `VITE_API_BASE` | Backend REST API base URL |
 | `VITE_WS_URL` | Backend WebSocket URL |
 
+Optional, all blank by default:
+
+| Variable | Description |
+|---|---|
+| `VITE_MAP_CENTER` / `VITE_MAP_ZOOM` | Fallback map view as decimal `lat,lon` and zoom 0-22, used before airports load or when a selection has none. Unset is a world view |
+| `VITE_DISABLED_TABS` | Comma list of tabs to hide: `Packets,Channels,Map,Nodes,Observers,Routes,Traces,Analytics` |
+| `VITE_ENABLED_THEMES` | Comma list of theme ids. When set, only these themes are offered in the picker (this is also how the hidden `meshmapper_dark` / `meshmapper_light` themes are enabled) |
+| `VITE_APP_NAME` | Wordmark text in the top-left. Default `BEACON` |
+| `VITE_SKIP_SPLASH` | `true` skips the once-per-session load splash |
+| `VITE_BANNER` | Notice shown above the header on every page. `[label](url)` and bare URLs become links |
+
+See `docker/.env.example` for examples. These are read when the container starts, so after editing
+`.env` run `docker compose up -d` and visitors get the new values on their next page load. Any
+characters are fine in values.
+
 ### 3. Start the services
 
 ```bash
@@ -58,37 +73,43 @@ and `dev` tracks the `dev` branch. Web and server releases share major.minor ver
 
 ```bash
 npm install
-cp .env.example .env    # edit with your backend URLs
-npm run dev             # starts Vite dev server at http://localhost:5173
+cp .env.example .env.local    # optional, edit with your backend URLs
+npm run dev                   # starts Vite dev server at http://localhost:5173
 ```
 
 ### Commands
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start dev server |
-| `npm run build` | Type-check and build for production |
+| `npm run dev` | Start dev server in the foreground |
+| `npm run start` / `stop` / `restart` | Run the dev server in the background (`scripts/devserver.sh`) |
+| `npm run dev:status` / `dev:stop-all` | Show or stop background dev servers |
+| `npm run build` | Type-check and build for production. This is the only real typecheck |
 | `npm run preview` | Preview production build locally |
 | `npm run lint` | Run ESLint |
-| `npx vitest run` | Run tests |
-| `npx tsc --noEmit` | Type-check without emitting |
+| `npm test` | Run tests |
+
+The UI is translatable; see [docs/translations.md](docs/translations.md) to add a language.
 
 ## Project Structure
 
 ```
+.build/
+  Dockerfile              # multi-stage build (Node + Caddy)
+  Caddyfile               # internal Caddy config (static file serving)
+  docker-entrypoint.sh    # runtime env var injection
 docker/
   docker-compose.yml      # production deployment compose file
-  Caddyfile               # internal Caddy config (static file serving)
-  Caddyfile.proxy         # reverse proxy config (HTTPS termination)
-  docker-entrypoint.sh    # runtime env var injection
-Dockerfile                # multi-stage build (Node + Caddy)
+  .env.example            # deployment variables
+  data/Caddy/             # reverse proxy config (Caddyfile.proxy) and cert storage
 src/
   api/
     client.ts             # typed REST client (fetch wrapper)
     ws-manager.ts         # WebSocket connection, reconnect, subscription management
   components/             # shared UI components
-  features/               # feature modules (packets, nodes, channels, map, stats)
+  features/               # feature modules (packets, nodes, observers, channels, map, routes, traces, stats)
   hooks/                  # React hooks (region, theme, WebSocket)
+  i18n/                   # i18next setup and locale catalogs
   lib/                    # constants, formatters, theme utilities
   types/                  # TypeScript types and enums
   App.tsx                 # providers + routing + WS init
@@ -100,7 +121,7 @@ src/
 
 - **Region-driven**: All data queries and WS subscriptions are scoped to an IATA region code. Changing region resets the cache and resubscribes.
 - **Live + historical merge**: WebSocket pushes live packets into a `LivePacketStore` buffer (capped at 500). Historical data comes from cursor-paginated REST via `useInfiniteQuery` (max 20 pages). Both are merged and deduped at render time.
-- **Client-side filtering**: Filters are not part of the query key. The cache holds all packets for the current region; filters are applied via `useMemo`. Toggling a filter is instant with no refetch.
+- **Packet filtering**: Payload-type, route-type and scope filters are sent to the server and added to the query key, so paging walks the full filtered history. The observer filter and hash/path search stay client-side; one `useMemo` predicate runs over the merged list, so live packets are filtered too.
 - **Reconnect with jitter**: Exponential backoff with +/-25% random jitter prevents thundering herd on server bounce.
 
 ## Contributing

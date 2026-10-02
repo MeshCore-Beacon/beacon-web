@@ -1,6 +1,7 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { VARIANT_CLASSES } from "./badge-utils";
+import { VARIANT_CLASSES, COPY_STATE_VARIANT } from "./badge-utils";
+import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 
 // Copies a shareable deep link to the current page with the given query params set (built fresh from
 // the address bar at click time, so region/other params are preserved). Flips to "Copied" for 1.5s.
@@ -20,7 +21,7 @@ export function CopyLinkButton({
   preserveParams?: readonly string[];
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
+  const { state, copy } = useCopyToClipboard();
   const idleLabel = label ?? t("common.copyLink");
 
   const handleCopy = useCallback(() => {
@@ -31,19 +32,17 @@ export function CopyLinkButton({
       if (value === null) url.searchParams.delete(key);
       else url.searchParams.set(key, value);
     }
-    navigator.clipboard.writeText(url.toString());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, [params, preserveParams]);
+    copy(url.toString());
+  }, [params, preserveParams, copy]);
 
   return (
     <button
       type="button"
-      className={`inline-flex items-center font-mono text-[11px] font-semibold px-2 py-0.5 rounded-sm border tracking-wider uppercase cursor-pointer transition-colors ${copied ? VARIANT_CLASSES.live : VARIANT_CLASSES.text}`}
+      className={`inline-flex items-center font-mono text-[11px] font-semibold px-2 py-0.5 rounded-sm border tracking-wider uppercase cursor-pointer transition-colors ${VARIANT_CLASSES[COPY_STATE_VARIANT[state]]}`}
       onClick={handleCopy}
       aria-label={ariaLabel ?? idleLabel}
     >
-      {copied ? copiedLabel ?? t("common.copied") : idleLabel}
+      {state === "copied" ? copiedLabel ?? t("common.copied") : state === "failed" ? t("common.copyFailed") : idleLabel}
     </button>
   );
 }

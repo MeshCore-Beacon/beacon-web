@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useChartColors } from "./chartTheme";
-import { useTopAdvertisers, useTopTalkers } from "./useStats";
+import { rolledWindow, useTopAdvertisers, useTopTalkers } from "./useStats";
 import { leaderboardOption } from "./chartOptions";
 import { Card, ChartCard } from "./cards";
 import { DataTable, type Column } from "../../components/DataTable";
@@ -21,6 +21,12 @@ function leaderboardHeight(count: number) {
   return Math.max(260, count * 34 + 24);
 }
 
+// The server reads rolled hours from the hour holding `since`, so the counts stop at the rolled edge.
+function coveredMs(range: StatsRange, fetchedAt: number) {
+  const hour = 3_600_000;
+  return rolledWindow(range, fetchedAt).until - Math.floor((fetchedAt - RANGE_MS[range]) / hour) * hour;
+}
+
 // The "noisy nodes, politely" tab: who's loudest by adverts and by channel chatter. Advertisers list
 // their flood/direct advert split with a per-day rate; talkers are grouped by sender display-name.
 export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
@@ -35,7 +41,7 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
   const advertisers = advertisersLoading || topAdvertisers.isError ? [] : (topAdvertisers.data ?? []);
 
   const advertiserColumns = useMemo<Column<TopAdvertiser>[]>(() => {
-    const windowMs = RANGE_MS[range];
+    const windowMs = coveredMs(range, topAdvertisers.dataUpdatedAt);
     // count over the compacted total, then the per-day rate for the same window in muted text
     const split = (count: number) => (
       <span>
@@ -59,7 +65,7 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
       { header: t("talkers.flood"), className: "tabular-nums", cell: (a) => split(a.floodAdvertCount), sortValue: (a) => a.floodAdvertCount },
       { header: t("talkers.direct"), className: "tabular-nums", cell: (a) => split(a.directAdvertCount), sortValue: (a) => a.directAdvertCount },
     ];
-  }, [range, t]);
+  }, [range, t, topAdvertisers.dataUpdatedAt]);
 
   const talkerRows = useMemo(
     () => (talkersUnavailable ? [] : (topTalkers.data ?? [])).map((row) => ({ name: row.senderName, value: row.messageCount, color: colors.secondary })),

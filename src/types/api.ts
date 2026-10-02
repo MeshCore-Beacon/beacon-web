@@ -2,9 +2,9 @@ import type { PathConfidence } from "./enums";
 
 // response wrappers
 
-export interface CursorPage<T> {
+export interface CursorPage<T, C = number> {
   items: T[];
-  nextCursor: number | null;
+  nextCursor: C | null;
   hasMore: boolean;
 }
 
@@ -239,8 +239,9 @@ export interface TracePacket {
   scope?: string; // matched transport scope name, when any
   firstHeardAt: number; // epoch ms
   lastHeardAt: number; // epoch ms
-  rawPath: RawHop[]; // one hop per trace path hash, index-aligned with resolvedRoute
-  resolvedRoute: ResolvedHop[]; // one hop per trace path hash; nodes empty when unresolved
+  // both null when the payload didn't parse; resolvedRoute also when the packet has no IATAs
+  rawPath: RawHop[] | null; // one hop per trace path hash, index-aligned with resolvedRoute
+  resolvedRoute: ResolvedHop[] | null; // one hop per trace path hash; nodes empty when unresolved
 }
 
 export interface TraceDetail {

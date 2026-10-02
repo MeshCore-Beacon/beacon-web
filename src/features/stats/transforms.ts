@@ -94,15 +94,26 @@ export function latestAirtimePct(points: TelemetryPoint[], bucketMs: number | nu
 // The server skips empty buckets; fill them so a quiet stretch draws as zero instead of a skipped line.
 // Starts at the first complete bucket (the server rounds its window start up the same way) and lets
 // one bucket past the window end through, so a client clock behind the server can't hide fresh data.
-export function fillActivity(points: ActivityPoint[], intervalMs: number, window: { start: number; end: number }): ActivityPoint[] {
+// Buckets between rolledUntil and rawFrom were never read (rollup backlog), so they stay gaps.
+export function fillActivity(
+  points: ActivityPoint[],
+  intervalMs: number,
+  window: { start: number; end: number },
+  coverage?: { rolledUntil?: number; rawFrom?: number },
+): ActivityPoint[] {
   const snap = (t: number) => Math.floor(t / intervalMs) * intervalMs;
   const first = Math.ceil(window.start / intervalMs) * intervalMs;
   const current = snap(window.end);
   const last = points.some((p) => snap(p.t) === current + intervalMs) ? current + intervalMs : current;
   const byBucket = new Map(points.map((p) => [snap(p.t), p]));
+  const { rolledUntil, rawFrom } = coverage ?? {};
+  const unread = (t: number) => rolledUntil != null && rawFrom != null && t >= rolledUntil && t < rawFrom;
   const out: ActivityPoint[] = [];
   for (let t = first; t <= last; t += intervalMs) {
-    out.push(byBucket.get(t) ?? { t, observations: 0, airtimeMs: 0, snrAvg: null, snrMin: null, rssiAvg: null });
+    const filled = unread(t)
+      ? { t, observations: null, airtimeMs: null, snrAvg: null, snrMin: null, rssiAvg: null }
+      : { t, observations: 0, airtimeMs: 0, snrAvg: null, snrMin: null, rssiAvg: null };
+    out.push(byBucket.get(t) ?? filled);
   }
   return out;
 }

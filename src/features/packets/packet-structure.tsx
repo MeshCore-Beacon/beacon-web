@@ -2,7 +2,7 @@
 import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PacketDetail, Observation } from "../../types/api";
-import { RouteType, PayloadType } from "../../types/enums";
+import { PayloadType } from "../../types/enums";
 
 // Advert device-role (ADV_TYPE) low-nibble names, shared with the DISCOVER payload renderers.
 export const DEVICE_ROLE_NAMES: Record<number, string> = {
@@ -53,10 +53,8 @@ export function computeFieldRanges(
   ranges.header = { start: 0, end: 1 };
   let offset = 1;
 
-  const hasTransport =
-    detail.header.routeType === RouteType.TRANSPORT_FLOOD ||
-    detail.header.routeType === RouteType.TRANSPORT_DIRECT;
-  if (hasTransport) {
+  // keyed off the codes, not the route type, so it matches what buildObservationFrame put in the frame
+  if (detail.transportCodes) {
     ranges.transport = { start: offset, end: offset + 4 };
     offset += 4;
   }

@@ -4,9 +4,8 @@ import { getTraceDetail } from "../../api/client";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
-import { ResolvedHopBlock } from "../packets/PathData";
+import { HopSnr, ResolvedHopBlock } from "../packets/PathData";
 import { ScopeTag } from "../../components/ScopeTag";
-import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import type { RawHop, ResolvedHop, TracePacket } from "../../types/api";
 
 // A trace packet's path, rendered exactly like the TRACE payload view: the raw path-hash byte as the
@@ -22,24 +21,15 @@ function TraceHopChain({ rawPath, resolvedRoute, onViewNode }: {
   if (rawPath.length === 0) return <span className="text-text-dim text-[11px] font-mono">{t("traces.noPath")}</span>;
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 font-mono text-[13px]">
-      {rawPath.map((raw, i) => {
-        const snr = raw.snr;
-        const level = snr != null ? snrLevel(snr) : null;
-        const sigClass = level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal";
-        return (
-          <span key={i} className="contents">
-            {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
-            <span className="inline-flex flex-col items-center gap-0.5">
-              <ResolvedHopBlock hop={resolvedRoute[i]} label={raw.hash.toUpperCase()} onViewNode={onViewNode} showSnr={false} />
-              {snr != null ? (
-                <span className={`text-[11px] ${sigClass}`}>{formatSnr(snr)} dB</span>
-              ) : (
-                <span className="text-[11px] text-text-dim" aria-hidden>-</span>
-              )}
-            </span>
+      {rawPath.map((raw, i) => (
+        <span key={i} className="contents">
+          {i > 0 && <span className="text-text-dim" aria-hidden>→</span>}
+          <span className="inline-flex flex-col items-center gap-0.5">
+            <ResolvedHopBlock hop={resolvedRoute[i]} label={raw.hash.toUpperCase()} onViewNode={onViewNode} showSnr={false} />
+            <HopSnr snr={raw.snr} />
           </span>
-        );
-      })}
+        </span>
+      ))}
     </div>
   );
 }
@@ -77,7 +67,7 @@ function TracePacketRow({ pkt, onAnalyze, onViewNode }: {
         <Field label={t("traces.last")} value={<Timestamp value={pkt.lastHeardAt} ms />} />
       </div>
       <div className="mt-1.5">
-        <TraceHopChain rawPath={pkt.rawPath} resolvedRoute={pkt.resolvedRoute} onViewNode={onViewNode} />
+        <TraceHopChain rawPath={pkt.rawPath ?? []} resolvedRoute={pkt.resolvedRoute ?? []} onViewNode={onViewNode} />
       </div>
     </div>
   );

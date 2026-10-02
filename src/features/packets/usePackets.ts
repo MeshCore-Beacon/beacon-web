@@ -6,7 +6,7 @@ import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
 import type { PacketSummary } from "../../types/api";
 import type { PacketServerFilter } from "./types";
-import { LIVE_BUFFER_CAP, MAX_INFINITE_PAGES } from "../../lib/constants";
+import { LIVE_BUFFER_CAP } from "../../lib/constants";
 
 // merge and deduplicate live + paginated packets
 
@@ -154,6 +154,8 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
 
   const handlePacketObservation = useCallback(
     (data: WsPacketObservation["data"]) => {
+      // the previous region's subscription can still deliver after the buffer reset
+      if (iatas && !iatas.includes(data.observation.iata)) return;
       const summary: PacketSummary = {
         packetHash: data.packetHash,
         payloadType: data.packet.payloadType,
@@ -179,7 +181,7 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
 
       store.pushOrUpdate(summary);
     },
-    [store],
+    [store, iatas],
   );
 
   // Reset (drop to one fresh first page) instead of invalidate: an invalidate replays every cached
@@ -221,7 +223,6 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     initialPageParam: undefined as number | undefined,
     staleTime: Infinity,
-    maxPages: MAX_INFINITE_PAGES,
     enabled: !pending,
   });
 

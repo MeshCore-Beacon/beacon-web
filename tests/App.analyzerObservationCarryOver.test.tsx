@@ -32,13 +32,13 @@ vi.mock("../src/api/client", () => ({
 }));
 
 const packet: PacketSummary = {
-  packetHash: "AA11", payloadType: 1, payloadTypeName: "ADVERT",
+  packetHash: "aa11", payloadType: 1, payloadTypeName: "ADVERT",
   routeType: 1, routeTypeName: "FLOOD",
   firstHeardAt: 1700000000000, lastHeardAt: 1700000002000, observationCount: 3,
 };
 
 const detail = {
-  packetHash: "AA11",
+  packetHash: "aa11",
   header: { raw: "12", routeType: 1, routeTypeName: "FLOOD", payloadType: 1, payloadTypeName: "ADVERT", payloadVersion: 1 },
   firstHeardAt: 1700000000000, lastHeardAt: 1700000002000, firstToLastMs: 2000, observationCount: 3,
   rawPayload: "", decrypted: false,
@@ -70,7 +70,7 @@ vi.mock("../src/features/packets/usePackets", () => ({
 
 vi.mock("../src/features/packets/usePacketDetail", () => ({
   usePacketDetail: (hash: string | null) => ({
-    data: hash === "AA11" ? detail : undefined,
+    data: hash === "aa11" ? detail : undefined,
     isLoading: false,
     isError: false,
     refetch: () => {},
@@ -129,7 +129,7 @@ describe("opening the analyzer from an expanded row", () => {
   it("keeps the observation selected in the expanded row", async () => {
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "AA11" }));
+    fireEvent.click(await screen.findByRole("button", { name: "aa11" }));
     fireEvent.click(await screen.findByText("Observer Three"));
 
     const drawer = await screen.findByTestId("packet-analyzer-drawer");
@@ -138,7 +138,7 @@ describe("opening the analyzer from an expanded row", () => {
 });
 
 it("replaces a shared observation when another report is selected in the row", async () => {
-  window.history.replaceState({}, "", "/?tab=Packets&hash=AA11&observation=3");
+  window.history.replaceState({}, "", "/?tab=Packets&hash=aa11&observation=3");
   render(<App />);
   fireEvent.click(await screen.findByText("Observer Two"));
   const drawer = await screen.findByTestId("packet-analyzer-drawer");

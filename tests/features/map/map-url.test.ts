@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMapView, buildMapParams, type MapViewSnapshot } from "../../../src/features/map/map-url";
+import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "../../../src/features/map/map-url";
 
 // URLSearchParams from a build result, skipping deleted (null) keys — models what the copy button does.
 function toParams(built: Record<string, string | null>): URLSearchParams {
@@ -140,5 +140,14 @@ describe("buildMapParams", () => {
   it("round-trips an All-node-type snapshot (no node_type key survives)", () => {
     const built = buildMapParams({ ...snapshot, nodeType: "" });
     expect(parseMapView(toParams(built)).nodeType).toBeUndefined();
+  });
+});
+
+describe("parseNodeType", () => {
+  it("accepts a known type name and rejects stale or empty values", () => {
+    expect(parseNodeType("repeater")).toBe("repeater");
+    expect(parseNodeType("room")).toBeUndefined(); // an older saved value no type matches
+    expect(parseNodeType("")).toBeUndefined();
+    expect(parseNodeType(null)).toBeUndefined();
   });
 });

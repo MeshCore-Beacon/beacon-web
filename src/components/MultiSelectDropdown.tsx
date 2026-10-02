@@ -34,7 +34,9 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      e.stopPropagation(); // the filter sheet listens on window; only the dropdown should close
+      setOpen(false);
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);

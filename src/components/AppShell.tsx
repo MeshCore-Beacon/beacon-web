@@ -481,7 +481,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
       </nav>
 
       <main className="flex-1 flex flex-col min-h-0">
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <ErrorBoundary resetKey={activeTab}>{children}</ErrorBoundary>
       </main>
 
       <footer className="hidden md:flex items-center px-4 py-1.5 bg-bg-surface border-t border-border font-mono text-[11px] text-text-dim shrink-0">

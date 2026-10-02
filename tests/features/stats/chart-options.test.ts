@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- poking into loose ECharts option shapes */
 import { describe, it, expect } from "vitest";
-import { typeBarOption, leaderboardOption, donutOption, presetBarsOption, airtimeOption, receiveErrorsOption, busyOption, heardOption, snrHeardOption } from "../../../src/features/stats/chartOptions";
+import { typeBarOption, leaderboardOption, donutOption, presetBarsOption, airtimeOption, receiveErrorsOption, busyOption, heardOption, snrHeardOption, observationsAreaOption, batteryOption, noiseFloorOption, queueOption } from "../../../src/features/stats/chartOptions";
 import type { ChartColors } from "../../../src/features/stats/chartTheme";
 import type { ActivityPoint, TelemetryPoint } from "../../../src/features/stats/types";
 
@@ -247,5 +247,16 @@ describe("receiveErrorsOption", () => {
   it("charts bucketed points as-is", () => {
     const opt = receiveErrorsOption(points, colors, true) as Record<string, any>;
     expect(opt.series[0].data).toEqual([[1000, 5], [2000, 8], [3000, 8]]);
+  });
+});
+
+describe("time-axis charts", () => {
+  it("label hours in UTC like the rest of analytics", () => {
+    const w = { start: 0, end: 4 * 3_600_000 };
+    const options = [
+      observationsAreaOption([], colors), airtimeOption([], colors, null), batteryOption([], colors), noiseFloorOption([], colors),
+      queueOption([], colors), receiveErrorsOption([], colors, true), busyOption([], colors, null, w), heardOption([], colors, w), snrHeardOption([], colors, w),
+    ] as Record<string, any>[];
+    for (const opt of options) expect(opt.useUTC).toBe(true);
   });
 });

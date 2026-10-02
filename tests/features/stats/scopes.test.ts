@@ -52,3 +52,10 @@ it("sums the shown scopes per rolled hour, counting omitted hours as zero and un
   // a server without hourly breakdowns must not read as a flat zero line
   expect(scopeHourly([...rows, { name: "#old", packetCount: 1, observerCount: 1, nodeCount: 0 }], hours)).toBeNull();
 });
+
+it("leaves hours outside the scope response's window as gaps rather than zero", () => {
+  const H = 3_600_000;
+  const rows = [{ name: "#a", packetCount: 2, observerCount: 1, nodeCount: 0, hourly: [{ hour: H, packets: 2, observers: 1, nodes: 0 }] }];
+  const hours = [0, H, 2 * H, 3 * H].map((hour) => ({ hour, status: "complete" }));
+  expect(scopeHourly(rows, hours, { since: H, until: 3 * H })?.packets).toEqual([null, 2, 0, null]);
+});
