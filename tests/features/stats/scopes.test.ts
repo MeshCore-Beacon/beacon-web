@@ -38,11 +38,16 @@ it("translates only the remainder and description for every metric, preserving n
 it("sums the shown scopes per rolled hour, counting omitted hours as zero and unrolled hours as gaps", () => {
   const H = 3_600_000;
   const rows = [
-    { name: "#a", packetCount: 4, observerCount: 1, nodeCount: 0, hourly: [{ hour: 0, packets: 3 }, { hour: 2 * H, packets: 1 }] },
-    { name: "#b", packetCount: 2, observerCount: 1, nodeCount: 0, hourly: [{ hour: 0, packets: 2 }] },
+    { name: "#a", packetCount: 4, observerCount: 1, nodeCount: 0, hourly: [{ hour: 0, packets: 3, observers: 2, nodes: 1 }, { hour: 2 * H, packets: 1, observers: 1, nodes: 0 }] },
+    { name: "#b", packetCount: 2, observerCount: 1, nodeCount: 0, hourly: [{ hour: 0, packets: 2, observers: 1, nodes: 0 }, { hour: H, packets: 0, observers: 0, nodes: 4 }] },
   ];
   const hours = [{ hour: 0, status: "complete" as const }, { hour: H, status: "complete" as const }, { hour: 2 * H, status: "missing" as const }];
-  expect(scopeHourly(rows, hours)).toEqual({ packets: [5, 0, null], active: [2, 0, null] });
+  expect(scopeHourly(rows, hours)).toEqual({
+    packets: [5, 0, null],
+    active: [2, 1, null], // a nodes-only hour still makes #b active
+    observers: [3, 0, null],
+    nodes: [1, 4, null],
+  });
   expect(scopeHourly(rows, undefined)).toBeNull();
   // a server without hourly breakdowns must not read as a flat zero line
   expect(scopeHourly([...rows, { name: "#old", packetCount: 1, observerCount: 1, nodeCount: 0 }], hours)).toBeNull();

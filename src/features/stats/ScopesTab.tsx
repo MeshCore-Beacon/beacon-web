@@ -38,8 +38,8 @@ export function ScopesTab({ range }: { range: StatsRange }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t("scopes.active")} value={value(totals.active)} accent={colors.secondary} spark={sparks?.active} />
         <StatCard label={t("scopes.scopedPackets")} value={value(totals.packets)} accent={colors.primary} spark={sparks?.packets} />
-        <StatCard label={t("scopes.memberships")} value={value(totals.memberships)} accent={colors.green} />
-        <StatCard label={t("scopes.defaultNodes")} value={value(totals.nodes)} accent={colors.warn} />
+        <StatCard label={t("scopes.memberships")} value={value(totals.memberships)} accent={colors.green} spark={sparks?.observers} sublabel={sparks?.observers && t("scopes.observersLine")} />
+        <StatCard label={t("scopes.defaultNodes")} value={value(totals.nodes)} accent={colors.warn} spark={sparks?.nodes} sublabel={sparks?.nodes && t("scopes.nodesLine")} />
       </div>
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         <ChartCard title={t("scopes.packetsTitle")} option={packets} height={height} isLoading={loading} isError={query.isError} isEmpty={!totals.packets} />

@@ -234,6 +234,8 @@
       "scopedPackets": "Paquets avec scope",
       "memberships": "Observateurs",
       "defaultNodes": "Nœuds du scope par défaut",
+      "observersLine": "Courbe : à l'écoute par heure",
+      "nodesLine": "Courbe : annonçant par heure",
       "measurement": "Les paquets couvrent la période sélectionnée. Les observateurs et les nœuds sont comptés à l’heure actuelle, et un observateur peut appartenir à plusieurs scopes.",
       "packetsTitle": "Paquets par scope",
       "membershipsTitle": "Observateurs par scope",

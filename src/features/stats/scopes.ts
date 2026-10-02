@@ -25,19 +25,32 @@ export function scopeChartOption(rows: ScopeStats[], metric: ScopeMetric, colors
     aria: { enabled: true, label: { description: t("scopes.chartDescription") } } };
 }
 
-// Per-hour scoped packets and active scopes for the shown rows. The series says which hours are rolled:
-// an hour missing from a scope's hourly is zero, an unrolled hour is a gap. Older servers send no hourly.
+// Per-hour activity for the shown rows. The series says which hours are rolled: an hour missing from a
+// scope's hourly is zero, an unrolled hour is a gap. Like the cards, observers and nodes add up per scope.
 export function scopeHourly(rows: ScopeStats[], hours: { hour: number; status: string }[] | undefined) {
   if (!hours || rows.some((row) => !row.hourly)) return null;
-  const byHour = new Map<number, number[]>();
+  const zero = { packets: 0, active: 0, observers: 0, nodes: 0 };
+  const byHour = new Map<number, typeof zero>();
+  let hasActivity = true;
   for (const row of rows) {
-    for (const { hour, packets } of row.hourly ?? []) {
-      if (packets > 0) byHour.set(hour, [...(byHour.get(hour) ?? []), packets]);
+    for (const entry of row.hourly ?? []) {
+      if (entry.observers === undefined || entry.nodes === undefined) hasActivity = false;
+      const observers = entry.observers ?? 0, nodes = entry.nodes ?? 0;
+      const sum = byHour.get(entry.hour) ?? { ...zero };
+      byHour.set(entry.hour, {
+        packets: sum.packets + entry.packets,
+        active: sum.active + (entry.packets || observers || nodes ? 1 : 0),
+        observers: sum.observers + observers,
+        nodes: sum.nodes + nodes,
+      });
     }
   }
-  const complete = hours.map((h) => (h.status === "complete" ? (byHour.get(h.hour) ?? []) : null));
+  const slots = hours.map((h) => (h.status === "complete" ? (byHour.get(h.hour) ?? zero) : null));
+  const line = (key: keyof typeof zero) => slots.map((slot) => slot && slot[key]);
   return {
-    packets: complete.map((counts) => counts && counts.reduce((a, b) => a + b, 0)),
-    active: complete.map((counts) => counts && counts.length),
+    packets: line("packets"),
+    active: line("active"),
+    observers: hasActivity ? line("observers") : undefined,
+    nodes: hasActivity ? line("nodes") : undefined,
   };
 }

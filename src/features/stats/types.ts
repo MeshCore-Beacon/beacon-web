@@ -129,7 +129,8 @@ export interface ScopeStats {
   packetCount: number;
   observerCount: number;
   nodeCount: number;
-  hourly?: { hour: number; packets: number }[]; // zero hours omitted; servers before beacon-server #201 omit it
+  // hours where all three are zero are omitted; older servers omit hourly, or observers/nodes within it
+  hourly?: { hour: number; packets: number; observers?: number; nodes?: number }[];
 }
 
 export interface TelemetryPoint {

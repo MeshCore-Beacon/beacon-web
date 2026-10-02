@@ -230,6 +230,8 @@
       "scopedPackets": "Scoped packets",
       "memberships": "Observers",
       "defaultNodes": "Default-scope nodes",
+      "observersLine": "Line: hearing per hour",
+      "nodesLine": "Line: advertising per hour",
       "measurement": "Packet counts cover the selected range. Observer and node counts are current, and an observer can belong to more than one scope.",
       "packetsTitle": "Packets by scope",
       "membershipsTitle": "Observers by scope",
