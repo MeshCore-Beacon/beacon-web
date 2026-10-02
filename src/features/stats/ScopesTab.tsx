@@ -2,16 +2,17 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
 import { SectionInfo } from "./SectionInfo";
-import { useScopes } from "./useStats";
+import { useScopes, useStatsSeries } from "./useStats";
 import { useChartColors } from "./chartTheme";
 import { Card, ChartCard, StatCard } from "./cards";
-import { scopeChartOption, scopeSummary } from "./scopes";
+import { scopeChartOption, scopeHourly, scopeSummary } from "./scopes";
 import { formatCount } from "../../lib/formatters";
 import type { StatsRange } from "./types";
 
 export function ScopesTab({ range }: { range: StatsRange }) {
   const { t } = useTranslation();
   const query = useScopes(range);
+  const series = useStatsSeries(range);
   const colors = useChartColors();
   const [search, setSearch] = useState("");
   const loading = query.isPending || query.isLoading || query.isPlaceholderData;
@@ -19,6 +20,8 @@ export function ScopesTab({ range }: { range: StatsRange }) {
   const all = useMemo(() => unavailable ? [] : (query.data ?? []), [query.data, unavailable]);
   const rows = useMemo(() => all.filter((row) => row.name.toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => b.packetCount - a.packetCount || a.name.localeCompare(b.name)), [all, search]);
   const totals = useMemo(() => scopeSummary(rows), [rows]);
+  const seriesHours = series.isSuccess && !series.isPlaceholderData ? series.data?.hours : undefined;
+  const sparks = useMemo(() => unavailable ? null : scopeHourly(rows, seriesHours), [rows, seriesHours, unavailable]);
   const packets = useMemo(() => scopeChartOption(rows, "packetCount", colors, t), [rows, colors, t]);
   const observers = useMemo(() => scopeChartOption(rows, "observerCount", colors, t), [rows, colors, t]);
   const nodes = useMemo(() => scopeChartOption(rows, "nodeCount", colors, t), [rows, colors, t]);
@@ -33,8 +36,8 @@ export function ScopesTab({ range }: { range: StatsRange }) {
       </label>
       {query.isError && <p role="alert" className="text-sm text-danger">{t("scopes.error")}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={t("scopes.active")} value={value(totals.active)} accent={colors.secondary} />
-        <StatCard label={t("scopes.scopedPackets")} value={value(totals.packets)} accent={colors.primary} />
+        <StatCard label={t("scopes.active")} value={value(totals.active)} accent={colors.secondary} spark={sparks?.active} />
+        <StatCard label={t("scopes.scopedPackets")} value={value(totals.packets)} accent={colors.primary} spark={sparks?.packets} />
         <StatCard label={t("scopes.memberships")} value={value(totals.memberships)} accent={colors.green} />
         <StatCard label={t("scopes.defaultNodes")} value={value(totals.nodes)} accent={colors.warn} />
       </div>

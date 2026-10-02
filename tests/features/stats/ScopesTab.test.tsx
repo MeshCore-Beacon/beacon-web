@@ -8,7 +8,9 @@ const query = { data: [
   { name: "#east", packetCount: 2, observerCount: 2, nodeCount: 3 },
 ], isPending: false, isLoading: false, isPlaceholderData: false, isError: false, isFetching: false, refetch: vi.fn() };
 const originalData = query.data;
-vi.mock("../../../src/features/stats/useStats", () => ({ useScopes: () => query }));
+const H = 3_600_000;
+const seriesQuery = { data: { hours: [0, 1, 2].map((i) => ({ hour: i * H, status: "complete", values: null })) }, isSuccess: true, isPlaceholderData: false };
+vi.mock("../../../src/features/stats/useStats", () => ({ useScopes: () => query, useStatsSeries: () => seriesQuery }));
 vi.mock("../../../src/features/stats/EChart", () => ({ EChart: vi.fn(() => <div data-testid="chart" />) }));
 beforeEach(() => { vi.clearAllMocks(); query.data = originalData; query.isError = false; query.isPending = false; query.isPlaceholderData = false; });
 
@@ -94,4 +96,18 @@ it("hides stale values while a region change is pending and on errors", () => {
   query.isPlaceholderData = false; query.isError = true; rerender(<ScopesTab range="24h" />);
   expect(screen.getByRole("alert")).toHaveTextContent("Could not load scopes");
   expect(screen.queryByText("#west")).not.toBeInTheDocument();
+});
+
+it("draws scoped-packet and active-scope sparks from the scopes left after searching", () => {
+  query.data = [
+    { name: "#west", packetCount: 3, observerCount: 2, nodeCount: 2, hourly: [{ hour: 0, packets: 1 }, { hour: 2 * H, packets: 2 }] },
+    { name: "#east", packetCount: 2, observerCount: 2, nodeCount: 3, hourly: [{ hour: H, packets: 2 }] },
+  ] as typeof originalData;
+  const { container } = render(<ScopesTab range="24h" />);
+  const points = () => [...container.querySelectorAll("polyline")].map((l) => l.getAttribute("points"));
+  expect(points()).toHaveLength(2);
+  const before = points();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Find a scope" }), { target: { value: "east" } });
+  expect(points()).toHaveLength(2);
+  expect(points()).not.toEqual(before);
 });

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { scopeSummary, scopeChartOption } from "../../../src/features/stats/scopes";
+import { scopeSummary, scopeChartOption, scopeHourly } from "../../../src/features/stats/scopes";
 import { readChartColors } from "../../../src/features/stats/chartTheme";
 import i18n from "../../../src/i18n";
 
@@ -33,4 +33,17 @@ it("translates only the remainder and description for every metric, preserving n
     expect(bars.series[0]!.data.reduce((sum, row) => sum + row.value, 0)).toBe(rows.reduce((sum, row) => sum + row[metric], 0));
   }
   expect(JSON.stringify(rows)).toBe(before);
+});
+
+it("sums the shown scopes per rolled hour, counting omitted hours as zero and unrolled hours as gaps", () => {
+  const H = 3_600_000;
+  const rows = [
+    { name: "#a", packetCount: 4, observerCount: 1, nodeCount: 0, hourly: [{ hour: 0, packets: 3 }, { hour: 2 * H, packets: 1 }] },
+    { name: "#b", packetCount: 2, observerCount: 1, nodeCount: 0, hourly: [{ hour: 0, packets: 2 }] },
+  ];
+  const hours = [{ hour: 0, status: "complete" as const }, { hour: H, status: "complete" as const }, { hour: 2 * H, status: "missing" as const }];
+  expect(scopeHourly(rows, hours)).toEqual({ packets: [5, 0, null], active: [2, 0, null] });
+  expect(scopeHourly(rows, undefined)).toBeNull();
+  // a server without hourly breakdowns must not read as a flat zero line
+  expect(scopeHourly([...rows, { name: "#old", packetCount: 1, observerCount: 1, nodeCount: 0 }], hours)).toBeNull();
 });

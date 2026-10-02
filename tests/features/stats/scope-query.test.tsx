@@ -9,7 +9,7 @@ import i18n from "../../../src/i18n";
 
 const region = { iatas: ["YVR"] as string[] | undefined, regionKey: "YVR", isResolved: true };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
-vi.mock("../../../src/api/client", () => ({ getStatsScopes: vi.fn(() => Promise.resolve([])) }));
+vi.mock("../../../src/api/client", () => ({ getStatsScopes: vi.fn(() => Promise.resolve([])), getStatsSeries: vi.fn(() => Promise.resolve({ hours: [] })) }));
 vi.mock("../../../src/features/stats/EChart", () => ({ EChart: () => <div /> }));
 afterEach(() => { vi.clearAllMocks(); region.iatas = ["YVR"]; region.regionKey = "YVR"; region.isResolved = true; });
 
@@ -39,7 +39,7 @@ it("reuses the regional query when only the language changes", async () => {
   await act(() => i18n.changeLanguage("fr"));
   expect(screen.getByText("Aucune donnée de scope disponible.")).toBeInTheDocument();
   expect(getStatsScopes).toHaveBeenCalledOnce();
-  expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-scopes", "YVR", "7d"]]);
+  expect(client.getQueryCache().getAll().map((query) => query.queryKey)).toEqual([["stats-scopes", "YVR", "7d"], ["stats-series", "YVR", "7d"]]);
   unmount(); client.clear();
 });
 

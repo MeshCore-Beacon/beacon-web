@@ -39,6 +39,7 @@ export function PathsTab({ range }: { range: StatsRange }) {
       receptions: hours.map((h) => h.receptions),
       hashed: counts.map((n) => n?.hashed ?? null),
       multiShare: counts.map((n) => n?.hashed ? n.multi / n.hashed : null),
+      maxEntries: hours.map((h) => h.maxEntries),
     };
   }, [hours]);
   const multi = data?.hashWidths.filter((bin) => bin.bytes > 1).reduce((n, bin) => n + bin.receptions, 0) ?? 0;
@@ -51,7 +52,7 @@ export function PathsTab({ range }: { range: StatsRange }) {
       <StatCard label={t("paths.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} spark={sparks.receptions} />
       <StatCard label={t("paths.withHashPaths")} value={data ? formatCount(data.hashed) : "—"} accent={c.green} spark={sparks.hashed} />
       <StatCard label={t("paths.multiByteShare")} value={data?.hashed ? `${(100 * multi / data.hashed).toFixed(1)}%` : "—"} accent={c.secondary} spark={sparks.multiShare} />
-      <StatCard label={t("paths.mostEntries")} value={largest ?? "—"} accent={c.warn} />
+      <StatCard label={t("paths.mostEntries")} value={largest ?? "—"} accent={c.warn} spark={sparks.maxEntries} />
     </div>
     <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
       <ChartCard title={t("paths.widthTitle")} option={charts.width} height={260} isEmpty={!data?.hashed} {...state} />

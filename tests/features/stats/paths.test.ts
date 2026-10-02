@@ -8,7 +8,7 @@ const hour = 3_600_000;
 const fixture: PathStats = { since: hour / 2, until: 3 * hour, receptions: 10, hashed: 6, empty: 2, trace: 1, unclassified: 1,
   hashWidths: [{ bytes: 1, receptions: 2 }, { bytes: 2, receptions: 3 }, { bytes: 3, receptions: 1 }],
   pathLengths: [{ entries: 0, receptions: 2 }, { entries: 2, receptions: 5 }, { entries: 63, receptions: 1 }],
-  hourly: [{ hour: 0, receptions: 8, oneByte: 2, twoByte: 3, threeByte: 1, empty: 1, trace: 1, unclassified: 0 }, { hour: 2 * hour, receptions: 2, oneByte: 0, twoByte: 0, threeByte: 0, empty: 1, trace: 0, unclassified: 1 }] };
+  hourly: [{ hour: 0, receptions: 8, oneByte: 2, twoByte: 3, threeByte: 1, empty: 1, trace: 1, unclassified: 0, maxEntries: 4 }, { hour: 2 * hour, receptions: 2, oneByte: 0, twoByte: 0, threeByte: 0, empty: 1, trace: 0, unclassified: 1, maxEntries: 0 }] };
 
 describe("path analytics charts", () => {
   it("keeps absent hours distinct from known zero hash-path hours and preserves response values", () => {
@@ -17,6 +17,7 @@ describe("path analytics charts", () => {
     expect(hours.map((h) => h.oneByte)).toEqual([2, null, 0]);
     expect(hours.map((h) => h.twoByte)).toEqual([3, null, 0]);
     expect(hours.map((h) => h.receptions)).toEqual([8, null, 2]);
+    expect(hours.map((h) => h.maxEntries)).toEqual([4, null, 0]);
     expect(JSON.stringify(fixture)).toBe(before);
     expect(pathHours(undefined)).toEqual([]);
     expect(pathHours({ ...fixture, until: 30 * 24 * hour + hour / 2 })).toHaveLength(721);

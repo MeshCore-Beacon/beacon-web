@@ -88,9 +88,9 @@ it("translates empty coverage without inventing hash-width votes or hourly recor
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
 });
 
-it("draws hourly sparks for observations, hash paths and multi-byte share", () => {
-  const hour = (h: number) => ({ hour: h * 3600000, receptions: 50 + h, oneByte: 10, twoByte: 5 + h, threeByte: 1, empty: 5, trace: 1, unclassified: 1 });
+it("draws hourly sparks for observations, hash paths, multi-byte share and most path entries", () => {
+  const hour = (h: number) => ({ hour: h * 3600000, receptions: 50 + h, oneByte: 10, twoByte: 5 + h, threeByte: 1, empty: 5, trace: 1, unclassified: 1, maxEntries: 3 + h });
   query.data = { ...originalData, until: 3 * 3600000, hourly: [hour(0), hour(1), hour(2)] };
   const { container } = render(<PathsTab range="24h" />);
-  expect(container.querySelectorAll("polyline")).toHaveLength(3);
+  expect(container.querySelectorAll("polyline")).toHaveLength(4);
 });

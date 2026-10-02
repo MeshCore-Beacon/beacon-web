@@ -24,3 +24,20 @@ export function scopeChartOption(rows: ScopeStats[], metric: ScopeMetric, colors
   return { ...leaderboardOption(shown, colors, 126), tooltip: { trigger: "item", renderMode: "richText", ...tooltipStyle(colors) },
     aria: { enabled: true, label: { description: t("scopes.chartDescription") } } };
 }
+
+// Per-hour scoped packets and active scopes for the shown rows. The series says which hours are rolled:
+// an hour missing from a scope's hourly is zero, an unrolled hour is a gap. Older servers send no hourly.
+export function scopeHourly(rows: ScopeStats[], hours: { hour: number; status: string }[] | undefined) {
+  if (!hours || rows.some((row) => !row.hourly)) return null;
+  const byHour = new Map<number, number[]>();
+  for (const row of rows) {
+    for (const { hour, packets } of row.hourly ?? []) {
+      if (packets > 0) byHour.set(hour, [...(byHour.get(hour) ?? []), packets]);
+    }
+  }
+  const complete = hours.map((h) => (h.status === "complete" ? (byHour.get(h.hour) ?? []) : null));
+  return {
+    packets: complete.map((counts) => counts && counts.reduce((a, b) => a + b, 0)),
+    active: complete.map((counts) => counts && counts.length),
+  };
+}

@@ -129,6 +129,7 @@ export interface ScopeStats {
   packetCount: number;
   observerCount: number;
   nodeCount: number;
+  hourly?: { hour: number; packets: number }[]; // zero hours omitted; servers before beacon-server #201 omit it
 }
 
 export interface TelemetryPoint {
@@ -228,6 +229,7 @@ export interface PathHour {
   empty: number;
   trace: number;
   unclassified: number;
+  maxEntries?: number; // longest path that hour; servers before beacon-server's maxEntries omit it
 }
 export interface PathStats {
   since: number;
