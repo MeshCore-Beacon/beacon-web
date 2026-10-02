@@ -4,13 +4,13 @@ import { BottomSheet } from "./BottomSheet";
 import { ENABLED_TABS } from "../lib/constants";
 
 // Mobile-only tab bar (hidden at md+); overflow tabs live behind "More" in a bottom sheet.
-const PRIMARY_TABS = ["Packets", "Channels", "Map", "Nodes"] as const;
-const OVERFLOW_TABS = ["Observers", "Routes", "Traces", "Analytics"] as const;
 
 // inline SVGs, 20px / 1.6 stroke to match the rest of the icons
 function Icon({ name }: { name: string }) {
   const common = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (name) {
+    case "MyAtlas":
+      return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="m16 8-2.5 5.5L8 16l2.5-5.5L16 8z" /></svg>;
     case "Packets":
       return (
         <svg {...common}>
@@ -105,9 +105,8 @@ function MoreSheet({ tabs, activeTab, onPick, onClose }: { tabs: string[]; activ
 export function BottomNav({ activeTab, onTabChange }: { activeTab: string; onTabChange: (tab: string) => void }) {
   const { t } = useTranslation();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const enabled = new Set<string>(ENABLED_TABS);
-  const primary: string[] = PRIMARY_TABS.filter((t) => enabled.has(t));
-  const overflow: string[] = OVERFLOW_TABS.filter((t) => enabled.has(t));
+  const primary = ENABLED_TABS.slice(0, 4);
+  const overflow = ENABLED_TABS.slice(4);
   const overflowActive = overflow.includes(activeTab);
 
   const pick = (tab: string) => {
