@@ -38,4 +38,4 @@ paste relevant browser console errors or failed requests here
 
 ## Additional context
 
-Any other context — region/IATA selected, packet type involved, etc.
+Any other context: region/IATA selected, packet type involved, etc.

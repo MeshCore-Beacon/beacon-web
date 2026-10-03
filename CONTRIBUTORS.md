@@ -4,7 +4,7 @@ Beacon is built by its contributors. Thank you to everyone who has helped.
 
 ## Core
 
-- [MrAlders0n](https://github.com/MrAlders0n/) — co-founder, lead developer
+- [MrAlders0n](https://github.com/MrAlders0n/), co-founder, lead developer
 
 ## Contributors
 

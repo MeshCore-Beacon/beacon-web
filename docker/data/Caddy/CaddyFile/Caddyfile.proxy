@@ -1,3 +1,0 @@
-{$DOMAIN} {
-	reverse_proxy beacon-web:80
-}

@@ -10,64 +10,15 @@ Built with React 19, TypeScript, Tailwind CSS 4, TanStack Query, and TanStack Vi
 
 ## Deployment
 
-The `docker/` example serves only the frontend; it needs a separately reachable beacon-server backend.
-
-### 1. Copy the `docker/` folder to your server
-
-```bash
-scp -r docker/ user@your-server:/opt/docker/beacon-web
-```
-
-### 2. Create a `.env` file
-
-```bash
-cd /opt/docker/beacon-web
-cat > .env << 'EOF'
-DOMAIN=web.example.com
-BEACON_WEB_IMAGE=ghcr.io/meshcore-beacon/beacon-web:2.0.0
-VITE_API_BASE=https://api.example.com/api/v1
-VITE_WS_URL=wss://api.example.com/ws
-EOF
-```
-
-| Variable | Description |
-|---|---|
-| `DOMAIN` | Domain for HTTPS (Caddy auto-provisions Let's Encrypt certs) |
-| `BEACON_WEB_IMAGE` | Image to run: a release tag (e.g. `:2.0.0`), `:latest`, or `:dev` |
-| `VITE_API_BASE` | Backend REST API base URL |
-| `VITE_WS_URL` | Backend WebSocket URL |
-
-Optional, all blank by default:
-
-| Variable | Description |
-|---|---|
-| `VITE_MAP_CENTER` / `VITE_MAP_ZOOM` | Fallback map view as decimal `lat,lon` and zoom 0-22, used before airports load or when a selection has none. Unset is a world view |
-| `VITE_DISABLED_TABS` | Comma list of tabs to hide: `Packets,Channels,Map,Nodes,Observers,Routes,Traces,Analytics` |
-| `VITE_ENABLED_THEMES` | Comma list of theme ids. When set, only these themes are offered in the picker (this is also how the hidden `meshmapper_dark` / `meshmapper_light` themes are enabled) |
-| `VITE_APP_NAME` | Wordmark text in the top-left. Default `BEACON` |
-| `VITE_SKIP_SPLASH` | `true` skips the once-per-session load splash |
-| `VITE_BANNER` | Notice shown above the header on every page. `[label](url)` and bare URLs become links |
-
-See `docker/.env.example` for examples. These are read when the container starts, so after editing
-`.env` run `docker compose up -d` and visitors get the new values on their next page load. Any
-characters are fine in values.
-
-### 3. Start the services
-
-```bash
-docker compose up -d
-```
-
-The images are public on GitHub Container Registry — no `docker login` required.
-If a pull fails with `403 Forbidden`, the package visibility has regressed to
-Private; a maintainer needs to set it back to Public (see the troubleshooting note
-in [beacon-docs](https://github.com/MeshCore-Beacon/beacon-docs)).
-
-Caddy will automatically obtain a TLS certificate for your domain. Ensure DNS is pointed at your server before starting.
-
-Image tags: `latest` is the newest `main` build, each `vX.Y.Z` release tag publishes `X.Y.Z` and `X.Y`,
-and `dev` tracks the `dev` branch. Web and server releases share major.minor versions
-(web `2.0.x` pairs with server `2.0.x`); patch levels are independent.
+Beacon Web ships as a container image, `ghcr.io/meshcore-beacon/beacon-web`, and is deployed
+together with beacon-server. The compose files and walkthroughs are in
+[beacon-docs](https://github.com/MeshCore-Beacon/beacon-docs): the
+[all-in-one stack](https://github.com/MeshCore-Beacon/beacon-docs#deploy-the-all-in-one-stack)
+or the [split deployment](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/docker-deployment-type2/README.md).
+The `VITE_*` variables the container reads are listed in
+[Configuration](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/docs/configuration.md#web-environment-variables).
+Image tags and versioning are in
+[Releases and versioning](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/docs/releases.md).
 
 ## Local Development
 
@@ -98,10 +49,6 @@ The UI is translatable; see [docs/translations.md](docs/translations.md) to add 
   Dockerfile              # multi-stage build (Node + Caddy)
   Caddyfile               # internal Caddy config (static file serving)
   docker-entrypoint.sh    # runtime env var injection
-docker/
-  docker-compose.yml      # production deployment compose file
-  .env.example            # deployment variables
-  data/Caddy/             # reverse proxy config (Caddyfile.proxy) and cert storage
 src/
   api/
     client.ts             # typed REST client (fetch wrapper)
@@ -124,9 +71,16 @@ src/
 - **Packet filtering**: Payload-type, route-type and scope filters are sent to the server and added to the query key, so paging walks the full filtered history. The observer filter and hash/path search stay client-side; one `useMemo` predicate runs over the merged list, so live packets are filtered too.
 - **Reconnect with jitter**: Exponential backoff with +/-25% random jitter prevents thundering herd on server bounce.
 
+## Documentation
+
+- [API contract](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/docs/api-contract.md): every REST, packet and WebSocket shape this app consumes
+- [High level design](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/docs/high-level-design.md)
+- [Translations](docs/translations.md): adding a language
+- [Contributing](CONTRIBUTING.md), and the [shared workflow](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/CONTRIBUTING.md) for branches, commits and releases
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). All contributors are welcome — please
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributors are welcome; please
 also read the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security issue,
 see [SECURITY.md](SECURITY.md).
 

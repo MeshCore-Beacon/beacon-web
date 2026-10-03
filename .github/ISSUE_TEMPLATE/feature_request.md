@@ -15,7 +15,7 @@ related to an existing issue or limitation, link it here.
 
 ## Proposed solution
 
-How you'd like it to work — UI/UX, the view or component involved, and any
+How you'd like it to work: UI/UX, the view or component involved, and any
 backend data it would consume. As much detail as you have.
 
 ## Alternatives considered
