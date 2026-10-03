@@ -48,7 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getChannelMessagesPage).mockResolvedValue(page(messages));
   vi.mocked(getChannels).mockResolvedValue({ items: [channel], hasMore: false, nextCursor: null });
-  Element.prototype.scrollIntoView = vi.fn();
+  Element.prototype.scrollTo = vi.fn();
 });
 
 describe("channel scope evidence", () => {

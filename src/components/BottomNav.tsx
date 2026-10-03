@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "./BottomSheet";
 import { ENABLED_TABS } from "../lib/constants";
+import { touchClick } from "../lib/touch-click";
 
 // Mobile-only tab bar (hidden at md+); overflow tabs live behind "More" in a bottom sheet.
 const PRIMARY_TABS = ["Packets", "Channels", "Map", "Nodes"] as const;
@@ -62,6 +63,7 @@ function NavButton({ label, icon, active, onClick, role, ariaSelected, ariaHasPo
   ariaHasPopup?: "menu";
   ariaExpanded?: boolean;
 }) {
+  const tap = touchClick(onClick);
   return (
     <button
       type="button"
@@ -69,12 +71,28 @@ function NavButton({ label, icon, active, onClick, role, ariaSelected, ariaHasPo
       aria-selected={ariaSelected}
       aria-haspopup={ariaHasPopup}
       aria-expanded={ariaExpanded}
-      onClick={onClick}
+      {...tap}
       className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium tracking-wide cursor-pointer transition-colors ${
         active ? "text-primary" : "text-text-muted hover:text-text-normal"
       }`}
     >
       {icon}
+      {label}
+    </button>
+  );
+}
+
+function SheetItem({ label, active, onPick }: { label: string; active: boolean; onPick: () => void }) {
+  const tap = touchClick(onPick);
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      {...tap}
+      className={`w-full flex items-center gap-3 px-5 py-3 text-left text-sm font-medium cursor-pointer transition-colors ${
+        active ? "text-primary" : "text-text-normal hover:bg-text-normal/3"
+      }`}
+    >
       {label}
     </button>
   );
@@ -86,17 +104,7 @@ function MoreSheet({ tabs, activeTab, onPick, onClose }: { tabs: string[]; activ
   return (
     <BottomSheet onClose={onClose} role="menu" label={t("navigation.moreTabs")}>
       {tabs.map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          role="menuitem"
-          onClick={() => onPick(tab)}
-          className={`w-full flex items-center gap-3 px-5 py-3 text-left text-sm font-medium cursor-pointer transition-colors ${
-            activeTab === tab ? "text-primary" : "text-text-normal hover:bg-text-normal/3"
-          }`}
-        >
-          {t(`tabs.${tab}`, { defaultValue: tab })}
-        </button>
+        <SheetItem key={tab} label={t(`tabs.${tab}`, { defaultValue: tab })} active={activeTab === tab} onPick={() => onPick(tab)} />
       ))}
     </BottomSheet>
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MessagePanel } from "../../../src/features/channels/MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "../../../src/features/channels/types";
@@ -119,5 +119,32 @@ describe("MessagePanel heard badge", () => {
     mount();
     expect(await screen.findByTitle("Entendu 3 fois")).toBeInTheDocument();
     expect(screen.getByTitle("Entendu 1 fois")).toBeInTheDocument();
+  });
+});
+
+describe("MessagePanel live follow", () => {
+  it("scrolls only its own list when a live message arrives, not the page", async () => {
+    const scrollTo = vi.fn();
+    window.HTMLElement.prototype.scrollTo = scrollTo as unknown as typeof HTMLElement.prototype.scrollTo;
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MessagePanel channel={channel} heardCounts={{}} regionKey="*" />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("live two");
+
+    const live = { ...liveMsgB, packetHash: "ph-live-c", content: "live three", sentAt: 5000 } as ChannelMessage;
+    act(() => {
+      qc.setQueryData(["channel-messages", channel.id, "*", ""], (old: { pages: { items: ChannelMessage[] }[] }) => ({
+        ...old,
+        pages: [{ ...old.pages[0], items: [live, ...old.pages[0].items] }, ...old.pages.slice(1)],
+      }));
+    });
+    await screen.findByText("live three");
+
+    // scrollIntoView also scrolls every ancestor up to the document, shoving the whole app shell up
+    expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollTo).toHaveBeenCalled();
   });
 });
