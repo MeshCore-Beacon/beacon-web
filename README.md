@@ -24,9 +24,23 @@ Image tags and versioning are in
 
 ```bash
 npm install
-cp .env.example .env.local    # optional, edit with your backend URLs
-npm run dev                   # starts Vite dev server at http://localhost:5173
+cp .env.example .env.local
+npm run dev                   # Vite dev server at http://localhost:5173
 ```
+
+For live updates against a local beacon-server, uncomment these three lines in `.env.local`
+before starting Vite. They route `/api` and `/ws` through the dev server so the WebSocket
+arrives with the server's own origin, which beacon-server's same-origin check requires:
+
+```
+VITE_DEV_PROXY=http://localhost:8080
+VITE_API_BASE=/api/v1
+VITE_WS_URL=ws://localhost:5173/ws
+```
+
+Without them the page talks to `localhost:8080` directly and the WebSocket is refused. Running
+the server itself is covered in the
+[shared contributor guide](https://github.com/MeshCore-Beacon/beacon-docs/blob/main/CONTRIBUTING.md#running-the-full-stack-locally).
 
 ### Commands
 
