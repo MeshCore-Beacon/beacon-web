@@ -48,7 +48,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
     const bPoints = dataB && aligned ? fillActivity(dataB.points, intervalMs, window, dataB) : [];
     return { ...heardOption(aPoints, colors, window), grid: { left: 48, right: 14, top: 32, bottom: 22 },
       legend: { data: ["A", "B"], top: 0, textStyle: { color: colors.textNormal } },
-      series: [["A", aPoints, colors.primary], ["B", bPoints, colors.secondary]].map(([name, points, color]) => ({
+      series: [["A", aPoints, colors.series[0]], ["B", bPoints, colors.series[1]]].map(([name, points, color]) => ({
         name: name as string, type: "line" as const, symbol: "none", connectNulls: false,
         data: (points as typeof aPoints).map(p => [p.t, p.observations]),
         lineStyle: { width: 2, color: color as string }, itemStyle: { color: color as string },
@@ -57,9 +57,9 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   }, [activityA, dataB, aligned, intervalMs, start, end, colors]);
   const date = (value: number | null | undefined) => value == null ? "—" : new Date(value).toLocaleString(i18n.resolvedLanguage, { timeZone: "UTC", dateStyle: "short", timeStyle: "short" });
   const groups = overlap.data && !overlap.isError ? [
-    { label: t("observerCompare.onlyA"), count: overlap.data.onlyA, color: colors.primary, textClass: "text-primary" },
-    { label: t("observerCompare.both"), count: overlap.data.both, color: colors.green, textClass: "text-green" },
-    { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.secondary, textClass: "text-secondary" },
+    { label: t("observerCompare.onlyA"), count: overlap.data.onlyA, color: colors.series[0] },
+    { label: t("observerCompare.both"), count: overlap.data.both, color: colors.green },
+    { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.series[1] },
   ] : [];
   const refresh = () => {
     const nextUntil = onRefresh();
@@ -92,7 +92,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
         {overlap.isError ? <p role="alert">{t("common.loadFailed")}</p> : !overlap.data ? <p role="status">{t("common.loading")}</p> : <>
           <p className="mb-3 text-lg font-semibold">{t("observerCompare.total", { count: overlap.data.totalPackets })}</p>
           {overlap.data.totalPackets === 0 ? <p>{t("observerCompare.empty")}</p> : <div aria-hidden className="mb-3 flex h-5 overflow-hidden rounded">{groups.map(g => <div key={g.label} style={{ width: `${g.count / overlap.data!.totalPackets * 100}%`, background: g.color }} />)}</div>}
-          <dl className="grid grid-cols-3 gap-2 text-sm">{groups.map(g => <div key={g.label}><dt className="text-text-muted">{g.label}</dt><dd className={`text-lg font-semibold ${g.textClass}`}>{g.count.toLocaleString(i18n.resolvedLanguage)}</dd></div>)}</dl>
+          <dl className="grid grid-cols-3 gap-2 text-sm">{groups.map(g => <div key={g.label}><dt className="text-text-muted">{g.label}</dt><dd className="text-lg font-semibold" style={{ color: g.color }}>{g.count.toLocaleString(i18n.resolvedLanguage)}</dd></div>)}</dl>
         </>}
       </Card>}
     </>}

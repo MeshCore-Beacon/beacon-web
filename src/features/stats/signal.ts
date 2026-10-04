@@ -33,12 +33,12 @@ export function signalHistogramOption(metric: SignalMetric | undefined, name: st
     tooltip: { trigger: "axis", renderMode: "richText", ...tooltipStyle(c) },
     xAxis: { type: "category", data: bins.map((bin) => `${signalBinLabel(bin, t)} ${unit}`), axisLabel: { color: c.textMuted, fontSize: 9, rotate: 35 }, axisLine: { lineStyle: { color: c.border } } },
     yAxis: { type: "value", minInterval: 1, axisLabel: { color: c.textMuted, fontSize: 10 }, splitLine: { lineStyle: { color: c.borderSubtle } } },
-    series: [{ name: t("signal.metricSamples", { metric: name }), type: "bar", barMaxWidth: 28, data: bins.map((bin, i) => ({ value: bin.count, itemStyle: { color: blend(name === "SNR" ? c.secondary : c.green, c.primary, i / Math.max(1, bins.length - 1)), borderRadius: [3, 3, 0, 0] } })) }],
+    series: [{ name: t("signal.metricSamples", { metric: name }), type: "bar", barMaxWidth: 28, data: bins.map((bin, i) => ({ value: bin.count, itemStyle: { color: blend(c.bgRaised, c.primary, 0.45 + 0.55 * i / Math.max(1, bins.length - 1)), borderRadius: [3, 3, 0, 0] } })) }],
   };
 }
 
 export function signalTrendOption(hours: ReturnType<typeof signalHours>, metric: "snr" | "rssi", c: ChartColors, t: TFunction): EChartsOption {
-  const color = metric === "snr" ? c.secondary : c.green;
+  const color = metric === "snr" ? c.series[0]! : c.series[1]!;
   const unit = metric === "snr" ? "dB" : "dBm";
   return {
     animation: false, useUTC: true,

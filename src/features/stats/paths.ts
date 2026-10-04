@@ -25,7 +25,7 @@ export function pathLengthOption(bins: PathLengthBin[], c: ChartColors, t: TFunc
     tooltip: { trigger: "axis", renderMode: "richText", ...tooltipStyle(c) },
     xAxis: { type: "category", data: entries, name: t("paths.entries"), nameLocation: "middle", nameGap: 25, nameTextStyle: { color: c.textMuted }, axisLabel: { color: c.textMuted, fontSize: 10 }, axisLine: { lineStyle: { color: c.border } } },
     yAxis: { type: "value", minInterval: 1, axisLabel: { color: c.textMuted, fontSize: 10 }, splitLine: { lineStyle: { color: c.borderSubtle } } },
-    series: [{ name: t("paths.receptionsColumn"), type: "bar", barMaxWidth: 26, data: entries.map((i) => ({ value: counts.get(i) ?? 0, itemStyle: { color: i === 0 ? c.textDim : blend(c.primary, c.secondary, i / Math.max(1, max)), borderRadius: [3, 3, 0, 0] } })) }],
+    series: [{ name: t("paths.receptionsColumn"), type: "bar", barMaxWidth: 26, data: entries.map((i) => ({ value: counts.get(i) ?? 0, itemStyle: { color: i === 0 ? c.textDim : blend(c.primaryDim, c.primary, i / Math.max(1, max)), borderRadius: [3, 3, 0, 0] } })) }],
   };
 }
 

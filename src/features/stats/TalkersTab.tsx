@@ -68,7 +68,7 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
   }, [range, t, topAdvertisers.dataUpdatedAt]);
 
   const talkerRows = useMemo(
-    () => (talkersUnavailable ? [] : (topTalkers.data ?? [])).map((row) => ({ name: row.senderName, value: row.messageCount, color: colors.secondary })),
+    () => (talkersUnavailable ? [] : (topTalkers.data ?? [])).map((row) => ({ name: row.senderName, value: row.messageCount, color: colors.primary })),
     [topTalkers.data, colors, talkersUnavailable],
   );
   const talkersOption = useMemo(() => leaderboardOption(talkerRows, colors), [talkerRows, colors]);

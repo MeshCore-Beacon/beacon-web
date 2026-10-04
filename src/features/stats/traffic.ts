@@ -1,6 +1,6 @@
 import type { TFunction } from "i18next";
 import type { EChartsOption } from "./echarts-setup";
-import { tooltipStyle, type ChartColors } from "./chartTheme";
+import { blend, tooltipStyle, type ChartColors } from "./chartTheme";
 import { RANGE_MS, type ObservationPoint, type StatsRange } from "./types";
 
 const HOUR = 3_600_000;
@@ -89,7 +89,7 @@ export function trafficHeatmapOption(model: TrafficModel, c: ChartColors, t: TFu
     yAxis: { type: "category", data: model.days, inverse: true, axisTick: { show: false }, axisLine: { show: false },
       axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 9, formatter: (day: string) => day.slice(5) } },
     visualMap: { min: 0, max: Math.max(1, model.peak?.total ?? 0), calculable: false, orient: "horizontal", left: "center", bottom: 0, itemWidth: 10, itemHeight: 130,
-      text: [t("traffic.more"), t("traffic.fewer")], textStyle: { color: c.textMuted, fontSize: 10 }, inRange: { color: [c.primaryDim, c.primary, c.secondary, c.green, c.warn] } },
+      text: [t("traffic.more"), t("traffic.fewer")], textStyle: { color: c.textMuted, fontSize: 10 }, inRange: { color: [0.18, 0.38, 0.62, 0.82, 1].map((amount) => blend(c.bgRaised, c.primary, amount)) } },
     series: [{ name: t("traffic.receptionsColumn"), type: "heatmap", data: model.heatmap, itemStyle: { borderColor: c.bgSurface, borderWidth: 1 }, emphasis: { itemStyle: { borderColor: c.textBright, borderWidth: 1 } } }],
   };
 }
