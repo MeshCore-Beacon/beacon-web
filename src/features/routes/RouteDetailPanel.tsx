@@ -1,9 +1,10 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { Badge } from "../../components/Badge";
 import { Timestamp } from "../../components/Timestamp";
-import { InfoTip } from "../../components/InfoTip";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { getRouteEvidence, isNotFound } from "../../api/client";
@@ -29,16 +30,28 @@ interface RouteDetailPanelProps extends RouteActions {
   onClose: () => void;
 }
 
-// A shared link only carries iata + pathKey, so the route itself can arrive with the first packet page.
+// The regular view follows retention. Copied links also pin the time window and
+// representation, so a later hash-width update cannot silently change the evidence.
 export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnalyzePacket, onViewObserver, onViewNode }: RouteDetailPanelProps) {
   const { t } = useTranslation();
+  const [params] = useSearchParams();
+  const [openedAt] = useState(Date.now);
+  const rawSince = params.get("routeSince"), rawUntil = params.get("routeUntil");
+  const rawWidth = params.get("routeHashSize"), rawPath = params.get("routePathBytes");
+  const fixed = rawSince !== null || rawUntil !== null;
+  const since = Number(rawSince), until = Number(rawUntil), hashSize = Number(rawWidth);
+  const pinned = rawWidth !== null || rawPath !== null;
+  const invalidWindow = fixed && (params.getAll("routeSince").length !== 1 || params.getAll("routeUntil").length !== 1 || !rawSince || !rawUntil || !/^\d+$/.test(rawSince) || !/^\d+$/.test(rawUntil) || !Number.isSafeInteger(since) || !Number.isSafeInteger(until) || until <= since || until > openedAt || until - since > 30 * 86_400_000);
+  const invalidPath = pinned && (params.getAll("routeHashSize").length !== 1 || params.getAll("routePathBytes").length !== 1 || !rawWidth || !/^[1-3]$/.test(rawWidth) || !rawPath || !/^[0-9a-f]+$/.test(rawPath) || rawPath.length < 4 * hashSize || rawPath.length > 126 * hashSize || rawPath.length % (2 * hashSize) !== 0);
+  const pathParams = pinned && !invalidPath ? { hashSize, pathBytes: rawPath! } : {};
+  const invalid = invalidWindow || invalidPath;
   const keyed = !!iata && !!pathKey;
   const query = useInfiniteQuery({
-    queryKey: ["route-evidence", iata, pathKey],
-    queryFn: ({ pageParam, signal }) => getRouteEvidence(iata!, pathKey!, pageParam ? { pageCursor: pageParam, limit: PAGE_LIMIT } : { range: RECENT_RANGE, limit: PAGE_LIMIT }, signal),
+    queryKey: ["route-evidence", iata, pathKey, rawSince, rawUntil, rawWidth, rawPath],
+    queryFn: ({ pageParam, signal }) => getRouteEvidence(iata!, pathKey!, pageParam ? { pageCursor: pageParam, limit: PAGE_LIMIT } : fixed ? { since, until, ...pathParams, limit: PAGE_LIMIT } : { range: RECENT_RANGE, ...pathParams, limit: PAGE_LIMIT }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last, pages) => pages.length < MAX_PAGES && last.hasMore ? last.nextPageCursor : undefined,
-    enabled: keyed,
+    enabled: keyed && !invalid,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     retry: false,
@@ -47,15 +60,15 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
   const route = listed ?? first?.route;
   const reports = query.data?.pages.flatMap(page => page.items) ?? [];
   const capped = (query.data?.pages.length ?? 0) >= MAX_PAGES && query.data?.pages.at(-1)?.hasMore;
-  const width = first?.matchAvailable && first.hashSize ? first.hashSize : "—";
 
   return (
     <DetailPanel
       title={t("routeDetail.title")}
       onClose={onClose}
-      isLoading={!route && query.isPending && keyed}
-      headerAction={keyed && <CopyLinkButton label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} params={() => ({ tab: "Routes", route: pathKey!, routeIata: iata!, hash: null, analyze: null, observation: null, path: null, observer: null, node: null })} />}
+      isLoading={!route && query.isPending && keyed && !invalid}
+      headerAction={keyed && !invalid && <CopyLinkButton label={t("investigation.copy")} copiedLabel={t("observerPage.copied")} params={() => ({ tab: "Routes", route: pathKey!, routeIata: iata!, routeRange: null, routeSince: first ? String(first.windowStart) : rawSince, routeUntil: first ? String(first.windowEnd) : rawUntil, routeHashSize: first ? first.matchAvailable && first.hashSize && first.pathBytes ? String(first.hashSize) : null : rawWidth, routePathBytes: first ? first.matchAvailable && first.hashSize && first.pathBytes ? first.pathBytes : null : rawPath, hash: null, analyze: null, observation: null, path: null, observer: null, node: null })} />}
     >
+      {invalid && <p role="alert" className="p-4 text-sm text-warn">{t(invalidPath ? "routeEvidence.invalidPath" : "routeEvidence.invalid")}</p>}
       {route && <>
         <Section title={t("routeDetail.summary")} first>
           <div className="flex items-center gap-3 font-mono text-[13px]">
@@ -72,7 +85,7 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
               return (
                 <div key={i} className="flex items-center gap-2 font-mono text-[13px]">
                   <span className="text-text-dim w-6 shrink-0">#{i + 1}</span>
-                  <ResolvedHopBlock hop={resolved} label={hop.hashBytes.toUpperCase()} onViewNode={onViewNode} />
+                  <ResolvedHopBlock hop={resolved} label={(first?.matchAvailable && first.pathBytes && first.hashSize ? first.pathBytes.slice(i * first.hashSize * 2, (i + 1) * first.hashSize * 2) : hop.hashBytes).toUpperCase()} onViewNode={onViewNode} />
                   {hop.node?.name && <span className="text-text-muted truncate">{hop.node.name}</span>}
                 </div>
               );
@@ -88,8 +101,8 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
         </Section>
       </>}
 
-      {keyed && (route || query.isError) && (
-        <Section title={<span className="inline-flex items-center gap-1.5">{t("routeEvidence.recent")}<InfoTip text={[t("routeEvidence.match", { width }), t("routeEvidence.caution"), t("routeEvidence.retention")]} /></span>}>
+      {keyed && !invalid && (route || query.isError) && (
+        <Section title={t("routeEvidence.recent")}>
           {query.isError && (
             <div role="alert" className="mb-2 space-y-2 text-sm text-warn">
               <p>{t(isNotFound(query.error) ? "routeEvidence.missing" : "routeEvidence.error")}</p>

@@ -62,6 +62,11 @@ export function parseSelection(params: URLSearchParams): RegionSelection {
   const iatas = splitCsv(params.get("iata")).map((c) => c.toUpperCase());
   const legacy = params.get("region")?.trim();
   if (legacy) iatas.push(legacy.toUpperCase());
+  // Old Topology links join the shared selector once; explicit shared filters win.
+  const topology = params.get("topoRegion");
+  if (params.get("tab") === "Topology" && !["iata", "regions", "region"].some(key => params.has(key)) && topology && /^[A-Za-z0-9_-]{1,16}$/.test(topology)) {
+    iatas.push(topology.toUpperCase());
+  }
   return { regions, iatas };
 }
 
@@ -74,6 +79,7 @@ export function selectionToParams(selection: RegionSelection, base: URLSearchPar
   if (selection.regions.length > 0) next.set("regions", selection.regions.join(","));
   else next.delete("regions");
   next.delete("region");
+  next.delete("topoRegion");
   return next;
 }
 

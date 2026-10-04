@@ -29,7 +29,7 @@ describe("docker-entrypoint.sh", () => {
     expect(cfg.VITE_API_BASE).toBe("https://api.example.com/api/v1");
     expect(cfg.VITE_BANNER).toBe("");
     expect(Object.keys(cfg).sort()).toEqual([
-      "VITE_API_BASE", "VITE_APP_NAME", "VITE_BANNER", "VITE_DISABLED_TABS", "VITE_ENABLED_THEMES",
+      "VITE_API_BASE", "VITE_APP_NAME", "VITE_BANNER", "VITE_CHANGELOG_URL", "VITE_DISABLED_TABS", "VITE_ENABLED_THEMES",
       "VITE_MAP_CENTER", "VITE_MAP_ZOOM", "VITE_SKIP_SPLASH", "VITE_WS_URL",
     ]);
   });

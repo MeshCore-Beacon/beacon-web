@@ -1,5 +1,7 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { PacketDetail, Observation, ResolvedHop } from "../../types/api";
+
+import { isQuestionable } from "../traces/trace-quality";
 import { PayloadType } from "../../types/enums";
 import { packetChain, locatedHopNode } from "./packet-flow";
 
@@ -73,8 +75,12 @@ export function buildPacketPaths(detail: PacketDetail): PacketPath[] {
       add(obs.observerId, observerLabel(obs), obs.propagationTimeMs, pathPoints(chain));
     }
   }
-  if (isTrace && detail.resolvedRoute) {
-    add("trace", "Trace route", undefined, pathPoints(detail.resolvedRoute));
+
+  if (isTrace && detail.resolvedRoute && !isQuestionable(detail.traceQuality)) {
+    // Payload hashes describe the requested route; only consumed SNR hops are observed.
+    const payload = typeof detail.parsedPayload === "object" ? detail.parsedPayload : undefined;
+    const consumed = Array.isArray(payload?.snrValues) ? payload.snrValues.length : 0;
+    add("trace", "Trace route", undefined, pathPoints(detail.resolvedRoute.slice(0, consumed)));
   }
 
   // fastest first; missing propagation (incl. the trace route) sorts last

@@ -171,3 +171,13 @@ describe("transport frames", () => {
     expect(frame.slice(ranges.payload!.start * 2, ranges.payload!.end * 2)).toBe("3b5c22");
   });
 });
+
+it("uses exact trace SNR bytes in the wire frame instead of decoded requested hashes", () => {
+ const d = makeDetail({payloadType:PayloadType.TRACE,rawPayload:"010203040000000001aabbccdd"});
+ d.header.raw="26";
+ const o = {...makeObs({raw:"01",hashSize:2,hopCount:2,pathBytes:"aabbccdd"}),wirePathBytes:"fc"};
+ const frame=buildObservationFrame(d,o);
+ expect(frame).toBe("2601fc010203040000000001aabbccdd");
+ expect(computeFieldRanges(d,o,frame.length/2).pathData).toEqual({start:2,end:3});
+ expect(computeFieldRanges(d,o,frame.length/2).payload?.start).toBe(3);
+});

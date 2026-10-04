@@ -327,8 +327,8 @@ export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketMs
     xAxis: timeAxis(c),
     yAxis: percentAxis(c),
     series: [
-      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
-      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
+      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: false, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
+      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: false, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
     ],
   };
 }
@@ -351,6 +351,15 @@ function metricLineOption(
   c: ChartColors,
   o: { name: string; color: string; accessor: (p: TelemetryPoint) => number | null; delta?: boolean; area?: boolean },
 ): EChartsOption {
+  const data = seriesData(points,o.accessor,o.delta ?? false);
+  // Only gauge readings are interpolated. Counter/delta/stacked gaps stay empty.
+  const bridges: (number|null)[][] = [];
+  let previous=-1;
+  if (!o.delta && !o.area) data.forEach((point,i)=>{
+    if (point[1]==null) return;
+    if (previous>=0 && i>previous+1) bridges.push(data[previous]!,point,[point[0]!,null]);
+    previous=i;
+  });
   return {
     animation: false,
     useUTC: true,
@@ -363,14 +372,15 @@ function metricLineOption(
       {
         name: o.name,
         type: "line",
-        smooth: true,
+        smooth: false,
         symbol: "none",
-        connectNulls: true,
-        data: seriesData(points, o.accessor, o.delta ?? false),
-        lineStyle: { color: o.color, width: 1.8 },
+        connectNulls: false,
+        data,
+        lineStyle: { color: o.color, width: 2, shadowColor: withAlpha(o.color,0.3), shadowBlur: 3 },
         itemStyle: { color: o.color },
         ...(o.area ? { areaStyle: { color: withAlpha(o.color, 0.16) } } : {}),
       },
+      ...(bridges.length ? [{ type: "line" as const, data: bridges, connectNulls: false, smooth: false, symbol: "none", silent: true, tooltip: { show: false, trigger: "none" as const }, lineStyle: { color:o.color, width:1.4, type:"dashed" as const, opacity:0.5 }, emphasis:{disabled:true} }] : []),
     ],
   };
 }

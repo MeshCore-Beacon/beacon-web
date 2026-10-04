@@ -4,7 +4,7 @@ set -e
 # Runtime config lives in /config.js (served no-cache), not the hashed bundle, so env changes take
 # effect on any restart and reach returning visitors. Empty values fall back to the app defaults.
 OUT="${BEACON_CONFIG_OUT:-/srv/config.js}"
-KEYS="VITE_API_BASE VITE_WS_URL VITE_MAP_CENTER VITE_MAP_ZOOM VITE_DISABLED_TABS VITE_ENABLED_THEMES VITE_APP_NAME VITE_SKIP_SPLASH VITE_BANNER"
+KEYS="VITE_API_BASE VITE_WS_URL VITE_MAP_CENTER VITE_MAP_ZOOM VITE_DISABLED_TABS VITE_ENABLED_THEMES VITE_APP_NAME VITE_SKIP_SPLASH VITE_BANNER VITE_CHANGELOG_URL"
 
 # Values are read from ENVIRON and JSON-escaped, so any character is safe.
 awk -v keys="$KEYS" 'BEGIN {

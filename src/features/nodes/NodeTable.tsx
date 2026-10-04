@@ -12,7 +12,7 @@ import { formatHex, timeAgoParts, formatRadio } from "../../lib/formatters";
 import { hasMapLocation } from "../map/location";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
-import { ObserverIcon } from "../../components/ObserverIcon";
+import { NodeTypeBadge } from "../../components/NodeTypeBadge";
 import { DataTable, type Column } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
@@ -57,12 +57,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
           {node.name ?? formatHex(node.id)}
         </span>
         <span className="shrink-0">
-          <Badge variant="default">
-            {node.isObserver && (
-              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
-            )}
-            {node.nodeTypeName}
-          </Badge>
+          <NodeTypeBadge typeName={node.nodeTypeName} observer={node.isObserver} />
         </span>
       </div>
       <div className="flex items-center gap-2 text-text-muted">
@@ -110,12 +105,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       sortValue: (node) => node.nodeTypeName,
       cell: (node) => (
         <div className="flex flex-wrap gap-1">
-          <Badge variant="default">
-            {node.isObserver && (
-              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
-            )}
-            {node.nodeTypeName}
-          </Badge>
+          <NodeTypeBadge typeName={node.nodeTypeName} observer={node.isObserver} />
           <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
         </div>
       ),

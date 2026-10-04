@@ -66,6 +66,13 @@ describe("regionKey", () => {
 });
 
 describe("parseSelection", () => {
+  it("migrates old Topology links while giving the shared filter precedence", () => {
+    expect(parseSelection(new URLSearchParams("tab=Topology&topoRegion=yow"))).toEqual({ regions: [], iatas: ["YOW"] });
+    expect(parseSelection(new URLSearchParams("tab=Topology&topoRegion=YOW&iata=YKF"))).toEqual({ regions: [], iatas: ["YKF"] });
+    expect(parseSelection(new URLSearchParams("tab=Topology&topoRegion=YOW&regions=west"))).toEqual({ regions: ["west"], iatas: [] });
+    expect(selectionToParams(ALL_REGIONS, new URLSearchParams("tab=Topology&topoRegion=YOW")).has("topoRegion")).toBe(false);
+  });
+
   it("reads ?iata as a comma-separated, upper-cased IATA list", () => {
     expect(parseSelection(new URLSearchParams("iata=YVR,yyj"))).toEqual({ regions: [], iatas: ["YVR", "YYJ"] });
   });

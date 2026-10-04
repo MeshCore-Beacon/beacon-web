@@ -117,13 +117,14 @@ it("draws sparklines from complete hours only", async () => {
   expect(lines).toEqual([2, 2, 2, 2]);
 });
 
-it("breaks sparklines at missing hours instead of joining across them", async () => {
+it("keeps measured sparkline runs separate and marks gaps with dashed estimates", async () => {
   const ok = (n: number) => ({ hour: n * H, status: "complete" as const, values: values({ observations: n + 1, activeObservers: n + 1 }) });
   vi.mocked(getStatsSeries).mockResolvedValue({ ...series, hours: [ok(0), ok(1), { hour: 2 * H, status: "missing", values: null }, ok(3), ok(4)] });
   const { container } = mount(); await loaded();
   const lines = [...container.querySelectorAll("polyline")].map((l) => l.getAttribute("points")!.split(" "));
   expect(lines.map((pts) => pts.length)).toEqual([2, 2, 2, 2, 2, 2, 2, 2]);
-  expect(lines[1]![0]!.split(",")[0]).toBe("90");
+  expect(lines[1]![0]!.split(",")[0]).toBe("89");
+  expect(container.querySelectorAll("[data-gap]")).toHaveLength(4);
 });
 
 it("plots observations and unique packets from the series, leaving gaps for unrolled hours", async () => {

@@ -36,12 +36,30 @@ function renderShell(onTabChange: (tab: string) => void = () => {}) {
 }
 
 beforeEach(() => {
+  vi.stubEnv("VITE_CHANGELOG_URL", "");
+  delete window.__BEACON_CONFIG__;
   vi.mocked(getIatas).mockReset();
   vi.mocked(getRegions).mockReset().mockResolvedValue([]);
   vi.mocked(getRegion).mockReset();
 });
 
+afterEach(() => { vi.unstubAllEnvs(); delete window.__BEACON_CONFIG__; });
+
 describe("AppShell", () => {
+  it("links to the configured preview changelog without requiring it on other instances", () => {
+    const initial = renderShell();
+    expect(screen.queryByRole("link", { name: "Changelog" })).not.toBeInTheDocument();
+    initial.unmount();
+    window.__BEACON_CONFIG__ = { VITE_CHANGELOG_URL: "/beacon-dev/source.html" };
+    const configured = renderShell();
+    expect(screen.getByRole("link", { name: "Changelog" })).toHaveAttribute("href", "/beacon-dev/source.html");
+    expect(screen.getByRole("link", { name: "Changelog" })).toHaveAttribute("target", "_blank");
+    configured.unmount();
+    window.__BEACON_CONFIG__ = { VITE_CHANGELOG_URL: "javascript:alert(1)" };
+    renderShell();
+    expect(screen.queryByRole("link", { name: "Changelog" })).not.toBeInTheDocument();
+    delete window.__BEACON_CONFIG__;
+  });
   it("switches navigation to French while preserving tab identifiers and the active view", async () => {
     vi.mocked(getIatas).mockResolvedValue([]);
     const onTabChange = vi.fn();
@@ -314,7 +332,9 @@ describe("AppShell on a phone", () => {
     const media = window.matchMedia("(max-width: 767px)");
     vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ ...media, media: query, matches: query === "(max-width: 767px)" }));
     vi.mocked(getIatas).mockResolvedValue([]);
+    window.__BEACON_CONFIG__ = { VITE_CHANGELOG_URL: "/beacon-dev/source.html" };
     renderShell();
+    expect(screen.getByRole("link", { name: "Changelog" })).toHaveAttribute("href", "/beacon-dev/source.html");
     expect(screen.getByRole("button", { name: /Region/ })).toBeInTheDocument();
     expect(screen.getByRole("status", { name: "LIVE" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Language:/ })).not.toBeInTheDocument();

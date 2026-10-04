@@ -20,6 +20,7 @@ const inspect = vi.fn(); const observer = vi.fn();
 function Harness({ listed }: { listed?: KnownRoute }) {
   const [params, set] = useSearchParams();
   return <><button onClick={() => set({ route: "b".repeat(32) })}>Other route</button>
+    <button onClick={() => set(p => { const next = new URLSearchParams(p); next.set("routeHashSize", "2"); next.set("routePathBytes", "ab01cd02"); return next; })}>Other width</button>
     <RouteDetailPanel route={listed} iata="YOW" pathKey={params.get("route") ?? key} onClose={() => {}} onAnalyzePacket={inspect} onViewObserver={observer} /></>;
 }
 function mount({ url = "/?tab=Routes", listed }: { url?: string; listed?: KnownRoute } = {}) {
@@ -29,11 +30,39 @@ beforeEach(() => { vi.clearAllMocks(); vi.mocked(getRouteEvidence).mockResolvedV
 
 describe("route detail", () => {
   it("lists recent packets as far back as the server keeps them, with no window picker", async () => {
-    mount({ url: "/?routeRange=7d&routeSince=1&routeUntil=2" });
+    mount({ url: "/?routeRange=7d" });
     await screen.findByText("Garden");
     expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { range: "720h", limit: 50 }, expect.anything());
     expect(screen.queryByRole("button", { name: "24h" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+  });
+
+  it("requests and shares the pinned window and prefix representation", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true });
+    mount({ url: "/?routeSince=1700000000000&routeUntil=1700086400000&routeHashSize=1&routePathBytes=abcd" });
+    await screen.findByText("Garden");
+    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { since: 1700000000000, until: 1700086400000, hashSize: 1, pathBytes: "abcd", limit: 50 }, expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
+    const link = new URL(vi.mocked(navigator.clipboard.writeText).mock.calls[0]![0]);
+    expect(link.searchParams.get("routeSince")).toBe(String(page.windowStart));
+    expect(link.searchParams.get("routeUntil")).toBe(String(page.windowEnd));
+    expect(link.searchParams.get("routeHashSize")).toBe("1");
+    expect(link.searchParams.get("routePathBytes")).toBe("abcd");
+  });
+
+  it("replaces reports when the pinned bytes change without changing the route key", async () => {
+    mount({ url: "/?routeHashSize=1&routePathBytes=abcd" }); await screen.findByText("Garden");
+    vi.mocked(getRouteEvidence).mockReturnValue(new Promise(() => {}));
+    fireEvent.click(screen.getByText("Other width"));
+    expect(screen.queryByText("Garden")).not.toBeInTheDocument();
+    expect(getRouteEvidence).toHaveBeenLastCalledWith("YOW", key, { range: "720h", hashSize: 2, pathBytes: "ab01cd02", limit: 50 }, expect.anything());
+  });
+
+  it.each(["routeHashSize=1", "routePathBytes=abcd", "routeHashSize=1&routeHashSize=2&routePathBytes=abcd", "routeHashSize=4&routePathBytes=abcd", "routeHashSize=01&routePathBytes=abcd", "routeHashSize=1&routePathBytes=ab", "routeHashSize=2&routePathBytes=abcde", "routeHashSize=1&routePathBytes=ABCD", "routeSince=bad", "routeSince=1&routeUntil=2678400001", "routeSince=1&routeSince=2&routeUntil=3"])("rejects invalid pinned selectors: %s", async selector => {
+    mount({ url: "/?" + selector });
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(getRouteEvidence).not.toHaveBeenCalled();
   });
 
   it("shows the route's lifetime summary from the listed route before packets load", () => {
@@ -49,11 +78,6 @@ describe("route detail", () => {
     expect(await screen.findByText("1,234")).toBeInTheDocument();
   });
 
-  it("keeps the matching caveats in an info tip instead of inline text", async () => {
-    mount();
-    await screen.findByText("Garden");
-    expect(screen.getByRole("button", { name: /don't prove the same physical path/ })).toBeInTheDocument();
-  });
 
   it("opens the exact report and observer, and pins cursor pages", async () => {
     mount();

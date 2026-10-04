@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { TraceQualityNotice } from "./TraceQualityNotice";
 import { getTraceDetail } from "../../api/client";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { Badge } from "../../components/Badge";
@@ -66,6 +67,7 @@ function TracePacketRow({ pkt, onAnalyze, onViewNode }: {
         <Field label={t("traces.first")} value={<Timestamp value={pkt.firstHeardAt} ms />} />
         <Field label={t("traces.last")} value={<Timestamp value={pkt.lastHeardAt} ms />} />
       </div>
+      <TraceQualityNotice quality={pkt.quality} />
       <div className="mt-1.5">
         <TraceHopChain rawPath={pkt.rawPath ?? []} resolvedRoute={pkt.resolvedRoute ?? []} onViewNode={onViewNode} />
       </div>
