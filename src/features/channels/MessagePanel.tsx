@@ -94,7 +94,6 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     [messages],
   );
 
-  const bottomRef = useRef<HTMLDivElement>(null);
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const viewKey = `${channel?.id ?? ""}:${scope}`;
@@ -136,7 +135,8 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     }
 
     if (sorted.length > anchor.count && !userScrolled) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" }); // live message arrived; follow it down
+      // live message arrived; follow it down. Not scrollIntoView — that also scrolls the page shell
+      el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
     anchor.count = sorted.length;
   }, [sorted.length, viewKey, isLoading, userScrolled]);
@@ -221,7 +221,6 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
             {sorted.map((msg) => (
               <MessageRow key={msg.packetHash || msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} onAnalyze={onAnalyze} />
             ))}
-            <div ref={bottomRef} />
           </div>
         ) : (
           <div className="flex items-center justify-center h-32 text-text-muted text-xs font-mono">

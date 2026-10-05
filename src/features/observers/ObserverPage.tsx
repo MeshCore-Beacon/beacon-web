@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useMemo } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import { useTick } from "../../hooks/useTick";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverSidebar } from "./ObserverSidebar";
 import { ObserverAdverts } from "./ObserverAdverts";
-import { filterObservers } from "./observer-filter";
+import type { ObserverDirectorySort } from "./types";
 import { useObserverDirectory } from "./useObserverDirectory";
 import { observerDestination, observerRange } from "./observer-navigation";
 import { Segmented } from "../stats/Segmented";
@@ -41,17 +41,17 @@ export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsMana
   const [broker, setBroker] = useState("");
   const [scope, setScope] = useState("");
   const [minimized, setMinimized] = useState(false);
-  const directory = useObserverDirectory(wsManager, broker);
+  const [sort, setSort] = useState<ObserverDirectorySort>("traffic");
+  const directory = useObserverDirectory(wsManager, { sort, search, status, type, broker, scope });
   const { data: brokers } = useQuery({ queryKey: ["brokers"], queryFn: getBrokers, staleTime: 60_000 });
   const scopeOptions = useScopes(scope);
-  const typeOptions = useMemo(() => [...new Set((directory.data ?? []).flatMap((o) => o.observerType ? [o.observerType] : []))].sort(), [directory.data]);
-  const observers = useMemo(() => filterObservers(directory.data ?? [], { search, status, type, scope }, now), [directory.data, search, status, type, scope, now]);
+  const typeOptions = directory.observerTypes;
+  const observers = directory.observers;
   const share = new URL(window.location.pathname, window.location.origin); share.search = params.toString();
   if (id) share.searchParams.set("range", range);
   if (comparing && until != null) share.searchParams.set("compareUntil", String(until));
   const select = (observer: string | null) => { setMinimized(false); setParams(observerDestination(params, observer, range)); };
   const compare = (observer: string) => {
-    // eslint-disable-next-line react-hooks/purity -- Capture time when the user invokes this event callback.
     const clickedAt = Date.now();
     setActionTime(clickedAt);
     setParams(old => {
@@ -84,8 +84,12 @@ export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsMana
     />
     <div className="relative flex min-h-0 min-w-0 flex-1">
       <div className="flex min-h-0 w-full shrink-0 flex-col md:w-[260px] md:p-4 md:pr-0">
-        <ObserverSidebar observers={observers} filtered={Boolean(search || status || type || broker || scope)} isPending={directory.isPending} isError={directory.isError}
-          onRetry={() => void directory.refetch()} range={range} selectedId={id} onSelect={select} />
+        <ObserverSidebar key={directory.resetKey} observers={observers} filtered={Boolean(search || status || type || broker || scope)} isPending={directory.isPending} isError={directory.isError}
+          onRetry={() => void directory.retry()} onRefresh={() => void directory.refresh()} selectedId={id} onSelect={select}
+          sort={sort} onSortChange={setSort} maxObservationCount={directory.maxObservationCount}
+          coverage={directory.coverage} effectiveSort={directory.effectiveSort} windowEnd={directory.windowEnd}
+          unsupported={directory.unsupported} hasNextPage={directory.hasNextPage}
+          isFetchingNextPage={directory.isFetchingNextPage} onLoadMore={directory.loadMore} />
       </div>
       {/* below md the dashboard overlays the list, like the node detail panel */}
       {id ? <div className={`${minimized ? "absolute inset-x-0 bottom-0" : "absolute inset-0"} z-30 flex min-h-0 min-w-0 flex-col bg-bg-base md:static md:z-auto md:flex-1`}>

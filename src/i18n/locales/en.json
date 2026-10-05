@@ -333,6 +333,15 @@
       }
     },
     "observerPage": {
+      "countsPartial": "Counts use available history; coverage is incomplete.",
+      "directoryPeriod": "Available history, up to 7 days",
+      "refresh": "Refresh",
+      "loadMore": "Load more observers",
+      "end": "All observers loaded",
+      "upgradeRequired": "Observer pagination requires a server upgrade.",
+      "countsUnavailable": "Traffic counts unavailable for this window.",
+      "countsUnavailableName": "Traffic counts unavailable for this window; showing Name order.",
+      "countsThrough": "Counts through {{time}} UTC",
       "back": "Back to observers",
       "detail": "Observer detail",
       "range": "Time range",
