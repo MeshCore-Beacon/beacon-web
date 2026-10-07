@@ -65,7 +65,7 @@ export function ObserverFilterBar({
   const controls = (fullWidth: boolean) => (
     <>
       <SelectDropdown label={t("observerFilters.status")} options={statusOptions} value={statusFilter} onChange={onStatusChange} fullWidth={fullWidth} />
-      {typeOptions.length > 0 && (
+      {(typeOptions.length > 0 || typeFilter) && (
         <SelectDropdown label={t("observerFilters.type")} options={typeOptions.map((o) => ({ value: o, label: o }))} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
       )}
       {brokerOptions.length > 0 && (

@@ -20,7 +20,7 @@ vi.mock("../src/features/routes/RouteTable", () => ({ RouteTable: ({ onViewObser
   return <div data-testid="route-origin"><input aria-label="Route filter" value={filter} onChange={e => setFilter(e.target.value)} /><output data-testid="origin-url">{params.toString()}</output><div data-testid="route-scroll" style={{ height: 80, overflow: "auto" }}><div style={{ height: 1000 }}>Routes</div></div><button onClick={() => onViewObserver("o1")}>Route observer</button><button onClick={() => onAnalyzePacket("aa", 7)}>Route packet</button><button onClick={() => onViewNode("n1")}>Route node</button></div>;
 } }));
 vi.mock("../src/features/observers/ObserverSidebar", () => ({ ObserverSidebar: () => <p>Observer directory</p> }));
-vi.mock("../src/features/observers/useObserverDirectory", () => ({ useObserverDirectory: () => ({ data: [], isPending: false, isError: false, refetch: () => {} }) }));
+vi.mock("../src/features/observers/useObserverDirectory", () => ({ useObserverDirectory: () => ({ observers: [], observerTypes: [], isPending: false, isError: false, unsupported: false, hasNextPage: false, isFetchingNextPage: false, maxObservationCount: null, resetKey: "test", retry: () => {}, refresh: () => {}, loadMore: () => {} }) }));
 vi.mock("../src/features/stats/MeshTab", () => ({ MeshTab: ({ onSelectObserver }: { onSelectObserver: (id: string) => void }) => {
   const [value, setValue] = useState("");
   return <><input aria-label="Analytics local state" value={value} onChange={e => setValue(e.target.value)} /><button onClick={() => onSelectObserver("o1")}>Leaderboard observer</button></>;

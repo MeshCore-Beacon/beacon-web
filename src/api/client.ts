@@ -2,7 +2,7 @@ import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
-import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
+import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
 import type {
   StatsSeries,
@@ -319,6 +319,46 @@ export function getNodesPage(
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
   }, signal);
+}
+
+export interface ObserverDirectoryRequest {
+  location?: StatsRegion;
+  sort?: ObserverDirectorySort;
+  since?: number;
+  until?: number;
+  cursor?: number;
+  limit?: number;
+  name?: string;
+  type?: string;
+  broker?: string;
+  status?: string;
+  scope?: string;
+}
+
+export async function getObserverDirectoryPage(params: ObserverDirectoryRequest, signal?: AbortSignal): Promise<ObserverDirectoryPage> {
+  const { location, ...filters } = params;
+  const page = await request<ObserverDirectoryPage>("/observers/directory", { ...statsRegionParams(location), ...filters }, signal);
+  // A legacy detail response must never be mistaken for a paginated directory.
+  const isCount = (value: unknown) => value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
+  if (!page || !Array.isArray(page.items) || !Array.isArray(page.observerTypes) || typeof page.hasMore !== "boolean" ||
+      !Number.isFinite(page.windowStart) || !Number.isFinite(page.windowEnd) || page.windowStart >= page.windowEnd ||
+      !["traffic", "name"].includes(page.effectiveSort) ||
+      !["complete", "partial", "unavailable"].includes(page.coverage?.status) || !isCount(page.maxObservationCount) ||
+      page.items.some(row => !row || typeof row.id !== "string" || !isCount(row.observationCount))) {
+    throw new Error("Invalid observer directory response");
+  }
+  return page;
+}
+
+export async function supportsObserverDirectory(signal?: AbortSignal): Promise<boolean> {
+  try {
+    await getObserverDirectoryPage({ limit: 1 }, signal);
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 ||
+        (error.status === 400 && error.message === "failed to parse observer UUID"))) return false;
+    throw error;
+  }
 }
 
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.

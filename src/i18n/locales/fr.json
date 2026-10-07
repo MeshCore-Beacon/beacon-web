@@ -343,6 +343,15 @@
       }
     },
     "observerPage": {
+      "countsPartial": "Les compteurs utilisent l’historique disponible ; la couverture est incomplète.",
+      "directoryPeriod": "Historique disponible, jusqu’à 7 jours",
+      "refresh": "Actualiser",
+      "loadMore": "Charger plus d’observateurs",
+      "end": "Tous les observateurs sont chargés",
+      "upgradeRequired": "La pagination des observateurs nécessite une mise à jour du serveur.",
+      "countsUnavailable": "Les compteurs de trafic sont indisponibles pour cette période.",
+      "countsUnavailableName": "Les compteurs de trafic sont indisponibles pour cette période ; tri par nom.",
+      "countsThrough": "Comptages jusqu’au {{time}} UTC",
       "back": "Retour aux observateurs",
       "detail": "Détail de l'observateur",
       "range": "Période",
