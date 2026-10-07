@@ -91,6 +91,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // live packet-flow animation: opt-in per session (off by default, not persisted; a deep link can seed it)
   const [packetFlow, setPacketFlow] = useState(() => urlView.flow ?? false);
+  const [dimNodes, setDimNodes] = useState(() => { try { return urlView.dimNodes ?? localStorage.getItem("beacon-map-dim-live-nodes") === "on"; } catch { return false; } });
+  const changeDimNodes = (on: boolean) => { setDimNodes(on); try { localStorage.setItem("beacon-map-dim-live-nodes", on ? "on" : "off"); } catch { /* visit-local preference */ } };
+
 
   // IATA region borders overlay, off by default; seeded URL -> localStorage like the other toggles
   const [borders, setBorders] = useState(() => urlView.borders ?? localStorage.getItem(MAP_BORDERS_STORAGE_KEY) === "on");
@@ -205,12 +208,13 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       neighborLines,
       styleId,
       flow: packetFlow,
+      dimNodes,
       borders,
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders]);
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, dimNodes, borders]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dimNodes);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey);
@@ -232,6 +236,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onNeighborLinesChange={handleNeighborLinesChange}
         borders={borders}
         onBordersChange={handleBordersChange}
+        dimNodes={dimNodes}
+        onDimNodesChange={changeDimNodes}
         buildShareParams={buildShareParams}
       />
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />

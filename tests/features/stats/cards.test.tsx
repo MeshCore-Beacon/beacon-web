@@ -5,7 +5,7 @@ import { StatCard } from "../../../src/features/stats/cards";
 it("marks the peak hour on a sparkline when asked", () => {
   const { container } = render(<StatCard label="Busiest" value="9" accent="red" spark={[1, 9, null, 4]} markPeak />);
   const dot = container.querySelector("[data-peak]")!;
-  expect(dot.getAttribute("x1")).toBe("40");
+  expect(Number(dot.getAttribute("x1"))).toBeCloseTo(40.6667,3);
 });
 
 it("draws a presence strip with one bar per run of reporting hours", () => {

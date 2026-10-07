@@ -14,6 +14,7 @@ export interface ParsedMapView {
   styleId?: string;
   flow?: boolean;
   borders?: boolean;
+  dimNodes?: boolean;
 }
 
 // The live map state a copy-link snapshot is built from (every field concrete).
@@ -26,6 +27,7 @@ export interface MapViewSnapshot {
   styleId: string;
   flow: boolean;
   borders: boolean;
+  dimNodes?: boolean;
 }
 
 const NEIGHBOR_MODES: NeighborLinesMode[] = ["on", "selected", "off"];
@@ -86,6 +88,9 @@ export function parseMapView(params: URLSearchParams): ParsedMapView {
   const flow = parseBool(params.get("flow"));
   if (flow !== undefined) view.flow = flow;
 
+  const dimNodes = parseBool(params.get("dim_nodes"));
+  if (dimNodes !== undefined) view.dimNodes = dimNodes;
+
   const borders = parseBool(params.get("borders"));
   if (borders !== undefined) view.borders = borders;
 
@@ -112,5 +117,6 @@ export function buildMapParams(view: MapViewSnapshot): Record<string, string | n
     style: view.styleId,
     flow: view.flow ? "on" : "off",
     borders: view.borders ? "on" : "off",
+    ...(view.dimNodes !== undefined ? { dim_nodes: view.dimNodes ? "on" : "off" } : {}),
   };
 }

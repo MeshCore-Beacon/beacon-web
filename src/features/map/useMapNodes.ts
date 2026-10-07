@@ -114,6 +114,7 @@ export function useMapNodes(
   // identity of the dataset (region + type filter); an open spiderfy fan closes when it changes,
   // since its leaves were drawn from the previous dataset
   resetKey = "",
+  dimIdleNodes = true,
 ) {
   const geojsonRef = useRef(geojson);
   const spiderRef = useRef<Spiderfy | null>(null);
@@ -158,7 +159,7 @@ export function useMapNodes(
     // maplibre fixes `cluster` at source creation, so toggling clustering means recreating the
     // source. The spiderfy effect below also keys on `clustered` and re-applies itself around this.
     if (appliedClusteredRef.current !== clustered && map.getSource(NODES_SOURCE_ID)) {
-      for (const id of [NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
+      for (const id of ["nodes-live-glow", NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
       map.removeSource(NODES_SOURCE_ID);
@@ -234,6 +235,14 @@ export function useMapNodes(
     // Ring under the selected node's icon. Only matches an unclustered point (clusters carry no id);
     // color tracks --palette-primary.
     const primary = cssVar("--palette-primary", "#3B82F6");
+    if (!map.getLayer("nodes-live-glow")) {
+      map.addLayer({ id: "nodes-live-glow", type: "circle", source: NODES_SOURCE_ID,
+        filter: ["!", ["has", "point_count"]],
+        paint: { "circle-radius": ["+", 7, ["*", 12, ["coalesce", ["feature-state", "glow"], 0]]],
+          "circle-color": primary, "circle-opacity": ["*", 0.4, ["coalesce", ["feature-state", "glow"], 0]], "circle-blur": 0.5 }
+      }, NODES_POINT_LAYER_ID);
+    }
+    map.setPaintProperty("nodes-live-glow", "circle-color", primary);
     if (!map.getLayer(NODES_SELECTED_LAYER_ID)) {
       map.addLayer(
         {
@@ -339,9 +348,9 @@ export function useMapNodes(
     const focusCase = (lit: ExpressionSpecification | number, dim: ExpressionSpecification | number) =>
       ["case", ["in", ["get", "id"], ["literal", focusIds ?? []]], lit, dim] as ExpressionSpecification;
 
-    const iconOpacity: ExpressionSpecification | number = live ? LIVE_ICON_OPACITY : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
-    const labelOpacity: ExpressionSpecification | number = live ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
-    const dimActive = live || Boolean(focusIds);
+    const iconOpacity: ExpressionSpecification | number = live ? dimIdleNodes ? LIVE_ICON_OPACITY : ["max", 0.8, ["coalesce", ["feature-state", "glow"], 0]] : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
+    const labelOpacity: ExpressionSpecification | number = live && dimIdleNodes ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
+    const dimActive = (live && dimIdleNodes) || Boolean(focusIds);
     if (map.getLayer(NODES_POINT_LAYER_ID)) {
       map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", iconOpacity);
       map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", labelOpacity);
@@ -351,7 +360,7 @@ export function useMapNodes(
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : 1);
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", dimActive ? 0 : 1);
     }
-  }, [mapRef, isReady, live, focusIds, clustered, themeKey]);
+  }, [mapRef, isReady, live, dimIdleNodes, focusIds, clustered, themeKey]);
 
   // Push new node data into the source as it arrives; the source re-clusters automatically.
   useEffect(() => {

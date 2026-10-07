@@ -46,6 +46,8 @@ function NeighborLegend() {
 }
 
 interface MapSettingsPanelProps {
+  dimNodes?: boolean;
+  onDimNodesChange?: (on: boolean) => void;
   styleId: string;
   onStyleChange: (id: string) => void;
   typeFilter: string;
@@ -72,6 +74,8 @@ export function MapSettingsPanel({
   borders,
   onBordersChange,
   buildShareParams,
+  dimNodes = false,
+  onDimNodesChange,
 }: MapSettingsPanelProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -151,6 +155,9 @@ export function MapSettingsPanel({
             />
             {neighborLines === "selected" && <NeighborLegend />}
           </Section>
+          {onDimNodesChange && <Section title={t("map.liveNodes")}>
+            <label className="flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={dimNodes} onChange={event => onDimNodesChange(event.target.checked)} />{t("map.dimLiveNodes")}</label>
+          </Section>}
           <Section title={t("map.areaBorders")}>
             <SegmentedControl
               ariaLabel={t("map.areaBordersLabel")}

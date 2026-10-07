@@ -26,6 +26,7 @@ export function channelDisplayName(ch: ChannelSummary): string {
 }
 
 export interface ChannelMessage {
+  isPublic?: boolean; // Live event: decryption used the documented default Public key.
   id: number;
   packetHash: string;
   channelHash: string;

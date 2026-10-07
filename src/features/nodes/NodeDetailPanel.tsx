@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
+import { NodeTypeBadge } from "../../components/NodeTypeBadge";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
 import { CopyButton } from "../../components/CopyButton";
@@ -23,7 +24,7 @@ function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClic
         <span className={`font-mono font-semibold tracking-wider truncate ${neighbor.name ? "text-primary" : "text-text-dim italic"}`}>
           {neighbor.name ?? formatHex(neighbor.id)}
         </span>
-        <Badge variant="default">{neighbor.nodeTypeName}</Badge>
+        <NodeTypeBadge typeName={neighbor.nodeTypeName} />
         <IataChip>{neighbor.iata}</IataChip>
         <Timestamp value={neighbor.lastSeen} className="text-text-dim ml-auto font-mono text-[11px]" />
       </div>
@@ -101,13 +102,16 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
   });
 
   const hasLocation = hasMapLocation(node);
+  const fullLink = new URL(window.location.href);
+  fullLink.searchParams.set("tab", "Nodes"); fullLink.searchParams.set("nodePage", nodeId);
+  for (const key of ["node", "hash", "analyze", "path", "observation"]) fullLink.searchParams.delete(key);
 
   return (
     <DetailPanel
       title={t("nodeDetail.title")}
       onClose={onClose}
       collapsible
-      headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel={t("nodeDetail.copyLink")} />}
+      headerAction={<div className="flex flex-wrap items-center gap-2"><a className="min-h-9 content-center text-[11px] text-primary hover:underline" href={fullLink.pathname + fullLink.search}>{t("nodePage.open")}</a><CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel={t("nodeDetail.copyLink")} /></div>}
       isLoading={isLoading}
       notFound={!node}
       notFoundLabel={t("nodeDetail.notFound")}
@@ -124,7 +128,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   {node.name ?? formatHex(node.id)}
                 </span>
-                <Badge variant="default">{node.nodeTypeName}</Badge>
+                <NodeTypeBadge typeName={node.nodeTypeName} observer={node.isObserver} />
                 <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
               </div>
               <div className="flex items-center gap-2">

@@ -70,6 +70,21 @@ async function request<T>(path: string, params?: Record<string, string | number 
 
 // endpoint functions
 
+export interface CollectedNodeSample {
+  nodeKey: string;
+  collectorKey: string;
+  radioKey: string;
+  receivedAt: number;
+  intervalHours?: number;
+  values?: Record<string, number> | null;
+  sensors?: { channel: number; kind: string; value: number; unit: string }[] | null;
+}
+
+export async function getCollectedNodeTelemetry(key: string, signal?: AbortSignal): Promise<{ items: CollectedNodeSample[]; limit: number }> {
+  try { return await request(`/node-telemetry/${encodeURIComponent(key)}`, undefined, signal); }
+  catch (error) { if (isNotFound(error)) return { items: [], limit: 500 }; throw error; }
+}
+
 export function getObserverComparison(
   iatas: StatsRegion,
   params: { observerA: string; observerB: string; since: number; until: number },
@@ -109,8 +124,8 @@ export function getPackets(
   });
 }
 
-export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
-  return request(`/packets/${packetHash}`);
+export function getPacketDetail(packetHash: string, signal?: AbortSignal): Promise<PacketDetail> {
+  return request(`/packets/${packetHash}`, undefined, signal);
 }
 
 export function getIatas(): Promise<IataCode[]> {
@@ -199,6 +214,7 @@ export interface RouteCursor {
 
 export async function getKnownRoutesPage(
   params?: { iata?: string; hopCount?: number; cursor?: RouteCursor; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<KnownRoute, RouteCursor>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
   const items = await request<KnownRoute[]>("/routes", {
@@ -207,11 +223,11 @@ export async function getKnownRoutesPage(
     cursor: params?.cursor?.lastSeen,
     cursorId: params?.cursor?.id,
     limit,
-  });
+  }, signal);
   return toCursorPage(items, limit, (r) => ({ lastSeen: r.lastSeen, id: r.id }));
 }
 
-export function getRouteEvidence(iata: string, pathKey: string, params: { range?: string; since?: number; until?: number; pageCursor?: string; limit?: number }, signal?: AbortSignal): Promise<RouteEvidence> {
+export function getRouteEvidence(iata: string, pathKey: string, params: { range?: string; since?: number; until?: number; pageCursor?: string; limit?: number; hashSize?: number; pathBytes?: string }, signal?: AbortSignal): Promise<RouteEvidence> {
   return request(`/routes/${encodeURIComponent(iata)}/${encodeURIComponent(pathKey)}/observations`, params, signal);
 }
 
@@ -289,6 +305,7 @@ export function getNodesPage(
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
   },
+  signal?: AbortSignal,
 ): Promise<CursorPage<NodeSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/nodes", {
@@ -301,7 +318,7 @@ export function getNodesPage(
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
-  });
+  }, signal);
 }
 
 export interface ObserverDirectoryRequest {
@@ -361,18 +378,19 @@ export function getObserversPage(
   });
 }
 
-export function getNode(nodeId: string): Promise<Node> {
-  return request(`/nodes/${nodeId}`);
+export function getNode(nodeId: string, signal?: AbortSignal): Promise<Node> {
+  return request(`/nodes/${nodeId}`, undefined, signal);
 }
 
 export function getNodeObservations(
   nodeId: string,
   params?: { cursor?: number; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<NodeObservation>> {
   return request(`/nodes/${nodeId}/observations`, {
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
-  });
+  }, signal);
 }
 
 export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {
@@ -456,3 +474,23 @@ export function isNotFound(err: unknown): boolean {
 }
 
 export { ApiError };
+
+// Public cached MeshMapper metadata; counts are regional, never per-link evidence.
+export interface ScopeCatalogue {
+  iata: string;
+  url: string;
+  generatedAt: number;
+  checkedAt: number;
+  freshUntil: number;
+  lastError?: string;
+  repeaters: number;
+  scoped: number;
+  scopes: { name: string; repeaters: number; default: number; monitored: boolean; wardriving: boolean }[];
+}
+export function getScopeCatalogues(): Promise<ScopeCatalogue[]> {
+  return request("/scope-catalogues");
+}
+
+export function getTopologyLinks(iatas: string[] | undefined, window: string, signal?: AbortSignal): Promise<{ links: [string,string][]; capped: boolean; since: number; until: number }> {
+  return request("/routes/topology", { iatas: iatas?.join(","), window }, signal);
+}

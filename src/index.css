@@ -151,3 +151,11 @@
 [data-dark="true"] .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--color-bg-raised); }
 .pp-popup-name { font-weight: 600; }
 .pp-popup-coords { font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* Shared, static accents: readable live states without motion or flashing. */
+.beacon-sparkline { filter: drop-shadow(0 0 2px color-mix(in srgb, currentColor 25%, transparent)); }
+.beacon-live-dot { box-shadow: 0 0 7px color-mix(in srgb, var(--color-green) 65%, transparent); }
+.beacon-observer-eye { filter: drop-shadow(0 0 3px #c79bff); }
+@media (prefers-reduced-motion: reduce) {
+  .beacon-live-dot { animation: none; }
+}

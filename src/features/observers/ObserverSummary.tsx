@@ -1,3 +1,5 @@
+import { fillActivity, intervalToMs } from "../stats/transforms";
+import { Sparkline, PresenceStrip } from "../../components/Sparkline";
 import { useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Timestamp } from "../../components/Timestamp";
@@ -19,7 +21,7 @@ function Measure({ text }: { text: string }) {
 
 const DT = "text-[11px] text-text-dim";
 
-export function ObserverSummary({ observer, activity, points, pending = false, actions }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode }) {
+export function ObserverSummary({ observer, activity, points, telemetryInterval = "1h", pending = false, actions }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; telemetryInterval?: string; pending?: boolean; actions?: ReactNode }) {
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
@@ -38,6 +40,23 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
     [t("observerPage.client"), client],
     [t("observerPage.radio"), radio],
   ] as const).filter((item): item is readonly [string, string] => !!item[1]);
+  const step = intervalToMs(activity?.interval ?? "1h") ?? 3_600_000;
+  const rawActivity = activity?.points ?? [];
+  const activityPoints = activity?.windowStart != null && activity.windowEnd != null ? fillActivity(rawActivity, step, { start: activity.windowStart, end: activity.windowEnd }, activity) : rawActivity;
+  const hourly = new Map<number, number | null>();
+  if (step <= 3_600_000) for (const point of activityPoints) {
+    if (summary && point.t >= summary.lastCompleteHourEnd) continue;
+    const hour = Math.floor(point.t / 3_600_000) * 3_600_000;
+    hourly.set(hour, point.observations === null || hourly.get(hour) === null ? null : (hourly.get(hour) ?? 0) + point.observations);
+  }
+  const packetSeries = activityPoints.map(p => p.observations);
+  const trends: Record<string, (number | null)[]> = {
+    records: packetSeries,
+    lastHour: [...hourly.values()],
+    battery: points.map(p => p.batteryMv != null && p.batteryMv > 0 ? p.batteryMv / 1000 : null),
+    uptime: points.map(p => p.uptimeSeconds),
+    noise: points.map(p => p.noiseFloorDb),
+  };
   const cards: { key: string; label: string; value: string; title?: string }[] = [
     { key: "records", label: t("observerPage.records"), value: summary?.recordedPackets.toLocaleString(i18n.resolvedLanguage) ?? "—" },
     {
@@ -109,6 +128,9 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
         return <li key={key} className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface px-2 py-3 text-center">
           <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
           {title ? <Tooltip label={title}>{shown}</Tooltip> : shown}
+          <div className="w-full max-w-56" title={label}>
+            {key === "lastPacket" ? <PresenceStrip hours={packetSeries.map(n => n != null && n > 0)} color="var(--color-primary)" /> : <Sparkline values={trends[key] ?? []} times={key === "records" ? activityPoints.map(p => p.t) : key === "lastHour" ? [...hourly.keys()] : points.map(p => p.t)} gapMs={(key === "records" ? step : key === "lastHour" ? 3_600_000 : intervalToMs(telemetryInterval) ?? 3_600_000) * 1.5} color={key === "battery" ? "var(--color-green)" : key === "noise" ? "var(--color-secondary)" : "var(--color-primary)"} />}
+          </div>
         </li>;
       })}
     </ul>

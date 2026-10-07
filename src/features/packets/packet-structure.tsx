@@ -35,11 +35,11 @@ export function buildObservationFrame(detail: PacketDetail, obs: Observation | n
   // rather than dropping a byte and shifting every field after it out of alignment.
   const pad = (b?: string) => (!b ? "00" : b.length === 1 ? "0" + b : b);
   const tc = detail.transportCodes;
-  const header = pad(detail.header.raw) + (tc ? transportCodeHex(tc.regionCode) + transportCodeHex(tc.subRegionCode) : "");
+  const header = pad(detail.header.raw.slice(0, 2)) + (tc ? transportCodeHex(tc.regionCode) + transportCodeHex(tc.subRegionCode) : "");
   const payload = detail.rawPayload ?? "";
   if (!obs) return header + payload;
   const pathLen = pad(obs.pathLength.raw);
-  const path = obs.pathBytes ?? "";
+  const path = obs.wirePathBytes ?? obs.pathBytes ?? "";
   return header + pathLen + path + payload;
 }
 
@@ -63,7 +63,7 @@ export function computeFieldRanges(
     ranges.pathLength = { start: offset, end: offset + 1 };
     offset += 1;
 
-    const pathByteCount = obs.pathLength.hashSize * obs.pathLength.hopCount;
+    const pathByteCount = obs.wirePathBytes != null ? obs.wirePathBytes.length / 2 : obs.pathLength.hashSize * obs.pathLength.hopCount;
     if (pathByteCount > 0) {
       ranges.pathData = { start: offset, end: offset + pathByteCount };
     }

@@ -60,6 +60,8 @@ export interface PathLength {
 }
 
 export interface Observation {
+ wirePathBytes?: string; // Exact on-air SNR bytes for TRACE; pathBytes is the decoded requested route.
+ traceQuality?: TraceQuality;
   id: number;
   observerId: string;
   observerName?: string;
@@ -99,6 +101,7 @@ export interface TransportCodes {
 }
 
 export interface PacketDetail {
+ traceQuality?: TraceQuality;
   packetHash: string;
   header: PacketHeader;
   transportCodes?: TransportCodes;
@@ -216,7 +219,13 @@ export interface CrossIATARoute {
 // Each tag is either a route TRACE or a PING (round-trip) — the backend tags which.
 export type TraceType = "TRACE" | "PING";
 
+export interface TraceQuality {
+ status: "supported" | "suspect" | "ambiguous";
+ reasons: string[];
+}
+
 export interface TraceTagSummary {
+ quality?: TraceQuality;
   traceTag: string; // hex-encoded 4-byte tag
   firstHeardAt: number; // epoch ms
   lastHeardAt: number; // epoch ms
@@ -233,6 +242,7 @@ export interface RawHop {
 }
 
 export interface TracePacket {
+ quality?: TraceQuality;
   packetHash: string;
   routeType: number;
   routeTypeName: string;

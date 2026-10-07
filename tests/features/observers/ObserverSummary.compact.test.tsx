@@ -22,6 +22,18 @@ describe("compact observer header", () => {
 });
 
 describe("observer summary card notes", () => {
+  it("leaves unread activity gaps in both packet sparklines", () => {
+    const hour = 3_600_000;
+    const activity = {
+      interval: "1h", windowStart: 0, windowEnd: 5 * hour, rolledUntil: 2 * hour, rawFrom: 4 * hour,
+      points: [0, 1, 4, 5].map(h => ({ t: h * hour, observations: h + 1, packets: h + 1 })),
+      summary: { recordedPackets: 14, lastCompleteHour: 6, lastCompleteHourEnd: 6 * hour },
+    } as unknown as ObserverActivity;
+    render(<ObserverSummary observer={observer} activity={activity} points={[]} />);
+    for (const label of ["Packets heard", "Packets last hour"]) {
+      expect(screen.getByText(label).closest("li")!.querySelectorAll("polyline")).toHaveLength(2);
+    }
+  });
   it("keeps the status icon and IATA chip on the name row", () => {
     render(<ObserverSummary observer={observer} points={[]} />);
     const row = screen.getByRole("heading", { level: 1 }).parentElement!;

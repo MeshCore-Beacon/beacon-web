@@ -14,3 +14,14 @@ it("encodes route identity and preserves the opaque cursor without numeric trunc
   expect(url.searchParams.has("range")).toBe(false);
   expect(fetcher.mock.calls[0][1].signal).toBe(signal);
 });
+
+it("sends the selected path and fixed window together", async () => {
+  const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [], hasMore: false }) });
+  vi.stubGlobal("fetch", fetcher);
+  await getRouteEvidence("YOW", "a".repeat(32), { since: 1000, until: 2000, hashSize: 2, pathBytes: "aa01bb02" });
+  const url = new URL(fetcher.mock.calls[0][0]);
+  expect(url.searchParams.get("hashSize")).toBe("2");
+  expect(url.searchParams.get("pathBytes")).toBe("aa01bb02");
+  expect(url.searchParams.get("since")).toBe("1000");
+  expect(url.searchParams.get("until")).toBe("2000");
+});

@@ -37,7 +37,7 @@ export function PacketInvestigation({ detail, selectedId, onSelect, onViewObserv
       <summary className="flex cursor-pointer list-none items-center gap-2 rounded px-1 py-1.5 font-mono text-xs hover:bg-text-normal/3 [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="text-[9px] text-text-dim transition-transform group-open/path:rotate-90">▶</span>
         <span className="shrink-0 text-text-normal">{t(group.kind === "empty" ? "investigation.noEntries" : group.kind === "unavailable" ? "investigation.unavailablePath" : isTrace ? "investigation.tracePath" : "investigation.path", { number: groups.indexOf(group) + 1 })}</span>
-        {group.hashes.length > 0 && <code className="min-w-0 truncate text-primary">{group.hashes.join(" → ")}</code>}
+        {group.hashes.length > 0 && detail.traceQuality?.status !== "suspect" && <code className="min-w-0 truncate text-primary">{group.hashes.join(" → ")}</code>}
         <span className="ml-auto shrink-0 rounded-sm bg-text-normal/5 px-1.5 text-[11px] text-text-muted" aria-label={t("investigation.observations", { count: group.reports.length })}>×{group.reports.length}</span>
       </summary>
       <ul className="mt-1 mb-2 flex flex-col gap-1.5">{group.reports.map(report => {
