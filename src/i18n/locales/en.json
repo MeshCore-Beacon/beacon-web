@@ -815,7 +815,7 @@
       "flood": "Flood",
       "direct": "Direct",
       "topAdvertisers": "Top advertisers · {{range}}",
-      "floodDirect": "flood · direct",
+      "sortBy": "Sort advertisers by",
       "noAdvertisers": "No advertisers",
       "topTalkers": "Top talkers · {{range}}",
       "byName": "by name"
