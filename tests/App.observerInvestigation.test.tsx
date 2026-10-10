@@ -11,6 +11,7 @@ vi.mock("../src/api/ws-manager", () => ({ WsManager: class {
 } }));
 vi.mock("../src/api/client", () => ({ getRegions: async () => [], getRegion: async () => ({ iatas: [] }), getBrokers: async () => [], getScopes: async () => [] }));
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));
+vi.mock("../src/components/VersionGate", () => ({ VersionGate: () => null }));
 vi.mock("../src/components/AppShell", () => ({ AppShell: ({ children, onTabChange }: { children: ReactNode; onTabChange: (tab: string) => void }) => {
   const { setSelection } = useRegionSelection();
   return <><button onClick={() => onTabChange("Observers")}>Observer tab</button><button onClick={() => onTabChange("Routes")}>Route tab</button><button onClick={() => onTabChange("Analytics")}>Analytics tab</button><button onClick={() => setSelection({ regions: [], iatas: ["YVR"] })}>Change region</button>{children}</>;

@@ -747,9 +747,16 @@
       "search": "Rechercher",
       "clear": "Effacer",
       "searching": "Recherche…",
-      "noCross": "Aucun trajet entre ces zones",
+      "badHash": "Les hash doivent faire 2, 4, 6 ou 8 caractères hexadécimaux",
+      "tooManyAreas": "Choisissez au plus 100 zones",
+      "timeout": "La recherche de trajet a expiré — réduisez les zones ou utilisez un hash plus long.",
+      "searchFailed": "La recherche de trajet a échoué",
       "noMatches": "Aucun trajet correspondant",
       "empty": "Aucun trajet"
+    },
+    "versionGate": {
+      "message": "Ce serveur Beacon nécessite Beacon Web {{min}} ou plus récent (version actuelle : {{current}}). Rechargez la page ; si ce message persiste, le conteneur web doit être mis à jour.",
+      "reload": "Recharger"
     },
     "routeDetail": {
       "title": "Détail du trajet",

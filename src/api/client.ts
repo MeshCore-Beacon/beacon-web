@@ -113,6 +113,17 @@ export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
   return request(`/packets/${packetHash}`);
 }
 
+// /info: the oldest client versions this server accepts (null = no requirement) and its own version.
+export interface ServerInfo {
+  minAppVersion: string | null;
+  minWebVersion: string | null;
+  serverVersion: string;
+}
+
+export function getServerInfo(): Promise<ServerInfo> {
+  return request("/info");
+}
+
 export function getIatas(): Promise<IataCode[]> {
   return request("/iatas");
 }
@@ -215,21 +226,21 @@ export function getRouteEvidence(iata: string, pathKey: string, params: { range?
   return request(`/routes/${encodeURIComponent(iata)}/${encodeURIComponent(pathKey)}/observations`, params, signal);
 }
 
-// Search known routes for a path between two node hash prefixes within a single IATA. All three params
-// are required by the server.
-export function searchKnownRoutes(iata: string, from: string, to: string): Promise<KnownRoute[]> {
-  return request("/routes/search", { iata, from, to });
+// Route search between two node hash prefixes. iatas narrows the search; omitted means every IATA.
+// /routes/search returns routes within one IATA, /routes/cross routes that cross between two.
+const iataList = (iatas: string[] | undefined) => (iatas?.length ? iatas.join(",") : undefined);
+
+export function searchKnownRoutes(iatas: string[] | undefined, from: string, to: string, signal?: AbortSignal): Promise<KnownRoute[]> {
+  return request("/routes/search", { iatas: iataList(iatas), from, to }, signal);
 }
 
-// Search routes that cross IATA boundaries, from a hash in one IATA to a hash in another. All four
-// params are required by the server.
 export function searchCrossIATARoutes(
+  iatas: string[] | undefined,
   fromHash: string,
-  fromIata: string,
   toHash: string,
-  toIata: string,
+  signal?: AbortSignal,
 ): Promise<CrossIATARoute[]> {
-  return request("/routes/cross", { fromHash, fromIata, toHash, toIata });
+  return request("/routes/cross", { iatas: iataList(iatas), fromHash, toHash }, signal);
 }
 
 // Trace tags. /traces returns a bare array of per-tag summaries (ordered newest-heard first, cursor is
