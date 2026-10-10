@@ -10,7 +10,6 @@ export interface ChartColors {
   primary: string;
   primaryDim: string;
   secondary: string;
-  // Semantic status colours. Do not use these merely to distinguish unrelated series.
   green: string;
   warn: string;
   danger: string;
@@ -61,8 +60,7 @@ function linearToSrgb(channel: number): number {
   return c * 255;
 }
 
-// OKLab is deliberately used here instead of RGB/HSL: equal distances are much closer to equal
-// perceived colour differences, which is what matters when adjacent chart series must be told apart.
+// OKLab distances track perceived difference, which is what tells two series apart.
 function rgbToOklab(color: string): OKLab {
   const [r8, g8, b8] = parseColor(color);
   const r = srgbToLinear(r8), g = srgbToLinear(g8), b = srgbToLinear(b8);
@@ -100,8 +98,7 @@ function inGamut(rgb: RGB): boolean {
   return rgb.every((channel) => channel >= 0 && channel <= 255);
 }
 
-// Chroma is reduced only when the requested OKLCH colour falls outside sRGB. This preserves hue and
-// lightness instead of independently clipping channels, which can collapse two generated colours.
+// Out-of-gamut colours lose chroma rather than having channels clipped, so hue and lightness hold.
 function lchToColor(lch: OKLCH): string {
   let candidate = lch;
   if (!inGamut(oklabToRgbRaw(lchToLab(candidate)))) {
@@ -132,14 +129,6 @@ export function colorDistance(a: string, b: string): number {
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
 }
 
-export function colorHueDistance(a: string, b: string): number {
-  const [, chromaA, hueA] = labToLch(rgbToOklab(a));
-  const [, chromaB, hueB] = labToLch(rgbToOklab(b));
-  if (chromaA < 0.02 || chromaB < 0.02) return 180;
-  const distance = Math.abs(hueA - hueB);
-  return Math.min(distance, 360 - distance);
-}
-
 function contrastingColor(lch: OKLCH, background: string): string {
   let color = lchToColor(lch);
   if (colorContrast(color, background) >= 3) return color;
@@ -153,57 +142,31 @@ function contrastingColor(lch: OKLCH, background: string): string {
   return color;
 }
 
-/**
- * Build a categorical chart palette from the active theme's identity colours.
- *
- * Themes are allowed to reuse a semantic colour (for example Phosphor's primary and green are both
- * #4ADE80), so token order alone is not a categorical palette. We make a pool from those tokens and
- * theme-relative OKLCH hue rotations, then greedily pick the colour furthest from every colour already
- * selected. The result remains derived from the theme while avoiding duplicate/near-duplicate series.
- */
-export function categoricalPalette(themeColors: string[], background: string, count = 8, reservedColors: string[] = []): string[] {
-  if (themeColors.length === 0 || count <= 0) return [];
-  const labs = themeColors.map(rgbToOklab);
-  const lchs = labs.map(labToLch);
-  const chromatic = lchs.filter(([, chroma]) => chroma > 0.02);
-  const farFromReserved = (color: string) => reservedColors.every((reserved) =>
-    colorDistance(color, reserved) >= 0.1 && colorHueDistance(color, reserved) >= 32);
-  const anchorIndex = themeColors.findIndex(farFromReserved);
-  const anchor = lchs[anchorIndex >= 0 ? anchorIndex : 0] ?? chromatic[0] ?? lchs[0]!;
-  const sortedLightness = lchs.map(([lightness]) => lightness).sort((a, b) => a - b);
-  const sortedChroma = chromatic.map(([, chroma]) => chroma).sort((a, b) => a - b);
-  const median = (values: number[], fallback: number) => values[Math.floor(values.length / 2)] ?? fallback;
-  const baseLightness = median(sortedLightness, anchor[0]);
-  const baseChroma = Math.max(0.08, Math.min(0.22, median(sortedChroma, anchor[1])));
+// Below this OKLab distance two series read as one colour (Phosphor's primary and green are identical).
+const MIN_SERIES_DISTANCE = 0.05;
 
-  const semantic = lchs.map((lch) => contrastingColor(lch, background));
-  const generated = Array.from({ length: Math.max(32, count * 6) }, (_, i) => {
-    // A golden-angle walk avoids repeatedly landing in the same hue family. Alternating lightness
-    // gives later colours another perceptual dimension without introducing a fixed colour palette.
-    const hue = (anchor[2] + i * 137.507764) % 360;
-    const lightnessOffset = ((i % 5) - 2) * 0.06;
-    return contrastingColor([Math.max(0.2, Math.min(0.88, baseLightness + lightnessOffset)), baseChroma, hue], background);
-  });
-  // Status colours are intentionally absent from ordinary categories: green/warn/danger must keep
-  // one meaning throughout Beacon. Perceptual distance also excludes nearby derived shades.
-  const candidates = [...semantic, ...generated].filter(farFromReserved);
-  const selected = [candidates.shift() ?? semantic[0]!];
-
-  while (selected.length < count) {
-    let best: string | undefined;
-    let bestScore = -1;
-    for (const candidate of candidates) {
-      const score = Math.min(...selected.map((color) => colorDistance(candidate, color)));
+// Keeps each colour unless it repeats an earlier one; a repeat becomes the hue furthest from the rest.
+export function distinctColors(colors: string[], background: string): string[] {
+  const out: string[] = [];
+  colors.forEach((color, i) => {
+    if (out.every((kept) => colorDistance(color, kept) >= MIN_SERIES_DISTANCE)) {
+      out.push(color);
+      return;
+    }
+    const [lightness, chroma, hue] = labToLch(rgbToOklab(color));
+    const others = [...out, ...colors.slice(i + 1)];
+    let best = color, bestScore = -1;
+    for (let step = 1; step < 36; step += 1) {
+      const candidate = contrastingColor([lightness, Math.max(0.08, chroma), (hue + step * 137.507764) % 360], background);
+      const score = Math.min(...others.map((other) => colorDistance(candidate, other)));
       if (score > bestScore) {
         best = candidate;
         bestScore = score;
       }
     }
-    if (!best || bestScore < 0.001) break;
-    selected.push(best);
-    candidates.splice(candidates.indexOf(best), 1);
-  }
-  return selected;
+    out.push(best);
+  });
+  return out;
 }
 
 export function withAlpha(color: string, a: number): string {
@@ -236,12 +199,17 @@ export function readChartColors(): ChartColors {
     border: readVar("--color-border") || "#27272A",
     borderSubtle: readVar("--color-border-subtle") || "#1E1E22",
   };
-  const series = categoricalPalette(
-    [c.primary, c.secondary, c.primaryDim],
-    c.bgSurface,
-    8,
-    [c.green, c.warn, c.danger],
-  );
+  // token order matters: series[0..5] stand in for primary, green, secondary, warn, danger, primaryDim
+  const series = distinctColors([
+    c.primary,
+    c.green,
+    c.secondary,
+    c.warn,
+    c.danger,
+    c.primaryDim,
+    blend(c.primary, c.secondary),
+    blend(c.green, c.warn),
+  ], c.bgSurface);
   return { ...c, series };
 }
 
@@ -254,14 +222,14 @@ export function useChartColors(): ChartColors {
 }
 
 // Per-device-type colour, shared by the Mesh "Node types" donut and the neighbour graph so the two
-// views stay in sync. These are categories, so none of them consume a semantic status colour.
+// views stay in sync. Unknown types fall back to a dim primary.
 export function nodeTypeColor(typeName: string, c: ChartColors): string {
   switch (typeName) {
     case "companion": return c.series[0]!;
     case "repeater": return c.series[1]!;
     case "room_server": return c.series[2]!;
     case "sensor": return c.series[3]!;
-    default: return c.series[4]!;
+    default: return c.series[5]!;
   }
 }
 

@@ -41,9 +41,9 @@ export function ScopesTab({ range }: { range: StatsRange }) {
       </label>
       {query.isError && <p role="alert" className="text-sm text-danger">{t("scopes.error")}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={t("scopes.active")} value={value(totals.active)} accent={colors.series[0]!} spark={sparks?.active} />
-        <StatCard label={t("scopes.scopedPackets")} value={packetsUnknown ? "—" : value(totals.packets)} accent={colors.series[1]!} spark={sparks?.packets} />
-        <StatCard label={t("scopes.memberships")} value={value(totals.memberships)} accent={colors.series[2]!} spark={sparks?.observers} sublabel={sparks?.observers && t("scopes.observersLine")} />
+        <StatCard label={t("scopes.active")} value={value(totals.active)} accent={colors.series[2]!} spark={sparks?.active} />
+        <StatCard label={t("scopes.scopedPackets")} value={packetsUnknown ? "—" : value(totals.packets)} accent={colors.series[0]!} spark={sparks?.packets} />
+        <StatCard label={t("scopes.memberships")} value={value(totals.memberships)} accent={colors.series[1]!} spark={sparks?.observers} sublabel={sparks?.observers && t("scopes.observersLine")} />
         <StatCard label={t("scopes.defaultNodes")} value={value(totals.nodes)} accent={colors.series[3]!} spark={sparks?.nodes} sublabel={sparks?.nodes && t("scopes.nodesLine")} />
       </div>
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">

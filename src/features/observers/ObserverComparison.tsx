@@ -48,7 +48,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
     const bPoints = dataB && aligned ? fillActivity(dataB.points, intervalMs, window, dataB) : [];
     return { ...heardOption(aPoints, colors, window), grid: { left: 48, right: 14, top: 32, bottom: 22 },
       legend: { data: ["A", "B"], top: 0, textStyle: { color: colors.textNormal } },
-      series: [["A", aPoints, colors.series[0]], ["B", bPoints, colors.series[1]]].map(([name, points, color]) => ({
+      series: [["A", aPoints, colors.series[0]], ["B", bPoints, colors.series[2]]].map(([name, points, color]) => ({
         name: name as string, type: "line" as const, symbol: "none", connectNulls: false,
         data: (points as typeof aPoints).map(p => [p.t, p.observations]),
         lineStyle: { width: 2, color: color as string }, itemStyle: { color: color as string },
@@ -57,9 +57,9 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   }, [activityA, dataB, aligned, intervalMs, start, end, colors]);
   const date = (value: number | null | undefined) => value == null ? "—" : new Date(value).toLocaleString(i18n.resolvedLanguage, { timeZone: "UTC", dateStyle: "short", timeStyle: "short" });
   const groups = overlap.data && !overlap.isError ? [
-    { label: t("observerCompare.onlyA"), count: overlap.data.onlyA, color: colors.series[0] },
-    { label: t("observerCompare.both"), count: overlap.data.both, color: colors.green },
-    { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.series[1] },
+    { label: t("observerCompare.onlyA"), count: overlap.data.onlyA, color: colors.series[0]! },
+    { label: t("observerCompare.both"), count: overlap.data.both, color: colors.series[1]! },
+    { label: t("observerCompare.onlyB"), count: overlap.data.onlyB, color: colors.series[2]! },
   ] : [];
   const refresh = () => {
     const nextUntil = onRefresh();

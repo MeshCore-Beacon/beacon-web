@@ -36,8 +36,8 @@ export function SignalTab({ range }: { range: StatsRange }) {
       {query.isError && <p role="alert" className="text-sm text-danger">{t("signal.error")}</p>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t("signal.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.series[0]!} sublabel={t(`stats.ranges.${range}`)} spark={sparks?.receptions} />
-        <StatCard label={t("signal.meanSnr")} value={average(data?.snr.average, "dB")} accent={c.series[1]!} spark={sparks?.snr} />
-        <StatCard label={t("signal.meanRssi")} value={average(data?.rssi.average, "dBm")} accent={c.series[2]!} spark={sparks?.rssi} />
+        <StatCard label={t("signal.meanSnr")} value={average(data?.snr.average, "dB")} accent={c.series[2]!} spark={sparks?.snr} />
+        <StatCard label={t("signal.meanRssi")} value={average(data?.rssi.average, "dBm")} accent={c.series[1]!} spark={sparks?.rssi} />
         <StatCard label={t("signal.hoursWithRecords")} value={data ? `${data.hourly.length}/${hours.length}` : "—"} accent={c.series[3]!} presence={sparks?.reported} />
       </div>
       <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">

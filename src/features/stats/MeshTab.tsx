@@ -70,7 +70,7 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
   const payloadOption = useMemo(() => typeBarOption(payloadItems, colors), [payloadItems, colors]);
 
   const observerRows = useMemo(
-    () => (topObserversData ?? []).map((o) => ({ name: o.displayName ?? o.observerId.slice(0, 8), value: o.observationCount, color: colors.primary })),
+    () => (topObserversData ?? []).map((o) => ({ name: o.displayName ?? o.observerId.slice(0, 8), value: o.observationCount, color: colors.secondary })),
     [topObserversData, colors],
   );
   const observersOption = useMemo(() => leaderboardOption(observerRows, colors), [observerRows, colors]);

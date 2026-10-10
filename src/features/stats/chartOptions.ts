@@ -78,8 +78,8 @@ export function observationsAreaOption(
         smooth: true,
         symbol: "none",
         data: points.map((p) => [p.hour, p.uniquePackets]),
-        lineStyle: { color: c.series[1], width: 1.3, type: "dashed" },
-        itemStyle: { color: c.series[1] },
+        lineStyle: { color: c.series[2], width: 1.3, type: "dashed" },
+        itemStyle: { color: c.series[2] },
       },
     ],
   };
@@ -201,7 +201,7 @@ export function presetBarsOption(
       { name: labels.nodes, ...segment(rows.map((r) => r.nodes), c.series[0]!) },
       {
         name: labels.observers,
-        ...segment(rows.map((r) => r.observers), c.series[1]!),
+        ...segment(rows.map((r) => r.observers), c.series[2]!),
         // outer segment carries the row total so it sits at the end of the whole stack
         label: {
           show: true,
@@ -327,8 +327,8 @@ export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketMs
     xAxis: timeAxis(c),
     yAxis: percentAxis(c),
     series: [
-      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.series[0] }, areaStyle: { color: withAlpha(c.series[0]!, 0.35) }, itemStyle: { color: c.series[0] } },
-      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.series[1] }, areaStyle: { color: withAlpha(c.series[1]!, 0.35) }, itemStyle: { color: c.series[1] } },
+      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.series[1] }, areaStyle: { color: withAlpha(c.series[1]!, 0.35) }, itemStyle: { color: c.series[1] } },
+      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.series[0] }, areaStyle: { color: withAlpha(c.series[0]!, 0.35) }, itemStyle: { color: c.series[0] } },
     ],
   };
 }
@@ -379,10 +379,10 @@ export const batteryOption = (p: TelemetryPoint[], c: ChartColors, name = "Batte
   metricLineOption(p, c, { name, color: c.primary, accessor: (x) => (x.batteryMv == null ? null : +(x.batteryMv / 1000).toFixed(3)) });
 
 export const noiseFloorOption = (p: TelemetryPoint[], c: ChartColors, name = "Noise dBm") =>
-  metricLineOption(p, c, { name, color: c.primary, accessor: (x) => x.noiseFloorDb });
+  metricLineOption(p, c, { name, color: c.warn, accessor: (x) => x.noiseFloorDb });
 
 export const queueOption = (p: TelemetryPoint[], c: ChartColors, name = "Queue") =>
-  metricLineOption(p, c, { name, color: c.primary, accessor: (x) => x.queueLength, area: true });
+  metricLineOption(p, c, { name, color: c.secondary, accessor: (x) => x.queueLength, area: true });
 
 // receiveErrors is a cumulative counter in raw points, a per-bucket delta in bucketed ones
 export const receiveErrorsOption = (p: TelemetryPoint[], c: ChartColors, bucketed: boolean, name = "Recv errors") =>
@@ -422,9 +422,9 @@ export function busyOption(points: ActivityPoint[], c: ChartColors, intervalMs: 
         symbol: "none",
         connectNulls: false,
         data: points.map((p) => [p.t, pct(p)]),
-        lineStyle: { width: 1.5, color: c.primary },
-        areaStyle: { color: withAlpha(c.primary, 0.28) },
-        itemStyle: { color: c.primary },
+        lineStyle: { width: 1.5, color: c.green },
+        areaStyle: { color: withAlpha(c.green, 0.28) },
+        itemStyle: { color: c.green },
       },
     ],
   };
@@ -466,7 +466,7 @@ export function snrHeardOption(points: ActivityPoint[], c: ChartColors, w: TimeW
     xAxis: windowAxis(c, w),
     yAxis: valueAxis(c, { scale: true, axisLabel: { color: c.textMuted, fontFamily: MONO, fontSize: 10, formatter: "{value} dB" } }),
     series: [
-      { name: labels.average, type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrAvg]), lineStyle: { width: 1.8, color: c.primary }, itemStyle: { color: c.primary } },
+      { name: labels.average, type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrAvg]), lineStyle: { width: 1.8, color: c.secondary }, itemStyle: { color: c.secondary } },
       { name: labels.minimum, type: "line", symbol: "none", connectNulls: false, data: points.map((p) => [p.t, p.snrMin]), lineStyle: { width: 1, color: c.textMuted, type: "dashed" }, itemStyle: { color: c.textMuted } },
     ],
   };

@@ -17,10 +17,10 @@ export function PathsTab({ range }: { range: StatsRange }) {
   const data = loading || query.isError ? undefined : query.data;
   const hours = useMemo(() => pathHours(data), [data]);
   const categories = useMemo(() => [
-    { name: t("paths.categories.hashed"), value: data?.hashed ?? 0, color: c.series[0] },
+    { name: t("paths.categories.hashed"), value: data?.hashed ?? 0, color: c.series[0]! },
     { name: t("paths.categories.empty"), value: data?.empty ?? 0, color: c.textDim },
-    { name: t("paths.categories.trace"), value: data?.trace ?? 0, color: c.series[1] },
-    { name: t("paths.categories.unclassified"), value: data?.unclassified ?? 0, color: c.series[2] },
+    { name: t("paths.categories.trace"), value: data?.trace ?? 0, color: c.series[3]! },
+    { name: t("paths.categories.unclassified"), value: data?.unclassified ?? 0, color: c.series[2]! },
   ], [data, c, t]);
   const charts = useMemo(() => {
     const width = donutOption((data?.hashWidths ?? []).map((bin, i) => ({ name: t("paths.hashWidth", { count: bin.bytes }), value: bin.receptions, color: c.series[i] })), c, formatCount(data?.hashed ?? 0), t("paths.hashPathsCenter"));
