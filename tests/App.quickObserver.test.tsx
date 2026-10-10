@@ -7,6 +7,7 @@ import { ModalOverlay } from "../src/components/ModalOverlay";
 vi.mock("../src/api/ws-manager", () => ({ WsManager: class { connect() {} disconnect() {} updateSubscription() {} } }));
 vi.mock("../src/api/client", () => ({ getRegions: async () => [], getRegion: async () => ({ iatas: [] }) }));
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));
+vi.mock("../src/components/VersionGate", () => ({ VersionGate: () => null }));
 vi.mock("../src/components/AppShell", () => ({ AppShell: ({ children }: { children: ReactNode }) => <>{children}</> }));
 vi.mock("../src/features/nodes/NodeTable", () => ({ NodeTable: () => null }));
 vi.mock("../src/features/nodes/NodeDetailPanel", () => ({ NodeDetailPanel: ({ onViewObserver, onAnalyzePacket }: { onViewObserver: (id: string) => void; onAnalyzePacket: (hash: string) => void }) => <><button onClick={() => onViewObserver("observer")}>Node observer</button><button onClick={() => onAnalyzePacket("first")}>Node packet</button></> }));

@@ -16,6 +16,7 @@ import { ThemeProvider } from "./hooks/useTheme";
 import { useIsMobile } from "./hooks/useMediaQuery";
 import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
+import { VersionGate } from "./components/VersionGate";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { NodeTable } from "./features/nodes/NodeTable";
@@ -376,6 +377,7 @@ export function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <SplashScreen />
+          <VersionGate />
           <AppInner />
         </ThemeProvider>
       </QueryClientProvider>

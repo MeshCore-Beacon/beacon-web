@@ -24,6 +24,7 @@ vi.mock("../src/api/ws-manager", () => {
   return { WsManager };
 });
 
+vi.mock("../src/components/VersionGate", () => ({ VersionGate: () => null }));
 vi.mock("../src/api/client", () => ({
   getRegions: async () => [],
   getRegion: async () => ({ id: 0, slug: "", displayName: "", iatas: [] }),

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -198,17 +198,25 @@ describe("getKnownRoutesPage", () => {
   });
 });
 
-describe("searchKnownRoutes", () => {
-  it("hits /routes/search with the required iata/from/to", async () => {
+describe("route search", () => {
+  it("sends the IATA list to /routes/search", async () => {
     const getUrl = mockFetchOnce([]);
+    await searchKnownRoutes(["YYC", "YVR"], "6d", "be");
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/routes/search");
+    expect(url.searchParams.get("iatas")).toBe("YYC,YVR");
+    expect(url.searchParams.get("from")).toBe("6d");
+    expect(url.searchParams.get("to")).toBe("be");
+  });
 
-    await searchKnownRoutes("YYC", "6d", "be");
-
-    const url = getUrl();
-    expect(url).toContain("/routes/search");
-    expect(url).toContain("iata=YYC");
-    expect(url).toContain("from=6d");
-    expect(url).toContain("to=be");
+  it("omits iatas for a global /routes/cross search", async () => {
+    const getUrl = mockFetchOnce([]);
+    await searchCrossIATARoutes(undefined, "6d", "be");
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/routes/cross");
+    expect(url.searchParams.has("iatas")).toBe(false);
+    expect(url.searchParams.get("fromHash")).toBe("6d");
+    expect(url.searchParams.get("toHash")).toBe("be");
   });
 });
 

@@ -16,6 +16,7 @@ vi.mock("../src/api/ws-manager", () => ({
 }));
 vi.mock("../src/api/client", () => ({ getRegions: async () => [], getRegion: async () => ({ iatas: [] }), getScopes: async () => [] }));
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));
+vi.mock("../src/components/VersionGate", () => ({ VersionGate: () => null }));
 vi.mock("../src/components/AppShell", () => ({
   AppShell: ({ children, onTabChange }: { children: ReactNode; onTabChange: (tab: string) => void }) => (
     <>
