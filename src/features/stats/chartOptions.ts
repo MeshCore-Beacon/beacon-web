@@ -59,15 +59,15 @@ export function observationsAreaOption(
         smooth: true,
         symbol: "none",
         data: points.map((p) => [p.hour, p.observations]),
-        lineStyle: { color: c.primary, width: 2 },
-        itemStyle: { color: c.primary },
+        lineStyle: { color: c.series[0], width: 2 },
+        itemStyle: { color: c.series[0] },
         areaStyle: {
           color: {
             type: "linear",
             x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: withAlpha(c.primary, 0.42) },
-              { offset: 1, color: withAlpha(c.primary, 0.01) },
+              { offset: 0, color: withAlpha(c.series[0]!, 0.42) },
+              { offset: 1, color: withAlpha(c.series[0]!, 0.01) },
             ],
           },
         },
@@ -78,8 +78,8 @@ export function observationsAreaOption(
         smooth: true,
         symbol: "none",
         data: points.map((p) => [p.hour, p.uniquePackets]),
-        lineStyle: { color: c.secondary, width: 1.3, type: "dashed" },
-        itemStyle: { color: c.secondary },
+        lineStyle: { color: c.series[2], width: 1.3, type: "dashed" },
+        itemStyle: { color: c.series[2] },
       },
     ],
   };
@@ -198,10 +198,10 @@ export function presetBarsOption(
       },
     },
     series: [
-      { name: labels.nodes, ...segment(rows.map((r) => r.nodes), c.primary) },
+      { name: labels.nodes, ...segment(rows.map((r) => r.nodes), c.series[0]!) },
       {
         name: labels.observers,
-        ...segment(rows.map((r) => r.observers), c.secondary),
+        ...segment(rows.map((r) => r.observers), c.series[2]!),
         // outer segment carries the row total so it sits at the end of the whole stack
         label: {
           show: true,
@@ -327,8 +327,8 @@ export function airtimeOption(points: TelemetryPoint[], c: ChartColors, bucketMs
     xAxis: timeAxis(c),
     yAxis: percentAxis(c),
     series: [
-      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.green }, areaStyle: { color: withAlpha(c.green, 0.35) }, itemStyle: { color: c.green } },
-      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.primary }, areaStyle: { color: withAlpha(c.primary, 0.35) }, itemStyle: { color: c.primary } },
+      { name: "RX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeRxSecs", bucketMs), lineStyle: { width: 1, color: c.series[1] }, areaStyle: { color: withAlpha(c.series[1]!, 0.35) }, itemStyle: { color: c.series[1] } },
+      { name: "TX", type: "line", stack: "air", smooth: true, symbol: "none", connectNulls: true, data: airtimePctSeries(points, "airtimeTxSecs", bucketMs), lineStyle: { width: 1, color: c.series[0] }, areaStyle: { color: withAlpha(c.series[0]!, 0.35) }, itemStyle: { color: c.series[0] } },
     ],
   };
 }
