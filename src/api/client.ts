@@ -2,7 +2,7 @@ import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
-import type { ObserverSummary, Observer, AdvertObservation } from "../features/observers/types";
+import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
 import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
 import type {
   StatsSeries,
@@ -13,6 +13,7 @@ import type {
   PayloadBreakdownItem,
   TopNode,
   TopObserver,
+  AdvertiserSort,
   TopAdvertiser,
   TopTalker,
   RadioPreset,
@@ -111,6 +112,17 @@ export function getPackets(
 
 export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
   return request(`/packets/${packetHash}`);
+}
+
+// /info: the oldest client versions this server accepts (null = no requirement) and its own version.
+export interface ServerInfo {
+  minAppVersion: string | null;
+  minWebVersion: string | null;
+  serverVersion: string;
+}
+
+export function getServerInfo(): Promise<ServerInfo> {
+  return request("/info");
 }
 
 export function getIatas(): Promise<IataCode[]> {
@@ -215,21 +227,21 @@ export function getRouteEvidence(iata: string, pathKey: string, params: { range?
   return request(`/routes/${encodeURIComponent(iata)}/${encodeURIComponent(pathKey)}/observations`, params, signal);
 }
 
-// Search known routes for a path between two node hash prefixes within a single IATA. All three params
-// are required by the server.
-export function searchKnownRoutes(iata: string, from: string, to: string): Promise<KnownRoute[]> {
-  return request("/routes/search", { iata, from, to });
+// Route search between two node hash prefixes. iatas narrows the search; omitted means every IATA.
+// /routes/search returns routes within one IATA, /routes/cross routes that cross between two.
+const iataList = (iatas: string[] | undefined) => (iatas?.length ? iatas.join(",") : undefined);
+
+export function searchKnownRoutes(iatas: string[] | undefined, from: string, to: string, signal?: AbortSignal): Promise<KnownRoute[]> {
+  return request("/routes/search", { iatas: iataList(iatas), from, to }, signal);
 }
 
-// Search routes that cross IATA boundaries, from a hash in one IATA to a hash in another. All four
-// params are required by the server.
 export function searchCrossIATARoutes(
+  iatas: string[] | undefined,
   fromHash: string,
-  fromIata: string,
   toHash: string,
-  toIata: string,
+  signal?: AbortSignal,
 ): Promise<CrossIATARoute[]> {
-  return request("/routes/cross", { fromHash, fromIata, toHash, toIata });
+  return request("/routes/cross", { iatas: iataList(iatas), fromHash, toHash }, signal);
 }
 
 // Trace tags. /traces returns a bare array of per-tag summaries (ordered newest-heard first, cursor is
@@ -304,6 +316,46 @@ export function getNodesPage(
   });
 }
 
+export interface ObserverDirectoryRequest {
+  location?: StatsRegion;
+  sort?: ObserverDirectorySort;
+  since?: number;
+  until?: number;
+  cursor?: number;
+  limit?: number;
+  name?: string;
+  type?: string;
+  broker?: string;
+  status?: string;
+  scope?: string;
+}
+
+export async function getObserverDirectoryPage(params: ObserverDirectoryRequest, signal?: AbortSignal): Promise<ObserverDirectoryPage> {
+  const { location, ...filters } = params;
+  const page = await request<ObserverDirectoryPage>("/observers/directory", { ...statsRegionParams(location), ...filters }, signal);
+  // A legacy detail response must never be mistaken for a paginated directory.
+  const isCount = (value: unknown) => value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
+  if (!page || !Array.isArray(page.items) || !Array.isArray(page.observerTypes) || typeof page.hasMore !== "boolean" ||
+      !Number.isFinite(page.windowStart) || !Number.isFinite(page.windowEnd) || page.windowStart >= page.windowEnd ||
+      !["traffic", "name"].includes(page.effectiveSort) ||
+      !["complete", "partial", "unavailable"].includes(page.coverage?.status) || !isCount(page.maxObservationCount) ||
+      page.items.some(row => !row || typeof row.id !== "string" || !isCount(row.observationCount))) {
+    throw new Error("Invalid observer directory response");
+  }
+  return page;
+}
+
+export async function supportsObserverDirectory(signal?: AbortSignal): Promise<boolean> {
+  try {
+    await getObserverDirectoryPage({ limit: 1 }, signal);
+    return true;
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 ||
+        (error.status === 400 && error.message === "failed to parse observer UUID"))) return false;
+    throw error;
+  }
+}
+
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.
 export function getObserversPage(
   iatas: string[] | undefined,
@@ -369,8 +421,8 @@ export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10)
   return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit });
 }
 
-export function getTopAdvertisers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopAdvertiser[]> {
-  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, limit });
+export function getTopAdvertisers(iatas: StatsRegion | undefined, since: number | undefined, sort: AdvertiserSort, limit = 10): Promise<TopAdvertiser[]> {
+  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, sort, limit });
 }
 
 export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopTalker[]> {

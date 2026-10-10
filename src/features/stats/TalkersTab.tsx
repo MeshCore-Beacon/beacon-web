@@ -1,15 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useChartColors } from "./chartTheme";
 import { rolledWindow, useTopAdvertisers, useTopTalkers } from "./useStats";
 import { leaderboardOption } from "./chartOptions";
 import { Card, ChartCard } from "./cards";
+import { Segmented } from "./Segmented";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Badge } from "../../components/Badge";
 import { IataChip } from "../../components/IataChip";
 import { formatCount, formatRatePerDay } from "../../lib/formatters";
 import { RANGE_MS } from "./types";
-import type { TopAdvertiser, StatsRange } from "./types";
+import type { AdvertiserSort, TopAdvertiser, StatsRange } from "./types";
 
 interface TalkersTabProps {
   range: StatsRange;
@@ -32,7 +33,8 @@ function coveredMs(range: StatsRange, fetchedAt: number) {
 export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
   const { t } = useTranslation();
   const colors = useChartColors();
-  const topAdvertisers = useTopAdvertisers(range, 20);
+  const [advertSort, setAdvertSort] = useState<AdvertiserSort>("flood");
+  const topAdvertisers = useTopAdvertisers(range, advertSort, 20);
   const topTalkers = useTopTalkers(range, 20);
 
   const advertisersLoading = topAdvertisers.isPending || topAdvertisers.isPlaceholderData;
@@ -76,7 +78,15 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
   const rangeLabel = t(`stats.ranges.${range}`);
   return (
     <div className="mx-auto grid w-full min-w-0 max-w-[1200px] grid-cols-1 items-start gap-3.5 p-4 lg:grid-cols-2">
-      <Card title={t("talkers.topAdvertisers", { range: rangeLabel })} right={<span className="font-mono text-[10px] text-text-muted">{t("talkers.floodDirect")}</span>}>
+      <Card title={t("talkers.topAdvertisers", { range: rangeLabel })} right={
+        <Segmented
+          size="xs"
+          ariaLabel={t("talkers.sortBy")}
+          value={advertSort}
+          onChange={(v) => setAdvertSort(v as AdvertiserSort)}
+          options={[{ value: "flood", label: t("talkers.flood") }, { value: "direct", label: t("talkers.direct") }]}
+        />
+      }>
         <div className="flex flex-col" style={{ height: leaderboardHeight(advertisers.length) }}>
           <DataTable
             columns={advertiserColumns}

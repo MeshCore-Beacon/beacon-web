@@ -341,6 +341,15 @@
       }
     },
     "observerPage": {
+      "countsPartial": "Les compteurs utilisent l’historique disponible ; la couverture est incomplète.",
+      "directoryPeriod": "Historique disponible, jusqu’à 7 jours",
+      "refresh": "Actualiser",
+      "loadMore": "Charger plus d’observateurs",
+      "end": "Tous les observateurs sont chargés",
+      "upgradeRequired": "La pagination des observateurs nécessite une mise à jour du serveur.",
+      "countsUnavailable": "Les compteurs de trafic sont indisponibles pour cette période.",
+      "countsUnavailableName": "Les compteurs de trafic sont indisponibles pour cette période ; tri par nom.",
+      "countsThrough": "Comptages jusqu’au {{time}} UTC",
       "back": "Retour aux observateurs",
       "detail": "Détail de l'observateur",
       "range": "Période",
@@ -738,9 +747,16 @@
       "search": "Rechercher",
       "clear": "Effacer",
       "searching": "Recherche…",
-      "noCross": "Aucun trajet entre ces zones",
+      "badHash": "Les hash doivent faire 2, 4, 6 ou 8 caractères hexadécimaux",
+      "tooManyAreas": "Choisissez au plus 100 zones",
+      "timeout": "La recherche de trajet a expiré — réduisez les zones ou utilisez un hash plus long.",
+      "searchFailed": "La recherche de trajet a échoué",
       "noMatches": "Aucun trajet correspondant",
       "empty": "Aucun trajet"
+    },
+    "versionGate": {
+      "message": "Ce serveur Beacon nécessite Beacon Web {{min}} ou plus récent (version actuelle : {{current}}). Rechargez la page ; si ce message persiste, le conteneur web doit être mis à jour.",
+      "reload": "Recharger"
     },
     "routeDetail": {
       "title": "Détail du trajet",
@@ -831,7 +847,7 @@
       "flood": "Flood",
       "direct": "Direct",
       "topAdvertisers": "Principaux annonceurs · {{range}}",
-      "floodDirect": "flood · direct",
+      "sortBy": "Trier les annonceurs par",
       "noAdvertisers": "Aucun annonceur",
       "topTalkers": "Principaux émetteurs · {{range}}",
       "byName": "par nom"

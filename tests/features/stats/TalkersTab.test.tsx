@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TalkersTab } from "../../../src/features/stats/TalkersTab";
 import { getTopAdvertisers, getTopTalkers } from "../../../src/api/client";
@@ -59,7 +59,8 @@ it.each(["region", "range"] as const)("hides previous results while the new %s i
   await screen.findByText("New sender");
   const request = vi.mocked(getTopAdvertisers).mock.calls[1]!;
   expect(request[0]).toEqual(filter === "region" ? ["YOW"] : ["YVR"]);
-  expect(request[2]).toBe(20);
+  expect(request[2]).toBe("flood");
+  expect(request[3]).toBe(20);
   const windowMs = (filter === "range" ? 7 : 1) * 86_400_000;
   expect(request[1]).toBeGreaterThanOrEqual(requestedAt - windowMs);
   expect(request[1]).toBeLessThanOrEqual(Date.now() - windowMs);
@@ -73,7 +74,7 @@ it("shows an advertiser refetch error instead of cached rows, keeps the sender p
   await screen.findByText("Failed to load");
   expect(screen.queryByText("Old advertiser")).not.toBeInTheDocument();
   expect(screen.getByText("Old sender")).toBeInTheDocument();
-  expect(client.getQueryData(["stats-top-advertisers", "YVR", "24h", 20])).toEqual(advertisers);
+  expect(client.getQueryData(["stats-top-advertisers", "YVR", "24h", "flood", 20])).toEqual(advertisers);
   vi.mocked(getTopAdvertisers).mockResolvedValue([{ ...advertisers[0]!, nodeName: "Recovered advertiser" }]);
   await act(() => client.refetchQueries({ queryKey: ["stats-top-advertisers"] }));
   await screen.findByText("Recovered advertiser");
@@ -103,7 +104,7 @@ it("retains valid rows and rates during an ordinary background refresh", async (
   vi.mocked(getTopAdvertisers).mockReturnValue(next.promise);
   let refresh!: Promise<void>;
   await act(async () => { refresh = client.refetchQueries({ queryKey: ["stats-top-advertisers"] }); });
-  expect(client.getQueryState(["stats-top-advertisers", "YVR", "24h", 20])?.fetchStatus).toBe("fetching");
+  expect(client.getQueryState(["stats-top-advertisers", "YVR", "24h", "flood", 20])?.fetchStatus).toBe("fetching");
   expect(screen.getByText("Old advertiser")).toBeInTheDocument();
   expect(screen.getByText("10/d")).toBeInTheDocument();
   expect(screen.getByText("4/d")).toBeInTheDocument();
@@ -157,4 +158,17 @@ it("divides advert rates by the hours the rollup actually covers", async () => {
   mount();
   expect(await screen.findByText("21/d")).toBeInTheDocument();
   expect(screen.getByText("4.2/d")).toBeInTheDocument();
+});
+
+it("asks the server for flood-ranked advertisers by default and refetches direct-ranked from the toggle", async () => {
+  mount();
+  await screen.findByText("Old advertiser");
+  expect(vi.mocked(getTopAdvertisers).mock.calls[0]!.slice(2)).toEqual(["flood", 20]);
+  const sort = screen.getByRole("group", { name: "Sort advertisers by" });
+  expect(within(sort).getByRole("button", { name: "Flood" })).toHaveAttribute("aria-pressed", "true");
+  vi.mocked(getTopAdvertisers).mockResolvedValue([{ ...advertisers[0]!, nodeName: "Direct advertiser" }]);
+  fireEvent.click(within(sort).getByRole("button", { name: "Direct" }));
+  await screen.findByText("Direct advertiser");
+  expect(vi.mocked(getTopAdvertisers).mock.calls[1]!.slice(2)).toEqual(["direct", 20]);
+  expect(within(sort).getByRole("button", { name: "Direct" })).toHaveAttribute("aria-pressed", "true");
 });

@@ -1,77 +1,89 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getTopObservers } from "../../api/client";
-import { formatCount } from "../../lib/formatters";
+import { formatCount, formatUtc } from "../../lib/formatters";
+import { SCROLL_BOTTOM_THRESHOLD_PX } from "../../lib/constants";
 import { Segmented } from "../stats/Segmented";
-import { gatedOn, sinceFor, useStatsRegion } from "../stats/useStats";
-import type { StatsRange } from "../stats/types";
 import { observerName as nameOf } from "./observer-filter";
 import { deriveObserverStatus } from "./observer-status";
-import type { ObserverSummary } from "./types";
+import type { ObserverDirectoryItem, ObserverDirectoryPage, ObserverDirectorySort } from "./types";
 
-type Sort = "activity" | "name";
-const TOP = 200; // the API's list cap
-
-export function ObserverSidebar({ observers, filtered, isPending, isError, onRetry, range, selectedId, onSelect }: {
-  observers: ObserverSummary[]; filtered: boolean; isPending: boolean; isError: boolean; onRetry: () => void;
-  range: StatsRange; selectedId: string | null; onSelect: (id: string) => void;
+export function ObserverSidebar({ observers, filtered, isPending, isError, unsupported, onRetry, onRefresh,
+  sort, onSortChange, maxObservationCount, coverage, effectiveSort, windowEnd,
+  hasNextPage, isFetchingNextPage, onLoadMore, selectedId, onSelect }: {
+  observers: ObserverDirectoryItem[]; filtered: boolean; isPending: boolean; isError: boolean;
+  unsupported: boolean; onRetry: () => void; onRefresh?: () => void;
+  sort: ObserverDirectorySort; onSortChange: (sort: ObserverDirectorySort) => void;
+  maxObservationCount: number | null; coverage?: ObserverDirectoryPage["coverage"];
+  effectiveSort?: ObserverDirectorySort; windowEnd?: number;
+  hasNextPage: boolean; isFetchingNextPage: boolean; onLoadMore: () => void;
+  selectedId: string | null; onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const { where, regionKey, isResolved } = useStatsRegion();
-  const [sort, setSort] = useState<Sort>("activity");
-
-  const activity = useQuery({
-    queryKey: ["observer-sidebar-activity", regionKey, range],
-    ...gatedOn(isResolved, () => getTopObservers(where, sinceFor(range), TOP)),
-    staleTime: 30_000,
-  });
-
-  const counts = useMemo(() => new Map((activity.data ?? []).map((o) => [o.observerId, o.observationCount])), [activity.data]);
-  const max = Math.max(1, ...counts.values());
-  const rows = useMemo(() => {
-    const byName = (a: ObserverSummary, b: ObserverSummary) => nameOf(a).localeCompare(nameOf(b), undefined, { numeric: true });
-    return [...observers].sort(sort === "name" ? byName : (a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || byName(a, b));
-  }, [observers, sort, counts]);
+  const scroller = useRef<HTMLDivElement>(null);
+  const loadNearEnd = useCallback(() => {
+    const element = scroller.current;
+    if (element && element.clientHeight > 0 && hasNextPage && !isFetchingNextPage && !isError && !isPending &&
+        element.scrollHeight - element.scrollTop - element.clientHeight < SCROLL_BOTTOM_THRESHOLD_PX) onLoadMore();
+  }, [hasNextPage, isFetchingNextPage, isError, isPending, onLoadMore]);
+  useEffect(() => {
+    loadNearEnd();
+    const element = scroller.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(loadNearEnd);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [loadNearEnd, observers.length]);
+  const messageClass = "px-3 py-3 text-center font-mono text-[11px] text-text-dim";
+  const retry = <button type="button" onClick={onRetry} className={`${messageClass} w-full text-danger`}>{t("common.loadFailed")} · {t("observerPage.retry")}</button>;
 
   return (
-    // a card at md+, an edge-to-edge list like the Nodes tab below it
     <div className="flex min-h-0 w-full flex-col bg-bg-base md:rounded-lg md:border md:border-border md:bg-bg-surface md:p-3.5">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-subtle px-4 py-2 md:mb-2.5 md:border-0 md:p-0">
         <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{t("tabs.Observers")}</div>
-        <Segmented size="sm" ariaLabel={t("observerPage.sort")} value={sort} onChange={(v) => setSort(v as Sort)}
-          options={[{ value: "activity", label: t("observerPage.sortActivity") }, { value: "name", label: t("observerPage.sortName") }]} />
+        <Segmented size="sm" ariaLabel={t("observerPage.sort")} value={sort} onChange={v => onSortChange(v as ObserverDirectorySort)}
+          options={[{ value: "traffic", label: t("observerPage.sortActivity") }, { value: "name", label: t("observerPage.sortName") }]} />
       </div>
-      {isPending ? <div className="py-6 text-center font-mono text-[11px] text-text-dim">{t("common.loading")}</div>
-        : isError ? <button type="button" onClick={onRetry} className="py-6 text-center font-mono text-[11px] text-danger">{t("common.loadFailed")} · {t("observerPage.retry")}</button>
-        : rows.length === 0 ? <div className="py-6 text-center font-mono text-[11px] text-text-dim">{t(filtered ? "observerPage.noMatches" : "observerPage.none")}</div>
-        : (
-          <div role="listbox" aria-label={t("tabs.Observers")} className="flex min-h-0 flex-col overflow-y-auto md:-mx-1 md:gap-0.5 md:px-1">
-            {rows.map((o) => {
+      {onRefresh && !unsupported && <button type="button" onClick={onRefresh} disabled={isPending || isFetchingNextPage}
+        className="mb-2 self-end px-3 font-mono text-[10px] text-primary disabled:opacity-50">{t("observerPage.refresh")}</button>}
+      {coverage && coverage.status !== "complete" && <p className={messageClass}>
+        {t(maxObservationCount != null ? "observerPage.countsPartial"
+          : effectiveSort === "name" ? "observerPage.countsUnavailableName" : "observerPage.countsUnavailable")}
+      </p>}
+      {windowEnd != null && <div className="shrink-0 px-3 pb-2 font-mono text-[10px] text-text-dim">
+        <p>{t("observerPage.directoryPeriod")}</p>
+        <p>{t("observerPage.countsThrough", { time: formatUtc(windowEnd) })}</p>
+      </div>}
+      {unsupported ? <div className={messageClass}><p>{t("observerPage.upgradeRequired")}</p>
+        <button type="button" onClick={onRetry} className="mt-2 text-primary">{t("observerPage.retry")}</button></div>
+        : isPending ? <div className={messageClass}>{t("common.loading")}</div>
+        : isError && observers.length === 0 ? retry
+        : observers.length === 0 ? <div className={messageClass}>{t(filtered ? "observerPage.noMatches" : "observerPage.none")}</div>
+        : <div ref={scroller} onScroll={loadNearEnd} className="min-h-0 overflow-y-auto md:-mx-1 md:px-1">
+          <div role="listbox" aria-label={t("tabs.Observers")} className="flex flex-col md:gap-0.5">
+            {observers.map(o => {
               const active = o.id === selectedId;
-              const count = counts.get(o.id);
+              const count = o.observationCount;
               return (
-                <button
-                  key={o.id}
-                  type="button"
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => onSelect(o.id)}
+                <button key={o.id} type="button" role="option" aria-selected={active} onClick={() => onSelect(o.id)}
                   className={`relative shrink-0 overflow-hidden border-b border-l-2 border-b-border-subtle px-4 py-3 text-left md:rounded md:border-b-0 md:px-2.5 md:py-1.5 transition-colors ${
                     active ? "border-primary bg-primary/10" : "border-transparent hover:bg-text-normal/3"
-                  }`}
-                >
-                  {count != null && <div className="absolute inset-y-0 left-0 bg-secondary/8 md:bg-secondary/15" style={{ width: `${(count / max) * 100}%` }} aria-hidden />}
+                  }`}>
+                  {count != null && maxObservationCount != null && <div className="absolute inset-y-0 left-0 bg-secondary/8 md:bg-secondary/15"
+                    style={{ width: `${maxObservationCount > 0 ? Math.min(1, Math.max(0, count / maxObservationCount)) * 100 : 0}%` }} aria-hidden />}
                   <div className="relative flex items-center gap-2">
                     <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${deriveObserverStatus(o) === "online" ? "bg-green" : "bg-text-dim/30"}`} />
                     <span className={`min-w-0 flex-1 truncate font-mono text-[13px] md:text-[12px] ${active ? "text-text-bright" : "text-text-normal"}`}>{nameOf(o)}</span>
-                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-muted">{count != null ? formatCount(count) : "—"}</span>
+                    <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-muted">{count != null && maxObservationCount != null ? formatCount(count) : "-"}</span>
                   </div>
                 </button>
               );
             })}
           </div>
-        )}
+          {isFetchingNextPage ? <div className={messageClass}>{t("common.loading")}</div>
+            : isError ? retry
+            : hasNextPage ? <button type="button" onClick={onLoadMore} className={`${messageClass} w-full text-primary`}>{t("observerPage.loadMore")}</button>
+            : <div className={messageClass}>{t("observerPage.end")}</div>}
+        </div>}
     </div>
   );
 }

@@ -333,6 +333,15 @@
       }
     },
     "observerPage": {
+      "countsPartial": "Counts use available history; coverage is incomplete.",
+      "directoryPeriod": "Available history, up to 7 days",
+      "refresh": "Refresh",
+      "loadMore": "Load more observers",
+      "end": "All observers loaded",
+      "upgradeRequired": "Observer pagination requires a server upgrade.",
+      "countsUnavailable": "Traffic counts unavailable for this window.",
+      "countsUnavailableName": "Traffic counts unavailable for this window; showing Name order.",
+      "countsThrough": "Counts through {{time}} UTC",
       "back": "Back to observers",
       "detail": "Observer detail",
       "range": "Time range",
@@ -720,9 +729,16 @@
       "search": "Search",
       "clear": "Clear",
       "searching": "Searching…",
-      "noCross": "No routes between these areas",
+      "badHash": "Hashes must be 2, 4, 6 or 8 hex characters",
+      "tooManyAreas": "Pick at most 100 areas",
+      "timeout": "Route search timed out — narrow the areas or use a longer hash.",
+      "searchFailed": "Route search failed",
       "noMatches": "No matching routes",
       "empty": "No routes"
+    },
+    "versionGate": {
+      "message": "This Beacon server needs Beacon Web {{min}} or newer (this is {{current}}). Reload the page; if this keeps appearing, the web container needs updating.",
+      "reload": "Reload"
     },
     "routeDetail": {
       "title": "Route Detail",
@@ -799,7 +815,7 @@
       "flood": "Flood",
       "direct": "Direct",
       "topAdvertisers": "Top advertisers · {{range}}",
-      "floodDirect": "flood · direct",
+      "sortBy": "Sort advertisers by",
       "noAdvertisers": "No advertisers",
       "topTalkers": "Top talkers · {{range}}",
       "byName": "by name"

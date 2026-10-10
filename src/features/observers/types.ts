@@ -49,3 +49,29 @@ export interface AdvertObservation {
   nodeName?: string;
   nodePublicKey?: string;
 }
+
+export type ObserverDirectorySort = "traffic" | "name";
+
+export interface ObserverDirectoryItem extends ObserverSummary {
+  observationCount: number | null;
+}
+
+export interface ObserverDirectoryPage {
+  items: ObserverDirectoryItem[];
+  nextCursor?: number;
+  hasMore: boolean;
+  generatedAt: number;
+  windowStart: number;
+  windowEnd: number;
+  sort: ObserverDirectorySort;
+  effectiveSort: ObserverDirectorySort;
+  coverage: {
+    status: "complete" | "partial" | "unavailable";
+    expectedHours: number;
+    completeHours: number;
+    partialHours: number;
+    missingHours: number;
+  };
+  maxObservationCount: number | null;
+  observerTypes: string[];
+}

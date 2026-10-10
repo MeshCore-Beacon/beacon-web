@@ -14,8 +14,7 @@ import { MultiSelectDropdown } from "../../components/MultiSelectDropdown";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { RouteDetailPanel, type RouteActions } from "./RouteDetailPanel";
 import { ResolvedHopBlock } from "../packets/PathData";
-import { formatHex } from "../../lib/formatters";
-import type { KnownRoute, CrossIATARoute, ResolvedHop, ResolvedNode, RouteHop } from "../../types/api";
+import type { KnownRoute, CrossIATARoute, ResolvedHop, RouteHop } from "../../types/api";
 
 const inputClass =
   "text-[11px] font-mono bg-bg-surface border border-border rounded-sm px-2 py-1 text-text-bright " +
@@ -23,8 +22,6 @@ const inputClass =
 
 // stable id accessor for the paginator's dedup (module-level so the memo isn't rebuilt each render)
 const routeId = (r: KnownRoute) => String(r.id);
-
-const nodeLabel = (n: ResolvedNode) => n.name ?? formatHex(n.publicKey);
 
 // A run of route hops as a hash chain (reusing the packet path renderer); hops are high-confidence.
 function HopChain({ hops }: { hops: RouteHop[] }) {
@@ -44,40 +41,13 @@ function HopChain({ hops }: { hops: RouteHop[] }) {
 }
 
 // Memoized so the 10s <Timestamp> ticks in sibling columns don't re-reconcile the chain and its popovers.
-const RouteHopChain = memo(function RouteHopChain({ route }: { route: KnownRoute }) {
+const RouteHopChain = memo(function RouteHopChain({ hops }: { hops: RouteHop[] }) {
   return (
     <div className="flex flex-wrap items-center gap-1 font-mono text-[13px]">
-      <HopChain hops={route.hops} />
+      <HopChain hops={hops} />
     </div>
   );
 });
-
-// A cross-IATA route: source segment → boundary hop (the two nodes that bridge the IATAs) → target segment.
-function CrossRouteCard({ route }: { route: CrossIATARoute }) {
-  const { t } = useTranslation();
-  const { crossHop } = route;
-  return (
-    <div className="bg-bg-base border border-border rounded px-3 py-2 flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <Badge variant="default">{crossHop.fromIata}</Badge>
-          <span className="text-text-dim" aria-hidden>→</span>
-          <Badge variant="default">{crossHop.toIata}</Badge>
-        </div>
-        <span className="font-mono text-[11px] text-text-dim">{t("routes.hops", { count: route.totalHops })}</span>
-      </div>
-      <div className="flex flex-wrap items-center gap-1 font-mono text-[13px]">
-        <HopChain hops={route.sourceSegment} />
-        {route.sourceSegment.length > 0 && <span className="text-warn" aria-hidden>⇒</span>}
-        <span className="text-primary font-semibold">{nodeLabel(crossHop.fromNode)}</span>
-        <span className="text-warn" aria-hidden>⇒</span>
-        <span className="text-primary font-semibold">{nodeLabel(crossHop.toNode)}</span>
-        {route.targetSegment.length > 0 && <span className="text-warn" aria-hidden>⇒</span>}
-        <HopChain hops={route.targetSegment} />
-      </div>
-    </div>
-  );
-}
 
 // ids keep sorting stable when the headers are translated
 const buildColumns = (t: TFunction): Column<KnownRoute>[] => [
@@ -96,7 +66,7 @@ const buildColumns = (t: TFunction): Column<KnownRoute>[] => [
   {
     id: "route",
     header: t("routes.columns.route"),
-    cell: (r) => <RouteHopChain route={r} />,
+    cell: (r) => <RouteHopChain hops={r.hops} />,
   },
   {
     id: "obs",
@@ -129,7 +99,7 @@ function RouteCard({ route: r }: { route: KnownRoute }) {
         <Badge variant="default">{r.iata}</Badge>
         <span className="font-mono text-[11px] text-text-dim">{t("routes.hops", { count: r.hopCount })} · {t("routes.obs", { count: r.observationCount, value: r.observationCount.toLocaleString() })}</span>
       </div>
-      <RouteHopChain route={r} />
+      <RouteHopChain hops={r.hops} />
       <div className="flex items-center gap-2 font-mono text-[11px] text-text-muted">
         <span>{t("routes.first")} <Timestamp value={r.firstSeen} /></span>
         <span aria-hidden>·</span>
@@ -139,25 +109,111 @@ function RouteCard({ route: r }: { route: KnownRoute }) {
   );
 }
 
-interface SearchParams {
-  from: string;
-  to: string;
-  iatas: string[];
+// A search result: a known route within one IATA, or a cross-IATA route flattened to the same shape.
+interface SearchRow {
+  key: string;
+  area: string;
+  hops: RouteHop[];
+  hopCount: number;
+  lastSeen: number;
+  route?: KnownRoute;
 }
 
-// every directed (a,b), a≠b pair of the selected IATAs — we don't know which IATA holds the source
-// vs dest hash, so we try all directions and flatten.
-function directedPairs(iatas: string[]): [string, string][] {
-  const pairs: [string, string][] = [];
-  for (const a of iatas) for (const b of iatas) if (a !== b) pairs.push([a, b]);
-  return pairs;
+const CROSS_KEY = "cross:";
+const MAX_SEARCH_IATAS = 100;
+const HASH_RE = /^(?:[0-9a-f]{2}){1,4}$/;
+
+const knownRow = (r: KnownRoute): SearchRow =>
+  ({ key: String(r.id), area: r.iata, hops: r.hops, hopCount: r.hopCount, lastSeen: r.lastSeen, route: r });
+
+const crossRow = (r: CrossIATARoute, i: number): SearchRow => ({
+  key: `${CROSS_KEY}${i}`,
+  area: `${r.crossHop.fromIata} → ${r.crossHop.toIata}`,
+  hops: [...r.sourceSegment, ...r.targetSegment],
+  hopCount: r.totalHops,
+  lastSeen: r.crossHop.lastSeen,
+});
+
+// Picked IATAs, else the region's, else undefined (global). Picking every area is the global search too.
+function searchScope(picked: string[], regionIatas: string[] | undefined, allIatas: string[]): string[] | undefined {
+  const dedupe = (codes: string[]) => [...new Set(codes.map((c) => c.toUpperCase()))].sort();
+  if (picked.length) {
+    const scope = dedupe(picked);
+    const all = new Set(allIatas);
+    return all.size > 0 && [...all].every((c) => scope.includes(c)) ? undefined : scope;
+  }
+  return regionIatas && dedupe(regionIatas);
 }
+
+// 400s carry a message meant for the user (bad hash, too many areas), so show it as-is.
+function searchErrorText(err: unknown, t: TFunction): string {
+  const status = (err as { status?: number }).status;
+  if (status === 400 && err instanceof Error) return err.message;
+  if (status === 503) return t("routes.timeout");
+  return t("routes.searchFailed");
+}
+
+const buildSearchColumns = (t: TFunction): Column<SearchRow>[] => [
+  {
+    id: "area",
+    header: t("routes.columns.area"),
+    sortValue: (r) => r.area,
+    cell: (r) => <Badge variant="default">{r.area}</Badge>,
+  },
+  {
+    id: "hops",
+    header: t("routes.columns.hops"),
+    sortValue: (r) => r.hopCount,
+    cell: (r) => r.hopCount,
+  },
+  {
+    id: "route",
+    header: t("routes.columns.route"),
+    cell: (r) => <RouteHopChain hops={r.hops} />,
+  },
+  {
+    id: "obs",
+    header: t("routes.columns.obs"),
+    className: "text-text-muted",
+    sortValue: (r) => r.route?.observationCount,
+    cell: (r) => r.route?.observationCount.toLocaleString(),
+  },
+  {
+    id: "lastSeen",
+    header: t("routes.columns.lastSeen"),
+    className: "text-text-muted",
+    sortValue: (r) => r.lastSeen,
+    cell: (r) => <Timestamp value={r.lastSeen} />,
+  },
+];
+
+function SearchRowCard({ row }: { row: SearchRow }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <Badge variant="default">{row.area}</Badge>
+        <span className="font-mono text-[11px] text-text-dim">
+          {t("routes.hops", { count: row.hopCount })}
+          {row.route && <> · {t("routes.obs", { count: row.route.observationCount, value: row.route.observationCount.toLocaleString() })}</>}
+        </span>
+      </div>
+      <RouteHopChain hops={row.hops} />
+      <div className="font-mono text-[11px] text-text-muted">
+        {t("routes.last")} <Timestamp value={row.lastSeen} />
+      </div>
+    </div>
+  );
+}
+
+const renderSearchCard = (r: SearchRow) => <SearchRowCard row={r} />;
 
 const renderRouteCard = (r: KnownRoute) => <RouteCard route={r} />;
 
 export function RouteTable(actions: RouteActions) {
   const { t } = useTranslation();
   const columns = useMemo(() => buildColumns(t), [t]);
+  const searchColumns = useMemo(() => buildSearchColumns(t), [t]);
   const { iatas, isResolved } = useRegion();
   const regionPending = isResolved === false;
   const { selection } = useRegionSelection();
@@ -182,13 +238,12 @@ export function RouteTable(actions: RouteActions) {
     }
   }, [selection, closeRoute]);
 
-  // path search form: source→dest hashes, scoped to a multi-select of IATAs. One IATA → within-IATA
-  // /routes/search; two+ → /routes/cross across the directed pairs. Hashes + ≥1 IATA required.
+  // path search form: source→dest hashes, optionally narrowed to picked IATAs (else the region's).
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [searchIatas, setSearchIatas] = useState<string[]>([]);
-  const [search, setSearch] = useState<SearchParams | null>(null);
-  const isCross = search != null && search.iatas.length >= 2;
+  const [search, setSearch] = useState<{ from: string; to: string; iatas: string[] | undefined } | null>(null);
+  const [hashError, setHashError] = useState(false);
 
   // /routes filters by a single IATA only, so when the region resolves to exactly one IATA push the
   // filter to the server for true server-side paging; otherwise page unfiltered and filter the region
@@ -207,22 +262,22 @@ export function RouteTable(actions: RouteActions) {
       enabled: !regionPending,
     });
 
-  const { data: searchRoutes, isLoading: searchLoading } = useQuery({
-    queryKey: ["routes-search", search?.iatas[0], search?.from, search?.to],
-    queryFn: () => searchKnownRoutes(search!.iatas[0]!, search!.from, search!.to),
-    enabled: search !== null && !isCross,
+  // Two calls per search: routes within an IATA and routes crossing two. A one-IATA scope can't cross.
+  // No retries: a 503 is the server's 15s search timeout, and retrying it just repeats that work.
+  const scopeKey = search?.iatas?.join(",") ?? "*";
+  const isCross = search != null && search.iatas?.length !== 1;
+  const knownQuery = useQuery({
+    queryKey: ["routes-search", scopeKey, search?.from, search?.to],
+    queryFn: ({ signal }) => searchKnownRoutes(search!.iatas, search!.from, search!.to, signal),
+    enabled: search !== null,
+    retry: false,
     staleTime: 60_000,
   });
-
-  const { data: crossRoutes, isLoading: crossLoading } = useQuery({
-    queryKey: ["routes-cross", [...(search?.iatas ?? [])].sort().join(","), search?.from, search?.to],
-    queryFn: async () => {
-      const results = await Promise.all(
-        directedPairs(search!.iatas).map(([a, b]) => searchCrossIATARoutes(search!.from, a, search!.to, b)),
-      );
-      return results.flat();
-    },
-    enabled: search !== null && isCross,
+  const crossQuery = useQuery({
+    queryKey: ["routes-cross", scopeKey, search?.from, search?.to],
+    queryFn: ({ signal }) => searchCrossIATARoutes(search!.iatas, search!.from, search!.to, signal),
+    enabled: isCross,
+    retry: false,
     staleTime: 60_000,
   });
 
@@ -233,6 +288,7 @@ export function RouteTable(actions: RouteActions) {
     queryFn: getIatas,
     staleTime: 5 * 60_000,
   });
+  const allIatas = useMemo(() => (iataCodes ?? []).map((i) => i.iata), [iataCodes]);
   const iataOptions = useMemo(
     () => (iataCodes ?? []).map((i) => ({ value: i.iata, label: i.displayName ? `${i.iata} — ${i.displayName}` : i.iata })),
     [iataCodes],
@@ -241,12 +297,23 @@ export function RouteTable(actions: RouteActions) {
   // searching shows the server's matches as-is; otherwise show the region-filtered full list (empty
   // region = all). Filtering by IATA stays client-side, consistent with the other tabs.
   const rows = useMemo(() => {
-    if (search) return isCross ? [] : searchRoutes;
+    if (search) return knownQuery.data;
     if (regionPending) return [];
     if (!iatas) return listRoutes;
     const set = new Set(iatas);
     return listRoutes.filter((r) => set.has(r.iata));
-  }, [search, isCross, searchRoutes, listRoutes, iatas, regionPending]);
+  }, [search, knownQuery.data, listRoutes, iatas, regionPending]);
+
+  const searchLoading = knownQuery.isLoading || (isCross && crossQuery.isLoading);
+  // presorted so the table's stable hop-count sort breaks ties newest-first
+  const searchRows = useMemo(() => {
+    if (!search || searchLoading) return undefined;
+    return [...(knownQuery.data ?? []).map(knownRow), ...(isCross ? crossQuery.data ?? [] : []).map(crossRow)]
+      .sort((a, b) => a.hopCount - b.hopCount || b.lastSeen - a.lastSeen);
+  }, [search, searchLoading, isCross, knownQuery.data, crossQuery.data]);
+  const searchErrors = [...new Set(
+    [knownQuery.error, isCross ? crossQuery.error : null].filter(Boolean).map((e) => searchErrorText(e, t)),
+  )];
 
   const selectedRoute = useMemo(
     () => rows?.find((r) => String(r.id) === selectedKey),
@@ -255,6 +322,7 @@ export function RouteTable(actions: RouteActions) {
 
   const selectRoute = (id: string | null) => {
     if (id === null) { closeRoute(); return; }
+    if (id.startsWith(CROSS_KEY)) return; // cross-IATA routes have no detail view
     const route = rows?.find(row => String(row.id) === id);
     if (route?.pathKey) {
       setSelectedKey(null);
@@ -277,13 +345,19 @@ export function RouteTable(actions: RouteActions) {
 
   const isMobile = useIsMobile();
   const panelOpen = Boolean(pathKey && routeIata || selectedRoute);
-  const canSearch = !!(from.trim() && to.trim() && searchIatas.length >= 1);
+  const scope = useMemo(() => searchScope(searchIatas, iatas, allIatas), [searchIatas, iatas, allIatas]);
+  const tooManyAreas = (scope?.length ?? 0) > MAX_SEARCH_IATAS;
+  const emptyRegion = scope?.length === 0;
+  const canSearch = !!(from.trim() && to.trim()) && !regionPending && !tooManyAreas && !emptyRegion;
   // clear any selection when the visible list changes out from under it (search submit/clear)
   const submitSearch = useCallback(() => {
-    if (!from.trim() || !to.trim() || searchIatas.length < 1) return;
-    setSearch({ from: from.trim(), to: to.trim(), iatas: searchIatas });
+    if (!canSearch) return;
+    const fromHash = from.trim().toLowerCase(), toHash = to.trim().toLowerCase();
+    if (!HASH_RE.test(fromHash) || !HASH_RE.test(toHash)) { setHashError(true); return; }
+    setHashError(false);
+    setSearch({ from: fromHash, to: toHash, iatas: scope });
     closeRoute();
-  }, [from, to, searchIatas, closeRoute]);
+  }, [canSearch, from, to, scope, closeRoute]);
   const clearSearch = useCallback(() => {
     setSearch(null);
     closeRoute();
@@ -304,7 +378,7 @@ export function RouteTable(actions: RouteActions) {
             placeholder={t("routes.fromPlaceholder")}
             aria-label={t("routes.fromLabel")}
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={(e) => { setFrom(e.target.value); setHashError(false); }}
             onKeyDown={onKeyDown}
           />
           <span className="text-text-dim text-xs shrink-0" aria-hidden>→</span>
@@ -313,7 +387,7 @@ export function RouteTable(actions: RouteActions) {
             placeholder={t("routes.toPlaceholder")}
             aria-label={t("routes.toLabel")}
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={(e) => { setTo(e.target.value); setHashError(false); }}
             onKeyDown={onKeyDown}
           />
         </div>
@@ -346,36 +420,46 @@ export function RouteTable(actions: RouteActions) {
             </button>
           )}
         </div>
+        {(hashError || tooManyAreas) && (
+          <span className="font-mono text-[11px] text-warn">{t(hashError ? "routes.badHash" : "routes.tooManyAreas")}</span>
+        )}
       </div>
+      {search && searchErrors.length > 0 && (searchRows?.length ?? 0) > 0 && (
+        <div role="alert" className="px-4 py-1.5 border-b border-border-subtle font-mono text-[11px] text-danger">
+          {searchErrors.join(" · ")}
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0">
-        {isCross ? (
-          <div className="flex-1 min-w-0 overflow-y-auto p-3 flex flex-col gap-2">
-            {crossLoading ? (
-              <div className="font-mono text-[13px] text-text-dim">{t("routes.searching")}</div>
-            ) : crossRoutes && crossRoutes.length > 0 ? (
-              crossRoutes.map((r, i) => <CrossRouteCard key={i} route={r} />)
-            ) : (
-              <div className="font-mono text-[13px] text-text-dim">{t("routes.noCross")}</div>
-            )}
+        {search ? (
+          <div key="search" className={`flex-1 min-w-0 ${panelOpen ? "hidden md:flex" : "flex"} flex-col min-h-0`}>
+            <DataTable
+              columns={searchColumns}
+              rows={searchRows}
+              rowKey={(r) => r.key}
+              selectedKey={pathKey ? String(rows?.find(row => row.pathKey === pathKey && row.iata === routeIata)?.id ?? "") : selectedKey}
+              onSelect={selectRoute}
+              isLoading={searchLoading}
+              emptyLabel={searchErrors.length > 0 ? searchErrors.join(" · ") : t("routes.noMatches")}
+              defaultSort={{ id: "hops", direction: "asc" }}
+              renderCard={renderSearchCard}
+            />
           </div>
         ) : (
-          <div className={`relative flex-1 min-w-0 ${panelOpen ? "hidden md:flex" : "flex"} flex-col min-h-0`}>
+          <div key="list" className={`relative flex-1 min-w-0 ${panelOpen ? "hidden md:flex" : "flex"} flex-col min-h-0`}>
             <DataTable
               columns={columns}
               rows={rows}
               rowKey={(r) => String(r.id)}
               selectedKey={pathKey ? String(rows?.find(row => row.pathKey === pathKey && row.iata === routeIata)?.id ?? "") : selectedKey}
               onSelect={selectRoute}
-              isLoading={search ? searchLoading : listLoading || regionPending}
-              emptyLabel={t(search ? "routes.noMatches" : "routes.empty")}
+              isLoading={listLoading || regionPending}
+              emptyLabel={t("routes.empty")}
               defaultSort={{ id: "lastSeen", direction: "desc" }}
-              onEndReached={search ? undefined : loadMore}
+              onEndReached={loadMore}
               renderCard={renderRouteCard}
             />
-            {!search && (
-              <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="routes" position="bottom-3 right-3" />
-            )}
+            <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="routes" position="bottom-3 right-3" />
           </div>
         )}
         {pathKey && routeIata ? (
