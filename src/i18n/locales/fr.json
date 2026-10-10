@@ -847,7 +847,7 @@
       "flood": "Flood",
       "direct": "Direct",
       "topAdvertisers": "Principaux annonceurs · {{range}}",
-      "floodDirect": "flood · direct",
+      "sortBy": "Trier les annonceurs par",
       "noAdvertisers": "Aucun annonceur",
       "topTalkers": "Principaux émetteurs · {{range}}",
       "byName": "par nom"

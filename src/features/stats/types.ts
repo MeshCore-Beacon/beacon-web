@@ -77,6 +77,8 @@ export interface TopObserver {
   observationCount: number;
 }
 
+export type AdvertiserSort = "flood" | "direct";
+
 export interface TopAdvertiser {
   nodeId: string | null; // null once the node row is deleted; key rows by publicKey
   publicKey: string;

@@ -14,7 +14,7 @@ import {
   getClockDrift,
   type StatsRegion,
 } from "../../api/client";
-import { RANGE_MS, type StatsRange } from "./types";
+import { RANGE_MS, type AdvertiserSort, type StatsRange } from "./types";
 
 // Shared query options: cache for 30s; previous data stays as placeholder so tabs can decide whether to show it during a switch.
 const common = {
@@ -102,11 +102,11 @@ export function useTopObservers(range: StatsRange, limit = 10) {
   });
 }
 
-export function useTopAdvertisers(range: StatsRange, limit = 10) {
+export function useTopAdvertisers(range: StatsRange, sort: AdvertiserSort, limit = 10) {
   const { where, regionKey, isResolved } = useStatsRegion();
   return useQuery({
-    queryKey: ["stats-top-advertisers", regionKey, range, limit],
-    ...gatedOn(isResolved, () => getTopAdvertisers(where, sinceFor(range), limit)),
+    queryKey: ["stats-top-advertisers", regionKey, range, sort, limit],
+    ...gatedOn(isResolved, () => getTopAdvertisers(where, sinceFor(range), sort, limit)),
     ...common,
   });
 }
