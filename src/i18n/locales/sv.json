@@ -729,9 +729,16 @@
       "search": "Sök",
       "clear": "Rensa",
       "searching": "Söker…",
-      "noCross": "Inga rutter mellan dessa områden",
+      "badHash": "Hashar måste vara 2, 4, 6 eller 8 hextecken",
+      "tooManyAreas": "Välj högst 100 områden",
+      "timeout": "Ruttsökningen tog för lång tid — begränsa områdena eller använd en längre hash.",
+      "searchFailed": "Ruttsökningen misslyckades",
       "noMatches": "Inga matchande rutter",
       "empty": "Inga rutter"
+    },
+    "versionGate": {
+      "message": "Den här Beacon-servern kräver Beacon Web {{min}} eller senare (detta är {{current}}). Ladda om sidan; om detta fortsätter att visas behöver webbcontainern uppdateras.",
+      "reload": "Ladda om"
     },
     "routeDetail": {
       "title": "Ruttdetaljer",
