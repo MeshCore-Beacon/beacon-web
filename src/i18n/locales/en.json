@@ -852,7 +852,8 @@
     },
     "charts": {
       "uniquePackets": "Unique packets",
-      "busy": "Busy"
+      "busy": "Busy",
+      "gapLegend": "Solid lines and dots show readings. Dashed lines estimate between missing samples."
     },
     "packetList": {
       "pathSearchInvalid": "Enter whole hop hashes of the same length, separated by spaces, commas or → (e.g. 7f a4).",

@@ -886,7 +886,8 @@
     },
     "charts": {
       "uniquePackets": "Paquets uniques",
-      "busy": "Occupation"
+      "busy": "Occupation",
+      "gapLegend": "Traits pleins et points : mesures. Tirets : estimation entre des données manquantes."
     },
     "packetList": {
       "pathSearchInvalid": "Saisissez des hashs de saut complets de même longueur, séparés par des espaces, des virgules ou → (p. ex. 7f a4).",

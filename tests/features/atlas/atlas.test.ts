@@ -20,6 +20,16 @@ describe("saved Atlas", () => {
 });
 
 describe("origin report sample", () => {
+  it("aligns signal charts with the activity window and preserves missing hours", () => {
+    const sample = summarizeReports([report(1, 0, { snr: 0, rssi: -100 }), report(2, 2, { snr: 8, rssi: -90 }), report(3, 24, { snr: 20, rssi: -70 })], "24h", now);
+    expect(sample.snrBins[23]).toBe(0);
+    expect(sample.rssiBins[23]).toBe(-100);
+    expect(sample.snrBins[22]).toBe(8);
+    expect(sample.snrBins[21]).toBeNull();
+    expect(sample.snrBins[0]).toBeNull();
+    expect(sample.bins[23]).toBe(1);
+  });
+
   it("bins the selected window, excludes future/old reports, includes other payload types and deduplicates IDs", () => {
     const rows = [report(1, 0), report(2, 23.9), report(3, 24), report(4, -1), report(5, 1, { payloadType: 99 }), report(1, 0)];
     const sample = summarizeReports(rows, "24h", now);

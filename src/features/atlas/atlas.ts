@@ -62,5 +62,8 @@ export function summarizeReports(rows: NodeObservation[], range: AtlasRange, now
     const valid = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
     return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
   };
-  return { reports, bins, since, snr: mean(signal.map(row => row.snr)), rssi: mean(signal.map(row => row.rssi)), hops: mean(reports.map(row => row.hopCount)) };
+  const hourly = (field: "snr" | "rssi") => bins.map((_, index) => mean(signal
+    .filter(row => Math.min(hours - 1, Math.floor((row.heardAt - since) / 3_600_000)) === index)
+    .map(row => row[field])));
+  return { reports, bins, since, snrBins: hourly("snr"), rssiBins: hourly("rssi"), snr: mean(signal.map(row => row.snr)), rssi: mean(signal.map(row => row.rssi)), hops: mean(reports.map(row => row.hopCount)) };
 }

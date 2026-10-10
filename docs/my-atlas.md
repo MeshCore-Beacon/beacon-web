@@ -28,7 +28,7 @@ An unavailable node stays in the collection and remains removable.
 - **Mean SNR / RSSI** average finite, available measurements from that sample.
   The zero-RSSI/zero-SNR unavailable sentinel is excluded; a measured zero SNR
   with a real RSSI is included. These are last-hop measurements at the observers,
-  not a measurement of the origin's radio health. Meters include numbers and
+  not a measurement of the origin's radio health. Signal charts include numbers and
   accessible values; missing measurements display a dash.
 - Freshness uses the server's `stale` verdict. It does not infer online/offline
   status from the report count or invent a local threshold.
@@ -60,3 +60,5 @@ exact-key recovery, rename display, bounded/lazy loading, missing signals,
 expired evidence, range selection, order/removal and both languages. Release QA
 also checks real Pi data, phone/desktop layout, keyboard controls, reload/Back,
 and the matching public source offer.
+
+This basic Atlas build uses packet observations only. It includes no battery, environmental or Collector telemetry integration. Dashed signal-chart segments indicate estimates across missing samples; empty hours are not measured zeroes.

@@ -33,7 +33,7 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
           {(["24h", "3d"] as AtlasRange[]).map(range => <button type="button" key={range} aria-pressed={saved.range === range} className={`min-h-10 rounded-md px-4 text-xs font-medium ${saved.range === range ? "bg-primary/15 text-primary" : "hover:bg-bg-raised"}`} onClick={() => update(value => ({ ...value, range }))}>{t(`atlas.ranges.${range}`)}</button>)}
         </div>
       </header>
-      <details open={searchOpen} onToggle={event => setSearchOpen(event.currentTarget.open)} className="rounded-xl border border-border bg-bg-surface px-4 py-2">
+      <details open={searchOpen} onToggle={event => setSearchOpen(event.currentTarget.open)} className="rounded-sm border border-border bg-bg-surface px-4 py-2">
         <summary className="min-h-11 cursor-pointer content-center text-sm text-text-bright">{t("atlas.addNodes")} <span className="ml-2 text-xs font-mono text-text-normal">{t("atlas.savedCount", { count: saved.nodes.length, limit: ATLAS_LIMIT })}</span></summary>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <div className="flex min-w-0 flex-1 basis-72 items-center gap-2">
@@ -58,7 +58,8 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
         </div>}
       </details>
       <p className={`text-xs ${storageFailed ? "text-warn" : "text-text-normal"}`} role="status">{t(storageFailed ? "atlas.storageFailed" : "atlas.localOnly")}</p>
-      {empty ? <section className="rounded-xl border border-dashed border-border px-5 py-12 text-center"><h2 className="text-lg font-medium text-text-bright">{t("atlas.emptyTitle")}</h2><p className="mx-auto mt-2 max-w-lg text-sm">{t("atlas.emptyDescription")}</p><div aria-hidden="true" className="mx-auto mt-6 flex h-10 max-w-48 items-end justify-center gap-1 opacity-40">{[3, 5, 4, 8, 6, 10, 7, 9, 6, 11, 8, 10].map((height, index) => <span key={index} className="w-3 rounded-t bg-primary" style={{ height: height * 3 }} />)}</div></section> : <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <p className="text-[10px] text-text-muted">{t("charts.gapLegend")}</p>
+      {empty ? <section className="rounded-sm border border-dashed border-border px-5 py-12 text-center"><h2 className="text-lg font-medium text-text-bright">{t("atlas.emptyTitle")}</h2><p className="mx-auto mt-2 max-w-lg text-sm">{t("atlas.emptyDescription")}</p><div aria-hidden="true" className="mx-auto mt-6 flex h-10 max-w-48 items-end justify-center gap-1 opacity-40">{[3, 5, 4, 8, 6, 10, 7, 9, 6, 11, 8, 10].map((height, index) => <span key={index} className="w-3 rounded-t bg-primary" style={{ height: height * 3 }} />)}</div></section> : <div className="grid items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {saved.nodes.map((pin, index) => <AtlasCard key={pin.publicKey} pin={pin} range={saved.range} active={active} first={index === 0} last={index === saved.nodes.length - 1} heardOpen={heardKey === pin.publicKey} onHeardToggle={() => setHeardKey(value => value === pin.publicKey ? null : pin.publicKey)} onRemove={() => update(value => ({ ...value, nodes: value.nodes.filter(node => node.publicKey !== pin.publicKey) }))} onMove={direction => update(value => {
           const nodes = [...value.nodes]; const from = nodes.findIndex(node => node.publicKey === pin.publicKey); const to = from + direction;
           if (from < 0 || to < 0 || to >= nodes.length) return value;

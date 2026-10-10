@@ -34,6 +34,16 @@ beforeEach(() => {
 afterEach(() => { clients.splice(0).forEach(client => client.clear()); vi.restoreAllMocks(); });
 
 describe("My Atlas", () => {
+  it("shows packet activity and signal charts without telemetry panels", async () => {
+    save(); mount();
+    const card = await screen.findByRole("article", { name: "Renamed repeater" });
+    await within(card).findByRole("button", { name: "Open node" });
+    expect(within(card).getByRole("img", { name: /received reports/i })).toBeInTheDocument();
+    expect(within(card).getByRole("meter", { name: "Mean SNR: 0 dB" })).toBeInTheDocument();
+    expect(within(card).queryByText(/battery|temperature|humidity|telemetry/i)).not.toBeInTheDocument();
+    expect(api.getNodeObservations).toHaveBeenCalledWith(pin.id, { limit: 200 }, expect.any(AbortSignal));
+  });
+
   it("does not scan nodes or packets before a search or selection", () => {
     mount();
     expect(screen.getByText("Build your own view of the mesh")).toBeInTheDocument();
