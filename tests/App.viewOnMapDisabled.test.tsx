@@ -20,6 +20,7 @@ vi.mock("../src/lib/constants", async (importOriginal) => {
   return { ...actual, ENABLED_TABS: actual.ENABLED_TABS.filter((tab) => tab !== "Map") };
 });
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));
+vi.mock("../src/components/VersionGate", () => ({ VersionGate: () => null }));
 vi.mock("../src/components/AppShell", () => ({
   AppShell: ({ children, onTabChange }: { children: ReactNode; onTabChange: (tab: string) => void }) => (
     <>
