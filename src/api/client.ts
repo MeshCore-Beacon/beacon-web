@@ -13,6 +13,7 @@ import type {
   PayloadBreakdownItem,
   TopNode,
   TopObserver,
+  AdvertiserSort,
   TopAdvertiser,
   TopTalker,
   RadioPreset,
@@ -420,8 +421,8 @@ export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10)
   return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit });
 }
 
-export function getTopAdvertisers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopAdvertiser[]> {
-  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, limit });
+export function getTopAdvertisers(iatas: StatsRegion | undefined, since: number | undefined, sort: AdvertiserSort, limit = 10): Promise<TopAdvertiser[]> {
+  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, sort, limit });
 }
 
 export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopTalker[]> {
