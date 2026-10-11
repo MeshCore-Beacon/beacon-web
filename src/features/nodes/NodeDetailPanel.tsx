@@ -11,6 +11,8 @@ import { Timestamp } from "../../components/Timestamp";
 import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
+import { MeshMapperSection } from "./MeshMapperSection";
+import { Tooltip } from "../../components/Tooltip";
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   const { t } = useTranslation();
@@ -126,6 +128,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 </span>
                 <Badge variant="default">{node.nodeTypeName}</Badge>
                 <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
+                {node.meshmapper?.carpeater && (
+                  <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>
+                    <Badge variant="trace" normalCase>{t("nodeDetail.carpeater")}</Badge>
+                  </Tooltip>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>
@@ -162,6 +169,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 )}
               </Section>
             )}
+
+            {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
 
             <Section title={t("nodeDetail.capabilities")}>
               <div className="flex flex-col gap-0.5 font-mono text-[13px]">

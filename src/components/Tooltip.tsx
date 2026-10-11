@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { useState, useRef, useEffect, useId, useLayoutEffect, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useHasHover } from "../hooks/useMediaQuery";
 
 // Portals to <body> with fixed positioning so overflow parents (the data tables) can't clip it.
 // Hover reveals with a mouse; on touch it toggles on tap and dismisses on an outside tap.
-export function Tooltip({ label, children, className = "", wrap = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean }) {
+// `focusable` makes a non-interactive trigger a tab stop whose label is exposed to screen readers.
+export function Tooltip({ label, children, className = "", wrap = false, focusable = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean; focusable?: boolean }) {
   const hasHover = useHasHover();
+  const descId = useId();
   const ref = useRef<HTMLSpanElement>(null);
   const tipRef = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -62,9 +64,12 @@ export function Tooltip({ label, children, className = "", wrap = false }: { lab
       onClick={hasHover ? undefined : toggle}
       onFocus={hasHover ? show : undefined}
       onBlur={hasHover ? hide : undefined}
+      tabIndex={focusable ? 0 : undefined}
+      aria-describedby={focusable ? descId : undefined}
       className={`inline-flex ${className}`}
     >
       {children}
+      {focusable && <span id={descId} hidden>{label}</span>}
       {anchor &&
         createPortal(
           <span

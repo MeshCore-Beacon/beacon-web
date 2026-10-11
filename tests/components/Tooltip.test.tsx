@@ -72,3 +72,19 @@ describe("Tooltip (mobile)", () => {
     expect(onParentClick).not.toHaveBeenCalled();
   });
 });
+
+describe("Tooltip focusable", () => {
+  it("is a tab stop described by its label for keyboard and screen-reader users", () => {
+    setMobile(false);
+    render(<Tooltip label="tip text" focusable><span>target</span></Tooltip>);
+    const trigger = screen.getByText("target").parentElement!;
+    expect(trigger).toHaveAttribute("tabindex", "0");
+    expect(trigger).toHaveAccessibleDescription("tip text");
+  });
+
+  it("is not a tab stop by default", () => {
+    setMobile(false);
+    render(<Tooltip label="tip text"><span>target</span></Tooltip>);
+    expect(screen.getByText("target").parentElement).not.toHaveAttribute("tabindex");
+  });
+});
