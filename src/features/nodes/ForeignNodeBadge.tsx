@@ -6,7 +6,7 @@ export function ForeignNodeBadge({ possiblyForeign }: { possiblyForeign?: boolea
   const { t } = useTranslation();
   if (possiblyForeign !== true) return null;
   return (
-    <Tooltip label={t("nodes.possiblyForeignHint")}>
+    <Tooltip label={t("nodes.possiblyForeignHint")} focusable>
       <Badge variant="default">{t("nodes.possiblyForeign")}</Badge>
     </Tooltip>
   );
