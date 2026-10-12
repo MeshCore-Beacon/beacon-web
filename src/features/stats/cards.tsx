@@ -9,16 +9,18 @@ export function Card({
   right,
   children,
   className,
+  wrap,
 }: {
   title: ReactNode;
   right?: ReactNode;
   children: ReactNode;
   className?: string;
+  wrap?: boolean; // let `right` drop under the title when the card is too narrow for both
 }) {
   return (
     <div className={`rounded-lg border border-border bg-bg-surface p-3.5 ${className ?? ""}`}>
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{title}</div>
+      <div className={`mb-2.5 flex items-center justify-between gap-2 ${wrap ? "flex-wrap" : ""}`}>
+        <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{title}</div>
         {right}
       </div>
       {children}

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   parseRetryAfter,
+  queryRetryDelay,
   shouldRetryQuery,
   noteRateLimited,
   noteRequestOk,
@@ -53,6 +54,14 @@ describe("shouldRetryQuery", () => {
 
   it("retries a network error", () => {
     expect(shouldRetryQuery(0, new TypeError("Failed to fetch"))).toBe(true);
+  });
+});
+
+describe("queryRetryDelay", () => {
+  it("honours Retry-After and otherwise backs off exponentially to a ceiling", () => {
+    expect(queryRetryDelay(0, Object.assign(new Error("429"), { retryAfterMs: 7_000 }))).toBe(7_000);
+    expect(queryRetryDelay(2, new Error("500"))).toBe(4_000);
+    expect(queryRetryDelay(10, new Error("500"))).toBe(30_000);
   });
 });
 

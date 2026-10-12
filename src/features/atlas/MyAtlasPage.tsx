@@ -1,72 +1,189 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getNodesPage } from "../../api/client";
-import { SelectDropdown } from "../../components/SelectDropdown";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
+import { Badge } from "../../components/Badge";
+import { EmptyState } from "../../components/EmptyState";
+import { InfoTip } from "../../components/InfoTip";
+import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
+import { Tooltip } from "../../components/Tooltip";
+import { formatHex } from "../../lib/formatters";
 import { nodeSearchParams } from "../nodes/node-search";
+import type { NodeSummary } from "../nodes/types";
+import { Card } from "../stats/cards";
+import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions } from "./AtlasCard";
 import { ATLAS_LIMIT, parseAtlas, type AtlasRange } from "./atlas";
 import { useSavedAtlas } from "./useSavedAtlas";
 
+const RANGES: AtlasRange[] = ["24h", "3d"];
+const SEARCH_LIMIT = 8;
+const SEARCH_MIN = 2;
+
+// Global by design: pins are node identities, so the header region picker does not apply here.
 export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
   const { saved, update, storageFailed } = useSavedAtlas();
-  const [searchOpen, setSearchOpen] = useState(saved.nodes.length === 0);
-  const [text, setText] = useState("");
+  const [search, setSearch] = useState("");
   const [field, setField] = useState("name");
-  const [query, setQuery] = useState({ text: "", field: "name" });
   const [heardKey, setHeardKey] = useState<string | null>(null);
-  useEffect(() => { const timer = setTimeout(() => setQuery({ text: text.trim(), field }), 300); return () => clearTimeout(timer); }, [text, field]);
-  const valid = query.text.length >= 2 && (query.field !== "pubkey" || /^[a-f\d]{2,64}$/i.test(query.text));
-  const ready = query.text === text.trim() && query.field === field && valid;
-  const search = useQuery({ queryKey: ["atlas-search", query.field, query.text], queryFn: ({ signal }) => getNodesPage(undefined, { ...nodeSearchParams(query.field, query.text), limit: 8 }, signal), enabled: active && searchOpen && ready, staleTime: 30_000, retry: false });
+  // Switching the field changes what the box means, so stale text must not carry over.
+  const changeField = (value: string) => {
+    setField(value);
+    setSearch("");
+  };
+
+  // Key on the derived params, as the Nodes table does, so a name is never sent as a hex prefix.
+  const params = nodeSearchParams(field, search);
+  const typed = search.trim();
+  const hint = typed.length === 0 ? null
+    : typed.length < SEARCH_MIN ? "atlas.searchTooShort"
+    : field === "pubkey" && params.pubkeyPrefix === undefined ? "atlas.searchNotHex"
+    : null;
+  const ready = typed.length > 0 && hint === null;
+  const results = useQuery({
+    queryKey: ["atlas-search", params.name, params.pubkeyPrefix],
+    queryFn: ({ signal }) => getNodesPage(undefined, { ...params, limit: SEARCH_LIMIT }, signal),
+    enabled: active && ready,
+    staleTime: 30_000,
+  });
+
   const full = saved.nodes.length >= ATLAS_LIMIT;
-  const empty = saved.nodes.length === 0;
-  return <section className="w-full min-w-0 overflow-y-auto" aria-label={t("tabs.MyAtlas")}>
-    <div className="mx-auto max-w-[1440px] space-y-6 p-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <svg aria-hidden="true" viewBox="0 0 40 40" width="44" height="44" className="shrink-0 text-primary" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m5 10 10-4 10 4 10-4v24l-10 4-10-4-10 4Z" /><path d="M15 6v24M25 10v24M9 23l10-8 10 4" /><circle cx="19" cy="15" r="3" fill="var(--color-bg-base)" /><circle cx="29" cy="19" r="2" fill="var(--color-secondary)" /></svg>
-          <div><h1 className="text-2xl font-semibold tracking-tight text-text-bright">{t("tabs.MyAtlas")}</h1><p className="mt-1 text-sm">{t("atlas.subtitle")}</p></div>
+  const fields: SearchFieldOption[] = [
+    { value: "name", label: t("nodeFilters.fieldName") },
+    { value: "pubkey", label: t("nodeFilters.fieldPubkey") },
+  ];
+  const rangeOptions = RANGES.map((value) => ({ value, label: t(`atlas.ranges.${value}`) }));
+
+  // Re-parse so an add goes through the same validation, dedupe and cap as a restore.
+  const add = (node: NodeSummary) =>
+    update((value) => {
+      const pin = { id: node.id, publicKey: node.publicKey, name: node.name || "" };
+      return parseAtlas(JSON.stringify({ ...value, nodes: [...value.nodes, pin] }));
+    });
+  const remove = (publicKey: string) =>
+    update((value) => ({ ...value, nodes: value.nodes.filter((node) => node.publicKey !== publicKey) }));
+  const relink = (publicKey: string, id: string) =>
+    update((value) => ({ ...value, nodes: value.nodes.map((node) => (node.publicKey === publicKey ? { ...node, id } : node)) }));
+  const move = (publicKey: string, direction: -1 | 1) =>
+    update((value) => {
+      const nodes = [...value.nodes];
+      const from = nodes.findIndex((node) => node.publicKey === publicKey);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= nodes.length) return value;
+      [nodes[from], nodes[to]] = [nodes[to]!, nodes[from]!];
+      return { ...value, nodes };
+    });
+
+  return (
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("tabs.MyAtlas")}>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 font-mono text-[11px] text-text-muted">
+          <span>{t("atlas.savedCount", { count: saved.nodes.length, limit: ATLAS_LIMIT })}</span>
+          <span role="status" className={storageFailed ? "text-warn" : undefined}>
+            {t(storageFailed ? "atlas.storageFailed" : "atlas.localOnly")}
+          </span>
         </div>
-        <div role="group" aria-label={t("atlas.range")} className="flex rounded-lg border border-border bg-bg-surface p-1">
-          {(["24h", "3d"] as AtlasRange[]).map(range => <button type="button" key={range} aria-pressed={saved.range === range} className={`min-h-10 rounded-md px-4 text-xs font-medium ${saved.range === range ? "bg-primary/15 text-primary" : "hover:bg-bg-raised"}`} onClick={() => update(value => ({ ...value, range }))}>{t(`atlas.ranges.${range}`)}</button>)}
+        <Segmented
+          className="shrink-0"
+          options={rangeOptions}
+          value={saved.range}
+          onChange={(range) => update((value) => ({ ...value, range: range as AtlasRange }))}
+          ariaLabel={t("atlas.range")}
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col gap-3.5 p-4">
+          <Card
+            title={t("atlas.addNodes")}
+            right={<InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: ATLAS_LIMIT })} />}
+          >
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              fields={fields}
+              field={field}
+              onFieldChange={changeField}
+              inputLabel={t("atlas.search")}
+            />
+            {hint && <p className="mt-2 font-mono text-xs text-text-muted">{t(hint, { min: SEARCH_MIN })}</p>}
+            {ready && (
+              <div className="mt-2 font-mono text-xs">
+                {results.isPending ? (
+                  <p role="status" className="text-text-muted">{t("common.loading")}</p>
+                ) : results.isError ? (
+                  <p role="alert" className="text-danger">
+                    {t("common.loadFailed")}{" "}
+                    <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => void results.refetch()}>
+                      {t("observerPage.retry")}
+                    </button>
+                  </p>
+                ) : results.data.items.length === 0 ? (
+                  <p className="text-text-muted">{t("common.noMatches")}</p>
+                ) : (
+                  <ul>
+                    {results.data.items.map((node) => {
+                      const pinned = saved.nodes.some((pin) => pin.publicKey === node.publicKey.toLowerCase());
+                      const label = node.name ?? formatHex(node.id);
+                      return (
+                        <li
+                          key={node.publicKey}
+                          className="flex items-center justify-between gap-2 border-t border-border-subtle py-1.5"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className={`truncate ${node.name ? "text-text-bright" : "italic text-text-dim"}`}>{label}</span>
+                            <Badge variant="default">{node.nodeTypeName}</Badge>
+                            <Tooltip label={node.publicKey}>
+                              <code className="text-text-dim">{formatHex(node.publicKey)}</code>
+                            </Tooltip>
+                          </span>
+                          <button
+                            type="button"
+                            className={ACTION_BUTTON_CLASS}
+                            disabled={pinned || full}
+                            aria-label={t(pinned ? "atlas.savedName" : "atlas.addName", { name: label })}
+                            onClick={() => add(node)}
+                          >
+                            {t(pinned ? "atlas.saved" : "atlas.add")}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {results.data?.hasMore && (
+                  <p className="mt-1 text-text-muted">{t("atlas.refine", { limit: SEARCH_LIMIT })}</p>
+                )}
+                {full && <p className="mt-1 text-warn">{t("atlas.limitReached", { limit: ATLAS_LIMIT })}</p>}
+              </div>
+            )}
+          </Card>
+          {saved.nodes.length === 0 ? (
+            <EmptyState title={t("atlas.emptyTitle")} subtitle={t("atlas.emptyDescription", { limit: ATLAS_LIMIT })} />
+          ) : (
+            <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+              {saved.nodes.map((pin, index) => (
+                <div key={pin.publicKey} data-atlas-card className="min-w-0">
+                  <AtlasCard
+                    pin={pin}
+                    range={saved.range}
+                    active={active}
+                    first={index === 0}
+                    last={index === saved.nodes.length - 1}
+                    heardOpen={heardKey === pin.publicKey}
+                    onHeardToggle={() => setHeardKey((key) => (key === pin.publicKey ? null : pin.publicKey))}
+                    onRemove={() => remove(pin.publicKey)}
+                    onMove={(direction) => move(pin.publicKey, direction)}
+                    onResolved={(id) => relink(pin.publicKey, id)}
+                    {...actions}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </header>
-      <details open={searchOpen} onToggle={event => setSearchOpen(event.currentTarget.open)} className="rounded-sm border border-border bg-bg-surface px-4 py-2">
-        <summary className="min-h-11 cursor-pointer content-center text-sm text-text-bright">{t("atlas.addNodes")} <span className="ml-2 text-xs font-mono text-text-normal">{t("atlas.savedCount", { count: saved.nodes.length, limit: ATLAS_LIMIT })}</span></summary>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <div className="flex min-w-0 flex-1 basis-72 items-center gap-2">
-            <SelectDropdown label={t("atlas.searchBy")} hideAll value={field} options={[{ value: "name", label: t("atlas.name") }, { value: "pubkey", label: t("atlas.publicKey") }]} onChange={setField} align="left" />
-            <input type="search" maxLength={160} aria-label={t("atlas.search")} aria-describedby="atlas-search-help" value={text} onChange={event => setText(event.target.value)} placeholder={t(field === "pubkey" ? "atlas.keyPlaceholder" : "atlas.namePlaceholder")} className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-bg-base px-3 text-sm text-text-bright placeholder:text-text-muted" />
-          </div>
-        </div>
-        <p id="atlas-search-help" className="mt-2 text-xs">{t(full ? "atlas.limitReached" : "atlas.searchHelp", { limit: ATLAS_LIMIT })}</p>
-        {ready && <div className="mt-3">
-          {search.isPending ? <p role="status">{t("common.loading")}</p> : search.isError ? <p role="status">{t("common.loadFailed")} <button type="button" onClick={() => void search.refetch()} className="min-h-11 underline">{t("atlas.retry")}</button></p> : <>
-            {!search.data?.items.length && <p role="status" className="text-sm">{t("atlas.noMatches")}</p>}
-            <ul className="grid gap-2 md:grid-cols-2">{search.data?.items.map(node => {
-              const selected = saved.nodes.some(pin => pin.publicKey === node.publicKey.toLowerCase());
-              const name = node.name || node.publicKey.slice(0, 12).toUpperCase();
-              return <li key={node.publicKey} className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border p-2 pl-3">
-                <div className="min-w-0"><p className="break-words text-sm text-text-bright">{name}</p><p className="truncate font-mono text-[10px]">{node.publicKey.slice(0, 16).toUpperCase()} · {t(`atlas.roles.${node.nodeType}`)}</p></div>
-                <button type="button" disabled={selected || full} aria-label={t(selected ? "atlas.addedName" : "atlas.addName", { name })} className="min-h-11 shrink-0 rounded border border-primary/30 bg-primary/10 px-3 text-xs text-primary disabled:border-border disabled:bg-bg-raised disabled:text-text-muted" onClick={() => update(value => parseAtlas(JSON.stringify({ ...value, nodes: [...value.nodes, { id: node.id, publicKey: node.publicKey, name: node.name || "" }] })))}>{t(selected ? "atlas.added" : "atlas.add")}</button>
-              </li>;
-            })}</ul>
-            {search.data?.hasMore && <p className="mt-2 text-xs">{t("atlas.refine")}</p>}
-          </>}
-        </div>}
-      </details>
-      <p className={`text-xs ${storageFailed ? "text-warn" : "text-text-normal"}`} role="status">{t(storageFailed ? "atlas.storageFailed" : "atlas.localOnly")}</p>
-      <p className="text-[10px] text-text-muted">{t("charts.gapLegend")}</p>
-      {empty ? <section className="rounded-sm border border-dashed border-border px-5 py-12 text-center"><h2 className="text-lg font-medium text-text-bright">{t("atlas.emptyTitle")}</h2><p className="mx-auto mt-2 max-w-lg text-sm">{t("atlas.emptyDescription")}</p><div aria-hidden="true" className="mx-auto mt-6 flex h-10 max-w-48 items-end justify-center gap-1 opacity-40">{[3, 5, 4, 8, 6, 10, 7, 9, 6, 11, 8, 10].map((height, index) => <span key={index} className="w-3 rounded-t bg-primary" style={{ height: height * 3 }} />)}</div></section> : <div className="grid items-stretch gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {saved.nodes.map((pin, index) => <AtlasCard key={pin.publicKey} pin={pin} range={saved.range} active={active} first={index === 0} last={index === saved.nodes.length - 1} heardOpen={heardKey === pin.publicKey} onHeardToggle={() => setHeardKey(value => value === pin.publicKey ? null : pin.publicKey)} onRemove={() => update(value => ({ ...value, nodes: value.nodes.filter(node => node.publicKey !== pin.publicKey) }))} onMove={direction => update(value => {
-          const nodes = [...value.nodes]; const from = nodes.findIndex(node => node.publicKey === pin.publicKey); const to = from + direction;
-          if (from < 0 || to < 0 || to >= nodes.length) return value;
-          [nodes[from], nodes[to]] = [nodes[to]!, nodes[from]!];
-          return { ...value, nodes };
-        })} {...actions} />)}
-      </div>}
-    </div>
-  </section>;
+      </div>
+    </section>
+  );
 }

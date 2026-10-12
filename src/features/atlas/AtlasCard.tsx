@@ -1,11 +1,19 @@
-import { Sparkline } from "../../components/Sparkline";
-import { useId } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getPacketDetail } from "../../api/client";
+import { isNotFound } from "../../api/client";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
+import { Badge } from "../../components/Badge";
+import { IataChip } from "../../components/IataChip";
+import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
-import { useTick } from "../../hooks/useTick";
-import { loadAtlasNode, REPORT_LIMIT, summarizeReports, type AtlasPin, type AtlasRange } from "./atlas";
+import { formatCount, formatHex } from "../../lib/formatters";
+import type { Observation } from "../../types/api";
+import { usePacketDetail } from "../packets/usePacketDetail";
+import { Card, StatCard } from "../stats/cards";
+import { useChartColors } from "../stats/chartTheme";
+import { average } from "../stats/signal";
+import { REPORT_LIMIT, type AtlasPin, type AtlasRange } from "./atlas";
+import { useAtlasNode } from "./useAtlas";
 
 export interface AtlasActions {
   onViewNode: (id: string) => void;
@@ -13,99 +21,211 @@ export interface AtlasActions {
   onAnalyzePacket: (hash: string, observationId?: number) => void;
 }
 
-function SignalMeter({ label, value, values, min, max, unit, color }: { label: string; value: number | null; values: (number|null)[]; min: number; max: number; unit: string; color: string }) {
-  const { t, i18n } = useTranslation();
-  const text = value === null ? t("atlas.unavailable") : `${value.toLocaleString(i18n.language, { maximumFractionDigits: 1 })} ${unit}`;
-  return <div className="min-w-0" role={value===null ? "img" : "meter"} aria-label={`${label}: ${text}`} aria-valuemin={min} aria-valuemax={max} aria-valuenow={value===null ? undefined : Math.max(min,Math.min(max,value))} aria-valuetext={text}>
-    <div className="flex justify-between gap-1 text-[10px]"><span>{label}</span><span className="font-mono font-semibold" style={{color}}>{value===null ? "—" : text}</span></div>
-    <Sparkline values={values} color={color} />
-  </div>;
+interface AtlasCardProps extends AtlasActions {
+  pin: AtlasPin;
+  range: AtlasRange;
+  active: boolean;
+  heardOpen: boolean;
+  onHeardToggle: () => void;
+  onRemove: () => void;
+  onMove: (direction: -1 | 1) => void;
+  onResolved: (id: string) => void;
+  first: boolean;
+  last: boolean;
 }
 
-export function AtlasCard({ pin, range, active, heardOpen, onHeardToggle, onRemove, onMove, first, last, onViewNode, onViewObserver, onAnalyzePacket }: AtlasActions & {
-  pin: AtlasPin; range: AtlasRange; active: boolean; heardOpen: boolean; onHeardToggle: () => void;
-  onRemove: () => void; onMove: (direction: -1 | 1) => void; first: boolean; last: boolean;
-}) {
-  const { t, i18n } = useTranslation();
-  const now = useTick(60_000);
-  const id = useId();
-  const query = useQuery({ queryKey: ["atlas-node", pin.publicKey], queryFn: ({ signal }) => loadAtlasNode(pin, signal), enabled: active, staleTime: 60_000, retry: false,
-    refetchInterval: q => q.state.error ? false : 60_000, refetchIntervalInBackground: false });
-  const node = query.data?.node;
-  const sample = summarizeReports(query.data?.page.items ?? [], range, now);
+// One pinned node, laid out as the Signal tab's KPI row so Atlas and Analytics read the same way.
+export function AtlasCard({
+  pin,
+  range,
+  active,
+  heardOpen,
+  onHeardToggle,
+  onRemove,
+  onMove,
+  onResolved,
+  first,
+  last,
+  onViewNode,
+  onViewObserver,
+  onAnalyzePacket,
+}: AtlasCardProps) {
+  const { t } = useTranslation();
+  const c = useChartColors();
+  const { query, node, sample, capped } = useAtlasNode(pin, range, active);
   const latest = sample.reports[0];
-  const heard = useQuery({ queryKey: ["packet-detail", latest?.packetHash], queryFn: ({ signal }) => getPacketDetail(latest!.packetHash, signal), enabled: active && heardOpen && !!latest, staleTime: 30_000, retry: false });
+  const heard = usePacketDetail(heardOpen && latest ? latest.packetHash : null);
   const detail = heard.data;
-  const correctOrigin = !detail || !detail.originPubkey || detail.originPubkey.toLowerCase() === pin.publicKey;
-  const observers = correctOrigin ? [...new Map([...(detail?.observations ?? [])].sort((a, b) => a.heardAt - b.heardAt).map(row => [row.observerId, row])).values()].sort((a, b) => b.heardAt - a.heardAt) : [];
-  const name = node?.name || pin.name || pin.publicKey.slice(0, 12).toUpperCase();
-  const number = (value: number) => value.toLocaleString(i18n.language, { maximumFractionDigits: 1 });
-  const maximum = Math.max(1, ...sample.bins);
-  const time = (value: number) => new Date(value).toLocaleString(i18n.language, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  const button = "min-h-8 rounded-sm border border-border bg-bg-raised px-3 text-xs hover:border-primary disabled:opacity-40 disabled:cursor-default";
-  return <article aria-label={name} className="flex min-w-0 h-full flex-col overflow-hidden rounded-sm border border-border bg-bg-surface shadow-sm">
-    <div className="h-1 shrink-0 bg-gradient-to-r from-primary via-secondary to-green" />
-    <div className="flex flex-1 flex-col gap-2 p-3">
-      <header className="min-h-12">
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="min-w-0 break-words text-sm font-semibold text-text-bright"><button type="button" disabled={!node} onClick={() => node && onViewNode(node.id)} className="text-left hover:underline">{name}</button></h2>
-          <span className="shrink-0 rounded-sm bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary">{t(`atlas.roles.${node?.nodeType ?? 0}`, { defaultValue: t("atlas.roles.0") })}</span>
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-          <span aria-hidden="true" className={`size-2 rounded-full ${node?.stale === false ? "bg-green" : node?.stale ? "bg-warn" : "bg-text-muted"}`} />
-          <span>{t(node?.stale === false ? "atlas.recent" : node?.stale ? "atlas.stale" : "atlas.freshnessUnknown")}</span>
-          {node && node.lastSeen > 0 && <><span aria-hidden="true">·</span><Timestamp value={node.lastSeen} /></>}
-        </div>
-      </header>
-      {query.isPending ? <p role="status">{t("common.loading")}</p> : query.isError && <p role="status" className="text-warn">{t(node ? "atlas.refreshFailed" : "atlas.nodeUnavailable")} <button type="button" className="min-h-11 underline" onClick={() => void query.refetch()}>{t("atlas.retry")}</button></p>}
-      {node && <>
-        <section aria-label={t("atlas.activity")}>
-          <div className="flex items-baseline justify-between gap-2"><span className="text-[11px]">{t("atlas.reports")}</span><strong className="font-mono text-base text-text-bright">{number(sample.reports.length)}</strong></div>
-          <svg role="img" aria-label={t("atlas.activityLabel", { count: sample.reports.length, range: t(`atlas.ranges.${range}`) })} viewBox={`0 0 ${sample.bins.length * 5} 40`} preserveAspectRatio="none" className="mt-1 h-8 w-full text-primary">
-            {sample.bins.map((count, index) => <rect key={index} x={index * 5} y={40 - Math.max(1, count / maximum * 38)} width="3.5" height={Math.max(1, count / maximum * 38)} rx="0" fill={count ? "currentColor" : "var(--color-border)"}><title>{time(sample.since + index * 3_600_000)}: {count}</title></rect>)}
-          </svg>
-          <div className="mt-1 flex justify-between text-[11px] text-text-muted"><span>{t(`atlas.ranges.${range}`)}</span><span>{t("atlas.now")}</span></div>
-          <p className="text-[10px] text-text-muted">{t("atlas.sample", { limit: REPORT_LIMIT })}</p>
-        </section>
-        <div className="grid grid-cols-2 gap-3">
-          <SignalMeter label={t("atlas.snr")} value={sample.snr} values={sample.snrBins} min={-30} max={30} unit="dB" color="var(--color-green)" />
-          <SignalMeter label={t("atlas.rssi")} value={sample.rssi} values={sample.rssiBins} min={-140} max={0} unit="dBm" color="var(--color-secondary)" />
-        </div>
-        {!sample.reports.length && <p className="text-xs">{t("atlas.noReports")}</p>}
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" className={button} aria-expanded={heardOpen} aria-controls={`${id}-heard`} onClick={onHeardToggle}>{t("atlas.heardBy")} <span aria-hidden="true">{heardOpen ? "−" : "+"}</span></button>
-          <button type="button" className={button} onClick={() => onViewNode(node.id)}>{t("atlas.openNode")} <span aria-hidden="true">↗</span></button>
-        </div>
-        {heardOpen && <section id={`${id}-heard`} aria-label={t("atlas.heardBy")} className="rounded-sm border border-border p-3 text-xs">
-          <p className="mb-2 text-text-bright">{t("atlas.latestAdvert")}</p>
-          {!latest ? <p>{t("atlas.noReports")}</p> : heard.isPending ? <p role="status">{t("common.loading")}</p> : heard.isError || !correctOrigin ? <p>{t("atlas.heardUnavailable")}</p> : <>
-            <p className="mb-2">{t("atlas.observers", { count: observers.length })}</p>
-            <ul className="max-h-44 overflow-y-auto">{observers.map(row => <li key={row.observerId} className="flex items-center justify-between gap-2 border-t border-border-subtle"><button type="button" className="min-h-11 min-w-0 break-words text-left text-primary hover:underline" onClick={() => onViewObserver(row.observerId)}>{row.observerName || row.observerId.slice(0, 8)}</button><span className="shrink-0 font-mono">{row.iata}</span></li>)}</ul>
-            <button type="button" className="mt-2 min-h-11 text-primary underline" onClick={() => onAnalyzePacket(latest.packetHash, latest.id)}>{t("atlas.openAdvert")}</button>
-          </>}
-        </section>}
-        <details className="text-xs">
-          <summary className="min-h-7 cursor-pointer content-center text-text-normal">{t("atlas.statistics")}</summary>
-          <div className="space-y-3 pt-2">
-            <p>{t("atlas.definition")}</p>
-            <p>{t("atlas.signalDefinition")}</p>
-            {query.data?.page.hasMore && <p className="text-warn">{t("atlas.capped")}</p>}
-            <dl className="grid grid-cols-2 gap-2">
-              <dt>{t("atlas.hops")}</dt><dd className="text-right font-mono">{sample.hops === null ? "—" : number(sample.hops)}</dd>
-              <dt>{t("atlas.neighbors")}</dt><dd className="text-right font-mono">{number(node.knownNeighborCount)}</dd>
-              <dt>{t("atlas.radio")}</dt><dd className="break-words text-right">{node.radio || "—"}</dd>
-              <dt>{t("atlas.scope")}</dt><dd className="break-words text-right">{node.defaultScope || "—"}</dd>
-            </dl>
-            <p className="break-all font-mono text-[10px]">{node.publicKey}</p>
-            <details><summary className="min-h-7 cursor-pointer content-center">{t("atlas.chartValues")}</summary><div className="max-h-40 overflow-auto"><table className="w-full"><thead><tr><th className="text-left">{t("atlas.hour")}</th><th className="text-right">{t("atlas.reports")}</th></tr></thead><tbody>{sample.bins.map((count, index) => <tr key={index}><td>{time(sample.since + index * 3_600_000)}</td><td className="text-right">{count}</td></tr>)}</tbody></table></div></details>
-            <p>{t("atlas.updated")} <Timestamp value={query.dataUpdatedAt} /></p>
-          </div>
-        </details>
-      </>}
-      <details className="mt-auto border-t border-border-subtle pt-1 text-xs">
-        <summary className="min-h-7 cursor-pointer content-center">{t("atlas.manage")}</summary>
-        <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} disabled={first} onClick={() => onMove(-1)}>{t("atlas.earlier")}</button><button type="button" className={button} disabled={last} onClick={() => onMove(1)}>{t("atlas.later")}</button><button type="button" className={`${button} text-danger`} onClick={onRemove}>{t("atlas.remove")}</button></div>
-      </details>
+  // Never show another node's observers if the packet record resolved to a different origin.
+  const sameOrigin = !detail?.originPubkey || detail.originPubkey.toLowerCase() === pin.publicKey;
+  const observers = useMemo(() => {
+    if (!detail || !sameOrigin) return [];
+    const latestByObserver = new Map<string, Observation>();
+    for (const row of detail.observations) {
+      const previous = latestByObserver.get(row.observerId);
+      if (!previous || row.heardAt > previous.heardAt) latestByObserver.set(row.observerId, row);
+    }
+    return [...latestByObserver.values()].sort((a, b) => b.heardAt - a.heardAt);
+  }, [detail, sameOrigin]);
+
+  // A pin recovered under a new server ID is saved back so the next poll skips the key lookup.
+  useEffect(() => {
+    if (node && node.id !== pin.id) onResolved(node.id);
+  }, [node, pin.id, onResolved]);
+
+  const name = node?.name || pin.name;
+  const hours = sample.counts.length;
+  const activeHours = sample.present.filter(Boolean).length;
+
+  const title = (
+    <span className="flex min-w-0 flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={!node}
+        onClick={() => node && onViewNode(node.id)}
+        className={`min-w-0 max-w-full truncate normal-case disabled:text-text-muted disabled:no-underline ${
+          name ? "text-primary hover:underline" : "italic text-text-dim"
+        }`}
+      >
+        {name || formatHex(node?.id ?? pin.id)}
+      </button>
+      {node && <Badge variant="default">{node.nodeTypeName}</Badge>}
+      {node?.stale === false && <Badge variant="live">{t("observerPage.statusRecent")}</Badge>}
+      {node?.stale === true && <Badge variant="stale">{t("observerPage.statusStale")}</Badge>}
+    </span>
+  );
+
+  const actions = (
+    <div className="ml-auto flex shrink-0 items-center gap-1">
+      <button
+        type="button"
+        className={ACTION_BUTTON_CLASS}
+        aria-expanded={heardOpen}
+        disabled={!node}
+        onClick={onHeardToggle}
+      >
+        {t("atlas.heardBy")}
+      </button>
+      <button
+        type="button"
+        className={ACTION_BUTTON_CLASS}
+        aria-label={t("atlas.moveEarlier")}
+        disabled={first}
+        onClick={() => onMove(-1)}
+      >
+        ◀
+      </button>
+      <button
+        type="button"
+        className={ACTION_BUTTON_CLASS}
+        aria-label={t("atlas.moveLater")}
+        disabled={last}
+        onClick={() => onMove(1)}
+      >
+        ▶
+      </button>
+      <button type="button" className={ACTION_BUTTON_CLASS} onClick={onRemove}>
+        {t("atlas.remove")}
+      </button>
     </div>
-  </article>;
+  );
+
+  return (
+    <Card title={title} right={actions} wrap>
+      {query.isPending && <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>}
+      {query.isError && isNotFound(query.error) && (
+        <p role="alert" className="text-sm text-text-muted">{t("nodeDetail.notFound")}</p>
+      )}
+      {query.isError && !isNotFound(query.error) && (
+        <p role="alert" className="text-sm text-danger">
+          {t("common.loadFailed")}{" "}
+          <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => void query.refetch()}>
+            {t("observerPage.retry")}
+          </button>
+        </p>
+      )}
+      {node && (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              label={t("signal.receptions")}
+              value={formatCount(sample.reports.length)}
+              accent={c.primary}
+              spark={sample.counts}
+              markPeak
+              sublabel={capped ? t("atlas.sampleCapped", { limit: REPORT_LIMIT }) : t(`atlas.ranges.${range}`)}
+            />
+            <StatCard
+              label={t("signal.meanSnr")}
+              value={average(sample.snr, "dB")}
+              accent={c.secondary}
+              spark={sample.snrHourly}
+            />
+            <StatCard
+              label={t("signal.meanRssi")}
+              value={average(sample.rssi, "dBm")}
+              accent={c.green}
+              spark={sample.rssiHourly}
+            />
+            <StatCard
+              label={t("signal.hoursWithRecords")}
+              value={`${activeHours}/${hours}`}
+              accent={c.warn}
+              presence={sample.present}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
+            {node.lastSeen > 0 && (
+              <span>
+                {t("atlas.lastSeen")} <Timestamp value={node.lastSeen} />
+              </span>
+            )}
+            <span>
+              {t("atlas.meanHops")} {average(sample.hops)}
+            </span>
+            <span>{t("nodeDetail.neighborsCount", { count: node.knownNeighborCount })}</span>
+            <InfoTip text={[t("atlas.sampleHelp", { limit: REPORT_LIMIT }), capped && t("atlas.cappedHelp")]} />
+          </div>
+          {heardOpen && (
+            <div className="border-t border-border-subtle pt-2 font-mono text-xs">
+              {!latest ? (
+                <p className="text-text-muted">{t("atlas.noReports")}</p>
+              ) : heard.isPending ? (
+                <p role="status" className="text-text-muted">{t("common.loading")}</p>
+              ) : heard.isError || !sameOrigin ? (
+                <p className="text-text-muted">{t("atlas.heardUnavailable")}</p>
+              ) : (
+                <>
+                  <p className="mb-1 text-text-muted">
+                    {t("atlas.observers", { count: observers.length })} <Timestamp value={latest.heardAt} />
+                  </p>
+                  <ul className="max-h-44 overflow-y-auto">
+                    {observers.map((row) => (
+                      <li key={row.observerId} className="flex items-center justify-between gap-2 border-t border-border-subtle py-1">
+                        <button
+                          type="button"
+                          className="min-w-0 truncate text-left text-primary hover:underline"
+                          onClick={() => onViewObserver(row.observerId)}
+                        >
+                          {row.observerName || formatHex(row.observerId)}
+                        </button>
+                        <IataChip className="shrink-0">{row.iata}</IataChip>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className={`${ACTION_BUTTON_CLASS} mt-2`}
+                    onClick={() => onAnalyzePacket(latest.packetHash, latest.id)}
+                  >
+                    {t("atlas.openPacket")}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
 }
