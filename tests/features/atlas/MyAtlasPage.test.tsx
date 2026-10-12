@@ -145,9 +145,9 @@ describe("My Atlas", () => {
     const next = await card("Second");
     fireEvent.click(within(first).getByRole("button", { name: "Heard by" }));
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
-    expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-expanded", "false");
-    expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-expanded", "true");
-    fireEvent.click(within(first).getByRole("button", { name: "Move later" }));
+    expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(next).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder" }), { key: "ArrowRight" });
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).nodes[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");

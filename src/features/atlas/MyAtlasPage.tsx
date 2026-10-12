@@ -15,6 +15,7 @@ import { Card } from "../stats/cards";
 import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions } from "./AtlasCard";
 import { ATLAS_LIMIT, parseAtlas, type AtlasRange } from "./atlas";
+import { useCardDrag } from "./useCardDrag";
 import { useSavedAtlas } from "./useSavedAtlas";
 
 const RANGES: AtlasRange[] = ["24h", "3d"];
@@ -66,15 +67,19 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
     update((value) => ({ ...value, nodes: value.nodes.filter((node) => node.publicKey !== publicKey) }));
   const relink = (publicKey: string, id: string) =>
     update((value) => ({ ...value, nodes: value.nodes.map((node) => (node.publicKey === publicKey ? { ...node, id } : node)) }));
-  const move = (publicKey: string, direction: -1 | 1) =>
+  const reorder = (from: number, to: number) =>
     update((value) => {
       const nodes = [...value.nodes];
-      const from = nodes.findIndex((node) => node.publicKey === publicKey);
-      const to = from + direction;
-      if (from < 0 || to < 0 || to >= nodes.length) return value;
-      [nodes[from], nodes[to]] = [nodes[to]!, nodes[from]!];
+      const [moved] = nodes.splice(from, 1);
+      if (!moved || to < 0 || to >= value.nodes.length) return value;
+      nodes.splice(to, 0, moved);
       return { ...value, nodes };
     });
+  const drag = useCardDrag(saved.nodes.length, reorder);
+  const cardProps = (index: number) => {
+    const props = drag.cardProps(index);
+    return { ...props, className: `min-w-0 ${props.className ?? ""}` };
+  };
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("tabs.MyAtlas")}>
@@ -164,18 +169,16 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
           ) : (
             <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
               {saved.nodes.map((pin, index) => (
-                <div key={pin.publicKey} data-atlas-card className="min-w-0">
+                <div key={pin.publicKey} data-atlas-card {...cardProps(index)}>
                   <AtlasCard
                     pin={pin}
                     range={saved.range}
                     active={active}
-                    first={index === 0}
-                    last={index === saved.nodes.length - 1}
                     heardOpen={heardKey === pin.publicKey}
                     onHeardToggle={() => setHeardKey((key) => (key === pin.publicKey ? null : pin.publicKey))}
                     onRemove={() => remove(pin.publicKey)}
-                    onMove={(direction) => move(pin.publicKey, direction)}
                     onResolved={(id) => relink(pin.publicKey, id)}
+                    handle={drag.handleProps(index)}
                     {...actions}
                   />
                 </div>

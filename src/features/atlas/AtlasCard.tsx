@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
@@ -14,6 +14,7 @@ import { useChartColors } from "../stats/chartTheme";
 import { average } from "../stats/signal";
 import { REPORT_LIMIT, type AtlasPin, type AtlasRange } from "./atlas";
 import { useAtlasNode } from "./useAtlas";
+import type { CardHandleProps } from "./useCardDrag";
 
 export interface AtlasActions {
   onViewNode: (id: string) => void;
@@ -28,10 +29,8 @@ interface AtlasCardProps extends AtlasActions {
   heardOpen: boolean;
   onHeardToggle: () => void;
   onRemove: () => void;
-  onMove: (direction: -1 | 1) => void;
   onResolved: (id: string) => void;
-  first: boolean;
-  last: boolean;
+  handle: Partial<CardHandleProps>;
 }
 
 // One pinned node, laid out as the Signal tab's KPI row so Atlas and Analytics read the same way.
@@ -42,10 +41,8 @@ export function AtlasCard({
   heardOpen,
   onHeardToggle,
   onRemove,
-  onMove,
   onResolved,
-  first,
-  last,
+  handle,
   onViewNode,
   onViewObserver,
   onAnalyzePacket,
@@ -77,6 +74,14 @@ export function AtlasCard({
   const hours = sample.counts.length;
   const activeHours = sample.present.filter(Boolean).length;
 
+  // The list view holds the tiles' height so flipping never resizes the card.
+  const body = useRef<HTMLDivElement>(null);
+  const [held, setHeld] = useState<number>();
+  const toggleHeard = () => {
+    if (!heardOpen) setHeld(body.current?.offsetHeight);
+    onHeardToggle();
+  };
+
   const title = (
     <span className="flex min-w-0 flex-wrap items-center gap-2">
       <button
@@ -100,32 +105,26 @@ export function AtlasCard({
       <button
         type="button"
         className={ACTION_BUTTON_CLASS}
-        aria-expanded={heardOpen}
+        aria-pressed={heardOpen}
         disabled={!node}
-        onClick={onHeardToggle}
+        onClick={toggleHeard}
       >
-        {t("atlas.heardBy")}
-      </button>
-      <button
-        type="button"
-        className={ACTION_BUTTON_CLASS}
-        aria-label={t("atlas.moveEarlier")}
-        disabled={first}
-        onClick={() => onMove(-1)}
-      >
-        ◀
-      </button>
-      <button
-        type="button"
-        className={ACTION_BUTTON_CLASS}
-        aria-label={t("atlas.moveLater")}
-        disabled={last}
-        onClick={() => onMove(1)}
-      >
-        ▶
+        {t(heardOpen ? "tabs.Analytics" : "atlas.heardBy")}
       </button>
       <button type="button" className={ACTION_BUTTON_CLASS} onClick={onRemove}>
         {t("atlas.remove")}
+      </button>
+      <button
+        type="button"
+        className={`${ACTION_BUTTON_CLASS} cursor-grab touch-none active:cursor-grabbing`}
+        aria-label={t("atlas.dragToReorder")}
+        {...handle}
+      >
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+          <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
+          <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
+          <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
+        </svg>
       </button>
     </div>
   );
@@ -144,8 +143,8 @@ export function AtlasCard({
           </button>
         </p>
       )}
-      {node && (
-        <div className="flex flex-col gap-3">
+      {node && !heardOpen && (
+        <div ref={body} className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <StatCard
               label={t("signal.receptions")}
@@ -186,43 +185,43 @@ export function AtlasCard({
             <span>{t("nodeDetail.neighborsCount", { count: node.knownNeighborCount })}</span>
             <InfoTip text={[t("atlas.sampleHelp", { limit: REPORT_LIMIT }), capped && t("atlas.cappedHelp")]} />
           </div>
-          {heardOpen && (
-            <div className="border-t border-border-subtle pt-2 font-mono text-xs">
-              {!latest ? (
-                <p className="text-text-muted">{t("atlas.noReports")}</p>
-              ) : heard.isPending ? (
-                <p role="status" className="text-text-muted">{t("common.loading")}</p>
-              ) : heard.isError || !sameOrigin ? (
-                <p className="text-text-muted">{t("atlas.heardUnavailable")}</p>
-              ) : (
-                <>
-                  <p className="mb-1 text-text-muted">
-                    {t("atlas.observers", { count: observers.length })} <Timestamp value={latest.heardAt} />
-                  </p>
-                  <ul className="max-h-44 overflow-y-auto">
-                    {observers.map((row) => (
-                      <li key={row.observerId} className="flex items-center justify-between gap-2 border-t border-border-subtle py-1">
-                        <button
-                          type="button"
-                          className="min-w-0 truncate text-left text-primary hover:underline"
-                          onClick={() => onViewObserver(row.observerId)}
-                        >
-                          {row.observerName || formatHex(row.observerId)}
-                        </button>
-                        <IataChip className="shrink-0">{row.iata}</IataChip>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    className={`${ACTION_BUTTON_CLASS} mt-2`}
-                    onClick={() => onAnalyzePacket(latest.packetHash, latest.id)}
-                  >
-                    {t("atlas.openPacket")}
-                  </button>
-                </>
-              )}
-            </div>
+        </div>
+      )}
+      {node && heardOpen && (
+        <div className="flex flex-col font-mono text-xs" style={{ minHeight: held }}>
+          {!latest ? (
+            <p className="text-text-muted">{t("atlas.noReports")}</p>
+          ) : heard.isPending ? (
+            <p role="status" className="text-text-muted">{t("common.loading")}</p>
+          ) : heard.isError || !sameOrigin ? (
+            <p className="text-text-muted">{t("atlas.heardUnavailable")}</p>
+          ) : (
+            <>
+              <p className="mb-1 text-text-muted">
+                {t("atlas.observers", { count: observers.length })} <Timestamp value={latest.heardAt} />
+              </p>
+              <ul className="min-h-0 flex-1 overflow-y-auto">
+                {observers.map((row) => (
+                  <li key={row.observerId} className="flex items-center justify-between gap-2 border-t border-border-subtle py-1">
+                    <button
+                      type="button"
+                      className="min-w-0 truncate text-left text-primary hover:underline"
+                      onClick={() => onViewObserver(row.observerId)}
+                    >
+                      {row.observerName || formatHex(row.observerId)}
+                    </button>
+                    <IataChip className="shrink-0">{row.iata}</IataChip>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className={`${ACTION_BUTTON_CLASS} mt-2 self-start`}
+                onClick={() => onAnalyzePacket(latest.packetHash, latest.id)}
+              >
+                {t("atlas.openPacket")}
+              </button>
+            </>
           )}
         </div>
       )}

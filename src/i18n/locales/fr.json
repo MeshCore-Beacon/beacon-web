@@ -993,8 +993,7 @@
       "noReports": "Aucune observation sur cette période.",
       "heardUnavailable": "Détails du paquet indisponibles ou expirés.",
       "openPacket": "Ouvrir le paquet",
-      "moveEarlier": "Déplacer avant",
-      "moveLater": "Déplacer après",
+      "dragToReorder": "Glisser pour réordonner",
       "remove": "Retirer"
     }
   }

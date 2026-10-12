@@ -955,8 +955,7 @@
       "noReports": "No observations in this window.",
       "heardUnavailable": "Packet details are unavailable or expired.",
       "openPacket": "Open packet",
-      "moveEarlier": "Move earlier",
-      "moveLater": "Move later",
+      "dragToReorder": "Drag to reorder",
       "remove": "Remove"
     }
   }

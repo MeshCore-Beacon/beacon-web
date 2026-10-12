@@ -30,7 +30,6 @@ const handlers = {
   onAnalyzePacket: vi.fn(),
   onHeardToggle: vi.fn(),
   onRemove: vi.fn(),
-  onMove: vi.fn(),
   onResolved: vi.fn(),
 };
 let client: QueryClient;
@@ -38,7 +37,7 @@ let client: QueryClient;
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
-      <AtlasCard pin={pin} range="24h" active heardOpen={false} first={false} last={false} {...handlers} {...overrides} />
+      <AtlasCard pin={pin} range="24h" active heardOpen={false} handle={{}} {...handlers} {...overrides} />
     </QueryClientProvider>,
   );
 }
@@ -125,23 +124,34 @@ describe("AtlasCard", () => {
     expect(screen.getByText("24h")).toBeInTheDocument();
   });
 
-  it("loads heard-by only when open, dedupes observers and links to the packet", async () => {
+  it("flips the body between the tiles and the heard-by list instead of growing the card", async () => {
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 240 });
     const view = mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(api.getPacketDetail).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /Move/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Heard by" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(toggle);
+    expect(handlers.onHeardToggle).toHaveBeenCalled();
     view.rerender(
       <QueryClientProvider client={client}>
-        <AtlasCard pin={pin} range="24h" active heardOpen first={false} last={false} {...handlers} />
+        <AtlasCard pin={pin} range="24h" active heardOpen handle={{}} {...handlers} />
       </QueryClientProvider>,
     );
     const summary = await screen.findByText(/2 observers heard the latest packet/);
     expect(summary).toHaveTextContent(/ago$/);
+    expect(screen.getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
+    expect(summary.parentElement).toHaveStyle({ minHeight: "240px" });
     expect(screen.getAllByRole("button", { name: "Home listener" })).toHaveLength(1);
     expect(screen.getAllByText("YKF")[0]).toHaveClass("bg-primary/6");
     fireEvent.click(screen.getByRole("button", { name: "Home listener" }));
     expect(handlers.onViewObserver).toHaveBeenCalledWith("observer-a");
     fireEvent.click(screen.getByRole("button", { name: "Open packet" }));
     expect(handlers.onAnalyzePacket).toHaveBeenCalledWith(report.packetHash, 7);
+    delete (HTMLElement.prototype as { offsetHeight?: unknown }).offsetHeight;
   });
 
   it("hides observer links for a different origin identity and explains expired packets", async () => {
@@ -151,13 +161,11 @@ describe("AtlasCard", () => {
     expect(screen.queryByRole("button", { name: "Open packet" })).not.toBeInTheDocument();
   });
 
-  it("keeps an unavailable node removable and movable", async () => {
+  it("keeps an unavailable node removable and draggable", async () => {
     vi.mocked(api.getNode).mockRejectedValue(new Error("down"));
-    mount({ first: true });
+    mount({ handle: { "data-grip": "yes" } as Record<string, string> });
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load");
-    expect(screen.getByRole("button", { name: "Move earlier" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Move later" }));
-    expect(handlers.onMove).toHaveBeenCalledWith(1);
+    expect(screen.getByRole("button", { name: "Drag to reorder" })).toHaveAttribute("data-grip", "yes");
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(handlers.onRemove).toHaveBeenCalled();
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
