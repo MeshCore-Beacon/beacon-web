@@ -17,10 +17,10 @@ export function PathsTab({ range }: { range: StatsRange }) {
   const data = loading || query.isError ? undefined : query.data;
   const hours = useMemo(() => pathHours(data), [data]);
   const categories = useMemo(() => [
-    { name: t("paths.categories.hashed"), value: data?.hashed ?? 0, color: c.primary },
+    { name: t("paths.categories.hashed"), value: data?.hashed ?? 0, color: c.series[0]! },
     { name: t("paths.categories.empty"), value: data?.empty ?? 0, color: c.textDim },
-    { name: t("paths.categories.trace"), value: data?.trace ?? 0, color: c.warn },
-    { name: t("paths.categories.unclassified"), value: data?.unclassified ?? 0, color: c.secondary },
+    { name: t("paths.categories.trace"), value: data?.trace ?? 0, color: c.series[3]! },
+    { name: t("paths.categories.unclassified"), value: data?.unclassified ?? 0, color: c.series[2]! },
   ], [data, c, t]);
   const charts = useMemo(() => {
     const width = donutOption((data?.hashWidths ?? []).map((bin, i) => ({ name: t("paths.hashWidth", { count: bin.bytes }), value: bin.receptions, color: c.series[i] })), c, formatCount(data?.hashed ?? 0), t("paths.hashPathsCenter"));
@@ -49,10 +49,10 @@ export function PathsTab({ range }: { range: StatsRange }) {
     <SectionInfo text={[t("paths.subtitle"), t("paths.measurement"), data && t("paths.window", { since: formatUtc(data.since), until: formatUtc(data.until) })]} />
     {query.isError && <p role="alert" className="text-sm text-danger">{t("paths.error")}</p>}
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label={t("paths.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.primary} sublabel={t(`stats.ranges.${range}`)} spark={sparks.receptions} />
-      <StatCard label={t("paths.withHashPaths")} value={data ? formatCount(data.hashed) : "—"} accent={c.green} spark={sparks.hashed} />
-      <StatCard label={t("paths.multiByteShare")} value={data?.hashed ? `${(100 * multi / data.hashed).toFixed(1)}%` : "—"} accent={c.secondary} spark={sparks.multiShare} />
-      <StatCard label={t("paths.mostEntries")} value={largest ?? "—"} accent={c.warn} spark={sparks.maxEntries} />
+      <StatCard label={t("paths.receptions")} value={data ? formatCount(data.receptions) : "—"} accent={c.series[0]!} sublabel={t(`stats.ranges.${range}`)} spark={sparks.receptions} />
+      <StatCard label={t("paths.withHashPaths")} value={data ? formatCount(data.hashed) : "—"} accent={c.series[1]!} spark={sparks.hashed} />
+      <StatCard label={t("paths.multiByteShare")} value={data?.hashed ? `${(100 * multi / data.hashed).toFixed(1)}%` : "—"} accent={c.series[2]!} spark={sparks.multiShare} />
+      <StatCard label={t("paths.mostEntries")} value={largest ?? "—"} accent={c.series[3]!} spark={sparks.maxEntries} />
     </div>
     <div className="grid min-w-0 grid-cols-1 gap-3.5 lg:grid-cols-2">
       <ChartCard title={t("paths.widthTitle")} option={charts.width} height={260} isEmpty={!data?.hashed} {...state} />

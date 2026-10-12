@@ -40,6 +40,46 @@ export interface Node extends NodeSummary {
   clockDriftSeconds?: number;
   clockOutOfSync?: boolean;
   clockCheckedAt?: number; // epoch ms
+  // MeshMapper's record for this repeater; node detail only, absent when the import is off or unmatched.
+  meshmapper?: MeshMapperRepeater;
+}
+
+// Imported from MeshMapper. Times are epoch ms; every string is admin-entered free text.
+export interface MeshMapperRepeater {
+  iata?: string;
+  fetchedAt: number;
+  site: MeshMapperSite;
+  carpeater: boolean;
+  admins: string[];
+  scopes: MeshMapperScope[];
+  scopesCheckedAt?: number; // set with empty scopes = it answered with none; absent = never asked
+  defaultScope?: MeshMapperDefaultScope; // separate from Node.defaultScope (Beacon's own match)
+}
+
+export interface MeshMapperSite {
+  power?: string;
+  hardware?: string;
+  antenna?: string;
+  heightM?: number; // above ground
+  heightAslM?: number;
+  powerSource?: "mains" | "solar" | "battery" | "poe";
+  notes?: string;
+}
+
+export interface MeshMapperScope {
+  scope: string;
+  observedAt?: number;
+  observedPackets?: number;
+  proof?: "multibyte" | "floor";
+  reportedAt?: number;
+  uploadedAt?: number;
+}
+
+export interface MeshMapperDefaultScope {
+  name?: string; // only when state is "named"
+  state: "named" | "unknown" | "none";
+  updatedAt?: number;
+  source?: "advert" | "reported";
 }
 
 // First-hop neighbor of a node, from GET /nodes/{id}/neighbors (bare array, no pagination).

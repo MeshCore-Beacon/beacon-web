@@ -126,10 +126,10 @@ export function MeshTab({ range, onSelectObserver }: MeshTabProps) {
   return (
     <div className="mx-auto flex w-full min-w-0 max-w-[1200px] flex-col gap-3.5 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent="var(--color-primary)" value={formatCount(kpis?.uniquePackets)} spark={sparks.packets} />
-        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent="var(--color-green)" value={formatCount(kpis?.observations)} spark={sparks.observations} />
-        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent="var(--color-secondary)" value={kpis?.activeObservers ?? "—"} spark={sparks.observers} />
-        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent="var(--color-warn)" value={kpis?.activeIatas ?? "—"} spark={sparks.iatas} />
+        <StatCard label={t("mesh.totalPackets")} sublabel={ovWindow} accent={colors.series[0]!} value={formatCount(kpis?.uniquePackets)} spark={sparks.packets} />
+        <StatCard label={t("mesh.observations")} sublabel={ovWindow} accent={colors.series[1]!} value={formatCount(kpis?.observations)} spark={sparks.observations} />
+        <StatCard label={t("mesh.activeObservers")} sublabel={ovWindow} accent={colors.series[2]!} value={kpis?.activeObservers ?? "—"} spark={sparks.observers} />
+        <StatCard label={t("mesh.activeIatas")} sublabel={ovWindow} accent={colors.series[3]!} value={kpis?.activeIatas ?? "—"} spark={sparks.iatas} />
       </div>
 
       <ChartCard

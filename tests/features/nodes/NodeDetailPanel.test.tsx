@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { NodeDetailPanel } from "../../../src/features/nodes/NodeDetailPanel";
 import i18n from "../../../src/i18n";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../../src/api/client";
-import type { Node, NodeNeighbor } from "../../../src/features/nodes/types";
+import type { MeshMapperRepeater, Node, NodeNeighbor } from "../../../src/features/nodes/types";
 
 vi.mock("../../../src/api/client", () => ({
   getNode: vi.fn(),
@@ -45,8 +45,8 @@ function renderPanel(onViewNode = vi.fn()) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  render(<NodeDetailPanel nodeId="node-self" onClose={vi.fn()} onViewObserver={vi.fn()} onViewNode={onViewNode} />, { wrapper });
-  return { onViewNode };
+  const result = render(<NodeDetailPanel nodeId="node-self" onClose={vi.fn()} onViewObserver={vi.fn()} onViewNode={onViewNode} />, { wrapper });
+  return { ...result, onViewNode };
 }
 
 beforeEach(() => {
@@ -225,5 +225,119 @@ describe("NodeDetailPanel in French", () => {
     await act(() => i18n.changeLanguage("fr"));
     renderPanel();
     expect(await screen.findByText("Possiblement étranger")).toBeInTheDocument();
+  });
+});
+
+describe("NodeDetailPanel MeshMapper", () => {
+  const meshmapper: MeshMapperRepeater = {
+    iata: "YOW",
+    fetchedAt: Date.now() - 60_000,
+    site: {
+      power: "1W", hardware: "RAK4631", antenna: "5.8 dBi fibreglass",
+      heightM: 12, heightAslM: 341.6, powerSource: "solar",
+      notes: "On the fire tower, east face",
+    },
+    carpeater: false,
+    admins: ["MrAlders0n"],
+    scopes: [
+      { scope: "yow", observedAt: Date.now() - 3_600_000, observedPackets: 37, proof: "multibyte", reportedAt: Date.now() - 7_200_000 },
+    ],
+    scopesCheckedAt: Date.now() - 7_200_000,
+    defaultScope: { name: "#yow", state: "named", updatedAt: Date.now() - 180_000, source: "advert" },
+  };
+  const empty: MeshMapperRepeater = { fetchedAt: 1, site: {}, carpeater: false, admins: [], scopes: [] };
+
+  it("shows MeshMapper's site details, admins and scopes", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper });
+    renderPanel();
+
+    expect(await screen.findByText("MeshMapper")).toBeInTheDocument();
+    expect(screen.getByText("RAK4631")).toBeInTheDocument();
+    expect(screen.getByText("1W")).toBeInTheDocument();
+    expect(screen.getByText("5.8 dBi fibreglass")).toBeInTheDocument();
+    expect(screen.getByText("Solar")).toBeInTheDocument();
+    expect(screen.getByText("12 m AGL · 341.6 m ASL")).toBeInTheDocument();
+    expect(screen.getByText("MrAlders0n")).toBeInTheDocument();
+    expect(screen.getByText("#yow")).toBeInTheDocument();
+    expect(screen.getByText("yow")).toBeInTheDocument();
+    expect(screen.getByText("observed 37 packets · reported")).toBeInTheDocument();
+    expect(screen.getByText("On the fire tower, east face")).toBeInTheDocument();
+    expect(screen.getByText(/From MeshMapper/)).toBeInTheDocument();
+    expect(screen.queryByText("CARpeater")).not.toBeInTheDocument();
+  });
+
+  it("never shows MeshMapper's proof type", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...empty, scopes: [{ scope: "yow", observedPackets: 3, proof: "floor" }] } });
+    renderPanel();
+    expect(await screen.findByText("observed 3 packets")).toBeInTheDocument();
+    expect(screen.queryByText(/floor/)).not.toBeInTheDocument();
+  });
+
+  it("describes a scope confirmed only by report or upload", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...empty, scopes: [{ scope: "yow", reportedAt: 1, uploadedAt: 2 }] } });
+    renderPanel();
+    expect(await screen.findByText("reported · uploaded")).toBeInTheDocument();
+  });
+
+  it("shows height above ground alone when sea level is missing", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...empty, site: { heightM: 12 } } });
+    renderPanel();
+    expect(await screen.findByText("12 m AGL")).toBeInTheDocument();
+  });
+
+  it("formats heights in the reader's locale", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...empty, site: { heightM: 12.25, heightAslM: 341.6 } } });
+    await act(() => i18n.changeLanguage("fr"));
+    renderPanel();
+    expect(await screen.findByText("12,3 m AGL · 341,6 m ASL")).toBeInTheDocument();
+    await act(() => i18n.changeLanguage("en"));
+  });
+
+  it("is hidden when the node has no MeshMapper record", async () => {
+    renderPanel();
+    await screen.findByText("Self Node");
+    expect(screen.queryByText("MeshMapper")).not.toBeInTheDocument();
+    expect(screen.queryByText(/From MeshMapper/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["nothing set", empty],
+    ["only a CARpeater flag", { ...empty, carpeater: true }],
+    ["only a sea-level height", { ...empty, site: { heightAslM: 341.6 } }],
+  ])("is hidden when the record has %s", async (_, mm) => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: mm });
+    renderPanel();
+    await screen.findByText("Self Node");
+    expect(screen.queryByText(/From MeshMapper/)).not.toBeInTheDocument();
+  });
+
+  it("shows an unknown default scope and an answered-but-empty scope list", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...empty, scopesCheckedAt: 1, defaultScope: { state: "unknown" } } });
+    renderPanel();
+    expect(await screen.findByText("Unknown")).toBeInTheDocument();
+    expect(screen.getByText("None confirmed")).toBeInTheDocument();
+  });
+
+  it("shows a default scope of none", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...empty, defaultScope: { state: "none" } } });
+    renderPanel();
+    expect(await screen.findByText("None")).toBeInTheDocument();
+  });
+
+  it("badges a CARpeater next to the name, reachable by keyboard", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...meshmapper, carpeater: true } });
+    renderPanel();
+    const badge = await screen.findByText("CARpeater");
+    expect(badge.className).not.toContain("uppercase");
+    const trigger = badge.parentElement!;
+    expect(trigger).toHaveAttribute("tabindex", "0");
+    expect(trigger).toHaveAccessibleDescription("Mobile repeater in a vehicle: its position moves.");
+  });
+
+  it("renders admin-entered markup as plain text", async () => {
+    mockGetNode.mockResolvedValue({ ...node, meshmapper: { ...meshmapper, site: { notes: "<b>bold</b>" } } });
+    const { container } = renderPanel();
+    expect(await screen.findByText("<b>bold</b>")).toBeInTheDocument();
+    expect(container.querySelector("b")).toBeNull();
   });
 });

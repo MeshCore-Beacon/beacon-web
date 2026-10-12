@@ -815,7 +815,7 @@
       "flood": "Flood",
       "direct": "Direkt",
       "topAdvertisers": "Mest aktiva annonsörer · {{range}}",
-      "floodDirect": "flood · direkt",
+      "sortBy": "Sortera annonsörer efter",
       "noAdvertisers": "Inga annonsörer",
       "topTalkers": "Mest aktiva sändare · {{range}}",
       "byName": "efter namn"

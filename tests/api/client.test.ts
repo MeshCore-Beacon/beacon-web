@@ -431,15 +431,16 @@ describe("stats endpoints", () => {
     expect(url.searchParams.get("limit")).toBe("15");
   });
 
-  it("hits /stats/top-advertisers with iatas/since/limit", async () => {
+  it("hits /stats/top-advertisers with iatas/since/sort/limit", async () => {
     const getUrl = mockFetchOnce([]);
 
-    await getTopAdvertisers(["YOW", "YYZ"], 1700000000000, 10);
+    await getTopAdvertisers(["YOW", "YYZ"], 1700000000000, "direct", 10);
 
     const url = new URL(getUrl());
     expect(url.pathname).toContain("/stats/top-advertisers");
     expect(url.searchParams.get("iatas")).toBe("YOW,YYZ");
     expect(url.searchParams.get("since")).toBe("1700000000000");
+    expect(url.searchParams.get("sort")).toBe("direct");
     expect(url.searchParams.get("limit")).toBe("10");
   });
 
