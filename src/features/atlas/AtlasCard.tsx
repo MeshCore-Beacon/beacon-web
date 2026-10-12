@@ -149,7 +149,7 @@ export function AtlasCard({
             <StatCard
               label={t("signal.receptions")}
               value={formatCount(sample.reports.length)}
-              accent={c.primary}
+              accent={c.series[0]!}
               spark={sample.counts}
               markPeak
               sublabel={capped ? t("atlas.sampleCapped", { limit: REPORT_LIMIT }) : t(`atlas.ranges.${range}`)}
@@ -157,19 +157,19 @@ export function AtlasCard({
             <StatCard
               label={t("signal.meanSnr")}
               value={average(sample.snr, "dB")}
-              accent={c.secondary}
+              accent={c.series[2]!}
               spark={sample.snrHourly}
             />
             <StatCard
               label={t("signal.meanRssi")}
               value={average(sample.rssi, "dBm")}
-              accent={c.green}
+              accent={c.series[1]!}
               spark={sample.rssiHourly}
             />
             <StatCard
               label={t("signal.hoursWithRecords")}
               value={`${activeHours}/${hours}`}
-              accent={c.warn}
+              accent={c.series[3]!}
               presence={sample.present}
             />
           </div>
