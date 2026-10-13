@@ -989,6 +989,8 @@
       "lastSeen": "Vu pour la dernière fois",
       "meanHops": "Sauts moyens",
       "heardBy": "Entendu par",
+      "recent": "Récent",
+      "stale": "Périmé",
       "observers_one": "{{count}} observateur a entendu le dernier paquet",
       "observers_many": "{{count}} observateurs ont entendu le dernier paquet",
       "observers_other": "{{count}} observateurs ont entendu le dernier paquet",

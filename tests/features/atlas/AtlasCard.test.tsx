@@ -56,7 +56,7 @@ describe("AtlasCard", () => {
     mount();
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
     expect(screen.getByText("REPEATER")).toBeInTheDocument();
-    expect(screen.getByText("Recent status")).toBeInTheDocument();
+    expect(screen.getByText("Recent")).toBeInTheDocument();
     expect(screen.getByText("Observations")).toBeInTheDocument();
     expect(screen.getByText("Mean SNR")).toBeInTheDocument();
     expect(screen.getByText("0.0 dB")).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe("AtlasCard", () => {
   it("shows the stale badge and the server's type name even when the type is unknown", async () => {
     vi.mocked(api.getNode).mockResolvedValue({ ...node, stale: true, nodeType: 9, nodeTypeName: "WEIRD" });
     mount();
-    expect(await screen.findByText("Status is stale")).toBeInTheDocument();
+    expect(await screen.findByText("Stale")).toBeInTheDocument();
     expect(screen.getByText("WEIRD")).toBeInTheDocument();
     expect(screen.queryByText(/atlas\.roles/)).not.toBeInTheDocument();
   });

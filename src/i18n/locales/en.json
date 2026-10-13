@@ -987,6 +987,8 @@
       "lastSeen": "Last seen",
       "meanHops": "Mean hops",
       "heardBy": "Heard by",
+      "recent": "Recent",
+      "stale": "Stale",
       "observers_one": "{{count}} observer heard the latest packet",
       "observers_other": "{{count}} observers heard the latest packet",
       "noReports": "No observations in this window.",

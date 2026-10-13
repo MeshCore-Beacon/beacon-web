@@ -95,8 +95,8 @@ export function AtlasCard({
         {name || formatHex(node?.id ?? pin.id)}
       </button>
       {node && <Badge variant="default">{node.nodeTypeName}</Badge>}
-      {node?.stale === false && <Badge variant="live">{t("observerPage.statusRecent")}</Badge>}
-      {node?.stale === true && <Badge variant="stale">{t("observerPage.statusStale")}</Badge>}
+      {node?.stale === false && <Badge variant="live">{t("atlas.recent")}</Badge>}
+      {node?.stale === true && <Badge variant="stale">{t("atlas.stale")}</Badge>}
     </span>
   );
 
