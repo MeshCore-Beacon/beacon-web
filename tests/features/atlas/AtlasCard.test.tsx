@@ -143,6 +143,9 @@ describe("AtlasCard", () => {
     expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: "Heard by" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
+    // Both labels stay in the button, stacked, so flipping never changes its width and wraps the header.
+    expect(toggle.querySelector('[aria-hidden="true"]')).toHaveTextContent("Analytics");
+    expect(toggle.querySelector('[aria-hidden="true"]')).toHaveClass("invisible", "col-start-1", "row-start-1");
     fireEvent.click(toggle);
     expect(handlers.onHeardToggle).toHaveBeenCalled();
     view.rerender(
@@ -153,6 +156,7 @@ describe("AtlasCard", () => {
     const summary = await screen.findByText(/2 observers heard the latest packet/);
     expect(summary).toHaveTextContent(/ago$/);
     expect(screen.getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Analytics" }).querySelector('[aria-hidden="true"]')).toHaveTextContent("Heard by");
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
     expect(summary.parentElement).toHaveStyle({ height: "240px" });
     expect(summary.nextElementSibling).toHaveClass("overflow-y-auto");

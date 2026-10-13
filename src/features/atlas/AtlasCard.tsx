@@ -100,16 +100,27 @@ export function AtlasCard({
     </span>
   );
 
+  // Both toggle labels share one grid cell so the button is as wide as the longer one in either
+  // state; otherwise flipping could push the actions under the title and grow the card.
+  const labels = [t("atlas.heardBy"), t("tabs.Analytics")];
   const actions = (
     <div className="ml-auto flex shrink-0 items-center gap-1">
       <button
         type="button"
-        className={ACTION_BUTTON_CLASS}
+        className={`${ACTION_BUTTON_CLASS} grid text-center`}
         aria-pressed={heardOpen}
+        aria-label={labels[heardOpen ? 1 : 0]}
         disabled={!node}
         onClick={toggleHeard}
       >
-        {t(heardOpen ? "tabs.Analytics" : "atlas.heardBy")}
+        {labels.map((label, index) => {
+          const shown = index === (heardOpen ? 1 : 0);
+          return (
+            <span key={label} aria-hidden={!shown || undefined} className={`col-start-1 row-start-1 ${shown ? "" : "invisible"}`}>
+              {label}
+            </span>
+          );
+        })}
       </button>
       <button type="button" className={ACTION_BUTTON_CLASS} onClick={onRemove}>
         {t("atlas.remove")}
