@@ -98,6 +98,16 @@ describe("AtlasCard", () => {
     expect(actions.parentElement).toHaveClass("flex-wrap");
   });
 
+  it("fills its grid row so neighbouring cards stay the same height whatever their titles wrap to", async () => {
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const tiles = screen.getByText("Observations").closest(".grid")!;
+    expect(tiles).toHaveClass("flex-1");
+    expect(tiles.parentElement).toHaveClass("flex-1");
+    expect(tiles.closest(".rounded-lg.border.p-3\\.5")).toHaveClass("flex", "h-full", "flex-col");
+    expect(screen.getByText("-106.0 dBm")).toHaveClass("text-xl");
+  });
+
   it("labels an unnamed node by its ID prefix, dimmed, as the Nodes page does", async () => {
     vi.mocked(api.getNode).mockResolvedValue({ ...node, name: "" });
     mount({ pin: { ...pin, name: "" } });
@@ -144,7 +154,8 @@ describe("AtlasCard", () => {
     expect(summary).toHaveTextContent(/ago$/);
     expect(screen.getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
-    expect(summary.parentElement).toHaveStyle({ minHeight: "240px" });
+    expect(summary.parentElement).toHaveStyle({ height: "240px" });
+    expect(summary.nextElementSibling).toHaveClass("overflow-y-auto");
     expect(screen.getAllByRole("button", { name: "Home listener" })).toHaveLength(1);
     expect(screen.getAllByText("YKF")[0]).toHaveClass("bg-primary/6");
     fireEvent.click(screen.getByRole("button", { name: "Home listener" }));

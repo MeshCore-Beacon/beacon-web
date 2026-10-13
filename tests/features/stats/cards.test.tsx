@@ -11,6 +11,15 @@ it("keeps the header on one line unless a caller asks for the right slot to wrap
   expect(screen.getByRole("button", { name: "Act" }).parentElement).toHaveClass("flex-wrap");
 });
 
+it("keeps a compact tile's value small and its chart at the foot so stretched tiles stay uniform", () => {
+  const { container } = render(<StatCard label="Mean RSSI" value="-77.2 dBm" accent="red" spark={[1, 2]} compact />);
+  const tile = container.firstElementChild!;
+  expect(tile).toHaveClass("flex", "flex-col");
+  expect(screen.getByText("-77.2 dBm")).toHaveClass("text-xl");
+  expect(screen.getByText("-77.2 dBm")).not.toHaveClass("sm:text-2xl");
+  expect(container.querySelector("svg")!.parentElement).toHaveClass("mt-auto");
+});
+
 it("marks the peak hour on a sparkline when asked", () => {
   const { container } = render(<StatCard label="Busiest" value="9" accent="red" spark={[1, 9, null, 4]} markPeak />);
   const dot = container.querySelector("[data-peak]")!;

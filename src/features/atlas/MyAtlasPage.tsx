@@ -8,6 +8,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { Tooltip } from "../../components/Tooltip";
+import { useIsMobile } from "../../hooks/useMediaQuery";
 import { formatHex } from "../../lib/formatters";
 import { nodeSearchParams } from "../nodes/node-search";
 import type { NodeSummary } from "../nodes/types";
@@ -26,6 +27,8 @@ const SEARCH_MIN = 2;
 export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
   const { saved, update, storageFailed } = useSavedAtlas();
+  // Same single-row bar the other tabs use on a phone: the search shrinks, nothing wraps.
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [field, setField] = useState("name");
   const [heardKey, setHeardKey] = useState<string | null>(null);
@@ -83,39 +86,45 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("tabs.MyAtlas")}>
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-bg-surface px-4 py-2.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-3 font-mono text-[11px] text-text-muted">
-          <span>{t("atlas.savedCount", { count: saved.nodes.length, limit: ATLAS_LIMIT })}</span>
-          <span role="status" className={storageFailed ? "text-warn" : undefined}>
-            {t(storageFailed ? "atlas.storageFailed" : "atlas.localOnly")}
-          </span>
-        </div>
-        <Segmented
-          className="shrink-0"
-          options={rangeOptions}
-          value={saved.range}
-          onChange={(range) => update((value) => ({ ...value, range: range as AtlasRange }))}
-          ariaLabel={t("atlas.range")}
+      <div
+        className={`flex shrink-0 items-center gap-1.5 gap-y-1.5 border-b border-border-subtle bg-bg-base px-4 py-2 ${isMobile ? "" : "flex-wrap"}`}
+        role="toolbar"
+        aria-label={t("atlas.addNodes")}
+      >
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          fields={fields}
+          field={field}
+          onFieldChange={changeField}
+          inputLabel={t("atlas.search")}
         />
+        {!isMobile && <InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: ATLAS_LIMIT })} />}
+        <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] text-text-muted">
+          <Tooltip label={t("atlas.localOnly")}>
+            <span className={`rounded-sm border px-2.5 py-1 ${full ? "border-warn/15 bg-warn/7 text-warn" : "border-border bg-bg-surface"}`}>
+              {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.nodes.length, limit: ATLAS_LIMIT })}
+            </span>
+          </Tooltip>
+          {storageFailed && <span role="status" className="text-warn">{t("atlas.storageFailed")}</span>}
+          {!isMobile && <span>{t("atlas.range")}</span>}
+          <Segmented
+            size="xs"
+            options={rangeOptions}
+            value={saved.range}
+            onChange={(range) => update((value) => ({ ...value, range: range as AtlasRange }))}
+            ariaLabel={t("atlas.range")}
+          />
+        </span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col gap-3.5 p-4">
-          <Card
-            title={t("atlas.addNodes")}
-            right={<InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: ATLAS_LIMIT })} />}
-          >
-            <SearchBar
-              value={search}
-              onChange={setSearch}
-              fields={fields}
-              field={field}
-              onFieldChange={changeField}
-              inputLabel={t("atlas.search")}
-            />
-            {hint && <p className="mt-2 font-mono text-xs text-text-muted">{t(hint, { min: SEARCH_MIN })}</p>}
-            {ready && (
-              <div className="mt-2 font-mono text-xs">
-                {results.isPending ? (
+          {typed.length > 0 && (
+            <Card title={t("atlas.matches")}>
+              <div className="font-mono text-xs">
+                {hint ? (
+                  <p className="text-text-muted">{t(hint, { min: SEARCH_MIN })}</p>
+                ) : results.isPending ? (
                   <p role="status" className="text-text-muted">{t("common.loading")}</p>
                 ) : results.isError ? (
                   <p role="alert" className="text-danger">
@@ -134,7 +143,7 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
                       return (
                         <li
                           key={node.publicKey}
-                          className="flex items-center justify-between gap-2 border-t border-border-subtle py-1.5"
+                          className="flex items-center justify-between gap-2 border-t border-border-subtle py-1.5 first:border-t-0"
                         >
                           <span className="flex min-w-0 items-center gap-2">
                             <span className={`truncate ${node.name ? "text-text-bright" : "italic text-text-dim"}`}>{label}</span>
@@ -157,13 +166,13 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
                     })}
                   </ul>
                 )}
-                {results.data?.hasMore && (
+                {results.data?.hasMore && !hint && (
                   <p className="mt-1 text-text-muted">{t("atlas.refine", { limit: SEARCH_LIMIT })}</p>
                 )}
-                {full && <p className="mt-1 text-warn">{t("atlas.limitReached", { limit: ATLAS_LIMIT })}</p>}
+                {full && !hint && <p className="mt-1 text-warn">{t("atlas.limitReached", { limit: ATLAS_LIMIT })}</p>}
               </div>
-            )}
-          </Card>
+            </Card>
+          )}
           {saved.nodes.length === 0 ? (
             <EmptyState title={t("atlas.emptyTitle")} subtitle={t("atlas.emptyDescription", { limit: ATLAS_LIMIT })} />
           ) : (
