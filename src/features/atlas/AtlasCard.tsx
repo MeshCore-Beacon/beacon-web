@@ -74,7 +74,7 @@ export function AtlasCard({
   const hours = sample.counts.length;
   const activeHours = sample.present.filter(Boolean).length;
 
-  // The list view holds the tiles' height so flipping never resizes the card.
+  // The list view is fixed to the tiles' height and scrolls inside it, so flipping never resizes the card.
   const body = useRef<HTMLDivElement>(null);
   const [held, setHeld] = useState<number>();
   const toggleHeard = () => {
@@ -130,7 +130,7 @@ export function AtlasCard({
   );
 
   return (
-    <Card title={title} right={actions} wrap>
+    <Card title={title} right={actions} wrap className="flex h-full flex-col">
       {query.isPending && <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>}
       {query.isError && isNotFound(query.error) && (
         <p role="alert" className="text-sm text-text-muted">{t("nodeDetail.notFound")}</p>
@@ -144,9 +144,10 @@ export function AtlasCard({
         </p>
       )}
       {node && !heardOpen && (
-        <div ref={body} className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-3">
+        <div ref={body} className="flex flex-1 flex-col gap-3">
+          <div className="grid flex-1 grid-cols-2 gap-3">
             <StatCard
+              compact
               label={t("signal.receptions")}
               value={formatCount(sample.reports.length)}
               accent={c.series[0]!}
@@ -155,18 +156,21 @@ export function AtlasCard({
               sublabel={capped ? t("atlas.sampleCapped", { limit: REPORT_LIMIT }) : t(`atlas.ranges.${range}`)}
             />
             <StatCard
+              compact
               label={t("signal.meanSnr")}
               value={average(sample.snr, "dB")}
               accent={c.series[2]!}
               spark={sample.snrHourly}
             />
             <StatCard
+              compact
               label={t("signal.meanRssi")}
               value={average(sample.rssi, "dBm")}
               accent={c.series[1]!}
               spark={sample.rssiHourly}
             />
             <StatCard
+              compact
               label={t("signal.hoursWithRecords")}
               value={`${activeHours}/${hours}`}
               accent={c.series[3]!}
@@ -182,13 +186,15 @@ export function AtlasCard({
             <span>
               {t("atlas.meanHops")} {average(sample.hops)}
             </span>
-            <span>{t("nodeDetail.neighborsCount", { count: node.knownNeighborCount })}</span>
-            <InfoTip text={[t("atlas.sampleHelp", { limit: REPORT_LIMIT }), capped && t("atlas.cappedHelp")]} />
+            <span className="whitespace-nowrap">
+              {t("nodeDetail.neighborsCount", { count: node.knownNeighborCount })}{" "}
+              <InfoTip text={[t("atlas.sampleHelp", { limit: REPORT_LIMIT }), capped && t("atlas.cappedHelp")]} />
+            </span>
           </div>
         </div>
       )}
       {node && heardOpen && (
-        <div className="flex flex-col font-mono text-xs" style={{ minHeight: held }}>
+        <div className="flex flex-col overflow-hidden font-mono text-xs" style={{ height: held }}>
           {!latest ? (
             <p className="text-text-muted">{t("atlas.noReports")}</p>
           ) : heard.isPending ? (

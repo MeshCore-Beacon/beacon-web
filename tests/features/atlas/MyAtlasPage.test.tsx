@@ -65,6 +65,33 @@ describe("My Atlas", () => {
     expect(api.getNodeObservations).toHaveBeenCalledWith(pin.id, { limit: 200 }, expect.any(AbortSignal));
   });
 
+  it("keeps the search in a toolbar with the saved count chip beside the range picker, and lists matches only while typing", async () => {
+    save();
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
+    expect(within(bar).getByRole("textbox", { name: "Find a node" })).toBeInTheDocument();
+    expect(within(bar).getByText("1 / 12 saved")).toHaveClass("rounded-sm");
+    expect(within(bar).getByRole("button", { name: "3d" })).toBeInTheDocument();
+    expect(screen.queryByText("Matches")).not.toBeInTheDocument();
+    typeSearch("repeater");
+    expect(await screen.findByRole("button", { name: "Renamed repeater is saved" })).toBeInTheDocument();
+    expect(screen.getByText("Matches")).toBeInTheDocument();
+  });
+
+  it("keeps the toolbar to one row on a phone: short count chip, picker, no info tip", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    save();
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
+    expect(bar).not.toHaveClass("flex-wrap");
+    expect(within(bar).getByText("1/12")).toHaveClass("rounded-sm");
+    expect(within(bar).queryByText("1 / 12 saved")).not.toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "3d" })).toBeInTheDocument();
+    expect(within(bar).queryByText(/More information/)).not.toBeInTheDocument();
+  });
+
   it("shows the empty state and queries nothing with no pins", () => {
     mount();
     expect(screen.getByText("No nodes saved")).toBeInTheDocument();

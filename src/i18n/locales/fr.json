@@ -977,6 +977,7 @@
     },
     "atlas": {
       "addNodes": "Ajouter des nœuds",
+      "matches": "Résultats",
       "search": "Trouver un nœud",
       "searchHelp": "Recherche dans toutes les régions par nom ou préfixe de clé publique (hexadécimal, au moins {{min}} caractères). Jusqu’à {{limit}} nœuds.",
       "searchTooShort": "Saisissez au moins {{min}} caractères.",
@@ -984,6 +985,7 @@
       "savedCount_one": "{{count}} / {{limit}} enregistré",
       "savedCount_many": "{{count}} / {{limit}} enregistrés",
       "savedCount_other": "{{count}} / {{limit}} enregistrés",
+      "savedCountShort": "{{count}}/{{limit}}",
       "localOnly": "Enregistré dans ce navigateur",
       "storageFailed": "Le stockage du navigateur est indisponible ; les modifications ne durent que cette visite.",
       "limitReached": "Les {{limit}} emplacements sont utilisés. Retirez une fiche pour en ajouter une autre.",
