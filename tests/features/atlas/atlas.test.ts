@@ -1,21 +1,69 @@
-import { describe, expect, it } from "vitest";
-import { parseAtlas, summarizeReports, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
+import { describe, expect, it, vi } from "vitest";
+import * as api from "../../../src/api/client";
+import { parseAtlas, pinKey, resolveObserverNode, summarizeReports, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
 import type { NodeObservation } from "../../../src/features/nodes/types";
+import type { Observer } from "../../../src/features/observers/types";
+
+vi.mock("../../../src/api/client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../src/api/client")>()),
+  getNodesPage: vi.fn(),
+}));
+
+describe("resolveObserverNode", () => {
+  it("resolves an observer to the node with the same key and to nothing otherwise", async () => {
+    const key = "ab".repeat(32);
+    const node = { id: "11111111-1111-4111-8111-111111111111", publicKey: key.toUpperCase(), name: "R1" };
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, publicKey: "ab".repeat(31) + "ff" }, node], hasMore: false, nextCursor: null } as never);
+    await expect(resolveObserverNode({ publicKey: key } as Observer)).resolves.toMatchObject({ id: node.id });
+    expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkeyPrefix: key, limit: 2 }, undefined);
+    await expect(resolveObserverNode({ publicKey: "" } as Observer)).resolves.toBeNull();
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null } as never);
+    await expect(resolveObserverNode({ publicKey: key } as Observer)).resolves.toBeNull();
+  });
+});
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "AB".repeat(32), name: "My repeater" };
+const nodePin = { kind: "node", ...pin, publicKey: pin.publicKey.toLowerCase() };
 const now = Date.UTC(2026, 8, 29, 12);
 const report = (id: number, hours: number, extra: Partial<NodeObservation> = {}): NodeObservation => ({ id, packetHash: String(id).padStart(64, "0"), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: now - hours * 3_600_000, ...extra });
 
 describe("saved Atlas", () => {
   it("restores valid ordered full identities, normalizes keys and removes duplicates", () => {
-    expect(parseAtlas(JSON.stringify({ version: 1, range: "3d", nodes: [pin, { ...pin, publicKey: pin.publicKey.toLowerCase() }, { ...pin, publicKey: "cd".repeat(32) }] }))).toEqual({ version: 2, range: "3d", cards: [{ ...pin, kind: "node", publicKey: pin.publicKey.toLowerCase() }, { ...pin, kind: "node", publicKey: "cd".repeat(32) }] });
+    expect(parseAtlas(JSON.stringify({ version: 1, range: "3d", nodes: [pin, { ...pin, publicKey: pin.publicKey.toLowerCase() }, { ...pin, publicKey: "cd".repeat(32) }] }))).toEqual({ version: 2, range: "3d", pins: [nodePin, { ...nodePin, publicKey: "cd".repeat(32) }] });
   });
   it("tolerates unavailable, corrupt and future storage, rejects partial keys and caps the collection", () => {
-    for (const value of [null, "{", "[]", '{"version":2}', '{"version":1,"nodes":null}']) expect(parseAtlas(value).cards).toEqual([]);
+    for (const value of [null, "{", "[]", '{"version":3}', '{"version":1,"nodes":null}', '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
     const nodes = [{ ...pin, publicKey: "abcd" }, { ...pin, id: "../unsafe" }, ...Array.from({ length: 20 }, (_, i) => ({ ...pin, publicKey: i.toString(16).padStart(64, "0") }))];
     const result = parseAtlas(JSON.stringify({ version: 1, range: "30d", nodes }));
-    expect(result.cards).toHaveLength(ATLAS_LIMIT);
+    expect(result.pins).toHaveLength(ATLAS_LIMIT);
     expect(result.range).toBe("24h");
+  });
+  it("migrates a version 1 collection to node pins in order and keeps the range", () => {
+    const raw = JSON.stringify({ version: 1, range: "3d", nodes: [
+      { id: "11111111-1111-4111-8111-111111111111", publicKey: "AB".repeat(32), name: "One" },
+      { id: "22222222-2222-4222-8222-222222222222", publicKey: "cd".repeat(32), name: "Two" },
+    ] });
+    expect(parseAtlas(raw)).toEqual({ version: 2, range: "3d", pins: [
+      { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "One" },
+      { kind: "node", id: "22222222-2222-4222-8222-222222222222", publicKey: "cd".repeat(32), name: "Two" },
+    ] });
+  });
+  it("round-trips version 2 pins of both kinds, keeps the observer hint, and drops unknown kinds", () => {
+    const pins = [
+      { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "One", observerId: "33333333-3333-4333-8333-333333333333" },
+      { kind: "observer", observerId: "44444444-4444-4444-8444-444444444444", name: "Listener" },
+      { kind: "channel", id: "x", name: "Nope" },
+      { kind: "observer", observerId: "not-a-uuid", name: "Bad" },
+      { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Twin", observerId: "bad" },
+    ];
+    expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins }))).toEqual({ version: 2, range: "24h", pins: [pins[0], pins[1]] });
+    expect(pinKey(pins[0] as never)).toBe("ab".repeat(32));
+    expect(pinKey(pins[1] as never)).toBe("44444444-4444-4444-8444-444444444444");
+  });
+  it("dedupes observer pins by id and caps both kinds together at the limit", () => {
+    const observer = (n: number) => ({ kind: "observer", observerId: `${String(n).padStart(8, "0")}-0000-4000-8000-000000000000`, name: `L${n}` });
+    const pins = [observer(1), observer(1), ...Array.from({ length: 14 }, (_, i) => observer(i + 2))];
+    expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins).toHaveLength(ATLAS_LIMIT);
   });
 });
 

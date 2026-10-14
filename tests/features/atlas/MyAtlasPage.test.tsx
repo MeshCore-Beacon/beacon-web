@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MyAtlasPage } from "../../../src/features/atlas/MyAtlasPage";
-import { ATLAS_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
+import { ATLAS_KEY, ATLAS_LEGACY_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
 import type { Node } from "../../../src/features/nodes/types";
@@ -16,6 +16,8 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getNode: vi.fn(),
   getNodeObservations: vi.fn(),
   getPacketDetail: vi.fn(),
+  getObserverDirectoryPage: vi.fn(),
+  getObserver: vi.fn(),
 }));
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -23,6 +25,13 @@ const second = { ...pin, id: "22222222-2222-4222-8222-222222222222", publicKey: 
 const node = { ...pin, name: "Renamed repeater", nodeType: 2, nodeTypeName: "REPEATER", knownNeighborCount: 4, stale: false, lastSeen: Date.now(), iatas: [], lat: null, lng: null } as Node;
 const report = { id: 7, packetHash: "ef".repeat(32), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: Date.now() - 1000, snr: 0, rssi: -106, hopCount: 2 };
 const actions = { onViewNode: vi.fn(), onViewObserver: vi.fn(), onAnalyzePacket: vi.fn() };
+const observerId = "33333333-3333-4333-8333-333333333333";
+const listener = { id: observerId, displayName: "Hill listener", observerType: "companion", iata: "YKF", status: "online", observationCount: 7 };
+const directory = (items: unknown[]) => ({ items, hasMore: false, generatedAt: 0, windowStart: 0, windowEnd: 0, sort: "name", effectiveSort: "name", coverage: { status: "complete", expectedHours: 24, completeHours: 24, missingHours: 0, partialHours: 0 }, maxObservationCount: 7, observerTypes: [] }) as never;
+const pickField = async (label: string) => {
+  fireEvent.click(screen.getByRole("button", { name: /Name|Public Key|Observer/ }));
+  fireEvent.click(await screen.findByRole("button", { name: label }));
+};
 const clients: QueryClient[] = [];
 
 function mount(active = true) {
@@ -31,7 +40,7 @@ function mount(active = true) {
   return render(<QueryClientProvider client={client}><MyAtlasPage {...actions} active={active} /></QueryClientProvider>);
 }
 function save(nodes = [pin], range = "24h") {
-  localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 1, nodes, range }));
+  localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 2, pins: nodes.map((n) => ({ kind: "node", ...n })), range }));
 }
 const typeSearch = (value: string) => fireEvent.change(screen.getByRole("textbox", { name: "Find a node" }), { target: { value } });
 const card = (name: string) => screen.findByRole("button", { name }).then((button) => button.closest("[data-atlas-card]") as HTMLElement);
@@ -53,6 +62,15 @@ afterEach(() => {
 });
 
 describe("My Atlas", () => {
+  it("reads legacy saved nodes and retains their original storage when saving the new model", async () => {
+    const legacy = JSON.stringify({ version: 1, nodes: [pin], range: "24h" });
+    localStorage.setItem(ATLAS_LEGACY_KEY, legacy);
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    fireEvent.click(screen.getByRole("button", { name: "3d" }));
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(pin.publicKey);
+    expect(localStorage.getItem(ATLAS_LEGACY_KEY)).toBe(legacy);
+  });
   it("renders saved nodes as Signal-style cards and nothing else before a search", async () => {
     save();
     mount();
@@ -65,11 +83,17 @@ describe("My Atlas", () => {
     expect(api.getNodeObservations).toHaveBeenCalledWith(pin.id, { limit: 200 }, expect.any(AbortSignal));
   });
 
+  it("still loads a version 1 collection", async () => {
+    localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 1, nodes: [pin], range: "24h" }));
+    mount();
+    expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
+  });
+
   it("keeps the search in a toolbar with the saved count chip beside the range picker, and lists matches only while typing", async () => {
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    const bar = screen.getByRole("toolbar", { name: "Add nodes or observers" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
     expect(within(bar).getByRole("textbox", { name: "Find a node" })).toBeInTheDocument();
     expect(within(bar).getByText("1 / 12 saved")).toHaveClass("rounded-sm");
     expect(within(bar).getByRole("button", { name: "3d" })).toBeInTheDocument();
@@ -84,7 +108,7 @@ describe("My Atlas", () => {
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    const bar = screen.getByRole("toolbar", { name: "Add nodes or observers" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
     expect(bar).not.toHaveClass("flex-wrap");
     expect(within(bar).getByText("1/12")).toHaveClass("rounded-sm");
     expect(within(bar).queryByText("1 / 12 saved")).not.toBeInTheDocument();
@@ -94,7 +118,7 @@ describe("My Atlas", () => {
 
   it("shows the empty state and queries nothing with no pins", () => {
     mount();
-    expect(screen.getByText("No cards saved")).toBeInTheDocument();
+    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
     expect(api.getNode).not.toHaveBeenCalled();
     expect(api.getNodesPage).not.toHaveBeenCalled();
   });
@@ -107,7 +131,7 @@ describe("My Atlas", () => {
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Renamed repeater is saved" })).toBeDisabled();
     expect(screen.getByText("Showing the first 8 matches; refine the search for more.")).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).cards).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toHaveLength(1);
     expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { name: "repeater", limit: 8 }, expect.any(AbortSignal));
     view.unmount();
     mount();
@@ -165,6 +189,63 @@ describe("My Atlas", () => {
     expect(screen.getByText(/All 12 slots are in use/)).toBeInTheDocument();
   });
 
+  it("searches observers by name and saves a node pin when the observer's key belongs to a node", async () => {
+    vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([listener]));
+    vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+    mount();
+    await pickField("Observer");
+    typeSearch("hill");
+    expect(await screen.findByText("Hill listener")).toBeInTheDocument();
+    expect(api.getObserverDirectoryPage).toHaveBeenCalledWith({ name: "hill", limit: 8 }, expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Add Hill listener" }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toEqual([{ kind: "node", id: pin.id, publicKey: pin.publicKey, name: "Renamed repeater", observerId }]));
+    expect(screen.getByRole("button", { name: "Hill listener is saved" })).toBeDisabled();
+  });
+
+  it("saves an observer-only pin when no node has the observer's key, and marks it saved by id", async () => {
+    vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([listener]));
+    vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: "" } as never);
+    mount();
+    await pickField("Observer");
+    typeSearch("hill");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Hill listener" }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toEqual([{ kind: "observer", observerId, name: "Hill listener" }]));
+    expect(await screen.findByRole("button", { name: "Hill listener is saved" })).toBeDisabled();
+  });
+
+  it("links an observer result to an already pinned node instead of adding a twin", async () => {
+    vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([listener]));
+    vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+    save([pin]);
+    mount();
+    await pickField("Observer");
+    typeSearch("hill");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Hill listener" }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toEqual([{ kind: "node", ...pin, observerId }]));
+    expect(screen.getByRole("button", { name: "Hill listener is saved" })).toBeDisabled();
+  });
+
+  it("marks node results that are also observers", async () => {
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, isObserver: true, observerId }], hasMore: false, nextCursor: null });
+    mount();
+    typeSearch("repeater");
+    expect(await screen.findByText("Observer")).toHaveClass("inline-flex");
+  });
+
+  it("keeps one card away from its default view at a time", async () => {
+    vi.mocked(api.getNode).mockImplementation(async (id) => ({ ...(id === second.id ? { ...node, ...second } : node), isObserver: true, observerId }));
+    vi.mocked(api.getObserver).mockResolvedValue({ id: observerId, status: "online", publicKey: pin.publicKey } as never);
+    save([pin, second]);
+    mount();
+    const first = await card("Renamed repeater");
+    fireEvent.click(within(first).getByRole("button", { name: "Observer" }));
+    expect(within(first).getByRole("button", { name: "Observer" })).toHaveAttribute("aria-pressed", "true");
+    const other = await card("Second");
+    fireEvent.click(within(other).getByRole("button", { name: "Heard by" }));
+    expect(within(first).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(other).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("keeps one heard-by open, saves reordering, removal and the range", async () => {
     save([pin, second]);
     mount();
@@ -173,9 +254,9 @@ describe("My Atlas", () => {
     fireEvent.click(within(first).getByRole("button", { name: "Heard by" }));
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
     expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "false");
-    expect(within(next).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder" }), { key: "ArrowRight" });
-    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).cards[0].publicKey).toBe(second.publicKey);
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).range).toBe("3d");
@@ -208,7 +289,7 @@ describe("My Atlas", () => {
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     act(() => window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null })));
-    expect(screen.getByText("No cards saved")).toBeInTheDocument();
+    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
   });
 
   it("does not query a retained but inactive page", () => {
@@ -247,7 +328,7 @@ describe("identity recovery", () => {
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).cards[0].id).toBe(second.id));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].id).toBe(second.id));
   });
   it("does not adopt a mismatched identity or hide transport failures with broad searches", async () => {
     vi.mocked(api.getNode).mockResolvedValueOnce({ ...node, publicKey: second.publicKey });

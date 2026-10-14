@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AtlasCard } from "../../../src/features/atlas/AtlasCard";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
 import { formatHex } from "../../../src/lib/formatters";
 import type { Node } from "../../../src/features/nodes/types";
+import type { Observer } from "../../../src/features/observers/types";
 import type { PacketDetail } from "../../../src/types/api";
 
 vi.mock("../../../src/api/client", async (importOriginal) => ({
@@ -14,9 +15,12 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getNodeObservations: vi.fn(),
   getNodesPage: vi.fn(),
   getPacketDetail: vi.fn(),
+  getObserver: vi.fn(),
+  getObserverActivity: vi.fn(),
+  getObserverTelemetry: vi.fn(),
 }));
 
-const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
+const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
 const node = { ...pin, name: "Renamed repeater", nodeType: 2, nodeTypeName: "REPEATER", knownNeighborCount: 4, stale: false, lastSeen: Date.now(), iatas: [], lat: null, lng: null } as Node;
 const report = { id: 7, packetHash: "ef".repeat(32), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: Date.now() - 1000, snr: 0, rssi: -106, hopCount: 2 };
 const detail = { packetHash: report.packetHash, originPubkey: pin.publicKey, header: { payloadType: 4 }, observations: [
@@ -24,20 +28,25 @@ const detail = { packetHash: report.packetHash, originPubkey: pin.publicKey, hea
   { observerId: "observer-a", observerName: "Home listener", id: 2, heardAt: 2, iata: "YKF" },
   { observerId: "observer-b", observerName: "Hill listener", id: 3, heardAt: 3, iata: "YKF" },
 ] } as unknown as PacketDetail;
+const observerId = "33333333-3333-4333-8333-333333333333";
+const observer = { id: observerId, status: "online", lastStatusAt: Date.now() - 60_000, iata: "YKF", observerType: "repeater", radioFreqMhz: 915, radioSf: 11, radioBwKhz: 250, publicKey: pin.publicKey, firstSeen: 1, lastSeen: 2, observationCount: 5, brokers: [], uptimeSeconds: 90_000 } as Observer;
+const activity = { range: "24h", interval: "1h", radio: null, payloadTypes: [], points: [{ t: Date.now() - 3_600_000, observations: 12, snrAvg: 6.5, snrMin: null, rssiAvg: null, airtimeMs: null }] };
+const telemetry = { range: "24h", interval: "1h", points: [{ t: Date.now() - 3_600_000, batteryMv: 4120, noiseFloorDb: -117, airtimeTxSecs: null, airtimeRxSecs: null, uptimeSeconds: null, queueLength: null, receiveErrors: null }] };
 const handlers = {
   onViewNode: vi.fn(),
   onViewObserver: vi.fn(),
   onAnalyzePacket: vi.fn(),
-  onHeardToggle: vi.fn(),
+  onViewChange: vi.fn(),
   onRemove: vi.fn(),
   onResolved: vi.fn(),
+  onUpgrade: vi.fn(),
 };
 let client: QueryClient;
 
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
-      <AtlasCard pin={pin} range="24h" active heardOpen={false} handle={{}} {...handlers} {...overrides} />
+      <AtlasCard pin={pin} range="24h" active view="analytics" handle={{}} {...handlers} {...overrides} />
     </QueryClientProvider>,
   );
 }
@@ -81,7 +90,7 @@ describe("AtlasCard", () => {
     vi.mocked(api.getNode).mockResolvedValue({ ...node, id: recovered });
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    expect(handlers.onResolved).toHaveBeenCalledWith(recovered);
+    expect(handlers.onResolved).toHaveBeenCalledWith(recovered, undefined);
   });
 
   it("leaves the pin alone when the server ID still matches", async () => {
@@ -141,22 +150,18 @@ describe("AtlasCard", () => {
     expect(api.getPacketDetail).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Move/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument();
-    const toggle = screen.getByRole("button", { name: "Heard by" });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
-    // Both labels stay in the button, stacked, so flipping never changes its width and wraps the header.
-    expect(toggle.querySelector('[aria-hidden="true"]')).toHaveTextContent("Analytics");
-    expect(toggle.querySelector('[aria-hidden="true"]')).toHaveClass("invisible", "col-start-1", "row-start-1");
-    fireEvent.click(toggle);
-    expect(handlers.onHeardToggle).toHaveBeenCalled();
+    const picker = screen.getByRole("group", { name: "Card view" });
+    expect(within(picker).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(picker).getByRole("button", { name: "Heard by" }));
+    expect(handlers.onViewChange).toHaveBeenCalledWith("heard");
     view.rerender(
       <QueryClientProvider client={client}>
-        <AtlasCard pin={pin} range="24h" active heardOpen handle={{}} {...handlers} />
+        <AtlasCard pin={pin} range="24h" active view="heard" handle={{}} {...handlers} />
       </QueryClientProvider>,
     );
     const summary = await screen.findByText(/2 observers heard the latest packet/);
     expect(summary).toHaveTextContent(/ago$/);
-    expect(screen.getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "Analytics" }).querySelector('[aria-hidden="true"]')).toHaveTextContent("Heard by");
+    expect(screen.getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
     expect(summary.parentElement).toHaveStyle({ height: "240px" });
     expect(summary.nextElementSibling).toHaveClass("overflow-y-auto");
@@ -171,7 +176,7 @@ describe("AtlasCard", () => {
 
   it("hides observer links for a different origin identity and explains expired packets", async () => {
     vi.mocked(api.getPacketDetail).mockResolvedValue({ ...detail, originPubkey: "cd".repeat(32) });
-    mount({ heardOpen: true });
+    mount({ view: "heard" });
     expect(await screen.findByText("Packet details are unavailable or expired.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open packet" })).not.toBeInTheDocument();
   });
@@ -184,5 +189,99 @@ describe("AtlasCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(handlers.onRemove).toHaveBeenCalled();
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
+  });
+
+  it("offers the Observer view only when the node is also an observer, and tells the page the link", async () => {
+    const first = mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const picker = screen.getByRole("group", { name: "Card view" });
+    expect(within(picker).getAllByRole("button").map((b) => b.textContent)).toEqual(["Analytics", "Heard by"]);
+    expect(handlers.onResolved).not.toHaveBeenCalled();
+    first.unmount();
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    mount({ pin: { ...pin, id: "22222222-2222-4222-8222-222222222222" } });
+    await waitFor(() => expect(handlers.onResolved).toHaveBeenCalledWith(node.id, observerId));
+    expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button")).toHaveLength(3);
+  });
+
+  it("renders the Observer view tiles from activity and telemetry in the same frame", async () => {
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
+    vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+    mount({ view: "observer" });
+    expect(await screen.findByText("Packets heard")).toBeInTheDocument();
+    await screen.findByText("12");
+    expect(screen.getByText("6.5 dB")).toBeInTheDocument();
+    expect(screen.getByText("-117 dBm")).toBeInTheDocument();
+    expect(screen.getByText("4.12V")).toBeInTheDocument();
+    expect(screen.getByText("Online")).toBeInTheDocument();
+    expect(screen.getByText("915 MHz · SF11 · 250 kHz").closest(".flex-wrap")).toBeInTheDocument();
+    expect(screen.getByText("Packets heard").closest(".grid")).toHaveClass("flex-1", "grid-cols-2");
+    expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Observer" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows dashes and explains when the server lacks the observer endpoints", async () => {
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getObserverActivity).mockRejectedValue(new ApiError(404, "not_found", "no"));
+    vi.mocked(api.getObserverTelemetry).mockRejectedValue(new ApiError(404, "not_found", "no"));
+    mount({ view: "observer" });
+    expect(await screen.findByText(/More information:.*does not provide observer activity/)).toBeInTheDocument();
+    expect(screen.getAllByText("—")).toHaveLength(3);
+    expect(screen.getByText("1d 1h 0m")).toBeInTheDocument();
+  });
+
+  it("renders an observer-only pin with its status badge, a dashboard link and no picker", async () => {
+    vi.mocked(api.getObserver).mockResolvedValue({ ...observer, publicKey: "" });
+    vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
+    vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+    mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+    expect(await screen.findByText("repeater")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hill listener" }));
+    expect(handlers.onViewObserver).toHaveBeenCalledWith(observerId);
+    expect(screen.getAllByText("Online")[0]).toHaveClass("bg-green/8");
+    expect(screen.queryByRole("group", { name: "Card view" })).not.toBeInTheDocument();
+    expect(await screen.findByText("12")).toBeInTheDocument();
+    expect(api.getNode).not.toHaveBeenCalled();
+  });
+
+  it("looks an observer pin's node up once per poll, not on every parent render", async () => {
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
+    const observerPin = { kind: "observer" as const, observerId, name: "Hill listener" };
+    const view = mount({ pin: observerPin, view: "observer" });
+    await waitFor(() => expect(api.getNodesPage).toHaveBeenCalledTimes(1));
+    for (let i = 0; i < 3; i++) {
+      view.rerender(
+        <QueryClientProvider client={client}>
+          <AtlasCard pin={{ ...observerPin }} range="24h" active view="observer" handle={{}} {...handlers} onUpgrade={vi.fn()} />
+        </QueryClientProvider>,
+      );
+    }
+    await screen.findByText("repeater");
+    expect(api.getNodesPage).toHaveBeenCalledTimes(1);
+    expect(handlers.onUpgrade).not.toHaveBeenCalled();
+  });
+
+  it("says it is loading the observer series and keeps a saved link a node record does not carry", async () => {
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, id: "22222222-2222-4222-8222-222222222222" });
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getObserverActivity).mockReturnValue(new Promise(() => {}));
+    vi.mocked(api.getObserverTelemetry).mockReturnValue(new Promise(() => {}));
+    mount({ pin: { ...pin, observerId }, view: "observer" });
+    expect(await screen.findByText("Packets heard")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+    await waitFor(() => expect(handlers.onResolved).toHaveBeenCalledWith("22222222-2222-4222-8222-222222222222", observerId));
+  });
+
+  it("upgrades an observer-only pin to a node pin when its key now resolves to a node", async () => {
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
+    mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+    await waitFor(() => expect(handlers.onUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: node.id }), observerId));
   });
 });
