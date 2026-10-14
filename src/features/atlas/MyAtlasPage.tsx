@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { getNodesPage } from "../../api/client";
+import { getNodesPage, getObserver, getObserverDirectoryPage } from "../../api/client";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
@@ -14,16 +14,18 @@ import { nodeSearchParams } from "../nodes/node-search";
 import type { NodeSummary } from "../nodes/types";
 import { Card } from "../stats/cards";
 import { Segmented } from "../stats/Segmented";
-import { AtlasCard, type AtlasActions } from "./AtlasCard";
-import { ATLAS_LIMIT, parseAtlas, type AtlasRange } from "./atlas";
+import { AtlasCard, AtlasDragHandle, type AtlasActions } from "./AtlasCard";
+import { ATLAS_LIMIT, atlasPinKey, parseAtlas, type AtlasPin, type AtlasRange } from "./atlas";
 import { useCardDrag } from "./useCardDrag";
 import { useSavedAtlas } from "./useSavedAtlas";
+import { AtlasObserverCard } from "./AtlasObserverCard";
+import type { ObserverDirectoryItem } from "../observers/types";
 
 const RANGES: AtlasRange[] = ["24h", "3d"];
 const SEARCH_LIMIT = 8;
 const SEARCH_MIN = 2;
 
-// Global by design: pins are node identities, so the header region picker does not apply here.
+// Global by design: pins are identities, so the header region picker does not apply here.
 export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
   const { saved, update, storageFailed } = useSavedAtlas();
@@ -31,6 +33,9 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [field, setField] = useState("name");
+  const observerMode = field === "observer";
+  const [addingObserver, setAddingObserver] = useState<string | null>(null);
+  const [addError, setAddError] = useState(false);
   const [heardKey, setHeardKey] = useState<string | null>(null);
   // Switching the field changes what the box means, so stale text must not carry over.
   const changeField = (value: string) => {
@@ -49,36 +54,59 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
   const results = useQuery({
     queryKey: ["atlas-search", params.name, params.pubkeyPrefix],
     queryFn: ({ signal }) => getNodesPage(undefined, { ...params, limit: SEARCH_LIMIT }, signal),
-    enabled: active && ready,
+    enabled: active && ready && !observerMode,
     staleTime: 30_000,
   });
 
-  const full = saved.nodes.length >= ATLAS_LIMIT;
+  const observerSearch = useQuery({
+    queryKey: ["atlas-observer-search", typed],
+    queryFn: ({ signal }) => getObserverDirectoryPage({ name: typed, sort: "name", limit: SEARCH_LIMIT }, signal),
+    enabled: active && ready && observerMode,
+    staleTime: 30_000,
+  });
+  const matches = observerMode ? observerSearch : results;
+  const entries: { id: string; name: string; key: string; role: string; node?: NodeSummary; observer?: ObserverDirectoryItem }[] = observerMode
+    ? (observerSearch.data?.items ?? []).map(observer => ({ id: observer.id, name: observer.displayName || observer.id.slice(0, 8), key: observer.id, role: t("atlas.observerCard"), observer }))
+    : (results.data?.items ?? []).map(node => ({ id: node.id, name: node.name || formatHex(node.id), key: node.publicKey, role: node.nodeTypeName, node }));
+  const addObserver = async (row: ObserverDirectoryItem) => {
+    setAddingObserver(row.id); setAddError(false);
+    try {
+      const observer = await getObserver(row.id);
+      if (observer.id !== row.id) throw new Error("Observer identity changed");
+      const pin: AtlasPin = { kind: "observer", id: observer.id, publicKey: observer.publicKey || "", name: observer.displayName || "" };
+      if (!parseAtlas(JSON.stringify({ version: 2, cards: [pin] })).cards.length) throw new Error("Invalid observer identity");
+      update(value => parseAtlas(JSON.stringify({ ...value, cards: [...value.cards, pin] })));
+    } catch { setAddError(true); }
+    finally { setAddingObserver(null); }
+  };
+
+  const full = saved.cards.length >= ATLAS_LIMIT;
   const fields: SearchFieldOption[] = [
     { value: "name", label: t("nodeFilters.fieldName") },
     { value: "pubkey", label: t("nodeFilters.fieldPubkey") },
+    { value: "observer", label: t("atlas.searchObservers") },
   ];
   const rangeOptions = RANGES.map((value) => ({ value, label: t(`atlas.ranges.${value}`) }));
 
   // Re-parse so an add goes through the same validation, dedupe and cap as a restore.
   const add = (node: NodeSummary) =>
     update((value) => {
-      const pin = { id: node.id, publicKey: node.publicKey, name: node.name || "" };
-      return parseAtlas(JSON.stringify({ ...value, nodes: [...value.nodes, pin] }));
+      const pin = { kind: "node", id: node.id, publicKey: node.publicKey, name: node.name || "" };
+      return parseAtlas(JSON.stringify({ ...value, cards: [...value.cards, pin] }));
     });
-  const remove = (publicKey: string) =>
-    update((value) => ({ ...value, nodes: value.nodes.filter((node) => node.publicKey !== publicKey) }));
-  const relink = (publicKey: string, id: string) =>
-    update((value) => ({ ...value, nodes: value.nodes.map((node) => (node.publicKey === publicKey ? { ...node, id } : node)) }));
+  const remove = (key: string) =>
+    update((value) => ({ ...value, cards: value.cards.filter((pin) => atlasPinKey(pin) !== key) }));
+  const relink = (key: string, id: string) =>
+    update((value) => ({ ...value, cards: value.cards.map((pin) => (atlasPinKey(pin) === key ? { ...pin, id } : pin)) }));
   const reorder = (from: number, to: number) =>
     update((value) => {
-      const nodes = [...value.nodes];
+      const nodes = [...value.cards];
       const [moved] = nodes.splice(from, 1);
-      if (!moved || to < 0 || to >= value.nodes.length) return value;
+      if (!moved || to < 0 || to >= value.cards.length) return value;
       nodes.splice(to, 0, moved);
-      return { ...value, nodes };
+      return { ...value, cards: nodes };
     });
-  const drag = useCardDrag(saved.nodes.length, reorder);
+  const drag = useCardDrag(saved.cards.length, reorder);
   const cardProps = (index: number) => {
     const props = drag.cardProps(index);
     return { ...props, className: `min-w-0 ${props.className ?? ""}` };
@@ -97,13 +125,13 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
           fields={fields}
           field={field}
           onFieldChange={changeField}
-          inputLabel={t("atlas.search")}
+          inputLabel={t(observerMode ? "atlas.observerSearch" : "atlas.search")}
         />
         {!isMobile && <InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: ATLAS_LIMIT })} />}
         <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] text-text-muted">
           <Tooltip label={t("atlas.localOnly")}>
             <span className={`rounded-sm border px-2.5 py-1 ${full ? "border-warn/15 bg-warn/7 text-warn" : "border-border bg-bg-surface"}`}>
-              {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.nodes.length, limit: ATLAS_LIMIT })}
+              {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.cards.length, limit: ATLAS_LIMIT })}
             </span>
           </Tooltip>
           {storageFailed && <span role="status" className="text-warn">{t("atlas.storageFailed")}</span>}
@@ -122,74 +150,57 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
           {typed.length > 0 && (
             <Card title={t("atlas.matches")}>
               <div className="font-mono text-xs">
+                {addError && <p role="alert" className="text-danger">{t("atlas.observerAddFailed")}</p>}
                 {hint ? (
                   <p className="text-text-muted">{t(hint, { min: SEARCH_MIN })}</p>
-                ) : results.isPending ? (
+                ) : matches.isPending ? (
                   <p role="status" className="text-text-muted">{t("common.loading")}</p>
-                ) : results.isError ? (
+                ) : matches.isError ? (
                   <p role="alert" className="text-danger">
                     {t("common.loadFailed")}{" "}
-                    <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => void results.refetch()}>
+                    <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => void matches.refetch()}>
                       {t("observerPage.retry")}
                     </button>
                   </p>
-                ) : results.data.items.length === 0 ? (
+                ) : entries.length === 0 ? (
                   <p className="text-text-muted">{t("common.noMatches")}</p>
                 ) : (
                   <ul>
-                    {results.data.items.map((node) => {
-                      const pinned = saved.nodes.some((pin) => pin.publicKey === node.publicKey.toLowerCase());
-                      const label = node.name ?? formatHex(node.id);
-                      return (
-                        <li
-                          key={node.publicKey}
-                          className="flex items-center justify-between gap-2 border-t border-border-subtle py-1.5 first:border-t-0"
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className={`truncate ${node.name ? "text-text-bright" : "italic text-text-dim"}`}>{label}</span>
-                            <Badge variant="default">{node.nodeTypeName}</Badge>
-                            <Tooltip label={node.publicKey}>
-                              <code className="text-text-dim">{formatHex(node.publicKey)}</code>
-                            </Tooltip>
-                          </span>
-                          <button
-                            type="button"
-                            className={ACTION_BUTTON_CLASS}
-                            disabled={pinned || full}
-                            aria-label={t(pinned ? "atlas.savedName" : "atlas.addName", { name: label })}
-                            onClick={() => add(node)}
-                          >
-                            {t(pinned ? "atlas.saved" : "atlas.add")}
-                          </button>
-                        </li>
-                      );
+                    {entries.map((entry) => {
+                      const pinned = saved.cards.some(pin => entry.observer ? pin.kind === "observer" && pin.id === entry.id : pin.kind !== "observer" && pin.publicKey === entry.key.toLowerCase());
+                      return <li key={entry.key} className="flex items-center justify-between gap-2 border-t border-border-subtle py-1.5 first:border-t-0">
+                        <span className="flex min-w-0 items-center gap-2"><span className="truncate text-text-bright">{entry.name}</span><Badge variant="default">{entry.role}</Badge><Tooltip label={entry.key}><code className="text-text-dim">{formatHex(entry.key)}</code></Tooltip></span>
+                        <button type="button" className={ACTION_BUTTON_CLASS} disabled={pinned || full || addingObserver !== null}
+                          aria-label={t(pinned ? "atlas.savedName" : "atlas.addName", { name: entry.name })}
+                          onClick={() => entry.node ? add(entry.node) : void addObserver(entry.observer!)}>{t(pinned ? "atlas.saved" : "atlas.add")}</button>
+                      </li>;
                     })}
                   </ul>
                 )}
-                {results.data?.hasMore && !hint && (
+                {matches.data?.hasMore && !hint && (
                   <p className="mt-1 text-text-muted">{t("atlas.refine", { limit: SEARCH_LIMIT })}</p>
                 )}
                 {full && !hint && <p className="mt-1 text-warn">{t("atlas.limitReached", { limit: ATLAS_LIMIT })}</p>}
               </div>
             </Card>
           )}
-          {saved.nodes.length === 0 ? (
+          {saved.cards.length === 0 ? (
             <EmptyState title={t("atlas.emptyTitle")} subtitle={t("atlas.emptyDescription", { limit: ATLAS_LIMIT })} />
           ) : (
             <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
-              {saved.nodes.map((pin, index) => (
-                <div key={pin.publicKey} data-atlas-card {...cardProps(index)}>
-                  <AtlasCard
+              {saved.cards.map((pin, index) => (
+                <div key={atlasPinKey(pin)} data-atlas-card {...cardProps(index)}>
+                  {pin.kind === "observer" ? <AtlasObserverCard pin={pin} range={saved.range} active={active} onRemove={() => remove(atlasPinKey(pin))} onResolved={id => relink(atlasPinKey(pin), id)} onViewObserver={actions.onViewObserver} reorder={<AtlasDragHandle handle={drag.handleProps(index)} />} /> : <AtlasCard
                     pin={pin}
                     range={saved.range}
                     active={active}
-                    heardOpen={heardKey === pin.publicKey}
-                    onHeardToggle={() => setHeardKey((key) => (key === pin.publicKey ? null : pin.publicKey))}
-                    onRemove={() => remove(pin.publicKey)}
-                    onResolved={(id) => relink(pin.publicKey, id)}
+                    heardOpen={heardKey === atlasPinKey(pin)}
+                    onHeardToggle={() => setHeardKey((key) => (key === atlasPinKey(pin) ? null : atlasPinKey(pin)))}
+                    onRemove={() => remove(atlasPinKey(pin))}
+                    onResolved={(id) => relink(atlasPinKey(pin), id)}
                     handle={drag.handleProps(index)}
                     {...actions}
-                  />
+                  />}
                 </div>
               ))}
             </div>

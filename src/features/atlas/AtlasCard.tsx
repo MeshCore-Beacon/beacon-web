@@ -125,18 +125,7 @@ export function AtlasCard({
       <button type="button" className={ACTION_BUTTON_CLASS} onClick={onRemove}>
         {t("atlas.remove")}
       </button>
-      <button
-        type="button"
-        className={`${ACTION_BUTTON_CLASS} cursor-grab touch-none active:cursor-grabbing`}
-        aria-label={t("atlas.dragToReorder")}
-        {...handle}
-      >
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
-          <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
-          <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
-          <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
-        </svg>
-      </button>
+      <AtlasDragHandle handle={handle} />
     </div>
   );
 
@@ -243,5 +232,23 @@ export function AtlasCard({
         </div>
       )}
     </Card>
+  );
+}
+
+export function AtlasDragHandle({ handle }: { handle: Partial<CardHandleProps> }) {
+  const { t } = useTranslation();
+  return (
+      <button
+        type="button"
+        className={`${ACTION_BUTTON_CLASS} cursor-grab touch-none active:cursor-grabbing`}
+        aria-label={t("atlas.dragToReorder")}
+        {...handle}
+      >
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+          <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
+          <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
+          <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
+        </svg>
+      </button>
   );
 }

@@ -1,37 +1,16 @@
 import { ApiError, getNode, getNodeObservations, getNodesPage, isNotFound } from "../../api/client";
 import type { Node, NodeObservation } from "../nodes/types";
 
-export const ATLAS_KEY = "beacon-my-atlas-v1";
-export const ATLAS_LIMIT = 12;
+export { ATLAS_KEY, ATLAS_LEGACY_KEY, ATLAS_LIMIT, atlasPinKey, parseAtlas } from "./atlas-storage";
+export type { AtlasPin, AtlasRange, SavedAtlas } from "./atlas-storage";
+import type { AtlasPin, AtlasRange } from "./atlas-storage";
 export const REPORT_LIMIT = 200;
-export type AtlasRange = "24h" | "3d";
-export interface AtlasPin { id: string; publicKey: string; name: string }
-export interface SavedAtlas { version: 1; range: AtlasRange; nodes: AtlasPin[] }
-
-export function parseAtlas(raw: string | null): SavedAtlas {
-  const empty: SavedAtlas = { version: 1, range: "24h", nodes: [] };
-  try {
-    if (!raw || raw.length > 32_000) return empty;
-    const value = JSON.parse(raw);
-    if (value?.version !== 1 || !Array.isArray(value.nodes)) return empty;
-    const nodes: AtlasPin[] = [];
-    for (const pin of value.nodes) {
-      if (typeof pin?.id !== "string" || !/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(pin.id) ||
-          typeof pin.publicKey !== "string" || !/^[\da-f]{64}$/i.test(pin.publicKey)) continue;
-      const publicKey = pin.publicKey.toLowerCase();
-      if (nodes.some(node => node.publicKey === publicKey)) continue;
-      nodes.push({ id: pin.id, publicKey, name: typeof pin.name === "string" ? pin.name.slice(0, 160) : "" });
-      if (nodes.length === ATLAS_LIMIT) break;
-    }
-    return { version: 1, range: value.range === "3d" ? "3d" : "24h", nodes };
-  } catch { return empty; }
-}
 
 // Resolve by full identity after a server database reset; never adopt a different node at an old ID.
 export async function loadAtlasNode(pin: AtlasPin, signal?: AbortSignal) {
   let node: Node | undefined;
   try {
-    node = await getNode(pin.id, signal);
+    if (pin.id) node = await getNode(pin.id, signal);
   } catch (error) {
     if (!isNotFound(error)) throw error;
   }

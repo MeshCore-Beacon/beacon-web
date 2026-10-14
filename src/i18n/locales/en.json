@@ -284,7 +284,7 @@
       "observations_one": "{{formatted}} obs",
       "observations_other": "{{formatted}} obs",
       "hops": "Hops",
-            "hardware": "Hardware",
+      "hardware": "Hardware",
       "power": "Power",
       "antenna": "Antenna",
       "powerSource": "Power source",
@@ -957,10 +957,10 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
-      "addNodes": "Add nodes",
+      "addNodes": "Add nodes or observers",
       "matches": "Matches",
       "search": "Find a node",
-      "searchHelp": "Searches every region by name or public-key prefix (hex, at least {{min}} characters). Up to {{limit}} nodes.",
+      "searchHelp": "Search all regions by node name, public-key prefix (hex, at least {{min}} characters), or observer name. Up to {{limit}} cards.",
       "searchTooShort": "Type at least {{min}} characters.",
       "searchNotHex": "A public key prefix is hex only (0-9, a-f).",
       "savedCount_one": "{{count}} / {{limit}} saved",
@@ -974,8 +974,8 @@
       "saved": "Saved",
       "addName": "Add {{name}}",
       "savedName": "{{name}} is saved",
-      "emptyTitle": "No nodes saved",
-      "emptyDescription": "Search above to add up to {{limit}} nodes",
+      "emptyTitle": "No cards saved",
+      "emptyDescription": "Search above to add up to {{limit}} nodes or observers",
       "range": "Activity window",
       "ranges": {
         "24h": "24h",
@@ -995,7 +995,18 @@
       "heardUnavailable": "Packet details are unavailable or expired.",
       "openPacket": "Open packet",
       "dragToReorder": "Drag to reorder",
-      "remove": "Remove"
+      "remove": "Remove",
+      "observerCard": "Observer",
+      "searchObservers": "Observers",
+      "observerSearch": "Find an observer",
+      "observerMissing": "This saved observer is unavailable. Its identity could not be verified.",
+      "observerPartial": "Some observer data could not be refreshed. Available samples are retained.",
+      "observerPartialCoverage": "Partial history",
+      "observerReports": "Packets heard",
+      "observerSnr": "Latest hourly SNR",
+      "observerRssi": "Latest hourly RSSI",
+      "observerHistoryHelp": "Solid lines show reported samples. Dashed lines connect across missing hours; they are visual estimates, not measurements. Uptime gaps remain open. Device readings are the latest available status. Packet totals cover the selected window; unread hours remain unknown.",
+      "observerAddFailed": "Could not add this observer. Try again."
     }
   }
 }

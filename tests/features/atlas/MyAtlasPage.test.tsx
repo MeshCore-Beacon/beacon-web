@@ -69,7 +69,7 @@ describe("My Atlas", () => {
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes or observers" });
     expect(within(bar).getByRole("textbox", { name: "Find a node" })).toBeInTheDocument();
     expect(within(bar).getByText("1 / 12 saved")).toHaveClass("rounded-sm");
     expect(within(bar).getByRole("button", { name: "3d" })).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("My Atlas", () => {
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes or observers" });
     expect(bar).not.toHaveClass("flex-wrap");
     expect(within(bar).getByText("1/12")).toHaveClass("rounded-sm");
     expect(within(bar).queryByText("1 / 12 saved")).not.toBeInTheDocument();
@@ -94,7 +94,7 @@ describe("My Atlas", () => {
 
   it("shows the empty state and queries nothing with no pins", () => {
     mount();
-    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
+    expect(screen.getByText("No cards saved")).toBeInTheDocument();
     expect(api.getNode).not.toHaveBeenCalled();
     expect(api.getNodesPage).not.toHaveBeenCalled();
   });
@@ -107,7 +107,7 @@ describe("My Atlas", () => {
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Renamed repeater is saved" })).toBeDisabled();
     expect(screen.getByText("Showing the first 8 matches; refine the search for more.")).toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).nodes).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).cards).toHaveLength(1);
     expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { name: "repeater", limit: 8 }, expect.any(AbortSignal));
     view.unmount();
     mount();
@@ -175,7 +175,7 @@ describe("My Atlas", () => {
     expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "false");
     expect(within(next).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder" }), { key: "ArrowRight" });
-    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).nodes[0].publicKey).toBe(second.publicKey);
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).cards[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).range).toBe("3d");
@@ -208,7 +208,7 @@ describe("My Atlas", () => {
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     act(() => window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null })));
-    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
+    expect(screen.getByText("No cards saved")).toBeInTheDocument();
   });
 
   it("does not query a retained but inactive page", () => {
@@ -247,7 +247,7 @@ describe("identity recovery", () => {
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).nodes[0].id).toBe(second.id));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).cards[0].id).toBe(second.id));
   });
   it("does not adopt a mismatched identity or hide transport failures with broad searches", async () => {
     vi.mocked(api.getNode).mockResolvedValueOnce({ ...node, publicKey: second.publicKey });

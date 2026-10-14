@@ -266,8 +266,8 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
   return request(`/traces/${tag}`);
 }
 
-export async function getObserver(observerId: string): Promise<Observer> {
-  const observer = await request<Observer>(`/observers/${observerId}`);
+export async function getObserver(observerId: string, signal?: AbortSignal): Promise<Observer> {
+  const observer = await request<Observer>(`/observers/${observerId}`, undefined, signal);
   // Servers before json.RawMessage (and cache entries written by them) send the stored JSON as base64.
   let metadata: unknown = observer.statusMetadata;
   if (typeof metadata === "string") {
@@ -456,12 +456,13 @@ export function getObserverTelemetry(
   range: string,
   interval?: string,
   afterId?: number,
+  signal?: AbortSignal,
 ): Promise<ObserverTelemetry> {
-  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
+  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId }, signal);
 }
 
-export function getObserverActivity(observerId: string, range: string, interval: string, until?: number): Promise<ObserverActivity> {
-  return request(`/observers/${observerId}/activity`, { range, interval, until });
+export function getObserverActivity(observerId: string, range: string, interval: string, until?: number, signal?: AbortSignal): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval, until }, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.
