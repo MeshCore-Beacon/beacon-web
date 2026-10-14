@@ -146,7 +146,7 @@ export function AtlasCard({
   );
 
   const actions = (
-    <div className="ml-auto flex shrink-0 items-center gap-1">
+    <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
       {views.length > 1 && (
         <Segmented
           size="xs"
