@@ -50,6 +50,12 @@ export function SearchBar({ value, onChange, fields, field, onFieldChange, hideF
   function handleChange(val: string) {
     setLocalValue(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // clearing should restore the full list right away
+    if (val === "") {
+      debounceRef.current = null;
+      onChange(val);
+      return;
+    }
     debounceRef.current = setTimeout(() => {
       onChange(val);
     }, 300);

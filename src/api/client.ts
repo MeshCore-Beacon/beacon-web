@@ -97,7 +97,7 @@ function statsRegionParams(r: StatsRegion): { iatas?: string; region?: string } 
 
 export function getPackets(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[] },
+  params?: { cursor?: number; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
 ): Promise<CursorPage<PacketSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/packets", {
@@ -107,6 +107,7 @@ export function getPackets(
     payloadTypes: params?.payloadTypes?.length ? params.payloadTypes.join(",") : undefined,
     routeTypes: params?.routeTypes?.length ? params.routeTypes.join(",") : undefined,
     scopes: params?.scopes?.length ? params.scopes.join(",") : undefined,
+    hashPrefix: params?.hashPrefix,
   });
 }
 
