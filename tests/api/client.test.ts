@@ -51,6 +51,15 @@ describe("getPackets", () => {
     expect(url.searchParams.has("scopes")).toBe(false);
     expect(url.searchParams.get("cursor")).toBe("100");
     expect(url.searchParams.get("limit")).toBe("50");
+    expect(url.searchParams.has("hashPrefix")).toBe(false);
+  });
+
+  it("forwards hashPrefix", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+
+    await getPackets(["YOW"], { hashPrefix: "6ddf62" });
+
+    expect(new URL(getUrl()).searchParams.get("hashPrefix")).toBe("6ddf62");
   });
 });
 

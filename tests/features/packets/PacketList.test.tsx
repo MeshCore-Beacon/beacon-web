@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PacketList } from "../../../src/features/packets/PacketList";
@@ -364,6 +364,34 @@ describe("PacketList selected packet outside the loaded results", () => {
     expect(screen.getByTestId("expanded")).toHaveTextContent("null");
     expect(screen.getByPlaceholderText("Search by hash...")).toHaveValue("other");
     expect(usePackets).toHaveBeenLastCalledWith(false, { payloadTypes: [4] });
+  });
+});
+
+describe("PacketList hash search", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    usePackets.mockImplementation(basePackets);
+  });
+
+  it("sends a typed hex hash search server-side once the search box settles", () => {
+    vi.useFakeTimers();
+    renderList();
+    fireEvent.change(screen.getByPlaceholderText("Search by hash..."), { target: { value: "6DDF" } });
+    expect(usePackets).toHaveBeenLastCalledWith(false, null);
+    act(() => { vi.runOnlyPendingTimers(); });
+    expect(usePackets).toHaveBeenLastCalledWith(false, { hashPrefix: "6ddf" });
+  });
+
+  it("starts with the URL's hash search already server-side", () => {
+    renderList("/?q=6ddf62");
+    expect(usePackets).toHaveBeenLastCalledWith(false, { hashPrefix: "6ddf62" });
+  });
+
+  it("still filters live packets client-side while a hash search is active", () => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("6ddf0001"), packet("aa110002")] }));
+    renderList("/?q=6ddf");
+    expect(screen.getByRole("button", { name: "6ddf0001" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "aa110002" })).toBeNull();
   });
 });
 
