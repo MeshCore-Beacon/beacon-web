@@ -1,34 +1,63 @@
 import { ApiError, getNode, getNodeObservations, getNodesPage, isNotFound } from "../../api/client";
-import type { Node, NodeObservation } from "../nodes/types";
+import type { Node, NodeObservation, NodeSummary } from "../nodes/types";
+import type { Observer } from "../observers/types";
 
 export const ATLAS_KEY = "beacon-my-atlas-v1";
 export const ATLAS_LIMIT = 12;
 export const REPORT_LIMIT = 200;
 export type AtlasRange = "24h" | "3d";
-export interface AtlasPin { id: string; publicKey: string; name: string }
-export interface SavedAtlas { version: 1; range: AtlasRange; nodes: AtlasPin[] }
+export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string }
+export interface ObserverPin { kind: "observer"; observerId: string; name: string }
+export type AtlasPin = NodePin | ObserverPin;
+export interface SavedAtlas { version: 2; range: AtlasRange; pins: AtlasPin[] }
 
+const UUID = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i;
+const KEY = /^[\da-f]{64}$/i;
+const isUuid = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
+
+export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : pin.observerId);
+
+// Version 1 stored `nodes`; version 2 stores `pins` with a kind. Both load, anything else is empty.
 export function parseAtlas(raw: string | null): SavedAtlas {
-  const empty: SavedAtlas = { version: 1, range: "24h", nodes: [] };
+  const empty: SavedAtlas = { version: 2, range: "24h", pins: [] };
   try {
     if (!raw || raw.length > 32_000) return empty;
     const value = JSON.parse(raw);
-    if (value?.version !== 1 || !Array.isArray(value.nodes)) return empty;
-    const nodes: AtlasPin[] = [];
-    for (const pin of value.nodes) {
-      if (typeof pin?.id !== "string" || !/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(pin.id) ||
-          typeof pin.publicKey !== "string" || !/^[\da-f]{64}$/i.test(pin.publicKey)) continue;
-      const publicKey = pin.publicKey.toLowerCase();
-      if (nodes.some(node => node.publicKey === publicKey)) continue;
-      nodes.push({ id: pin.id, publicKey, name: typeof pin.name === "string" ? pin.name.slice(0, 160) : "" });
-      if (nodes.length === ATLAS_LIMIT) break;
+    const list = value?.version === 1 ? value.nodes : value?.version === 2 ? value.pins : null;
+    if (!Array.isArray(list)) return empty;
+    const pins: AtlasPin[] = [];
+    for (const entry of list) {
+      const pin = toPin(entry, value.version === 1);
+      if (!pin || pins.some((other) => pinKey(other) === pinKey(pin))) continue;
+      pins.push(pin);
+      if (pins.length === ATLAS_LIMIT) break;
     }
-    return { version: 1, range: value.range === "3d" ? "3d" : "24h", nodes };
+    return { version: 2, range: value.range === "3d" ? "3d" : "24h", pins };
   } catch { return empty; }
 }
 
+function toPin(raw: unknown, legacy: boolean): AtlasPin | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const name = typeof value.name === "string" ? value.name.slice(0, 160) : "";
+  const kind = legacy ? "node" : value.kind;
+  if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name } : null;
+  if (kind !== "node" || !isUuid(value.id) || typeof value.publicKey !== "string" || !KEY.test(value.publicKey)) return null;
+  const pin: NodePin = { kind, id: value.id, publicKey: value.publicKey.toLowerCase(), name };
+  if (isUuid(value.observerId)) pin.observerId = value.observerId;
+  return pin;
+}
+
+// The same radio can be a node and an observer; when it advertises, the node is the pin.
+export async function resolveObserverNode(observer: Observer, signal?: AbortSignal): Promise<NodeSummary | null> {
+  const key = observer.publicKey?.toLowerCase();
+  if (!key) return null;
+  const page = await getNodesPage(undefined, { pubkeyPrefix: key, limit: 2 }, signal);
+  return page.items.find((row) => row.publicKey.toLowerCase() === key) ?? null;
+}
+
 // Resolve by full identity after a server database reset; never adopt a different node at an old ID.
-export async function loadAtlasNode(pin: AtlasPin, signal?: AbortSignal) {
+export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal) {
   let node: Node | undefined;
   try {
     node = await getNode(pin.id, signal);

@@ -3,19 +3,20 @@ import { useQuery } from "@tanstack/react-query";
 import { queryRetryDelay } from "../../api/rate-limit";
 import { useRateLimit } from "../../hooks/useRateLimit";
 import { useTick } from "../../hooks/useTick";
-import { loadAtlasNode, summarizeReports, type AtlasPin, type AtlasRange } from "./atlas";
+import { loadAtlasNode, summarizeReports, type NodePin, type AtlasRange } from "./atlas";
 
 export const ATLAS_REFRESH_MS = 60_000;
 
-export function useAtlasNode(pin: AtlasPin, range: AtlasRange, active: boolean) {
+// A null pin (an observer-only card) leaves the query disabled.
+export function useAtlasNode(pin: NodePin | null, range: AtlasRange, active: boolean) {
   const now = useTick(ATLAS_REFRESH_MS);
   const limitedUntil = useRateLimit();
   // Disabling the query drops its timer, so a poll can't fire inside the throttle window.
   const throttled = limitedUntil !== null && now < limitedUntil;
   const query = useQuery({
-    queryKey: ["atlas-node", pin.publicKey],
-    queryFn: ({ signal }) => loadAtlasNode(pin, signal),
-    enabled: active && !throttled,
+    queryKey: ["atlas-node", pin?.publicKey ?? null],
+    queryFn: ({ signal }) => loadAtlasNode(pin!, signal),
+    enabled: pin !== null && active && !throttled,
     staleTime: ATLAS_REFRESH_MS,
     refetchOnWindowFocus: false,
     refetchInterval: ATLAS_REFRESH_MS,
