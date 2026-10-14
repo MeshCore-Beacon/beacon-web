@@ -118,11 +118,18 @@ export function usePacketFilters() {
 // The /packets endpoint accepts comma-separated payloadTypes/routeTypes/scopes, so any selected
 // dimension goes server-side and pagination pulls the correctly-filtered set from the full history.
 // (observers has no server param, so it stays client-side in matchesFilters, as does the live buffer.)
+// A 4-16 char hex hash search also goes server-side so older packets can be found.
+const HASH_PREFIX_RE = /^[0-9a-f]{4,16}$/i;
+
 export function toServerFilter(filters: PacketFilterState): PacketServerFilter | null {
   const serverFilter: PacketServerFilter = {};
   if (filters.payloadTypes.length > 0) serverFilter.payloadTypes = filters.payloadTypes;
   if (filters.routeTypes.length > 0) serverFilter.routeTypes = filters.routeTypes;
   if (filters.scopes.length > 0) serverFilter.scopes = filters.scopes;
+  const hashSearch = filters.search.trim();
+  if (filters.searchField === "hash" && HASH_PREFIX_RE.test(hashSearch)) {
+    serverFilter.hashPrefix = hashSearch.toLowerCase();
+  }
   return Object.keys(serverFilter).length > 0 ? serverFilter : null;
 }
 
@@ -151,7 +158,7 @@ export function matchesFilters(
     return false;
   }
   if (filters.search && filters.searchField === "hash") {
-    const q = filters.search.toLowerCase();
+    const q = filters.search.trim().toLowerCase();
     if (!packet.packetHash.toLowerCase().includes(q)) {
       return false;
     }

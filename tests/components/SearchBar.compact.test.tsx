@@ -18,3 +18,17 @@ describe("compact observer search", () => {
     } finally { vi.useRealTimers(); }
   });
 });
+
+describe("clearing the search", () => {
+  it("reports an emptied box immediately instead of waiting out the debounce", () => {
+    vi.useFakeTimers();
+    try {
+      const change = vi.fn();
+      render(<SearchBar value="abcd" onChange={change} fields={[{ value: "hash", label: "Hash" }]} field="hash" onFieldChange={() => {}} hideField inputLabel="Search" />);
+      fireEvent.change(screen.getByRole("textbox", { name: "Search" }), { target: { value: "" } });
+      expect(change).toHaveBeenCalledExactlyOnceWith("");
+      act(() => vi.advanceTimersByTime(300));
+      expect(change).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+  });
+});

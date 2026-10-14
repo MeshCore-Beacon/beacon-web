@@ -16,6 +16,7 @@ export interface PacketServerFilter {
   payloadTypes?: number[];
   routeTypes?: number[];
   scopes?: string[];
+  hashPrefix?: string;
 }
 
 export const EMPTY_FILTERS: PacketFilterState = {
