@@ -26,6 +26,10 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
   return true;
 }
 
+// TanStack Query retry delay: wait out a Retry-After when the server sent one, otherwise back off.
+export const queryRetryDelay = (attempt: number, error: Error) =>
+  (error as { retryAfterMs?: number }).retryAfterMs ?? Math.min(1000 * 2 ** attempt, 30_000);
+
 // App-wide "the API is throttling us" flag: fed by the fetch wrapper, read by the header badge.
 
 let limitedUntil: number | null = null;
