@@ -21,6 +21,13 @@ function pkt(over: Partial<PacketSummary>): PacketSummary {
   };
 }
 
+describe("matchesFilters — hash search", () => {
+  it("matches a trimmed, case-insensitive substring of the hash", () => {
+    expect(matchesFilters(pkt({ packetHash: "abcd1234" }), { ...EMPTY_FILTERS, search: " CD12 " })).toBe(true);
+    expect(matchesFilters(pkt({ packetHash: "abcd1234" }), { ...EMPTY_FILTERS, search: "ffff" })).toBe(false);
+  });
+});
+
 describe("matchesFilters — scope", () => {
   it("ignores scope when no scope filter is set", () => {
     expect(matchesFilters(pkt({ scope: "#bc" }), EMPTY_FILTERS)).toBe(true);
@@ -82,6 +89,23 @@ describe("toServerFilter", () => {
   it("ignores client-only filters (observers, search)", () => {
     expect(toServerFilter({ ...EMPTY_FILTERS, observers: ["o1"] })).toBeNull();
     expect(toServerFilter({ ...EMPTY_FILTERS, search: "ab" })).toBeNull();
+  });
+
+  it.each(["abcd", "ABCDE", "6ddf62fb5b9a969e", " abcd "])("sends a %j hash search server-side as a trimmed lowercase hashPrefix", (search) => {
+    expect(toServerFilter({ ...EMPTY_FILTERS, search })).toEqual({ hashPrefix: search.trim().toLowerCase() });
+  });
+
+  it.each(["abc", "6ddf62fb5b9a969e0", "abcg", "ab cd"])("keeps the %j hash search client-side only", (search) => {
+    expect(toServerFilter({ ...EMPTY_FILTERS, search })).toBeNull();
+  });
+
+  it("never sends a path search as a hashPrefix", () => {
+    expect(toServerFilter({ ...EMPTY_FILTERS, search: "abcd", searchField: "path" })).toBeNull();
+  });
+
+  it("combines hashPrefix with the other server filters", () => {
+    expect(toServerFilter({ ...EMPTY_FILTERS, payloadTypes: [4] as PayloadTypeValue[], search: "abcd" }))
+      .toEqual({ payloadTypes: [4], hashPrefix: "abcd" });
   });
 });
 
