@@ -1,6 +1,6 @@
 import { CHAT_MS, type LiveChatter } from "./chatter";
 import { nodeTypeColor, type ChartColors } from "../stats/chartTheme";
-import { DEFAULT_CAMERA, FLOW_MS, project, fitCamera, panCamera, pathControls, visibleLinks, flowColor, linkContext, type Camera, type PathDisplay, type LiveTraffic, type Point3, type Topology } from "./topology";
+import { DEFAULT_CAMERA, FLOW_MS, createProjector, fitCamera, panCamera, pathControls, visibleLinks, flowColor, linkContext, type Camera, type PathDisplay, type LiveTraffic, type Point3, type Topology } from "./topology";
 
 export type CameraView = { camera: Camera; region: string; extent: number };
 
@@ -10,7 +10,13 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   let camera = { ...(view?.camera ?? DEFAULT_CAMERA), target: { ...(view?.camera.target ?? DEFAULT_CAMERA.target) } };
   let transition: { from: Camera; to: Camera; at: number } | null = null;
   const background = document.createElement("canvas"), backgroundCtx = background.getContext("2d");
-  let width = 1, height = 1, frame = 0, previousFrame = 0;
+  const underlay = document.createElement("canvas"), underlayCtx = underlay.getContext("2d");
+  const foreground = document.createElement("canvas"), foregroundCtx = foreground.getContext("2d");
+  if (!backgroundCtx || !underlayCtx || !foregroundCtx) return null;
+  let trailsDirty = true, layersValid = false, movingUntil = 0;
+  const bubbleLayouts = new Map<string, { content: string; width: number; lines: string[] }>();
+  const labelWidths = new Map<string, { font: string; label: string; width: number }>();
+  let width = 1, height = 1, ratio = 1, frame = 0, previousFrame = 0;
   let running = true, motion = true, selected = "", dirty = true, baseDirty = true, regionCode = view?.region ?? "";
   let fitted = !!view;
   let display: PathDisplay = "all";
@@ -23,13 +29,17 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   const regionByCode = new Map(graph.regions.map(r => [r.code, r]));
   const extent = Math.max(220, ...graph.regions.map(r => Math.hypot(r.x, r.z) + r.radius));
   if (view) camera.zoom *= extent / view.extent;
-  const p = (point: Point3) => project(point, camera, width, height, extent);
+  let projector = createProjector(camera, width, height, extent);
+  const p = (point: Point3) => projector(point);
   const line = (a: Point3, b: Point3) => { const from = p(a), to = p(b); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); };
   const curve = (a: Point3, b: Point3, cross: boolean) => pathControls(a, b, cross).map(p);
   const strokeCurve = (points: ReturnType<typeof curve>) => {
     const [a, c, d, b] = points;
     ctx.beginPath(); ctx.moveTo(a!.x, a!.y); ctx.bezierCurveTo(c!.x, c!.y, d!.x, d!.y, b!.x, b!.y); ctx.stroke();
   };
+  // Rounded backing sizes can differ from CSS size * ratio by half a pixel.
+  // Copy backing pixels 1:1 so fractional-DPR phones do not blur each layer.
+  const composite = (layer: HTMLCanvasElement) => ctx.drawImage(layer, 0, 0, layer.width / ratio, layer.height / ratio);
   const wake = (changed = false) => { baseDirty ||= changed; dirty = true; if (!frame && running && !document.hidden) frame = requestAnimationFrame(draw); };
   function fit(smooth = true) {
     const regions = regionByCode.has(regionCode) ? [regionByCode.get(regionCode)!] : graph.regions;
@@ -47,11 +57,21 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
     wake(true);
   }
 
+  function drawTrails() {
+    for (const trail of traffic.trails.values()) {
+      const from = graph.byId.get(trail.from), to = graph.byId.get(trail.to); if (!from || !to) continue;
+      if (display !== "all" && selected !== from.id && selected !== to.id && !(display === "bundled" && regionCode && from.region === regionCode && to.region === regionCode)) continue;
+      ctx!.globalAlpha = 0.35; ctx!.strokeStyle = flowColor(trail.kind, colors); ctx!.lineWidth = 1;
+      strokeCurve(curve(from, to, from.region !== to.region));
+    }
+  }
+
   function draw(now: number) {
     frame = 0;
     if (!running || document.hidden) return;
-    const bubbles = chatter?.visible(Date.now()) ?? [];
-    const flows = motion ? traffic.flows.filter(r => Date.now() - r.at < FLOW_MS) : [];
+    const time = Date.now();
+    const bubbles = chatter?.visible(time) ?? [];
+    const flows = motion ? traffic.flows.filter(r => time - r.at < FLOW_MS) : [];
     // A fixed 30 fps ceiling and capped pixel ratio bound work on phones and large meshes.
     if (!dirty && (flows.length || bubbles.length || transition) && now - previousFrame < 32) { frame = requestAnimationFrame(draw); return; }
     previousFrame = now;
@@ -62,8 +82,14 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       camera = { yaw: mix(from.yaw, to.yaw), pitch: mix(from.pitch, to.pitch), zoom: mix(from.zoom, to.zoom), target: { x: mix(from.target.x, to.target.x), y: mix(from.target.y, to.target.y), z: mix(from.target.z, to.target.z) } };
       baseDirty = true; if (t === 1) transition = null;
     }
-    // Repaint static ink only for a changed camera, graph, style or selection.
-    if (baseDirty || !backgroundCtx) {
+    projector = createProjector(camera, width, height, extent);
+    // Keep the mesh below live trails and the nodes above them. Trail changes
+    // only recomposite these bounded, pixel-ratio-capped layers; they do not
+    // reproject, sort and stroke the entire graph.
+    const cacheLayers = !transition && now >= movingUntil;
+    let paintedScene = false;
+    if (baseDirty || (trailsDirty && !layersValid)) {
+    baseDirty = true;
     ctx!.clearRect(0, 0, width, height);
     ctx!.fillStyle = colors.bgBase;
     ctx!.fillRect(0, 0, width, height);
@@ -98,12 +124,12 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       strokeCurve(curve(graph.byId.get(a)!, graph.byId.get(b)!, context.crossRegion));
     }
     ctx!.setLineDash([]);
-    for (const trail of traffic.trails.values()) {
-      const from = graph.byId.get(trail.from), to = graph.byId.get(trail.to); if (!from || !to) continue;
-      if (display !== "all" && selected !== from.id && selected !== to.id && !(display === "bundled" && regionCode && from.region === regionCode && to.region === regionCode)) continue;
-      ctx!.globalAlpha = 0.35; ctx!.strokeStyle = flowColor(trail.kind, colors); ctx!.lineWidth = 1;
-      strokeCurve(curve(from, to, from.region !== to.region));
-    }
+    ctx!.globalAlpha = 1;
+    if (cacheLayers) {
+      underlayCtx!.clearRect(0, 0, underlay.width, underlay.height);
+      underlayCtx!.drawImage(canvas, 0, 0);
+      ctx!.clearRect(0, 0, width, height);
+    } else drawTrails();
     if (display === "bundled") for (const bundle of graph.bundles) {
       const points = curve(regionByCode.get(bundle.from)!, regionByCode.get(bundle.to)!, true);
       ctx!.globalAlpha = 0.6; ctx!.strokeStyle = colors.primary; ctx!.lineWidth = Math.min(4, 1 + Math.log2(1 + bundle.count) * 0.3); strokeCurve(points);
@@ -128,12 +154,36 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       if (n.isObserver || n.id === selected) { ctx!.strokeStyle = n.id === selected ? colors.textBright : colors.primary; ctx!.lineWidth = 1.2; ctx!.beginPath(); ctx!.arc(q.x, q.y, radius + 3, 0, Math.PI * 2); ctx!.stroke(); }
     }
     ctx!.globalAlpha = 1;
-    backgroundCtx?.clearRect(0, 0, background.width, background.height); backgroundCtx?.drawImage(canvas, 0, 0); baseDirty = false;
-    } else ctx!.drawImage(background, 0, 0, width, height);
+    if (cacheLayers) {
+      foregroundCtx!.clearRect(0, 0, foreground.width, foreground.height);
+      foregroundCtx!.drawImage(canvas, 0, 0);
+      layersValid = true;
+    } else {
+      // While the camera moves every frame, render directly in the original
+      // order. Populate the separated layers once it settles, not every drag.
+      backgroundCtx!.clearRect(0, 0, background.width, background.height);
+      backgroundCtx!.drawImage(canvas, 0, 0);
+      layersValid = false;
+      baseDirty = trailsDirty = false;
+      paintedScene = true;
+    }
+    }
+    if (baseDirty || trailsDirty) {
+      ctx!.globalAlpha = 1;
+      ctx!.clearRect(0, 0, width, height);
+      composite(underlay);
+      ctx!.setLineDash([]);
+      drawTrails();
+      ctx!.globalAlpha = 1;
+      composite(foreground);
+      backgroundCtx!.clearRect(0, 0, background.width, background.height);
+      backgroundCtx!.drawImage(canvas, 0, 0);
+      baseDirty = trailsDirty = false;
+    } else if (!paintedScene) composite(background);
     // All live flows remain visible in every link-display mode. Curves change
     // presentation only: their endpoints still come from exact observed segments.
     for (const report of flows) {
-      const progress = Math.min(1, (Date.now() - report.at) / FLOW_MS);
+      const progress = Math.min(1, (time - report.at) / FLOW_MS);
       const segmentIndex = Math.min(report.segments.length - 1, Math.floor(progress * report.segments.length));
       const pair = report.segments[segmentIndex];
       if (!pair) continue;
@@ -158,7 +208,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
     regionHits = [];
     const recentByRegion = new Map<string, (typeof traffic.reports)[number]>();
     if (motion) for (let i = traffic.reports.length - 1; i >= 0; i--) {
-      const report = traffic.reports[i]!; if (Date.now() - report.at >= 1500) break;
+      const report = traffic.reports[i]!; if (time - report.at >= 1500) break;
       if (!recentByRegion.has(report.iata)) recentByRegion.set(report.iata, report);
     }
     for (const region of [...graph.regions].sort((a, b) => Number(b.code === regionCode) - Number(a.code === regionCode) || b.count - a.count)) {
@@ -171,7 +221,12 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       q.y -= Math.min(35, region.radius * q.scale * 0.6);
       if (q.x < -100 || q.x > width + 100 || q.y < -30 || q.y > height + 30) continue;
       const label = `${region.code} · ${region.count}`;
-      const w = ctx!.measureText(label).width + 16;
+      let metrics = labelWidths.get(region.code);
+      if (!metrics || metrics.font !== ctx!.font || metrics.label !== label) {
+        metrics = { font: ctx!.font, label, width: ctx!.measureText(label).width + 16 };
+        labelWidths.set(region.code, metrics);
+      }
+      const w = metrics.width;
       if (regionHits.some(r => Math.abs(r.x - q.x) < (r.width + w) / 2 + 5 && Math.abs(r.y - q.y) < 29)) continue;
       ctx!.fillStyle = colors.bgRaised; ctx!.fillRect(q.x - w / 2, q.y - 13, w, 26);
       ctx!.fillStyle = colors.textBright; ctx!.fillText(label, q.x, q.y + 4);
@@ -188,6 +243,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       ctx!.fillStyle = colors.bgSurface; ctx!.fillRect(selectedPoint.x - w / 2, selectedPoint.y - 34, w, 22);
       ctx!.fillStyle = colors.textBright; ctx!.fillText(label, selectedPoint.x, selectedPoint.y - 19);
     }
+    for (const hash of bubbleLayouts.keys()) if (!bubbles.some(b => b.hash === hash)) bubbleLayouts.delete(hash);
     const placed: {x:number;y:number;w:number;h:number}[] = [];
     for (const bubble of bubbles) {
       if (placed.length >= (width < 600 ? 1 : 2)) break;
@@ -199,7 +255,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       const positions=[{x:q.x-w/2,y:q.y-h-25},{x:q.x+20,y:q.y-h-15},{x:q.x-w-20,y:q.y-h-15},{x:q.x-w/2,y:q.y+25}];
       const box=positions.map(pos=>({x:Math.max(8,Math.min(width-w-8,pos.x)),y:Math.max(8,Math.min(height-h-8,pos.y)),w,h})).find(pos=>(q.x<pos.x-8 || q.x>pos.x+pos.w+8 || q.y<pos.y-8 || q.y>pos.y+pos.h+8) && !placed.some(old=>pos.x<old.x+old.w+8 && pos.x+pos.w+8>old.x && pos.y<old.y+old.h+8 && pos.y+pos.h+8>old.y));
       if (!box) continue; placed.push(box);
-      const alpha=motion ? Math.min(1,Math.max(0,(CHAT_MS-(Date.now()-bubble.at))/1600)) : 1;
+      const alpha=motion ? Math.min(1,Math.max(0,(CHAT_MS-(time-bubble.at))/1600)) : 1;
       ctx!.globalAlpha=alpha;
       ctx!.strokeStyle=colors.secondary;ctx!.lineWidth=1;
       const sx=Math.max(box.x,Math.min(box.x+w,q.x)),sy=Math.max(box.y,Math.min(box.y+h,q.y));
@@ -210,9 +266,15 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       ctx!.textAlign="left";ctx!.font="600 12px Inter, sans-serif";ctx!.fillStyle=colors.secondary;
       ctx!.fillText(bubble.sender,box.x+9,box.y+18,w-18);
       ctx!.font="12px Inter, sans-serif";ctx!.fillStyle=colors.textBright;
-      const chars=Array.from(bubble.content);const lines:string[]=[];let line="";
-      for (const char of chars) { if(ctx!.measureText(line+char).width>w-20) { const space=line.lastIndexOf(" "); if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);} else {lines.push(line);line="";} } line+=char; }
-      if(line)lines.push(line);
+      let layout = bubbleLayouts.get(bubble.hash);
+      if (!layout || layout.content !== bubble.content || layout.width !== w) {
+        const lines: string[] = []; let line = "";
+        for (const char of Array.from(bubble.content)) { if(ctx!.measureText(line+char).width>w-20) { const space=line.lastIndexOf(" "); if(space>0){lines.push(line.slice(0,space));line=line.slice(space+1);} else {lines.push(line);line="";} } line+=char; }
+        if (line) lines.push(line);
+        layout = { content: bubble.content, width: w, lines };
+        bubbleLayouts.set(bubble.hash, layout);
+      }
+      const { lines } = layout;
       for(let i=0;i<Math.min(2,lines.length);i++)ctx!.fillText(lines[i]!.slice(0,i===1 && lines.length>2 ? -2 : undefined)+(i===1 && lines.length>2 ? "…" : ""),box.x+9,box.y+39+i*17,w-18);
     }
     ctx!.globalAlpha=1;
@@ -221,13 +283,15 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
 
   function resize() {
     const box = canvas.getBoundingClientRect(); width = Math.max(1, box.width); height = Math.max(1, box.height);
-    const ratio = Math.min(window.devicePixelRatio || 1, width < 600 ? 1.25 : 1.5);
-    canvas.width = background.width = Math.round(width * ratio); canvas.height = background.height = Math.round(height * ratio);
+    ratio = Math.min(window.devicePixelRatio || 1, width < 600 ? 1.25 : 1.5);
+    for (const layer of [canvas, background, underlay, foreground]) {
+      layer.width = Math.round(width * ratio); layer.height = Math.round(height * ratio);
+    }
     ctx!.setTransform(ratio, 0, 0, ratio, 0, 0);
     if (!fitted) { fit(false); fitted = true; } else wake(true);
   }
-  function zoom(factor: number) { transition = null; camera = { ...camera, zoom: Math.max(0.2, Math.min(80, camera.zoom * factor)) }; wake(true); }
-  function pan(dx: number, dy: number) { transition = null; camera = panCamera(camera, dx, dy, width, height, extent); wake(true); }
+  function zoom(factor: number) { movingUntil = performance.now() + 120; transition = null; camera = { ...camera, zoom: Math.max(0.2, Math.min(80, camera.zoom * factor)) }; wake(true); }
+  function pan(dx: number, dy: number) { movingUntil = performance.now() + 120; transition = null; camera = panCamera(camera, dx, dy, width, height, extent); wake(true); }
   function down(e: PointerEvent) {
     if (e.button > 2) return;
     e.preventDefault(); canvas.focus({ preventScroll: true });
@@ -237,6 +301,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   }
   function move(e: PointerEvent) {
     const old = pointers.get(e.pointerId); if (!old) return;
+    movingUntil = performance.now() + 120;
     const other = [...pointers].find(([id]) => id !== e.pointerId)?.[1];
     const dx = e.clientX - old.x, dy = e.clientY - old.y;
     if (other) { const before = Math.hypot(old.x - other.x, old.y - other.y); const after = Math.hypot(e.clientX - other.x, e.clientY - other.y); if (before > 5) zoom(after / before); pan(dx / 2, dy / 2); moved = true; }
@@ -259,7 +324,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   function wheel(e: WheelEvent) { e.preventDefault(); zoom(Math.exp(-Math.max(-100, Math.min(100, e.deltaY)) * 0.002)); }
   function key(e: KeyboardEvent) {
     if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "=", "-", "Home", "Escape"].includes(e.key)) return;
-    e.preventDefault(); transition = null;
+    e.preventDefault(); transition = null; movingUntil = performance.now() + 120;
     if (e.key === "Home") fit();
     else if (e.key === "Escape") focus("");
     else if (e.key === "+" || e.key === "=") zoom(1.2);
@@ -272,6 +337,8 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
     wake(true);
   }
   function visibility() { pointers.clear(); if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else wake(); }
+  const fontsLoaded = () => { labelWidths.clear(); bubbleLayouts.clear(); wake(true); };
+  document.fonts?.addEventListener("loadingdone", fontsLoaded);
   const observer = new ResizeObserver(resize); observer.observe(canvas); resize();
   canvas.addEventListener("pointerdown", down); canvas.addEventListener("pointermove", move);
   canvas.addEventListener("pointerup", up); canvas.addEventListener("pointercancel", up); canvas.addEventListener("lostpointercapture", up);
@@ -281,11 +348,14 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   return {
     update(id: string, region: string, paths: PathDisplay, animate: boolean, active: boolean) {
       const changeRegion = region !== regionCode;
-      baseDirty ||= selected !== id || changeRegion || paths !== display || lastTrailVersion !== traffic.trailVersion;
+      baseDirty ||= selected !== id || changeRegion || paths !== display;
+      trailsDirty ||= lastTrailVersion !== traffic.trailVersion;
       lastTrailVersion = traffic.trailVersion;
+      if (selected !== id) {
+        related = new Set([id]);
+        if (id) for (const [a, b] of graph.links) { if (a === id) related.add(b); if (b === id) related.add(a); }
+      }
       selected = id; regionCode = region; display = paths; motion = animate; running = active;
-      related = new Set([id]);
-      for (const [a, b] of graph.links) { if (a === id) related.add(b); if (b === id) related.add(a); }
       if (!motion && transition) { camera = transition.to; transition = null; baseDirty = true; }
       if (changeRegion) fit();
       if (!running) { cancelAnimationFrame(frame); frame = 0; } else wake();
@@ -299,6 +369,8 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       canvas.removeEventListener("contextmenu", contextMenu);
       canvas.removeEventListener("wheel", wheel); canvas.removeEventListener("keydown", key);
       document.removeEventListener("visibilitychange", visibility);
+      document.fonts?.removeEventListener("loadingdone", fontsLoaded);
+      for (const layer of [background, underlay, foreground]) layer.width = layer.height = 0;
     },
   };
 }

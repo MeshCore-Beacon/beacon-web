@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { buildTopology, reportFromEvent, LiveTraffic, project, fitCamera, panCamera, pathControls, visibleLinks, DEFAULT_CAMERA, linkContext, loadTopology, loadTopologyRoutes, NODE_CAP, FLOW_CAP, REPORT_CAP } from "../../../src/features/topology/topology";
+import { buildTopology, reportFromEvent, LiveTraffic, project, createProjector, fitCamera, panCamera, pathControls, visibleLinks, DEFAULT_CAMERA, linkContext, loadTopology, loadTopologyRoutes, NODE_CAP, FLOW_CAP, REPORT_CAP } from "../../../src/features/topology/topology";
 import { getTopologyLinks, getNodesPage } from "../../../src/api/client";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 import type { WsPacketObservation } from "../../../src/types/ws";
@@ -13,6 +13,42 @@ const hop = (id: string): ResolvedHop => ({ confidence: "high", nodes: [{ id, pu
 const event = (path: ResolvedHop[] = [hop("a"), hop("b"), hop("c")]): WsPacketObservation["data"] => ({ packetHash: "hash", packet: { payloadType: 5, payloadTypeName: "GRP_TXT", routeType: 1, routeTypeName: "FLOOD", isFirstObservation: true, observationCount: 1, scope: "#on" }, observation: { observerId: "obs", observerName: "Observer", iata: "YOW", heardAt: 1, rssi: -90, snr: 5, sourceBroker: "fixture", resolvedPath: path } });
 
 describe("3D topology evidence and bounds", () => {
+  it("expires out-of-order receipts and trails after a clock adjustment", () => {
+    const live = new LiveTraffic();
+    const report = reportFromEvent(event(), graph, 2000)!;
+    live.add({ ...report, key: "newer", at: 2000, segments: [["a", "b"]] });
+    live.add({ ...report, key: "older", at: 1000, segments: [["b", "c"]] });
+    live.prune(61000);
+    expect(live.reports.map(r => r.key)).toEqual(["newer"]);
+    expect([...live.trails.keys()]).toEqual(["a|b"]);
+    expect(live.flows).toEqual([]);
+    expect(live.add({ ...report, key: "older", at: 61000 })).toBe(true);
+  });
+
+  it("does not replace retained history arrays when no observations have expired", () => {
+    const live = new LiveTraffic();
+    const reports = live.reports, flows = live.flows;
+    for (let i = 0; i < 100; i++) live.add({ ...reportFromEvent(event(), graph, 1000 + i)!, key: String(i) });
+    live.prune(1200);
+    expect(live.reports).toBe(reports);
+    expect(live.flows).toBe(flows);
+    expect(live.reports).toHaveLength(100);
+    expect(live.flows).toHaveLength(100);
+  });
+
+  it("projects all vertices with the same perspective as the original camera equations", () => {
+    for (const yaw of [-1.5, 0, 1.2]) for (const pitch of [0.35, 1.05, Math.PI / 2]) {
+      const camera = { yaw, pitch, zoom: 2.4, target: { x: 50, y: 12, z: -80 } };
+      const render = createProjector(camera, 1280, 720, 800);
+      for (const point of [{x:0,y:0,z:0},{x:900,y:28,z:-400},{x:-300,y:400,z:-6000}]) {
+        const lx=point.x-50, ly=point.y-12, lz=point.z+80;
+        const x=lx*Math.cos(yaw)-lz*Math.sin(yaw), z=lx*Math.sin(yaw)+lz*Math.cos(yaw);
+        const y=ly*Math.cos(pitch)+z*Math.sin(pitch), depth=-ly*Math.sin(pitch)+z*Math.cos(pitch);
+        const perspective=2400/(2400+depth), scale=720/(800*2.6)*2.4*perspective;
+        expect(render(point)).toEqual({x:640+x*scale,y:360-y*scale,depth,scale,visible:perspective>0});
+      }
+    }
+  });
   it("groups nodes within the selected shared regions despite a newer outside reception", () => {
     const multi = { ...a, iatas: [{ iata: "YYZ", lastHeard: 30 }, { iata: "YOW", lastHeard: 20 }, { iata: "YKF", lastHeard: 10 }] };
     expect(buildTopology([multi], ["YOW", "YKF"]).nodes[0]!.region).toBe("YOW");

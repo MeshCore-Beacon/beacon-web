@@ -191,7 +191,11 @@ export class LiveTraffic {
   gapUntil = 0;
   markGap() { this.gapUntil = Date.now() + LIVE_WINDOW; }
   private seen = new Map<string, number>();
+  private ordered = true;
+  private lastAt = -Infinity;
   add(report: LiveReport) {
+    this.ordered &&= report.at >= this.lastAt;
+    this.lastAt = report.at;
     this.prune(report.at);
     if (this.seen.has(report.key)) return false;
     this.seen.set(report.key, report.at);
@@ -206,31 +210,61 @@ export class LiveTraffic {
     if (this.reports.length > REPORT_CAP) { this.reports.shift(); this.cappedUntil = report.at + LIVE_WINDOW; }
     if (report.segments.length) {
       if (this.flows.length >= FLOW_CAP) this.cappedUntil = report.at + LIVE_WINDOW;
-      this.flows = [...this.flows.slice(-(FLOW_CAP - 1)), report];
+      if (this.flows.length >= FLOW_CAP) this.flows.shift();
+      this.flows.push(report);
     }
     return true;
   }
   clearFlows() { this.flows = []; }
   prune(now: number) {
-    this.reports = this.reports.filter(r => now - r.at < LIVE_WINDOW);
-    this.flows = this.flows.filter(r => now - r.at < FLOW_MS);
-    for (const [key, at] of this.seen) { if (now - at < LIVE_WINDOW) break; this.seen.delete(key); }
-    for (const [key, trail] of this.trails) { if (now - trail.at < LIVE_WINDOW) break; this.trails.delete(key); this.trailVersion++; }
+    // Receipt times normally arrive in order: inspect only the expired prefix,
+    // without copying the whole live window for every packet. Fall back after a
+    // clock adjustment so an older entry behind a newer one still expires.
+    for (const [items, lifetime] of [[this.reports, LIVE_WINDOW], [this.flows, FLOW_MS]] as const) {
+      if (this.ordered) {
+        let expired = 0;
+        while (expired < items.length && now - items[expired]!.at >= lifetime) expired++;
+        if (expired) items.splice(0, expired);
+      } else {
+        let kept = 0;
+        for (const item of items) if (now - item.at < lifetime) items[kept++] = item;
+        items.length = kept;
+      }
+    }
+    for (const [key, at] of this.seen) {
+      if (now - at < LIVE_WINDOW) { if (this.ordered) break; continue; }
+      this.seen.delete(key);
+    }
+    for (const [key, trail] of this.trails) {
+      if (now - trail.at < LIVE_WINDOW) { if (this.ordered) break; continue; }
+      this.trails.delete(key); this.trailVersion++;
+    }
+    if (!this.reports.length && !this.seen.size && !this.trails.size) this.ordered = true;
   }
 }
 
 export type Camera = { yaw: number; pitch: number; zoom: number; target: Point3 };
 export const DEFAULT_CAMERA: Camera = { yaw: 0, pitch: 1.05, zoom: 1, target: { x: 0, y: 0, z: 0 } };
 export function project(point: Point3, camera: Camera, width: number, height: number, extent: number) {
-  const local = { x: point.x - camera.target.x, y: point.y - camera.target.y, z: point.z - camera.target.z };
-  const x = local.x * Math.cos(camera.yaw) - local.z * Math.sin(camera.yaw);
-  const z = local.x * Math.sin(camera.yaw) + local.z * Math.cos(camera.yaw);
-  // Positive pitch puts the camera above the ground: raised nodes are closer.
-  const y = local.y * Math.cos(camera.pitch) + z * Math.sin(camera.pitch);
-  const depth = -local.y * Math.sin(camera.pitch) + z * Math.cos(camera.pitch);
-  const perspective = 3 * extent / (3 * extent + depth);
-  const scale = Math.min(width, height) / (extent * 2.6) * camera.zoom * perspective;
-  return { x: width / 2 + x * scale, y: height / 2 - y * scale, depth, scale, visible: perspective > 0 };
+  return createProjector(camera, width, height, extent)(point);
+}
+
+// One set of camera coefficients per frame, shared by every vertex and particle.
+export function createProjector(camera: Camera, width: number, height: number, extent: number) {
+  const cy = Math.cos(camera.yaw), sy = Math.sin(camera.yaw);
+  const cp = Math.cos(camera.pitch), sp = Math.sin(camera.pitch);
+  const baseScale = Math.min(width, height) / (extent * 2.6) * camera.zoom;
+  return (point: Point3) => {
+    const lx = point.x - camera.target.x, ly = point.y - camera.target.y, lz = point.z - camera.target.z;
+    const x = lx * cy - lz * sy;
+    const z = lx * sy + lz * cy;
+    // Positive pitch puts the camera above the ground: raised nodes are closer.
+    const y = ly * cp + z * sp;
+    const depth = -ly * sp + z * cp;
+    const perspective = 3 * extent / (3 * extent + depth);
+    const scale = baseScale * perspective;
+    return { x: width / 2 + x * scale, y: height / 2 - y * scale, depth, scale, visible: perspective > 0 };
+  };
 }
 
 export function fitCamera(points: Point3[], camera: Camera, width: number, height: number, extent: number): Camera {
