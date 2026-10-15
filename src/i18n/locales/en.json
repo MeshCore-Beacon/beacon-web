@@ -284,7 +284,7 @@
       "observations_one": "{{formatted}} obs",
       "observations_other": "{{formatted}} obs",
       "hops": "Hops",
-            "hardware": "Hardware",
+      "hardware": "Hardware",
       "power": "Power",
       "antenna": "Antenna",
       "powerSource": "Power source",
@@ -1008,11 +1008,12 @@
       "online": "Online",
       "offline": "Offline",
       "lastStatus": "Last status",
-      "observerHelp": "What this observer received and reported, over the selected window. Status rows with no readings are ignored.",
+      "observerHelp": "What this observer received and reported, over the selected window. Status rows with no readings are ignored. Solid lines show readings; dashed lines connect missing hours as visual estimates, not measurements. Uptime gaps remain open.",
       "observerUnsupported": "This server does not provide observer activity or telemetry.",
       "observerGone": "This observer is no longer known to the server.",
       "dragToReorder": "Drag to reorder",
-      "remove": "Remove"
+      "remove": "Remove",
+      "observerPartialCoverage": "Partial history"
     }
   }
 }

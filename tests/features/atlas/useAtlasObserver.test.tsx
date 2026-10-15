@@ -36,6 +36,17 @@ afterEach(() => {
 });
 
 describe("useAtlasObserver", () => {
+  it("cancels all in-flight observer requests on unmount", async () => {
+    vi.mocked(api.getObserver).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(api.getObserverActivity).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(api.getObserverTelemetry).mockImplementation(() => new Promise(() => {}));
+    const view = renderHook(() => useAtlasObserver(id, "24h", true, true), { wrapper });
+    await tick(10);
+    const signals = [vi.mocked(api.getObserver).mock.calls[0]![1]!, vi.mocked(api.getObserverActivity).mock.calls[0]![4]!, vi.mocked(api.getObserverTelemetry).mock.calls[0]![4]!];
+    expect(signals.every(signal => !signal.aborted)).toBe(true);
+    view.unmount();
+    expect(signals.every(signal => signal.aborted)).toBe(true);
+  });
   it("loads the observer right away but activity and telemetry only while the view is open", async () => {
     const { result, rerender } = renderHook(({ open }) => useAtlasObserver(id, "24h", true, open), { wrapper, initialProps: { open: false } });
     await tick(10);
@@ -44,8 +55,8 @@ describe("useAtlasObserver", () => {
     rerender({ open: true });
     await tick(10);
     expect(result.current.sample.heard).toBe(4);
-    expect(api.getObserverActivity).toHaveBeenCalledWith(id, "24h", "1h", undefined);
-    expect(api.getObserverTelemetry).toHaveBeenCalledWith(id, "24h", "1h");
+    expect(api.getObserverActivity).toHaveBeenCalledWith(id, "24h", "1h", undefined, expect.any(AbortSignal));
+    expect(api.getObserverTelemetry).toHaveBeenCalledWith(id, "24h", "1h", undefined, expect.any(AbortSignal));
     expect(result.current.sample.uptime).toBe(400);
   });
 
@@ -53,7 +64,7 @@ describe("useAtlasObserver", () => {
     const { result } = renderHook(() => useAtlasObserver(id, "3d", true, true), { wrapper });
     await tick(10);
     expect(result.current.sample.heard).toBe(4);
-    expect(api.getObserverActivity).toHaveBeenLastCalledWith(id, "72h", "1h", undefined);
+    expect(api.getObserverActivity).toHaveBeenLastCalledWith(id, "72h", "1h", undefined, expect.any(AbortSignal));
     await tick(ATLAS_REFRESH_MS + 50);
     expect(api.getObserverActivity).toHaveBeenCalledTimes(2);
     expect(api.getObserver).toHaveBeenCalledTimes(2);

@@ -1011,11 +1011,12 @@
       "online": "En ligne",
       "offline": "Hors ligne",
       "lastStatus": "Dernier état",
-      "observerHelp": "Ce que cet observateur a reçu et signalé sur la période choisie. Les états sans mesures sont ignorés.",
+      "observerHelp": "Ce que cet observateur a reçu et signalé sur la période choisie. Les états sans mesures sont ignorés. Les lignes pleines indiquent les mesures; les pointillés relient les heures manquantes à titre indicatif. Les interruptions de disponibilité restent visibles.",
       "observerUnsupported": "Ce serveur ne fournit pas l’activité ni la télémétrie des observateurs.",
       "observerGone": "Cet observateur n’est plus connu du serveur.",
       "dragToReorder": "Glisser pour réordonner",
-      "remove": "Retirer"
+      "remove": "Retirer",
+      "observerPartialCoverage": "Historique partiel"
     }
   }
 }
