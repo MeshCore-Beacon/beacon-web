@@ -267,8 +267,8 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
   return request(`/traces/${tag}`);
 }
 
-export async function getObserver(observerId: string): Promise<Observer> {
-  const observer = await request<Observer>(`/observers/${observerId}`);
+export async function getObserver(observerId: string, signal?: AbortSignal): Promise<Observer> {
+  const observer = await request<Observer>(`/observers/${observerId}`, undefined, signal);
   // Servers before json.RawMessage (and cache entries written by them) send the stored JSON as base64.
   let metadata: unknown = observer.statusMetadata;
   if (typeof metadata === "string") {
@@ -457,12 +457,13 @@ export function getObserverTelemetry(
   range: string,
   interval?: string,
   afterId?: number,
+  signal?: AbortSignal,
 ): Promise<ObserverTelemetry> {
-  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
+  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId }, signal);
 }
 
-export function getObserverActivity(observerId: string, range: string, interval: string, until?: number): Promise<ObserverActivity> {
-  return request(`/observers/${observerId}/activity`, { range, interval, until });
+export function getObserverActivity(observerId: string, range: string, interval: string, until?: number, signal?: AbortSignal): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval, until }, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.
@@ -471,3 +472,23 @@ export function isNotFound(err: unknown): boolean {
 }
 
 export { ApiError };
+
+// Public cached MeshMapper metadata; counts are regional, never per-link evidence.
+export interface ScopeCatalogue {
+  iata: string;
+  url: string;
+  generatedAt: number;
+  checkedAt: number;
+  freshUntil: number;
+  lastError?: string;
+  repeaters: number;
+  scoped: number;
+  scopes: { name: string; repeaters: number; default: number; monitored: boolean; wardriving: boolean }[];
+}
+export function getScopeCatalogues(): Promise<ScopeCatalogue[]> {
+  return request("/scope-catalogues");
+}
+
+export function getTopologyLinks(iatas: string[] | undefined, window: string, signal?: AbortSignal): Promise<{ links: [string,string][]; capped: boolean; since: number; until: number }> {
+  return request("/routes/topology", { iatas: iatas?.join(","), window }, signal);
+}

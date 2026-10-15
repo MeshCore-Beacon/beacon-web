@@ -215,7 +215,7 @@ describe("AtlasCard", () => {
     expect(await screen.findByText("Packets heard")).toBeInTheDocument();
     await screen.findByText("12");
     expect(screen.getByText("6.5 dB")).toBeInTheDocument();
-    expect(screen.getByText("-117 dB")).toBeInTheDocument();
+    expect(screen.getByText("-117 dBm")).toBeInTheDocument();
     expect(screen.getByText("4.12V")).toBeInTheDocument();
     expect(screen.getByText("Online")).toBeInTheDocument();
     expect(screen.getByText("915 MHz · SF11 · 250 kHz").closest(".flex-wrap")).toBeInTheDocument();
