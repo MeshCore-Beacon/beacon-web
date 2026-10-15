@@ -1,7 +1,7 @@
 {
   "name": "beacon-web",
   "private": true,
-  "version": "2.1.0-dev1.5",
+  "version": "2.1.0-dev1.6",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
