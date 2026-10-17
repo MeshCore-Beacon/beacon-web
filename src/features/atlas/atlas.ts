@@ -2,7 +2,8 @@ import { ApiError, getNode, getNodeObservations, getNodesPage, isNotFound } from
 import type { Node, NodeObservation, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
-export const ATLAS_KEY = "beacon-my-atlas-v1";
+export const ATLAS_KEY = "beacon-my-atlas-v2";
+export const ATLAS_LEGACY_KEY = "beacon-my-atlas-v1";
 export const ATLAS_LIMIT = 12;
 export const REPORT_LIMIT = 200;
 export type AtlasRange = "24h" | "3d";

@@ -12,6 +12,31 @@ const tele = (points: Partial<ObserverTelemetry["points"][number]>[]) => ({ rang
   t: now, batteryMv: null, airtimeTxSecs: null, airtimeRxSecs: null, noiseFloorDb: null, uptimeSeconds: null, queueLength: null, receiveErrors: null, ...p })) }) as ObserverTelemetry;
 
 describe("summarizeObserver", () => {
+  it("does not fill missing endpoints or unread rollup hours with measured zeros", () => {
+    expect(summarizeObserver(undefined, undefined, undefined, "24h", now).counts.every(v => v === null)).toBe(true);
+    const sample = summarizeObserver({ ...activity([]), rawFrom: now - HOUR }, undefined, undefined, "24h", now);
+    expect(sample.counts[0]).toBeNull();
+    expect(sample.counts.at(-1)).toBe(0);
+    expect(sample.partial).toBe(true);
+  });
+
+  it("shows an available status battery without inventing history", () => {
+    const sample = summarizeObserver(undefined, undefined, { batteryLevel: 4.17 } as Observer, "24h", now);
+    expect(sample.battery).toBe(4.17);
+    expect(sample.batteryHourly.every(v => v === null)).toBe(true);
+  });
+
+  it("excludes future and non-finite readings while preserving a real zero SNR and uptime reset", () => {
+    const sample = summarizeObserver(activity([point(-5, 999, 99), point(0, 2, 0)]), tele([
+      { t: now + HOUR, batteryMv: 99999, noiseFloorDb: -1 },
+      { t: now - HOUR, noiseFloorDb: -110, uptimeSeconds: 100 },
+      { t: now, noiseFloorDb: -110, batteryMv: NaN, uptimeSeconds: 0 },
+    ]), undefined, "24h", now);
+    expect(sample.heard).toBe(2);
+    expect(sample.snr).toBe(0);
+    expect(sample.battery).toBeNull();
+    expect(sample.uptimeHourly.slice(-2)).toEqual([100, 0]);
+  });
   it("maps ranges to the server's duration strings", () => {
     expect(OBSERVER_RANGE).toEqual({ "24h": "24h", "3d": "72h" });
   });
