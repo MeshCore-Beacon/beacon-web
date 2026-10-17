@@ -79,7 +79,7 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
         )}
       </div>
 
-      {obs.pathBytes && (
+      {obs.pathBytes && obs.traceQuality?.status !== "suspect" && (
         <div className="flex items-center gap-1 mt-2 font-mono text-[11px] pt-1.5 border-t border-border-subtle">
           <span className="text-text-dim uppercase text-[10px] font-medium tracking-wider mr-1">{t("observation.path")}</span>
           <PathData pathBytes={obs.pathBytes} hashSize={obs.pathLength.hashSize} resolvedPath={obs.resolvedPath} size="sm" onViewNode={onViewNode} snrValues={isTrace ? snrValues ?? [] : undefined} />

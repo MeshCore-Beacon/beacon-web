@@ -31,3 +31,18 @@ it("draws a presence strip with one bar per run of reporting hours", () => {
   const bars = [...container.querySelectorAll("rect")];
   expect(bars.map((b) => [b.getAttribute("x"), b.getAttribute("width")])).toEqual([["0", "48"], ["72", "24"]]);
 });
+
+it("keeps isolated readings visible without connecting across missing hours", () => {
+  const { container } = render(<StatCard label="Signal" value="2 dB" accent="green" spark={[0, null, 4]} />);
+  expect(container.querySelectorAll("polyline")).toHaveLength(0);
+  const points = [...container.querySelectorAll("[data-sample]")];
+  expect(points.map(point => point.getAttribute("x1"))).toEqual(["0", "120"]);
+});
+
+it("draws a single known value at a finite position, including zero", () => {
+  const { container } = render(<StatCard label="Signal" value="0 dB" accent="green" spark={[0]} />);
+  const point = container.querySelector("[data-sample]");
+  expect(point).not.toBeNull();
+  expect(point?.getAttribute("x1")).toBe("60");
+  expect(Number.isFinite(Number(point?.getAttribute("y1")))).toBe(true);
+});
