@@ -34,11 +34,11 @@ const sparkSpacer = <div className="mt-1.5 h-[20px]" />;
 
 function Sparkline({ values, color, markPeak }: { values: (number | null)[]; color: string; markPeak?: boolean }) {
   const known = values.filter((v): v is number => v !== null);
-  if (values.length < 2 || known.length < 2) return sparkSpacer;
+  if (known.length === 0) return sparkSpacer;
   const max = Math.max(...known);
   const min = Math.min(...known);
   const range = max - min || 1;
-  const x = (i: number) => (i / (values.length - 1)) * SPARK_W;
+  const x = (i: number) => values.length === 1 ? SPARK_W / 2 : (i / (values.length - 1)) * SPARK_W;
   const y = (v: number) => SPARK_H - 1 - ((v - min) / range) * (SPARK_H - 2);
   // A null hour breaks the line, so an outage shows as a gap rather than a straight join.
   const runs: string[][] = [[]];
@@ -49,9 +49,11 @@ function Sparkline({ values, color, markPeak }: { values: (number | null)[]; col
   const peak = values.indexOf(max);
   return (
     <svg width="100%" height={SPARK_H} viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} preserveAspectRatio="none" className="mt-1.5 overflow-visible" aria-hidden>
-      {runs.filter((run) => run.length > 1).map((run) => (
-        <polyline key={run[0]} fill="none" stroke={color} strokeWidth="1.5" points={run.join(" ")} />
-      ))}
+      {runs.filter((run) => run.length > 0).map((run) => {
+        if (run.length > 1) return <polyline key={run[0]} fill="none" stroke={color} strokeWidth="1.5" points={run.join(" ")} />;
+        const [px, py] = run[0]!.split(",");
+        return <line key={run[0]} data-sample x1={px} x2={px} y1={py} y2={py} stroke={color} strokeWidth="3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />;
+      })}
       {markPeak && (
         // zero-length round-capped stroke: stays a circle under preserveAspectRatio="none"
         <line data-peak x1={x(peak)} x2={x(peak)} y1={y(max)} y2={y(max)} stroke={color} strokeWidth="5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
