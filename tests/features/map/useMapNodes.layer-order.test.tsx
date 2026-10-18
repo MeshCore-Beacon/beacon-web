@@ -4,6 +4,8 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   NODES_CLUSTER_LAYER_ID,
   NODES_POINT_LAYER_ID,
+  NODES_SELECTED_LAYER_ID,
+  LIVE_DOTS_LAYER_ID,
   PACKET_FLOW_TRAIL_LAYER_ID,
   PACKET_FLOW_DOT_HALO_LAYER_ID,
   PACKET_FLOW_DOT_LAYER_ID,
@@ -66,5 +68,54 @@ describe("useMapNodes layer order", () => {
     expect(layers.indexOf(NODES_CLUSTER_LAYER_ID)).toBeLessThan(trail);
     expect(layers.indexOf(NODES_POINT_LAYER_ID)).toBeLessThan(trail);
     expect(layers.indexOf(NODES_CLUSTER_LAYER_ID)).toBeLessThan(layers.indexOf(NODES_POINT_LAYER_ID));
+  });
+
+  it("puts the idle dots beneath the selected ring, the markers and the packet trail, also after a clustering toggle", () => {
+    const layers: string[] = [];
+    const mapRef = { current: stackMap(layers) };
+    const geojson = { type: "FeatureCollection" as const, features: [] };
+    const { rerender } = renderHook(
+      ({ clustered }) =>
+        useMapNodes(mapRef, { current: null }, true, geojson, true, "dark", clustered, () => {}, null, true, null),
+      { initialProps: { clustered: true } },
+    );
+    layers.push(PACKET_FLOW_TRAIL_LAYER_ID, PACKET_FLOW_DOT_HALO_LAYER_ID, PACKET_FLOW_DOT_LAYER_ID);
+    const check = () => {
+      const dots = layers.indexOf(LIVE_DOTS_LAYER_ID);
+      expect(dots).toBeGreaterThanOrEqual(0);
+      expect(dots).toBeLessThan(layers.indexOf(NODES_SELECTED_LAYER_ID));
+      expect(layers.indexOf(NODES_SELECTED_LAYER_ID)).toBeLessThan(layers.indexOf(NODES_POINT_LAYER_ID));
+      expect(layers.indexOf(NODES_POINT_LAYER_ID)).toBeLessThan(layers.indexOf(PACKET_FLOW_TRAIL_LAYER_ID));
+    };
+    check();
+    rerender({ clustered: false });
+    check();
+  });
+
+  it("in Live shows the dots and only the selected node's marker; off again restores the markers", () => {
+    const map = stackMap([]);
+    const geojson = { type: "FeatureCollection" as const, features: [] };
+    const { rerender } = renderHook(
+      ({ live }) => useMapNodes({ current: map }, { current: null }, true, geojson, true, "dark", false, () => {}, "n1", live, null),
+      { initialProps: { live: true } },
+    );
+    expect(map.setLayoutProperty).toHaveBeenLastCalledWith(LIVE_DOTS_LAYER_ID, "visibility", "visible");
+    expect(map.setFilter).toHaveBeenCalledWith(NODES_POINT_LAYER_ID, ["all", ["!", ["has", "point_count"]], ["==", ["get", "id"], "n1"]]);
+    rerender({ live: false });
+    expect(map.setLayoutProperty).toHaveBeenLastCalledWith(LIVE_DOTS_LAYER_ID, "visibility", "none");
+    expect(map.setFilter).toHaveBeenLastCalledWith(NODES_POINT_LAYER_ID, ["!", ["has", "point_count"]]);
+  });
+
+  it("filters the dots to the given node types", () => {
+    const map = stackMap([]);
+    const geojson = { type: "FeatureCollection" as const, features: [] };
+    renderHook(() =>
+      useMapNodes({ current: map }, { current: null }, true, geojson, true, "dark", false, () => {}, null, true, null, "", ["companion"]),
+    );
+    expect(map.setFilter).toHaveBeenCalledWith(LIVE_DOTS_LAYER_ID, [
+      "all",
+      ["!", ["has", "point_count"]],
+      ["in", ["get", "nodeTypeName"], ["literal", ["companion"]]],
+    ]);
   });
 });

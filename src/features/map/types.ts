@@ -118,9 +118,8 @@ export const PACKET_FLOW_HOP_MS = 480; // ms the dot takes to cross one hop segm
 export const PACKET_FLOW_FLASH_MS = 900; // a crossed node fades out over this, from the moment the dot reaches it
 export const PACKET_FLOW_TRAIL_FADE_MS = 1000; // the dashed trail fades once the dot reaches the end
 export const PACKET_FLOW_MAX = 120; // cap on concurrent packet animations (busy-feed guard)
-// Idle individual-node opacity while Live is on. Kept low because with clustering off, co-located
-// markers overlap and their alphas composite toward bright; a crossed node still pops to full via
-// the max(dim, feature-state glow) expression.
+// Opacity of the nodes outside the selection focus. Kept low because overlapping markers composite
+// toward bright.
 export const LIVE_DIM_OPACITY = 0.08;
 // Clusters dim further: many overlapping semi-transparent hexagons composite toward opaque, so a
 // dense cluster field stops being see-through. A lower per-cluster alpha keeps the stack translucent.
