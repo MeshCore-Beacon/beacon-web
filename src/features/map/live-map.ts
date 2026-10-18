@@ -78,3 +78,15 @@ export function litFeatureCollection(lit: Map<string, LitEntry>, now: number): F
   }
   return { type: "FeatureCollection", features };
 }
+
+// In Live the selected node keeps its marker, but a type filter may have dropped it from the map
+// data (a lit companion clicked under the Repeater filter), so add it back from the full list.
+export function withSelectedNode(
+  filtered: FeatureCollection<Point, NodeFeatureProps>,
+  all: FeatureCollection<Point, NodeFeatureProps>,
+  selectedId: string | null,
+): FeatureCollection<Point, NodeFeatureProps> {
+  if (!selectedId || filtered.features.some((f) => f.properties.id === selectedId)) return filtered;
+  const selected = all.features.find((f) => f.properties.id === selectedId);
+  return selected ? { ...filtered, features: [...filtered.features, selected] } : filtered;
+}

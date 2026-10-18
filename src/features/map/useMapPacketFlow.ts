@@ -26,6 +26,7 @@ import {
   LIVE_LIT_LABEL_LAYER_ID,
   LIVE_LIT_ICON_LAYER_ID,
   LIT_LABEL_SIZE,
+  LIT_CLICK_MIN_GLOW,
   NODE_TYPE_NAMES,
   litIconId,
 } from "./types";
@@ -247,7 +248,9 @@ export function useMapPacketFlow(
     const map = mapRef.current;
     if (!map || !isReady) return;
     const onClick = (e: MapLayerMouseEvent) => {
-      const id = e.features?.[0]?.properties?.["id"];
+      // an icon that has nearly faded out lets the click through to what's beneath it
+      const hit = e.features?.find((f) => Number(f.properties?.["glow"]) >= LIT_CLICK_MIN_GLOW);
+      const id = hit?.properties?.["id"];
       if (typeof id === "string") onSelectNodeRef.current(id);
     };
     const setPointer = () => {

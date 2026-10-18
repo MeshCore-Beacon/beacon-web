@@ -172,7 +172,14 @@ describe("useMapPacketFlow lit nodes", () => {
   it("selects the node when its lit icon is clicked", () => {
     const { handlers, onSelect } = setup();
     const click = handlers.find((h) => h.type === "click" && h.layer === LIVE_LIT_ICON_LAYER_ID);
-    click!.fn({ features: [{ properties: { id: "r1" } }] });
+    click!.fn({ features: [{ properties: { id: "r1", glow: 0.9 } }] });
     expect(onSelect).toHaveBeenCalledWith("r1");
+  });
+
+  it("ignores a click on a lit icon that has almost faded", () => {
+    const { handlers, onSelect } = setup();
+    const click = handlers.find((h) => h.type === "click" && h.layer === LIVE_LIT_ICON_LAYER_ID);
+    click!.fn({ features: [{ properties: { id: "r1", glow: 0.05 } }] });
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

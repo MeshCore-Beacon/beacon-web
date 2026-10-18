@@ -138,6 +138,7 @@ export const LIT_RING_WIDTH = 2.5; // px
 export const LIT_GLOW_RADIUS = 18; // px, the type-colour glow fades to nothing here
 export const LIT_GLOW_OPACITY = 0.5;
 export const LIT_LABEL_SIZE = 12; // px
+export const LIT_CLICK_MIN_GLOW = 0.2; // a lit icon fainter than this no longer takes clicks
 export const litIconId = (typeName: string): string => `node-lit-${typeName}`;
 
 export const CLUSTER_RADIUS = 50; // px

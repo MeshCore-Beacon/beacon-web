@@ -29,6 +29,7 @@ import {
   LIVE_CLUSTER_DIM_OPACITY,
   LIVE_DOTS_LAYER_ID,
   LIVE_LIT_ICON_LAYER_ID,
+  LIT_CLICK_MIN_GLOW,
   LIVE_DOT_OPACITY,
   LIVE_DOT_RADIUS_STOPS,
   NEIGHBORS_LINE_LAYER_ID,
@@ -119,7 +120,7 @@ export function useMapNodes(
   clustered: boolean,
   onSelectNode: (id: string) => void,
   selectedNodeId: string | null,
-  // live packet-flow on: fade every node (a crossed one lifts via feature-state glow)
+  // live packet-flow on: idle nodes become dots and only the selected node keeps its marker
   live: boolean,
   // selection focus: keep only these node ids lit and fade the rest; null = off
   focusIds: string[] | null,
@@ -191,8 +192,6 @@ export function useMapNodes(
         cluster: clustered,
         clusterRadius: CLUSTER_RADIUS,
         clusterMaxZoom: CLUSTER_MAX_ZOOM,
-        // promote the node id so live packet-flow can flash individual nodes via feature-state
-        promoteId: "id",
       });
     }
 
@@ -449,7 +448,11 @@ export function useMapNodes(
 
     const onPointClick = (e: MapLayerMouseEvent) => {
       // a lit icon draws over the markers and dots, so a click on one belongs to that lit node
-      if (map.getLayer(LIVE_LIT_ICON_LAYER_ID) && map.queryRenderedFeatures(e.point, { layers: [LIVE_LIT_ICON_LAYER_ID] }).length > 0) return;
+      if (
+        map.getLayer(LIVE_LIT_ICON_LAYER_ID) &&
+        map.queryRenderedFeatures(e.point, { layers: [LIVE_LIT_ICON_LAYER_ID] }).some((f) => Number(f.properties?.["glow"]) >= LIT_CLICK_MIN_GLOW)
+      )
+        return;
       const id = e.features?.[0]?.properties?.["id"];
       if (typeof id === "string") onSelectNodeRef.current(id);
     };

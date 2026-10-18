@@ -6,6 +6,7 @@ import {
   lightNode,
   litFeatureCollection,
   buildLiveNodeIndex,
+  withSelectedNode,
   type LitEntry,
 } from "../../../src/features/map/live-map";
 
@@ -72,5 +73,24 @@ describe("buildLiveNodeIndex", () => {
       ],
     };
     expect(buildLiveNodeIndex(fc).get("x")).toEqual({ nodeTypeName: "sensor", name: "X" });
+  });
+});
+
+describe("withSelectedNode", () => {
+  const feat = (id: string, nodeTypeName: string) => ({
+    type: "Feature" as const,
+    geometry: { type: "Point" as const, coordinates: [1, 2] },
+    properties: { id, name: id, nodeTypeName, isObserver: false },
+  });
+  const base = { type: "FeatureCollection" as const, features: [feat("r", "repeater"), feat("c", "companion")] };
+  const filtered = { type: "FeatureCollection" as const, features: [feat("r", "repeater")] };
+
+  it("adds the selected node back when the type filter hid it", () => {
+    expect(withSelectedNode(filtered, base, "c").features.map((f) => f.properties.id)).toEqual(["r", "c"]);
+  });
+  it("returns the filtered set unchanged when nothing needs adding", () => {
+    expect(withSelectedNode(filtered, base, "r")).toBe(filtered);
+    expect(withSelectedNode(filtered, base, null)).toBe(filtered);
+    expect(withSelectedNode(filtered, base, "gone")).toBe(filtered);
   });
 });

@@ -12,7 +12,7 @@ import { useMapPacketFlow } from "./useMapPacketFlow";
 import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
-import { buildLiveNodeIndex, idleDotTypes } from "./live-map";
+import { buildLiveNodeIndex, idleDotTypes, withSelectedNode } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
@@ -148,6 +148,10 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const dotTypes = useMemo(() => idleDotTypes(typeFilter), [typeFilter]);
   // Live forces clustering off so every crossed node can light; the saved choice is untouched
   const effectiveClustered = clustered && !packetFlow;
+  const mapGeojson = useMemo(
+    () => (packetFlow ? withSelectedNode(geojson, baseFc, selectedNodeId) : geojson),
+    [packetFlow, geojson, baseFc, selectedNodeId],
+  );
 
   // Selected mode colours the one node's edges by observation count + freshness, which only the node
   // detail endpoint carries (the list's neighborIds are bare uuids). Shares the panel's query cache
@@ -216,7 +220,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     return { tab: "Map", ...buildMapParams(snapshot) };
   }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey, isDark, liveNodeIndex, onSelectNode);
