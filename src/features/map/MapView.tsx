@@ -12,7 +12,7 @@ import { useMapPacketFlow } from "./useMapPacketFlow";
 import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
-import { buildLiveNodeIndex, idleDotTypes, withSelectedNode } from "./live-map";
+import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
@@ -92,6 +92,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // live packet-flow animation: opt-in per session (off by default, not persisted; a deep link can seed it)
   const [packetFlow, setPacketFlow] = useState(() => urlView.flow ?? false);
+  // what the map draws; the saved choice stays in neighborLines for the panel, storage and links
+  const shownNeighborLines = liveNeighborLines(neighborLines, packetFlow);
 
   // IATA region borders overlay, off by default; seeded URL -> localStorage like the other toggles
   const [borders, setBorders] = useState(() => urlView.borders ?? localStorage.getItem(MAP_BORDERS_STORAGE_KEY) === "on");
@@ -159,26 +161,26 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const { data: focusNeighbors } = useQuery({
     queryKey: ["node-neighbors", selectedNodeId],
     queryFn: () => getNodeNeighbors(selectedNodeId!),
-    enabled: neighborLines === "selected" && !!selectedNodeId,
+    enabled: shownNeighborLines === "selected" && !!selectedNodeId,
     staleTime: 30_000,
   });
 
   // "on" is a pure client-side render over already-loaded nodes (neighborIds ship with every map
   // page) so it never refetches; "selected" colours the detail edges; "off" short-circuits to none.
   const neighborEdges = useMemo(() => {
-    if (neighborLines === "off") return EMPTY_EDGES;
-    if (neighborLines === "selected") {
+    if (shownNeighborLines === "off") return EMPTY_EDGES;
+    if (shownNeighborLines === "selected") {
       if (!selectedNodeId) return EMPTY_EDGES;
       return buildFocusedNeighborEdges(nodes.find((n) => n.id === selectedNodeId), focusNeighbors ?? []);
     }
     return buildNeighborEdges(nodes, "on", selectedNodeId);
-  }, [nodes, neighborLines, selectedNodeId, focusNeighbors]);
+  }, [nodes, shownNeighborLines, selectedNodeId, focusNeighbors]);
 
   // With neighbors shown and a node selected, fade every other node (like live mode) to spotlight
   // the selection and its neighbors. null when there's nothing to focus, so the map stays full-bright.
   const focusIds = useMemo(
-    () => (neighborLines === "off" ? null : neighborFocusIds(nodes, selectedNodeId)),
-    [nodes, neighborLines, selectedNodeId],
+    () => (shownNeighborLines === "off" ? null : neighborFocusIds(nodes, selectedNodeId)),
+    [nodes, shownNeighborLines, selectedNodeId],
   );
 
   // IATA coords to frame: the selection's airports, or every airport for "All". Regions carry no

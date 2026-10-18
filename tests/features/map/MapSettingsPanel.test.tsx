@@ -47,4 +47,24 @@ describe("map settings", () => {
     fireEvent.click(within(group).getByRole("button", { name: "On" }));
     expect(onClusteredChange).not.toHaveBeenCalled();
   });
+
+  it("disables all-node neighbour lines with a note while Live Map is on", async () => {
+    await i18n.changeLanguage("en");
+    const onNeighborLinesChange = vi.fn();
+    render(
+      <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
+        clustered onClusteredChange={() => {}} neighborLines="on" onNeighborLinesChange={onNeighborLinesChange}
+        borders onBordersChange={() => {}} buildShareParams={() => ({})} liveMap />,
+    );
+    const group = screen.getByRole("group", { name: "Neighbor lines" });
+    const on = within(group).getByRole("button", { name: "On" });
+    expect(on).toBeDisabled();
+    expect(within(group).getByRole("button", { name: "Selected" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(group).getByRole("button", { name: "Off" })).toBeEnabled();
+    expect(screen.getByText("All lines are off while Live Map is on")).toBeInTheDocument();
+    fireEvent.click(on);
+    expect(onNeighborLinesChange).not.toHaveBeenCalled();
+    fireEvent.click(within(group).getByRole("button", { name: "Off" }));
+    expect(onNeighborLinesChange).toHaveBeenCalledWith("off");
+  });
 });
