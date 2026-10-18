@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeTable } from "../../../src/features/nodes/NodeTable";
@@ -91,5 +91,21 @@ describe("NodeTable in French", () => {
     await i18n.changeLanguage("fr");
     mount([]);
     expect(await screen.findByText("Aucun nœud")).toBeInTheDocument();
+  });
+});
+
+describe("NodeTable with thousands of nodes", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("mounts only the rows on screen", async () => {
+    // jsdom does no layout: a 500px viewport of 38px rows
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.hasAttribute("data-index") ? 38 : 500;
+    });
+    mount(Array.from({ length: 2000 }, (_, i) => node({ id: `node-${i}`, name: `Node ${String(i).padStart(4, "0")}` })));
+    await screen.findByText("Node 0000");
+    expect(document.querySelectorAll("tbody tr[data-index]").length).toBeLessThan(50);
   });
 });

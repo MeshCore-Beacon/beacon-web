@@ -98,8 +98,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       id: "name",
       header: t("nodes.colName"),
       sortValue: (node) => node.name ?? formatHex(node.id),
+      width: "16rem",
       cell: (node) => (
-        <span className={`truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
+        <span className={`block truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
           {node.name ?? formatHex(node.id)}
         </span>
       ),
@@ -146,12 +147,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       header: t("nodes.colNeighbors"),
       className: "text-text-muted",
       sortValue: (node) => node.knownNeighborCount,
+      width: "7rem",
       cell: (node) => node.knownNeighborCount.toLocaleString(),
     },
     {
       id: "location",
       header: t("nodes.colLocation"),
       className: "text-text-muted",
+      width: "9rem",
       cell: (node) =>
         hasMapLocation(node)
           ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
@@ -216,7 +219,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex flex-col flex-1 min-w-0">
         <NodeFilterBar
           search={search}
@@ -244,6 +247,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           emptyLabel={t("nodes.empty")}
           defaultSort={{ id: "name" }}
           renderCard={(node) => renderNodeCard(node, t)}
+          virtualize
+          minWidth="64rem"
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>

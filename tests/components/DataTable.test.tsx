@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { DataTable, type Column } from "../../src/components/DataTable";
 
@@ -25,6 +25,15 @@ it("retains header-based default and user sorting for callers without column IDs
   expect(order()).toEqual(["b", "a"]);
   fireEvent.click(screen.getByRole("button", { name: /^ID\s*▼$/ }));
   expect(order()).toEqual(["a", "b"]);
+});
+
+it("sorts text with numeric runs in number order and empties last", () => {
+  const data = [{ id: "Node 10" }, { id: "" }, { id: "node 9" }, { id: "Node 1" }];
+  const { container } = render(<DataTable columns={[{ id: "name", header: "Name", cell: (r: Row) => r.id, sortValue: (r) => r.id }]} rows={data} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" defaultSort={{ id: "name" }} />);
+  const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+  expect(order()).toEqual(["Node 1", "node 9", "Node 10", ""]);
+  fireEvent.click(screen.getByRole("button", { name: /^Name/ }));
+  expect(order()).toEqual(["Node 10", "node 9", "Node 1", ""]);
 });
 
 interface Row {
@@ -88,6 +97,72 @@ describe("DataTable onEndReached", () => {
     setScroll(scroller, { scrollTop: 0, clientHeight: 500, scrollHeight: 1000 }); // 500px from bottom
     fireEvent.scroll(scroller);
     expect(onEndReached).not.toHaveBeenCalled();
+  });
+});
+
+describe("DataTable virtualization", () => {
+  const VIEWPORT_H = 500;
+  const ROW_H = 38;
+  const many = Array.from({ length: 1000 }, (_, i) => ({ id: `n${String(i).padStart(4, "0")}` }));
+
+  // jsdom does no layout: the virtualizer reads offsetHeight for both the viewport and each row
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+      return this.hasAttribute("data-index") ? ROW_H : VIEWPORT_H;
+    });
+  });
+
+  function renderMany(mobile: boolean, virtualize = true) {
+    setMobile(mobile);
+    return render(
+      <DataTable
+        columns={columns}
+        rows={many}
+        rowKey={(r) => r.id}
+        selectedKey={null}
+        onSelect={() => {}}
+        emptyLabel="none"
+        renderCard={(r) => <span>card-{r.id}</span>}
+        virtualize={virtualize}
+      />,
+    ).container;
+  }
+
+  it("renders every row unless asked to virtualize", () => {
+    expect(renderMany(false, false).querySelectorAll("tbody tr")).toHaveLength(many.length);
+  });
+
+  it("pins column widths so they don't follow the mounted rows", () => {
+    setMobile(false);
+    const pinned: Column<Row>[] = [{ header: "ID", cell: (r) => r.id, width: "16rem" }, { header: "Other", cell: () => "" }];
+    const { container } = render(<DataTable columns={pinned} rows={many} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" virtualize minWidth="40rem" />);
+    const table = container.querySelector("table")!;
+    expect(table).toHaveClass("table-fixed");
+    expect(table.style.minWidth).toBe("40rem");
+    expect([...table.querySelectorAll("colgroup col")].map((col) => (col as HTMLElement).style.width)).toEqual(["16rem", ""]);
+  });
+
+  it("renders only the rows near the viewport", () => {
+    const container = renderMany(false);
+    const rendered = container.querySelectorAll("tbody tr[data-index]");
+    expect(rendered.length).toBeGreaterThan(VIEWPORT_H / ROW_H);
+    expect(rendered.length).toBeLessThan(50);
+    expect(rendered[0].textContent).toBe("n0000");
+  });
+
+  it("keeps the scroll height of the whole list", () => {
+    const container = renderMany(false);
+    const rendered = container.querySelectorAll("tbody tr[data-index]").length;
+    const spacer = container.querySelector("tbody tr:last-child td") as HTMLElement;
+    expect(parseFloat(spacer.style.height)).toBe((many.length - rendered) * ROW_H);
+  });
+
+  it("renders only the cards near the viewport", () => {
+    const container = renderMany(true);
+    const rendered = container.querySelectorAll("button");
+    expect(rendered.length).toBeGreaterThan(VIEWPORT_H / ROW_H);
+    expect(rendered.length).toBeLessThan(50);
+    expect(rendered[0].textContent).toBe("card-n0000");
   });
 });
 
