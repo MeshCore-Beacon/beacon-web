@@ -134,14 +134,14 @@ export function useMapNodes(
   const selectedNodeIdRef = useRef(selectedNodeId);
   const appliedClusteredRef = useRef(clustered);
   const dotTypesRef = useRef(dotTypes);
-  dotTypesRef.current = dotTypes;
 
   // handlers below capture map at attach time; read live state through these refs
   useEffect(() => {
     geojsonRef.current = geojson;
     onSelectNodeRef.current = onSelectNode;
     selectedNodeIdRef.current = selectedNodeId;
-  }, [geojson, onSelectNode, selectedNodeId]);
+    dotTypesRef.current = dotTypes;
+  }, [geojson, onSelectNode, selectedNodeId, dotTypes]);
 
   // Track device-pixel-ratio so icons re-rasterize at full resolution across a DPR change (e.g.
   // dragging the window to another monitor). A matchMedia(dppx) query fires once then goes stale,

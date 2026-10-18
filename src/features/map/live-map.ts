@@ -8,7 +8,7 @@ import { PACKET_FLOW_FLASH_MS } from "./types";
 // The map's glyph font has no emoji, so they'd render as boxes. The ranges match the Flutter app's
 // rule so both apps label nodes the same way: pictographs, flags, skin tones, tags, variation
 // selectors, joiners and the keycap mark.
-const PICTOGRAPHS = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}︎️‍⃣]/gu;
+const PICTOGRAPHS = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u{E0020}-\u{E007F}]|\uFE0E|\uFE0F|\u200D|\u20E3/gu;
 
 export function stripPictographs(name: string): string {
   return name.replace(PICTOGRAPHS, "").replace(/\s+/g, " ").trim();
