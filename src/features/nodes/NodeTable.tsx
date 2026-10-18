@@ -24,6 +24,7 @@ import type { NodeSummary, NodeIATA } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
+import { EmojiText } from "../../components/EmojiText";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
 
@@ -54,7 +55,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
     <div className="flex flex-col gap-1.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2">
         <span className={`flex-1 min-w-0 truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
-          {node.name ?? formatHex(node.id)}
+          <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
         <span className="shrink-0">
           <Badge variant="default">
@@ -100,7 +101,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       sortValue: (node) => node.name ?? formatHex(node.id),
       cell: (node) => (
         <span className={`truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
-          {node.name ?? formatHex(node.id)}
+          <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
       ),
     },

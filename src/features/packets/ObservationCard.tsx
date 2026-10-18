@@ -5,6 +5,7 @@ import { Timestamp } from "../../components/Timestamp";
 import { PathData } from "./PathData";
 import { IataChip } from "../../components/IataChip";
 import { useTranslation } from "react-i18next";
+import { EmojiText } from "../../components/EmojiText";
 
 // single observation with signal stats and resolved path
 
@@ -39,7 +40,7 @@ export function ObservationCard({ observation: obs, selected, onClick, onViewNod
         onKeyDown={selectLabel ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); } } : undefined}
       >
         <div className="flex items-center gap-2 text-[11px] mb-1.5">
-          <span className="flex-1 min-w-0 truncate text-text-bright font-semibold">{obs.observerName ?? obs.observerId.slice(0, 8)}</span>
+          <span className="flex-1 min-w-0 truncate text-text-bright font-semibold"><EmojiText text={obs.observerName ?? obs.observerId.slice(0, 8)} /></span>
           <IataChip>{obs.iata}</IataChip>
           <Timestamp value={obs.heardAt} className="text-text-dim shrink-0 font-mono text-[11px]" />
         </div>

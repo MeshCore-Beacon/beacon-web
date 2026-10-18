@@ -41,6 +41,15 @@ beforeEach(() => {
   vi.mocked(getNodesPage).mockReset();
 });
 
+describe("NodeTable name column", () => {
+  it("gives an emoji in a name its own span so it can't paint over the next letter", async () => {
+    mount([node({ id: "node-skull", name: "☠️Grunt031" })]);
+    const glyph = await screen.findByText("☠️");
+    expect(glyph).toHaveClass("emoji-glyph");
+    expect(glyph.parentElement).toHaveTextContent("☠️Grunt031");
+  });
+});
+
 describe("NodeTable location column", () => {
   it("shows a dash for an explicit 0/0 advert reset, not the coordinates", async () => {
     mount([node({ id: "node-zero", name: "Zeroed node", lat: 0, lng: 0 })]);
