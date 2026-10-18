@@ -6,6 +6,7 @@ import {
   NODES_POINT_LAYER_ID,
   NODES_SELECTED_LAYER_ID,
   LIVE_DOTS_LAYER_ID,
+  LIVE_LIT_ICON_LAYER_ID,
   PACKET_FLOW_TRAIL_LAYER_ID,
   PACKET_FLOW_DOT_HALO_LAYER_ID,
   PACKET_FLOW_DOT_LAYER_ID,
@@ -117,5 +118,19 @@ describe("useMapNodes layer order", () => {
       ["!", ["has", "point_count"]],
       ["in", ["get", "nodeTypeName"], ["literal", ["companion"]]],
     ]);
+  });
+
+  it("leaves a click to the lit icon drawn over a dot", () => {
+    const map = stackMap([LIVE_LIT_ICON_LAYER_ID]);
+    const onSelect = vi.fn();
+    const geojson = { type: "FeatureCollection" as const, features: [] };
+    renderHook(() => useMapNodes({ current: map }, { current: null }, true, geojson, true, "dark", false, onSelect, null, true, null));
+    const dotClick = vi.mocked(map.on).mock.calls.find((c) => c[0] === "click" && c[1] === LIVE_DOTS_LAYER_ID)![2] as unknown as (e: unknown) => void;
+    vi.mocked(map.queryRenderedFeatures).mockReturnValue([{ properties: { id: "lit" } }] as never);
+    dotClick({ point: { x: 1, y: 2 }, features: [{ properties: { id: "dot" } }] });
+    expect(onSelect).not.toHaveBeenCalled();
+    vi.mocked(map.queryRenderedFeatures).mockReturnValue([]);
+    dotClick({ point: { x: 1, y: 2 }, features: [{ properties: { id: "dot" } }] });
+    expect(onSelect).toHaveBeenCalledWith("dot");
   });
 });

@@ -28,6 +28,7 @@ import {
   LIVE_DIM_OPACITY,
   LIVE_CLUSTER_DIM_OPACITY,
   LIVE_DOTS_LAYER_ID,
+  LIVE_LIT_ICON_LAYER_ID,
   LIVE_DOT_OPACITY,
   LIVE_DOT_RADIUS_STOPS,
   NEIGHBORS_LINE_LAYER_ID,
@@ -447,6 +448,8 @@ export function useMapNodes(
     }
 
     const onPointClick = (e: MapLayerMouseEvent) => {
+      // a lit icon draws over the markers and dots, so a click on one belongs to that lit node
+      if (map.getLayer(LIVE_LIT_ICON_LAYER_ID) && map.queryRenderedFeatures(e.point, { layers: [LIVE_LIT_ICON_LAYER_ID] }).length > 0) return;
       const id = e.features?.[0]?.properties?.["id"];
       if (typeof id === "string") onSelectNodeRef.current(id);
     };
