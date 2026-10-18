@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import { PacketVirtualList } from "../../../src/features/packets/PacketVirtualList";
 import i18n from "../../../src/i18n";
 import type { PacketSummary } from "../../../src/types/api";
+import { stubVirtualLayout } from "../../virtual-layout";
 
 // PacketExpansion fetches through usePacketDetail; stub it so the list renders without a query client.
 const usePacketDetail = vi.fn(() => ({ data: { packetHash: "AA11", header: { payloadType: 1 }, observations: [] } }));
@@ -14,9 +15,7 @@ const VIEWPORT_H = 1300;
 const ROW_H = 60;
 const EXPANDED_H = 400;
 
-// jsdom has no layout and no ResizeObserver, so feed the virtualizer both: offsetHeight answers for
-// the viewport and for each measured item (taller once it holds an expansion), and flushResize()
-// stands in for the browser noticing a row changed height.
+// jsdom has no ResizeObserver either; flushResize() stands in for the browser noticing a row changed height
 type Observed = { cb: ResizeObserverCallback; targets: Set<Element> };
 const observers: Observed[] = [];
 
@@ -41,13 +40,8 @@ function flushResize() {
   });
 }
 
-Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-  configurable: true,
-  get(this: HTMLElement) {
-    if (!this.hasAttribute("data-index")) return VIEWPORT_H;
-    return this.querySelector("[data-testid='packet-expansion']") ? EXPANDED_H : ROW_H;
-  },
-});
+// items grow once they hold an expansion
+stubVirtualLayout(VIEWPORT_H, (item) => (item.querySelector("[data-testid='packet-expansion']") ? EXPANDED_H : ROW_H));
 
 const pkt = (hash: string): PacketSummary => ({
   packetHash: hash, payloadType: 1, payloadTypeName: "ADVERT",
