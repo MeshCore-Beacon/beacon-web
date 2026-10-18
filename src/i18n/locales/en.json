@@ -605,6 +605,7 @@
       "nodeType": "Node Type",
       "nodeTypeLabel": "Node type",
       "clustering": "Clustering",
+      "clusteringLiveNote": "Off while Live Map is on",
       "neighborLines": "Neighbor Lines",
       "neighborLinesLabel": "Neighbor lines",
       "areaBorders": "Area Borders",
