@@ -570,6 +570,7 @@
       "nodeType": "Nodtyp",
       "nodeTypeLabel": "Nodtyp",
       "clustering": "Klustring",
+      "clusteringLiveNote": "Av medan livekartan är på",
       "neighborLines": "Grannlinjer",
       "neighborLinesLabel": "Grannlinjer",
       "areaBorders": "Områdesgränser",

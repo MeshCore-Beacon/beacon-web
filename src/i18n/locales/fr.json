@@ -585,6 +585,7 @@
       "nodeType": "Type de nœud",
       "nodeTypeLabel": "Type de nœud",
       "clustering": "Regroupement",
+      "clusteringLiveNote": "Désactivé tant que la carte en direct est active",
       "neighborLines": "Liens de voisinage",
       "neighborLinesLabel": "Liens de voisinage",
       "areaBorders": "Limites de zone",
