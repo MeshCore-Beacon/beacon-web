@@ -21,16 +21,6 @@ if (!window.matchMedia) {
   }));
 }
 
-// jsdom does no layout, so scroll containers are 0px tall and a virtualized DataTable would mount no
-// rows. Give them a tall viewport; tests that exercise virtualization stub offsetHeight themselves.
-const jsdomOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetHeight")!;
-Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
-  configurable: true,
-  get(this: HTMLElement) {
-    return this.classList.contains("overflow-y-auto") ? 10_000 : jsdomOffsetHeight.get!.call(this);
-  },
-});
-
 // Node 26 exposes `localStorage` as undefined without `--localstorage-file`, shadowing jsdom's.
 if (!globalThis.localStorage) {
   const store = new Map<string, string>();

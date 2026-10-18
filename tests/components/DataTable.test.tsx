@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { render, fireEvent, screen } from "@testing-library/react";
 import { DataTable, type Column } from "../../src/components/DataTable";
+import { stubVirtualLayout } from "../virtual-layout";
 
 it("keeps a stable column's default sort and focused button when its label changes", () => {
   const data = [{ id: "a" }, { id: "b" }];
@@ -105,11 +106,8 @@ describe("DataTable virtualization", () => {
   const ROW_H = 38;
   const many = Array.from({ length: 1000 }, (_, i) => ({ id: `n${String(i).padStart(4, "0")}` }));
 
-  // jsdom does no layout: the virtualizer reads offsetHeight for both the viewport and each row
   beforeEach(() => {
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
-      return this.hasAttribute("data-index") ? ROW_H : VIEWPORT_H;
-    });
+    stubVirtualLayout(VIEWPORT_H, ROW_H);
   });
 
   function renderMany(mobile: boolean, virtualize = true) {
@@ -163,6 +161,24 @@ describe("DataTable virtualization", () => {
     expect(rendered.length).toBeGreaterThan(VIEWPORT_H / ROW_H);
     expect(rendered.length).toBeLessThan(50);
     expect(rendered[0].textContent).toBe("card-n0000");
+  });
+
+  it("gives every card but the list's last a divider, wherever the mounted window ends", () => {
+    const cards = [...renderMany(true).querySelectorAll("button")];
+    expect(cards.every((card) => card.classList.contains("border-b"))).toBe(true);
+    const few = render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" renderCard={(r) => r.id} virtualize />).container;
+    expect([...few.querySelectorAll("button")].map((card) => card.classList.contains("border-b"))).toEqual([true, false]);
+  });
+
+  it("tells assistive tech the full row count, not just the mounted rows", () => {
+    const table = renderMany(false).querySelector("table")!;
+    expect(table).toHaveAttribute("aria-rowcount", String(many.length + 1));
+    expect(table.querySelector("thead tr")).toHaveAttribute("aria-rowindex", "1");
+    expect(table.querySelector("tbody tr[data-index='0']")).toHaveAttribute("aria-rowindex", "2");
+  });
+
+  it("leaves row counts to the DOM when every row is mounted", () => {
+    expect(renderMany(false, false).querySelector("table")).not.toHaveAttribute("aria-rowcount");
   });
 });
 

@@ -25,7 +25,7 @@ import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 
-const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
+const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 
 // Cell and card renderers can't call hooks, so the computed "last heard" label gets its own component.
 function IataBadge({ entry }: { entry: NodeIATA }) {
@@ -98,9 +98,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       id: "name",
       header: t("nodes.colName"),
       sortValue: (node) => node.name ?? formatHex(node.id),
-      width: "16rem",
+      width: "22%", // a share, not rem, so it gives way when the detail panel narrows the pane
       cell: (node) => (
-        <span className={`block truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
+        <span className={`block truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`} title={node.name ?? formatHex(node.id)}>
           {node.name ?? formatHex(node.id)}
         </span>
       ),
@@ -240,7 +240,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         <DataTable
           columns={columns}
           rows={displayNodes}
-          rowKey={(n) => n.id}
+          rowKey={nodeId}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
           isLoading={isLoading || isResolved === false}
@@ -248,7 +248,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           defaultSort={{ id: "name" }}
           renderCard={(node) => renderNodeCard(node, t)}
           virtualize
-          minWidth="64rem"
+          minWidth="52rem"
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>

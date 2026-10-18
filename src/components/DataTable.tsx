@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { EmptyState } from "./EmptyState";
 import { SkeletonRows } from "./SkeletonRows";
@@ -29,9 +29,7 @@ interface DataTableProps<T> {
   // when set, rows render as stacked cards below the md breakpoint instead of a table; sort UI lives
   // in <thead>, so cards keep the defaultSort
   renderCard?: (row: T) => ReactNode;
-  // Mount only the rows near the viewport: rendering thousands redoes every row on each page load. Columns
-  // can't size to rows that aren't mounted, so the table goes fixed-layout: pin widths, set a minWidth.
-  virtualize?: boolean;
+  virtualize?: boolean; // mount only rows near the viewport; layout goes fixed, so pin widths and set a minWidth
   minWidth?: string; // the table scrolls sideways below this instead of squeezing its columns
 }
 
@@ -79,6 +77,13 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     });
   }, [rows, columns, sort]);
 
+  // kept stable, since a new one re-places every row; cards and rows differ in height, so they cache apart
+  const getItemKey = useCallback((index: number) => {
+    const row = sortedRows?.[index];
+    if (!row) return index;
+    return asCards ? `card:${rowKey(row)}` : rowKey(row);
+  }, [sortedRows, rowKey, asCards]);
+
   // when virtualized, spacers stand in for the rows that aren't mounted
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -86,10 +91,7 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     getScrollElement: () => scrollRef.current,
     estimateSize: () => (asCards ? CARD_ESTIMATE_PX : ROW_ESTIMATE_PX),
     overscan: 10,
-    getItemKey: (index) => {
-      const row = sortedRows?.[index];
-      return row ? rowKey(row) : index;
-    },
+    getItemKey,
     enabled: virtualize,
   });
   const virtualRows = virtualizer.getVirtualItems();
@@ -116,19 +118,21 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     return (
       <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
         {sortedRows && sortedRows.length > 0 ? (
-          <div className="flex flex-col divide-y divide-border/40" style={{ paddingTop: padTop, paddingBottom: padBottom }}>
+          <div className="flex flex-col" style={{ paddingTop: padTop, paddingBottom: padBottom }}>
             {mounted.map((index) => {
               const row = sortedRows[index];
               if (!row) return null;
               const key = rowKey(row);
               const isSelected = key === selectedKey;
+              // divider by list position, not mounted position, so a card's height doesn't change as others mount
+              const divider = index < sortedRows.length - 1 ? "border-b border-border/40" : "";
               return (
                 <button
                   key={key}
                   data-index={index}
                   ref={measureRow}
                   type="button"
-                  className={`w-full text-left px-3 py-2.5 border-l-2 cursor-pointer transition-colors ${
+                  className={`w-full text-left px-3 py-2.5 ${divider} border-l-2 cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-primary/10 border-l-primary"
                       : "border-l-transparent hover:bg-primary/5 hover:border-l-primary/50"
@@ -147,17 +151,22 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     );
   }
 
+  // aria-rowcount/aria-rowindex tell screen readers the full size when only on-screen rows are mounted
   return (
     <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto" onScroll={handleScroll}>
       {sortedRows && sortedRows.length > 0 ? (
-        <table className={`w-full text-xs font-mono ${virtualize ? "table-fixed" : ""}`} style={{ minWidth }}>
+        <table
+          className={`w-full text-xs font-mono ${virtualize ? "table-fixed" : ""}`}
+          style={{ minWidth }}
+          aria-rowcount={virtualize ? sortedRows.length + 1 : undefined}
+        >
           {virtualize && (
             <colgroup>
               {columns.map((col) => <col key={col.id ?? col.header} style={{ width: col.width }} />)}
             </colgroup>
           )}
           <thead className="sticky top-0 bg-bg-surface z-10">
-            <tr className="text-text-muted text-[11px] uppercase tracking-wider border-b border-border">
+            <tr className="text-text-muted text-[11px] uppercase tracking-wider border-b border-border" aria-rowindex={virtualize ? 1 : undefined}>
               {columns.map((col) => {
                 const id = col.id ?? col.header;
                 if (!col.sortValue) {
@@ -193,6 +202,7 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
                   key={key}
                   data-index={index}
                   ref={measureRow}
+                  aria-rowindex={virtualize ? index + 2 : undefined}
                   className={`border-b border-border/40 border-l-2 cursor-pointer transition-colors ${
                     isSelected
                       ? "bg-primary/10 border-l-primary"

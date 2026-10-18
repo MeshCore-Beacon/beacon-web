@@ -6,6 +6,7 @@ import { getNodesPage } from "../../../src/api/client";
 import i18n from "../../../src/i18n";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 import type { WsManager } from "../../../src/api/ws-manager";
+import { stubVirtualLayout } from "../../virtual-layout";
 
 const region = { iatas: ["YVR"], regionKey: "YVR", isResolved: true };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
@@ -39,6 +40,19 @@ function mount(items: NodeSummary[]) {
 
 beforeEach(() => {
   vi.mocked(getNodesPage).mockReset();
+  stubVirtualLayout(500, 38); // the table is virtualized
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("NodeTable name column", () => {
+  it("keeps the full name readable when the cell cuts it off", async () => {
+    const name = "Ottawa-West Repeater (Kanata Hill) 2";
+    mount([node({ id: "node-long", name })]);
+    expect(await screen.findByText(name)).toHaveAttribute("title", name);
+  });
 });
 
 describe("NodeTable location column", () => {
@@ -95,15 +109,7 @@ describe("NodeTable in French", () => {
 });
 
 describe("NodeTable with thousands of nodes", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it("mounts only the rows on screen", async () => {
-    // jsdom does no layout: a 500px viewport of 38px rows
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
-      return this.hasAttribute("data-index") ? 38 : 500;
-    });
     mount(Array.from({ length: 2000 }, (_, i) => node({ id: `node-${i}`, name: `Node ${String(i).padStart(4, "0")}` })));
     await screen.findByText("Node 0000");
     expect(document.querySelectorAll("tbody tr[data-index]").length).toBeLessThan(50);
