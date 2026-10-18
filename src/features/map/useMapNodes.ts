@@ -94,10 +94,11 @@ const ICON_IMAGE: ExpressionSpecification = [
 // Node labels fade in only past NODE_LABEL_MIN_ZOOM.
 const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
 
-const UNCLUSTERED: FilterSpecification = ["!", ["has", "point_count"]];
+const UNCLUSTERED = ["!", ["has", "point_count"]] as ExpressionSpecification;
 const ALL_DOT_TYPES = idleDotTypes("");
 const LIVE_DOT_RADIUS = ["interpolate", ["linear"], ["zoom"], ...LIVE_DOT_RADIUS_STOPS.flat()] as unknown as ExpressionSpecification;
-const dotsFilter = (types: string[]): FilterSpecification => ["all", UNCLUSTERED, ["in", ["get", "nodeTypeName"], ["literal", types]]];
+const dotsFilter = (types: string[]) =>
+  ["all", UNCLUSTERED, ["in", ["get", "nodeTypeName"], ["literal", types]]] as FilterSpecification;
 
 const SPIDER_LEAVES_LAYOUT: SymbolLayerSpecification["layout"] = {
   "icon-image": ICON_IMAGE,
@@ -388,7 +389,10 @@ export function useMapNodes(
     }
     if (map.getLayer(NODES_POINT_LAYER_ID)) {
       // filtered rather than faded, so live mode leaves no invisible click targets behind
-      map.setFilter(NODES_POINT_LAYER_ID, live ? ["all", UNCLUSTERED, ["==", ["get", "id"], selectedNodeId ?? ""]] : UNCLUSTERED);
+      map.setFilter(
+        NODES_POINT_LAYER_ID,
+        live ? (["all", UNCLUSTERED, ["==", ["get", "id"], selectedNodeId ?? ""]] as FilterSpecification) : UNCLUSTERED,
+      );
       map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", iconOpacity);
       map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", labelOpacity);
     }
