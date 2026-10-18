@@ -26,7 +26,7 @@ import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 import { EmojiText } from "../../components/EmojiText";
 
-const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
+const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 
 // Cell and card renderers can't call hooks, so the computed "last heard" label gets its own component.
 function IataBadge({ entry }: { entry: NodeIATA }) {
@@ -99,8 +99,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       id: "name",
       header: t("nodes.colName"),
       sortValue: (node) => node.name ?? formatHex(node.id),
+      width: "22%", // a share, not rem, so it gives way when the detail panel narrows the pane
       cell: (node) => (
-        <span className={`truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
+        <span className={`block truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`} title={node.name ?? formatHex(node.id)}>
           <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
       ),
@@ -147,12 +148,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       header: t("nodes.colNeighbors"),
       className: "text-text-muted",
       sortValue: (node) => node.knownNeighborCount,
+      width: "7rem",
       cell: (node) => node.knownNeighborCount.toLocaleString(),
     },
     {
       id: "location",
       header: t("nodes.colLocation"),
       className: "text-text-muted",
+      width: "9rem",
       cell: (node) =>
         hasMapLocation(node)
           ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
@@ -217,7 +220,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex flex-col flex-1 min-w-0">
         <NodeFilterBar
           search={search}
@@ -238,13 +241,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         <DataTable
           columns={columns}
           rows={displayNodes}
-          rowKey={(n) => n.id}
+          rowKey={nodeId}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
           isLoading={isLoading || isResolved === false}
           emptyLabel={t("nodes.empty")}
           defaultSort={{ id: "name" }}
           renderCard={(node) => renderNodeCard(node, t)}
+          virtualize
+          minWidth="52rem"
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>
