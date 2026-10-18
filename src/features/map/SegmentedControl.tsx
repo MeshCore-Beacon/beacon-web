@@ -13,11 +13,13 @@ interface SegmentedControlProps {
   className?: string;
   // locks the control (e.g. a setting another mode overrides); the value still shows
   disabled?: boolean;
+  // locks just these options, e.g. one another mode overrides
+  disabledValues?: string[];
 }
 
 // Single-select segmented control; active state uses aria-pressed, not color alone.
 
-export function SegmentedControl({ options, value, onChange, ariaLabel, wrap = false, className, disabled = false }: SegmentedControlProps) {
+export function SegmentedControl({ options, value, onChange, ariaLabel, wrap = false, className, disabled = false, disabledValues }: SegmentedControlProps) {
   const containerCls = wrap
     ? `flex flex-wrap gap-1 ${className ?? ""}`
     : `flex bg-bg-raised border border-border rounded-sm overflow-hidden ${className ?? ""}`;
@@ -43,9 +45,9 @@ export function SegmentedControl({ options, value, onChange, ariaLabel, wrap = f
             key={o.value}
             type="button"
             aria-pressed={active}
-            disabled={disabled}
+            disabled={disabled || disabledValues?.includes(o.value)}
             onClick={() => onChange(o.value)}
-            className={`${buttonCls(active)} disabled:cursor-not-allowed`}
+            className={`${buttonCls(active)} disabled:cursor-not-allowed ${disabledValues?.includes(o.value) ? "opacity-40" : ""}`}
           >
             {o.label}
           </button>

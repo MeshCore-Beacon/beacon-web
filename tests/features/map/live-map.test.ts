@@ -7,6 +7,7 @@ import {
   litFeatureCollection,
   buildLiveNodeIndex,
   withSelectedNode,
+  liveNeighborLines,
   type LitEntry,
 } from "../../../src/features/map/live-map";
 
@@ -92,5 +93,16 @@ describe("withSelectedNode", () => {
     expect(withSelectedNode(filtered, base, "r")).toBe(filtered);
     expect(withSelectedNode(filtered, base, null)).toBe(filtered);
     expect(withSelectedNode(filtered, base, "gone")).toBe(filtered);
+  });
+});
+
+describe("liveNeighborLines", () => {
+  it("turns all-node lines into selected-node lines while Live is on", () => {
+    expect(liveNeighborLines("on", true)).toBe("selected");
+    expect(liveNeighborLines("selected", true)).toBe("selected");
+    expect(liveNeighborLines("off", true)).toBe("off");
+  });
+  it("leaves the setting alone when Live is off", () => {
+    expect(liveNeighborLines("on", false)).toBe("on");
   });
 });

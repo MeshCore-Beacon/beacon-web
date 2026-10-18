@@ -1,6 +1,6 @@
 import type { Feature, FeatureCollection, Point } from "geojson";
 import type { NodeFeatureProps } from "./node-geojson";
-import { PACKET_FLOW_FLASH_MS } from "./types";
+import { PACKET_FLOW_FLASH_MS, type NeighborLinesMode } from "./types";
 
 // Pure helpers for Live Map's lit nodes and idle dots. No maplibre import, so they stay
 // unit-testable; useMapPacketFlow owns the layers and the animation loop.
@@ -89,4 +89,9 @@ export function withSelectedNode(
   if (!selectedId || filtered.features.some((f) => f.properties.id === selectedId)) return filtered;
   const selected = all.features.find((f) => f.properties.id === selectedId);
   return selected ? { ...filtered, features: [...filtered.features, selected] } : filtered;
+}
+
+// Every repeater's neighbour lines would bury the packets, so Live shows only the selected node's.
+export function liveNeighborLines(mode: NeighborLinesMode, live: boolean): NeighborLinesMode {
+  return live && mode === "on" ? "selected" : mode;
 }

@@ -608,6 +608,7 @@
       "clusteringLiveNote": "Off while Live Map is on",
       "neighborLines": "Neighbor Lines",
       "neighborLinesLabel": "Neighbor lines",
+      "neighborLinesLiveNote": "All lines are off while Live Map is on",
       "areaBorders": "Area Borders",
       "areaBordersLabel": "Area borders",
       "all": "All",

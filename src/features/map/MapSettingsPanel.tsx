@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
 import { NODE_TYPE_FILTER_OPTIONS, type NeighborLinesMode } from "./types";
+import { liveNeighborLines } from "./live-map";
 import { Section } from "../../components/DetailPanel";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { useIsMobile } from "../../hooks/useMediaQuery";
@@ -150,11 +151,13 @@ export function MapSettingsPanel({
             <SegmentedControl
               ariaLabel={t("map.neighborLinesLabel")}
               options={neighborOptions}
-              value={neighborLines}
+              value={liveNeighborLines(neighborLines, liveMap)}
               onChange={(v) => onNeighborLinesChange(v as NeighborLinesMode)}
               className="w-full"
+              disabledValues={liveMap ? ["on"] : undefined}
             />
-            {neighborLines === "selected" && <NeighborLegend />}
+            {liveMap && <div className="text-[9px] text-text-dim mt-1">{t("map.neighborLinesLiveNote")}</div>}
+            {liveNeighborLines(neighborLines, liveMap) === "selected" && <NeighborLegend />}
           </Section>
           <Section title={t("map.areaBorders")}>
             <SegmentedControl
