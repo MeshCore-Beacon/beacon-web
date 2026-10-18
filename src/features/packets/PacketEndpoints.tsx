@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import type { PacketSummary, ResolvedHop, ResolvedNode } from "../../types/api";
 import { PayloadType, type PathConfidence } from "../../types/enums";
 import { HopPopover } from "./PathData";
+import { EmojiText } from "../../components/EmojiText";
 
 // Same three-state vocabulary PathData uses in the analyzer.
 const CONFIDENCE_CLASSES: Record<PathConfidence, string> = {
@@ -22,7 +23,7 @@ function Chip({ hop }: { hop: ResolvedHop }) {
         title={hop.nodes.map(nodeLabel).join(", ") || t("packetRow.noResolution")}
         className={`font-mono text-[10px] px-1.5 py-px rounded-sm truncate ${CONFIDENCE_CLASSES[hop.confidence]}`}
       >
-        {label}{hop.nodes.length > 1 ? ` +${hop.nodes.length - 1}` : ""}
+        <EmojiText text={label} />{hop.nodes.length > 1 ? ` +${hop.nodes.length - 1}` : ""}
       </span>
     </HopPopover>
   );

@@ -6,6 +6,7 @@ import { Segmented } from "../stats/Segmented";
 import { observerName as nameOf } from "./observer-filter";
 import { deriveObserverStatus } from "./observer-status";
 import type { ObserverDirectoryItem, ObserverDirectoryPage, ObserverDirectorySort } from "./types";
+import { EmojiText } from "../../components/EmojiText";
 
 export function ObserverSidebar({ observers, filtered, isPending, isError, unsupported, onRetry, onRefresh,
   sort, onSortChange, maxObservationCount, coverage, effectiveSort, windowEnd,
@@ -72,7 +73,7 @@ export function ObserverSidebar({ observers, filtered, isPending, isError, unsup
                     style={{ width: `${maxObservationCount > 0 ? Math.min(1, Math.max(0, count / maxObservationCount)) * 100 : 0}%` }} aria-hidden />}
                   <div className="relative flex items-center gap-2">
                     <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${deriveObserverStatus(o) === "online" ? "bg-green" : "bg-text-dim/30"}`} />
-                    <span className={`min-w-0 flex-1 truncate font-mono text-[13px] md:text-[12px] ${active ? "text-text-bright" : "text-text-normal"}`}>{nameOf(o)}</span>
+                    <span className={`min-w-0 flex-1 truncate font-mono text-[13px] md:text-[12px] ${active ? "text-text-bright" : "text-text-normal"}`}><EmojiText text={nameOf(o)} /></span>
                     <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-muted">{count != null && maxObservationCount != null ? formatCount(count) : "-"}</span>
                   </div>
                 </button>

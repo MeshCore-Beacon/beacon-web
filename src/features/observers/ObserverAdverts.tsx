@@ -5,6 +5,7 @@ import { IataChip } from "../../components/IataChip";
 import { Timestamp } from "../../components/Timestamp";
 import { formatHex, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import type { AdvertObservation } from "./types";
+import { EmojiText } from "../../components/EmojiText";
 
 function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick: () => void }) {
   const { t } = useTranslation();
@@ -14,7 +15,7 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick: ()
     <button type="button" onClick={onClick} className="w-full cursor-pointer rounded border border-border border-l-2 border-l-primary bg-bg-base px-3 py-2 text-left hover:bg-text-normal/3">
       <span className="mb-1.5 flex items-center gap-2 text-[11px]">
         <span className={`truncate font-mono font-semibold tracking-wider ${advert.nodeName ? "text-primary" : "italic text-text-dim"}`}>
-          {advert.nodeName ?? (advert.nodePublicKey ? formatHex(advert.nodePublicKey) : t("observerPage.unknownNode"))}
+          <EmojiText text={advert.nodeName ?? (advert.nodePublicKey ? formatHex(advert.nodePublicKey) : t("observerPage.unknownNode"))} />
         </span>
         <IataChip>{advert.iata}</IataChip>
         <Timestamp value={advert.heardAt} className="ml-auto font-mono text-[11px] text-text-dim" />

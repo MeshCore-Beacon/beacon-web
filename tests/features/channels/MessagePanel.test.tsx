@@ -94,10 +94,11 @@ describe("MessagePanel multi-line messages", () => {
     );
 
     // jsdom doesn't collapse whitespace the way a browser does, so the class is what pins this;
-    // the normalizer override stops findByText from collapsing the newlines before matching
-    const body = await screen.findByText(multiLineMsg.content, { normalizer: (s) => s });
+    // the body's leading emoji sits in its own span, so match the whole div's text, newlines intact
+    const body = await screen.findByText((_, el) => el?.tagName === "DIV" && el.textContent === multiLineMsg.content);
     expect(body.className).toContain("whitespace-pre-wrap");
     expect(body.className).toContain("break-words");
+    expect(body.querySelector(".emoji-glyph")).toHaveTextContent("🟠");
   });
 });
 
