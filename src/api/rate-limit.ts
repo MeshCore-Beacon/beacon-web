@@ -17,14 +17,28 @@ export function parseRetryAfter(header: string | null): number | undefined {
   return Math.min(Math.max(ms, 0), RATE_LIMIT_MAX_MS);
 }
 
-// TanStack Query retry predicate: a 4xx won't improve by asking again, and retrying a 429 is exactly
-// what the server just asked us not to do. Two retries for everything else, as before.
+// A 429, or a 503 with Retry-After, is a pause: retry the same request after the wait, at most three
+// times. Other 4xx are final; anything else gets two quick retries.
 export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
-  if (failureCount >= 2) return false;
   const status = (error as { status?: unknown } | null)?.status;
+  if (status === 429 || transientWaitMs(error) !== undefined) return failureCount < 3;
+  if (failureCount >= 2) return false;
   if (typeof status === "number" && status >= 400 && status < 500) return false;
   return true;
 }
+
+// Retry-After of a 503 (the server's busy or deadline guard); undefined for anything else.
+export function transientWaitMs(error: unknown): number | undefined {
+  const e = error as { status?: unknown; retryAfterMs?: unknown } | null;
+  return e?.status === 503 && typeof e.retryAfterMs === "number" ? e.retryAfterMs : undefined;
+}
+
+// TanStack Query retry delay: the server's wait when it gave one, else TanStack's own backoff.
+export function queryRetryDelay(failureCount: number, error: unknown): number {
+  return rateLimitWaitMs(error) ?? transientWaitMs(error) ?? Math.min(1000 * 2 ** failureCount, 30_000);
+}
+
+export const queryRetryDefaults = { retry: shouldRetryQuery, retryDelay: queryRetryDelay };
 
 // How long to hold off before asking again for what a 429 refused; undefined for any other error.
 export function rateLimitWaitMs(error: unknown): number | undefined {

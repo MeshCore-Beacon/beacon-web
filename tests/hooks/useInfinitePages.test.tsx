@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useInfinitePages } from "../../src/hooks/useInfinitePages";
+import { queryRetryDefaults } from "../../src/api/rate-limit";
 
 interface Row {
   id: string;
@@ -16,6 +17,14 @@ function wrapper() {
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
 }
+
+function wrapperWith(client: QueryClient) {
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+}
+
+afterEach(() => vi.useRealTimers());
 
 describe("useInfinitePages", () => {
   it("auto-chains pages, concatenates items, and forwards the prev page's nextCursor", async () => {
@@ -201,5 +210,36 @@ describe("useInfinitePages", () => {
     const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 4], queryFn, getId: rowId }), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isPaging).toBe(false));
     expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+  it("retries a 503 with Retry-After after the wait, on the same page, without an error or rate-limit state", async () => {
+    vi.useFakeTimers();
+    const busy = Object.assign(new Error("deadline"), { status: 503, code: "deadline_exceeded", retryAfterMs: 5_000 });
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, nextPageCursor: "v1:1000:aa", hasMore: true })
+      .mockRejectedValueOnce(busy)
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const client = new QueryClient({ defaultOptions: { queries: queryRetryDefaults } });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["503", 1], queryFn, getId: rowId }), { wrapper: wrapperWith(client) });
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    await act(() => vi.advanceTimersByTimeAsync(4_900));
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    expect(result.current.isError).toBe(false);
+    expect(result.current.items.map(rowId)).toEqual(["a"]);
+    await act(() => vi.advanceTimersByTimeAsync(200));
+    expect(queryFn).toHaveBeenCalledTimes(3);
+    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1, pageCursor: "v1:1000:aa" });
+    expect(result.current.items.map(rowId)).toEqual(["a", "b"]);
+  });
+
+  it("shows the error after three refused retries of a 503", async () => {
+    vi.useFakeTimers();
+    const busy = Object.assign(new Error("busy"), { status: 503, code: "service_unavailable", retryAfterMs: 2_000 });
+    const queryFn = vi.fn().mockRejectedValue(busy);
+    const client = new QueryClient({ defaultOptions: { queries: queryRetryDefaults } });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["503", 2], queryFn, getId: rowId }), { wrapper: wrapperWith(client) });
+    await act(() => vi.advanceTimersByTimeAsync(6_100));
+    expect(queryFn).toHaveBeenCalledTimes(4);
+    expect(result.current.isError).toBe(true);
   });
 });

@@ -631,6 +631,13 @@ describe("error responses", () => {
     expect(getRateLimitedUntil()).toBeNull();
   });
 
+  it("a 503 with Retry-After carries retryAfterMs and does not mark rate-limited", async () => {
+    mockError(503, { error: { code: "deadline_exceeded", message: "The request ran past its database time limit. Retry later." } }, { "Retry-After": "5" });
+    const err = await getScopes().catch((e: unknown) => e);
+    expect(err).toMatchObject({ name: "ApiError", status: 503, code: "deadline_exceeded", retryAfterMs: 5_000 });
+    expect(getRateLimitedUntil()).toBeNull();
+  });
+
   it("a plain 500 is not treated as rate limiting", async () => {
     mockError(500, { error: { code: "internal", message: "boom" } });
     const err = await getScopes().catch((e: unknown) => e);
