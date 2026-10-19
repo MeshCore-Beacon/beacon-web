@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useInfiniteQuery, keepPreviousData, type QueryKey } from "@tanstack/react-query";
 import type { CursorPage } from "../types/api";
+import { rateLimitWaitMs } from "../api/rate-limit";
 
 interface UseInfinitePagesOptions<T, C> {
   queryKey: QueryKey;
@@ -24,7 +25,7 @@ interface UseInfinitePagesOptions<T, C> {
 // Infinity, no maxPages); dedupes by id because a non-unique cursor can repeat a row across a page
 // boundary. Shared by the map and the entity tables.
 export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T, C>) {
-  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
+  const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
       queryFn: ({ pageParam }) => queryFn(pageParam as C | undefined),
@@ -48,6 +49,15 @@ export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keep
     if (auto && enabled) loadMore();
   }, [auto, enabled, loadMore]);
 
+  // A 429 is a pause, not a failure: once Retry-After has passed, ask again for the page it refused.
+  const rateLimited = rateLimitWaitMs(error) !== undefined;
+  useEffect(() => {
+    const wait = rateLimitWaitMs(error);
+    if (wait === undefined || !enabled || isFetching) return;
+    const timer = setTimeout(() => void (isFetchNextPageError ? fetchNextPage() : refetch()), wait);
+    return () => clearTimeout(timer);
+  }, [error, enabled, isFetching, isFetchNextPageError, fetchNextPage, refetch]);
+
   const items = useMemo<T[]>(() => {
     const seen = new Set<string>();
     return (data?.pages.flatMap((p) => p.items) ?? []).filter((it) => {
@@ -58,16 +68,16 @@ export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keep
     });
   }, [data, getId]);
 
-  const errored = isError || isFetchNextPageError;
+  const errored = (isError || isFetchNextPageError) && !rateLimited;
   return {
     items,
     loadedCount: items.length,
     // drop the loading state on error so the pill hides instead of hanging on (hasNextPage stays true
     // after a failed page); callers surface isError separately. In auto mode hasNextPage counts as
     // "still paging" (more is coming); in on-demand mode only an in-flight fetch does.
-    isPaging: (isFetching || (auto && hasNextPage)) && !errored,
+    isPaging: (isFetching || (auto && hasNextPage) || rateLimited) && !errored,
     isError: errored,
-    isLoading,
+    isLoading: isLoading || (rateLimited && data === undefined),
     hasMore: hasNextPage && !errored,
     loadMore,
   };

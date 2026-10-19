@@ -64,6 +64,14 @@ describe("NodeTable name column", () => {
   });
 });
 
+describe("NodeTable paging", () => {
+  it("asks for nodes at the server's page cap, so a whole region takes a quarter of the requests", async () => {
+    mount([node({ id: "node-a", name: "Node A" })]);
+    await screen.findByText("Node A");
+    expect(vi.mocked(getNodesPage)).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ limit: 200 }));
+  });
+});
+
 describe("NodeTable location column", () => {
   it("shows a dash for an explicit 0/0 advert reset, not the coordinates", async () => {
     mount([node({ id: "node-zero", name: "Zeroed node", lat: 0, lng: 0 })]);
