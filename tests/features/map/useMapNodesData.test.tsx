@@ -78,4 +78,14 @@ describe("useMapNodesData", () => {
     expect(result.current.nodes.map((n) => n.id)).toEqual(["a", "b", "c"]); // b not doubled
     expect(result.current.loadedCount).toBe(3);
   });
+  it("sends both cursors when the page carries nextPageCursor", async () => {
+    mockGetNodesPage
+      .mockResolvedValueOnce({ items: [node("a")], nextCursor: 2, nextPageCursor: "v1:2000:00000000-0000-0000-0000-000000000002", hasMore: true })
+      .mockResolvedValueOnce({ items: [node("b")], nextCursor: null, hasMore: false });
+
+    const { result } = renderHook(() => useMapNodesData(["YYZ"], "YYZ"), { wrapper: wrapper() });
+
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(mockGetNodesPage).toHaveBeenLastCalledWith(["YYZ"], { cursor: 2, pageCursor: "v1:2000:00000000-0000-0000-0000-000000000002", neighbors: true, limit: 200 });
+  });
 });

@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useInfinitePages } from "../../src/hooks/useInfinitePages";
+import { getRateLimitedUntil, queryRetryDefaults } from "../../src/api/rate-limit";
 
 interface Row {
   id: string;
@@ -16,6 +17,14 @@ function wrapper() {
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
 }
+
+function wrapperWith(client: QueryClient) {
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+}
+
+afterEach(() => vi.useRealTimers());
 
 describe("useInfinitePages", () => {
   it("auto-chains pages, concatenates items, and forwards the prev page's nextCursor", async () => {
@@ -34,7 +43,7 @@ describe("useInfinitePages", () => {
     expect(result.current.loadedCount).toBe(3);
     expect(queryFn).toHaveBeenCalledTimes(2);
     expect(queryFn).toHaveBeenNthCalledWith(1, undefined); // first page sends no cursor
-    expect(queryFn).toHaveBeenNthCalledWith(2, 2); // second page uses page 1's nextCursor
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }); // second page uses page 1's nextCursor
   });
 
   it("dedupes items repeated across a page boundary (cursor is a non-unique timestamp)", async () => {
@@ -88,7 +97,7 @@ describe("useInfinitePages", () => {
     expect(result.current.isPaging).toBe(true);
 
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
-    expect(queryFn).toHaveBeenNthCalledWith(3, 1); // the same page again, not a skip
+    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1 }); // the same page again, not a skip
     expect(result.current.isPaging).toBe(false);
     expect(result.current.isError).toBe(false);
   });
@@ -134,7 +143,7 @@ describe("useInfinitePages", () => {
 
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]));
     expect(queryFn).toHaveBeenCalledTimes(2);
-    expect(queryFn).toHaveBeenNthCalledWith(2, 2); // loadMore used page 1's nextCursor
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }); // loadMore used page 1's nextCursor
     expect(result.current.hasMore).toBe(false);
   });
 
@@ -164,5 +173,100 @@ describe("useInfinitePages", () => {
 
     resolveB({ items: [row("b")], nextCursor: null, hasMore: false });
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["b"])); // new data replaces old
+  });
+
+  it("prefers nextPageCursor and sends both cursors on the next page", async () => {
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 7, nextPageCursor: "v1:7000:aa", hasMore: true })
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 7, pageCursor: "v1:7000:aa" });
+    expect(result.current.items.map(rowId)).toEqual(["a", "b"]);
+  });
+
+  it("pages by cursor alone on a server without nextPageCursor", async () => {
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 7, hasMore: true })
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 2], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(queryFn.mock.calls[1]![0]).toStrictEqual({ cursor: 7 });
+  });
+
+  it("pages forward when the server ignores pageCursor", async () => {
+    // a rolled-back server: honours cursor, ignores pageCursor (it would answer page 1 again for pageCursor alone)
+    const server = vi.fn(async (page: { cursor?: number; pageCursor?: string } | undefined) =>
+      page?.cursor === undefined
+        ? { items: [row("a"), row("b")], nextCursor: 2, nextPageCursor: "v1:2000:bb", hasMore: true }
+        : { items: [row("b"), row("c")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 3], queryFn: server, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(server).toHaveBeenCalledTimes(2);
+    expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]);
+  });
+
+  it("stops on a page that says hasMore but carries no cursor", async () => {
+    const queryFn = vi.fn().mockResolvedValue({ items: [row("a")], nextCursor: null, hasMore: true });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 4], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a 503 with Retry-After after the wait, on the same page, without an error or rate-limit state", async () => {
+    vi.useFakeTimers();
+    const busy = Object.assign(new Error("deadline"), { status: 503, code: "deadline_exceeded", retryAfterMs: 5_000 });
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, nextPageCursor: "v1:1000:aa", hasMore: true })
+      .mockRejectedValueOnce(busy)
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const client = new QueryClient({ defaultOptions: { queries: queryRetryDefaults } });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["503", 1], queryFn, getId: rowId }), { wrapper: wrapperWith(client) });
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    await act(() => vi.advanceTimersByTimeAsync(4_900));
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    expect(result.current.isError).toBe(false);
+    expect(result.current.isPaging).toBe(true);
+    expect(getRateLimitedUntil()).toBeNull();
+    expect(result.current.items.map(rowId)).toEqual(["a"]);
+    await act(() => vi.advanceTimersByTimeAsync(200));
+    expect(queryFn).toHaveBeenCalledTimes(3);
+    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1, pageCursor: "v1:1000:aa" });
+    expect(result.current.items.map(rowId)).toEqual(["a", "b"]);
+  });
+
+  it("shows the error after three refused retries of a 503", async () => {
+    vi.useFakeTimers();
+    const busy = Object.assign(new Error("busy"), { status: 503, code: "service_unavailable", retryAfterMs: 2_000 });
+    const queryFn = vi.fn().mockRejectedValue(busy);
+    const client = new QueryClient({ defaultOptions: { queries: queryRetryDefaults } });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["503", 2], queryFn, getId: rowId }), { wrapper: wrapperWith(client) });
+    await act(() => vi.advanceTimersByTimeAsync(6_100));
+    expect(queryFn).toHaveBeenCalledTimes(4);
+    expect(result.current.isError).toBe(true);
+  });
+  it("retries once by cursor alone when the server rejects the pageCursor", async () => {
+    const invalid = Object.assign(new Error("invalid pageCursor"), { status: 400, code: "bad_request" });
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, nextPageCursor: "v1:1000:aa", hasMore: true })
+      .mockRejectedValueOnce(invalid)
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["bad-pc", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 1, pageCursor: "v1:1000:aa" });
+    expect(queryFn.mock.calls[2]![0]).toStrictEqual({ cursor: 1 });
+    expect(result.current.isError).toBe(false);
+  });
+
+  it("shows the error when the cursor-only retry fails too", async () => {
+    const invalid = Object.assign(new Error("invalid pageCursor"), { status: 400, code: "bad_request" });
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, nextPageCursor: "v1:1000:aa", hasMore: true })
+      .mockRejectedValue(invalid);
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["bad-pc", 2], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(queryFn).toHaveBeenCalledTimes(3);
+    expect(result.current.items.map(rowId)).toEqual(["a"]);
   });
 });

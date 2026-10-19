@@ -98,12 +98,13 @@ function statsRegionParams(r: StatsRegion): { iatas?: string; region?: string } 
 
 export function getPackets(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
+  params?: { cursor?: number; pageCursor?: string; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
 ): Promise<CursorPage<PacketSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/packets", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     payloadTypes: params?.payloadTypes?.length ? params.payloadTypes.join(",") : undefined,
     routeTypes: params?.routeTypes?.length ? params.routeTypes.join(",") : undefined,
@@ -295,6 +296,7 @@ export function getNodesPage(
   iatas: string[] | undefined,
   params?: {
     cursor?: number;
+    pageCursor?: string;
     limit?: number;
     type?: string;
     name?: string;
@@ -308,6 +310,7 @@ export function getNodesPage(
   return request("/nodes", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     typeName: params?.type,
     name: params?.name,
@@ -361,12 +364,13 @@ export async function supportsObserverDirectory(signal?: AbortSignal): Promise<b
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.
 export function getObserversPage(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; type?: string; broker?: string; status?: string; name?: string },
+  params?: { cursor?: number; pageCursor?: string; limit?: number; type?: string; broker?: string; status?: string; name?: string },
 ): Promise<CursorPage<ObserverSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/observers", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     type: params?.type,
     broker: params?.broker,
