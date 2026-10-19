@@ -1,4 +1,5 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
+import { isBelowVersion } from "../lib/version";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
@@ -346,13 +347,13 @@ export async function getObserverDirectoryPage(params: ObserverDirectoryRequest,
   return page;
 }
 
+// The directory shipped in server 2.0.2; /info arrived in 2.0.3, so a server without it predates the directory.
 export async function supportsObserverDirectory(signal?: AbortSignal): Promise<boolean> {
   try {
-    await getObserverDirectoryPage({ limit: 1 }, signal);
-    return true;
+    const info = await request<ServerInfo>("/info", undefined, signal);
+    return !isBelowVersion(info.serverVersion, "2.0.2");
   } catch (error) {
-    if (error instanceof ApiError && (error.status === 404 ||
-        (error.status === 400 && error.message === "failed to parse observer UUID"))) return false;
+    if (error instanceof ApiError && error.status === 404) return false;
     throw error;
   }
 }
