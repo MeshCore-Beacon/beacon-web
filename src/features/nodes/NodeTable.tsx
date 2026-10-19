@@ -25,6 +25,7 @@ import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 import { EmojiText } from "../../components/EmojiText";
+import { MAX_PAGE_SIZE } from "../../lib/constants";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 
@@ -180,13 +181,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam],
   );
 
-  // page the region's nodes 50 at a time (filters stay server-side, in the query key); rows stream
+  // page the region's nodes 200 at a time (filters stay server-side, in the query key); rows stream
   // in as each batch lands. Loads once per filter set — WS updates keep them live, no 30s refetch.
   const { items: nodes, loadedCount, isPaging, isError, isLoading } = useInfinitePages<NodeSummary>({
     queryKey,
     queryFn: (cursor) =>
       getNodesPage(iatas, {
         cursor,
+        limit: MAX_PAGE_SIZE,
         type: typeFilter || undefined,
         name: nameParam,
         pubkeyPrefix: pubkeyPrefixParam,

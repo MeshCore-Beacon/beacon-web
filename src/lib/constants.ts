@@ -5,6 +5,8 @@ export const WS_URL = runtimeEnv("VITE_WS_URL", import.meta.env.VITE_WS_URL) ?? 
 
 export const LIVE_BUFFER_CAP = 500;
 export const DEFAULT_PAGE_SIZE = 50;
+// beacon-server's list cap (maxListLimit); views that load a whole region page at it to stay under the rate limit
+export const MAX_PAGE_SIZE = 200;
 
 export const SCROLL_TOP_THRESHOLD_PX = 100;
 export const SCROLL_BOTTOM_THRESHOLD_PX = 500;

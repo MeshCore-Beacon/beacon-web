@@ -69,6 +69,50 @@ describe("useInfinitePages", () => {
     expect(result.current.items.map(rowId)).toEqual(["a"]); // page 1 still shows
   });
 
+  it("waits out a rate limit and carries on from the refused page", async () => {
+    const limited = Object.assign(new Error("rate limited"), { status: 429, retryAfterMs: 300 });
+    const queryFn = vi.fn();
+    queryFn
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, hasMore: true })
+      .mockRejectedValueOnce(limited)
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+
+    const { result } = renderHook(
+      () => useInfinitePages({ queryKey: ["rl", 1], queryFn, getId: rowId }),
+      { wrapper: wrapper() },
+    );
+
+    // refused: still paging, not an error, and nothing retried before Retry-After
+    await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2));
+    expect(result.current.isError).toBe(false);
+    expect(result.current.isPaging).toBe(true);
+
+    await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
+    expect(queryFn).toHaveBeenNthCalledWith(3, 1); // the same page again, not a skip
+    expect(result.current.isPaging).toBe(false);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it("waits out a rate limit on the first page too, showing it as loading", async () => {
+    const limited = Object.assign(new Error("rate limited"), { status: 429, retryAfterMs: 300 });
+    const queryFn = vi.fn();
+    queryFn
+      .mockRejectedValueOnce(limited)
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: null, hasMore: false });
+
+    const { result } = renderHook(
+      () => useInfinitePages({ queryKey: ["rl", 2], queryFn, getId: rowId }),
+      { wrapper: wrapper() },
+    );
+
+    await waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.isLoading).toBe(true));
+    expect(result.current.isError).toBe(false);
+
+    await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a"]));
+    expect(result.current.isError).toBe(false);
+  });
+
   it("with auto:false, loads only the first page until loadMore is called", async () => {
     const queryFn = vi.fn();
     queryFn

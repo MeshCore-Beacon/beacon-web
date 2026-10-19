@@ -26,6 +26,13 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
   return true;
 }
 
+// How long to hold off before asking again for what a 429 refused; undefined for any other error.
+export function rateLimitWaitMs(error: unknown): number | undefined {
+  const e = error as { status?: unknown; retryAfterMs?: unknown } | null;
+  if (e?.status !== 429) return undefined;
+  return typeof e.retryAfterMs === "number" ? e.retryAfterMs : RATE_LIMIT_DEFAULT_MS;
+}
+
 // App-wide "the API is throttling us" flag: fed by the fetch wrapper, read by the header badge.
 
 let limitedUntil: number | null = null;
