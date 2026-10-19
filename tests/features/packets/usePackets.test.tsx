@@ -646,4 +646,18 @@ describe("usePackets page cursors", () => {
     await waitFor(() => expect(result.current.allPackets.map((p) => p.packetHash)).toEqual(["p1", "p2", "p3"]));
     expect(result.current.hasNextPage).toBe(false);
   });
+  it("retries the next page by cursor alone when the server rejects the pageCursor", async () => {
+    getPackets.mockReset();
+    getPackets
+      .mockResolvedValueOnce({ items: [packet("p1")], nextCursor: 999, nextPageCursor: "v1:999123:ab", hasMore: true })
+      .mockRejectedValueOnce(Object.assign(new Error("invalid pageCursor"), { status: 400, code: "bad_request" }))
+      .mockResolvedValueOnce({ items: [packet("p2")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => usePackets(), { wrapper });
+    await waitFor(() => expect(getPackets).toHaveBeenCalledTimes(1));
+    await act(async () => { await result.current.fetchNextPage(); });
+    expect(getPackets.mock.calls[1]![1]).toEqual({ cursor: 999, pageCursor: "v1:999123:ab" });
+    expect(getPackets.mock.calls[2]![1]).toStrictEqual({ cursor: 999, pageCursor: undefined });
+    await waitFor(() => expect(result.current.allPackets.map((p) => p.packetHash)).toEqual(["p1", "p2"]));
+    expect(result.current.isError).toBe(false);
+  });
 });

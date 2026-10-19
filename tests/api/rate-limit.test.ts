@@ -78,6 +78,12 @@ describe("transientWaitMs / queryRetryDelay", () => {
     expect(queryRetryDelay(0, { status: 429 })).toBe(RATE_LIMIT_DEFAULT_MS);
   });
 
+  it("caps a 503's wait at 30 s but leaves a 429's wait to the 5 min ceiling", () => {
+    expect(transientWaitMs({ status: 503, retryAfterMs: 120_000 })).toBe(30_000);
+    expect(queryRetryDelay(0, { status: 503, retryAfterMs: 120_000 })).toBe(30_000);
+    expect(queryRetryDelay(0, { status: 429, retryAfterMs: 120_000 })).toBe(120_000);
+  });
+
   it("falls back to exponential backoff otherwise", () => {
     expect(transientWaitMs({ status: 503 })).toBeUndefined();
     expect(transientWaitMs({ status: 500, retryAfterMs: 5_000 })).toBeUndefined();

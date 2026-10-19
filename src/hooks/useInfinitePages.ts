@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useInfiniteQuery, keepPreviousData, type QueryKey } from "@tanstack/react-query";
 import type { CursorPage, PageParam } from "../types/api";
 import { rateLimitWaitMs } from "../api/rate-limit";
-import { nextPageParam } from "../api/paging";
+import { fetchPage, nextPageParam } from "../api/paging";
 
 interface UseInfinitePagesOptions<T, C> {
   queryKey: QueryKey;
@@ -29,7 +29,7 @@ export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keep
   const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
-      queryFn: ({ pageParam }) => queryFn(pageParam),
+      queryFn: ({ pageParam }) => fetchPage(pageParam, queryFn),
       getNextPageParam: nextPageParam,
       initialPageParam: undefined as PageParam<C> | undefined,
       staleTime: Infinity,

@@ -1,4 +1,4 @@
-import { RATE_LIMIT_DEFAULT_MS, RATE_LIMIT_MAX_MS } from "../lib/constants";
+import { RATE_LIMIT_DEFAULT_MS, RATE_LIMIT_MAX_MS, TRANSIENT_WAIT_MAX_MS } from "../lib/constants";
 
 // Kept free of client.ts imports so tests that mock the client with partial factories stay valid.
 
@@ -27,10 +27,10 @@ export function shouldRetryQuery(failureCount: number, error: unknown): boolean 
   return true;
 }
 
-// Retry-After of a 503 (the server's busy or deadline guard); undefined for anything else.
+// Retry-After of a 503 (the server's busy or deadline guard), capped; undefined for anything else.
 export function transientWaitMs(error: unknown): number | undefined {
   const e = error as { status?: unknown; retryAfterMs?: unknown } | null;
-  return e?.status === 503 && typeof e.retryAfterMs === "number" ? e.retryAfterMs : undefined;
+  return e?.status === 503 && typeof e.retryAfterMs === "number" ? Math.min(e.retryAfterMs, TRANSIENT_WAIT_MAX_MS) : undefined;
 }
 
 // TanStack Query retry delay: the server's wait when it gave one, else TanStack's own backoff.

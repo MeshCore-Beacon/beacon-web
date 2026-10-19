@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useInfinitePages } from "../../src/hooks/useInfinitePages";
-import { queryRetryDefaults } from "../../src/api/rate-limit";
+import { getRateLimitedUntil, queryRetryDefaults } from "../../src/api/rate-limit";
 
 interface Row {
   id: string;
@@ -174,6 +174,7 @@ describe("useInfinitePages", () => {
     resolveB({ items: [row("b")], nextCursor: null, hasMore: false });
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["b"])); // new data replaces old
   });
+
   it("prefers nextPageCursor and sends both cursors on the next page", async () => {
     const queryFn = vi.fn()
       .mockResolvedValueOnce({ items: [row("a")], nextCursor: 7, nextPageCursor: "v1:7000:aa", hasMore: true })
@@ -211,6 +212,7 @@ describe("useInfinitePages", () => {
     await waitFor(() => expect(result.current.isPaging).toBe(false));
     expect(queryFn).toHaveBeenCalledTimes(1);
   });
+
   it("retries a 503 with Retry-After after the wait, on the same page, without an error or rate-limit state", async () => {
     vi.useFakeTimers();
     const busy = Object.assign(new Error("deadline"), { status: 503, code: "deadline_exceeded", retryAfterMs: 5_000 });
@@ -225,6 +227,8 @@ describe("useInfinitePages", () => {
     await act(() => vi.advanceTimersByTimeAsync(4_900));
     expect(queryFn).toHaveBeenCalledTimes(2);
     expect(result.current.isError).toBe(false);
+    expect(result.current.isPaging).toBe(true);
+    expect(getRateLimitedUntil()).toBeNull();
     expect(result.current.items.map(rowId)).toEqual(["a"]);
     await act(() => vi.advanceTimersByTimeAsync(200));
     expect(queryFn).toHaveBeenCalledTimes(3);
@@ -241,5 +245,28 @@ describe("useInfinitePages", () => {
     await act(() => vi.advanceTimersByTimeAsync(6_100));
     expect(queryFn).toHaveBeenCalledTimes(4);
     expect(result.current.isError).toBe(true);
+  });
+  it("retries once by cursor alone when the server rejects the pageCursor", async () => {
+    const invalid = Object.assign(new Error("invalid pageCursor"), { status: 400, code: "bad_request" });
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, nextPageCursor: "v1:1000:aa", hasMore: true })
+      .mockRejectedValueOnce(invalid)
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["bad-pc", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 1, pageCursor: "v1:1000:aa" });
+    expect(queryFn.mock.calls[2]![0]).toStrictEqual({ cursor: 1 });
+    expect(result.current.isError).toBe(false);
+  });
+
+  it("shows the error when the cursor-only retry fails too", async () => {
+    const invalid = Object.assign(new Error("invalid pageCursor"), { status: 400, code: "bad_request" });
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 1, nextPageCursor: "v1:1000:aa", hasMore: true })
+      .mockRejectedValue(invalid);
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["bad-pc", 2], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(queryFn).toHaveBeenCalledTimes(3);
+    expect(result.current.items.map(rowId)).toEqual(["a"]);
   });
 });
