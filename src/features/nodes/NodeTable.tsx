@@ -185,9 +185,10 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   // in as each batch lands. Loads once per filter set — WS updates keep them live, no 30s refetch.
   const { items: nodes, loadedCount, isPaging, isError, isLoading } = useInfinitePages<NodeSummary>({
     queryKey,
-    queryFn: (cursor) =>
+    queryFn: (page) =>
       getNodesPage(iatas, {
-        cursor,
+        cursor: page?.cursor,
+        pageCursor: page?.pageCursor,
         limit: MAX_PAGE_SIZE,
         type: typeFilter || undefined,
         name: nameParam,

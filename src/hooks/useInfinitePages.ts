@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useInfiniteQuery, keepPreviousData, type QueryKey } from "@tanstack/react-query";
-import type { CursorPage } from "../types/api";
+import type { CursorPage, PageParam } from "../types/api";
 import { rateLimitWaitMs } from "../api/rate-limit";
+import { nextPageParam } from "../api/paging";
 
 interface UseInfinitePagesOptions<T, C> {
   queryKey: QueryKey;
-  // fetch one page; cursor is the previous page's nextCursor (undefined for the first page)
-  queryFn: (cursor: C | undefined) => Promise<CursorPage<T, C>>;
+  // fetch one page; page is the previous page's next cursors (undefined for the first page)
+  queryFn: (page: PageParam<C> | undefined) => Promise<CursorPage<T, C>>;
   // stable id accessor for dedup — pass a module-level fn so the memo isn't rebuilt every render
   getId: (item: T) => string;
   // keep the prior key's rows on screen while a new key (e.g. a filter change) loads its first page
@@ -28,9 +29,9 @@ export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keep
   const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
-      queryFn: ({ pageParam }) => queryFn(pageParam as C | undefined),
-      getNextPageParam: (last) => last.nextCursor ?? undefined,
-      initialPageParam: undefined as C | undefined,
+      queryFn: ({ pageParam }) => queryFn(pageParam),
+      getNextPageParam: nextPageParam,
+      initialPageParam: undefined as PageParam<C> | undefined,
       staleTime: Infinity,
       enabled,
       placeholderData: keepPrevious ? keepPreviousData : undefined,

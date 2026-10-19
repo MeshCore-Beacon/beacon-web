@@ -34,7 +34,7 @@ describe("useInfinitePages", () => {
     expect(result.current.loadedCount).toBe(3);
     expect(queryFn).toHaveBeenCalledTimes(2);
     expect(queryFn).toHaveBeenNthCalledWith(1, undefined); // first page sends no cursor
-    expect(queryFn).toHaveBeenNthCalledWith(2, 2); // second page uses page 1's nextCursor
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }); // second page uses page 1's nextCursor
   });
 
   it("dedupes items repeated across a page boundary (cursor is a non-unique timestamp)", async () => {
@@ -88,7 +88,7 @@ describe("useInfinitePages", () => {
     expect(result.current.isPaging).toBe(true);
 
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
-    expect(queryFn).toHaveBeenNthCalledWith(3, 1); // the same page again, not a skip
+    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1 }); // the same page again, not a skip
     expect(result.current.isPaging).toBe(false);
     expect(result.current.isError).toBe(false);
   });
@@ -134,7 +134,7 @@ describe("useInfinitePages", () => {
 
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]));
     expect(queryFn).toHaveBeenCalledTimes(2);
-    expect(queryFn).toHaveBeenNthCalledWith(2, 2); // loadMore used page 1's nextCursor
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }); // loadMore used page 1's nextCursor
     expect(result.current.hasMore).toBe(false);
   });
 
@@ -164,5 +164,42 @@ describe("useInfinitePages", () => {
 
     resolveB({ items: [row("b")], nextCursor: null, hasMore: false });
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["b"])); // new data replaces old
+  });
+  it("prefers nextPageCursor and sends both cursors on the next page", async () => {
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 7, nextPageCursor: "v1:7000:aa", hasMore: true })
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 7, pageCursor: "v1:7000:aa" });
+    expect(result.current.items.map(rowId)).toEqual(["a", "b"]);
+  });
+
+  it("pages by cursor alone on a server without nextPageCursor", async () => {
+    const queryFn = vi.fn()
+      .mockResolvedValueOnce({ items: [row("a")], nextCursor: 7, hasMore: true })
+      .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 2], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(queryFn.mock.calls[1]![0]).toStrictEqual({ cursor: 7 });
+  });
+
+  it("pages forward when the server ignores pageCursor", async () => {
+    // a rolled-back server: honours cursor, ignores pageCursor (it would answer page 1 again for pageCursor alone)
+    const server = vi.fn(async (page: { cursor?: number; pageCursor?: string } | undefined) =>
+      page?.cursor === undefined
+        ? { items: [row("a"), row("b")], nextCursor: 2, nextPageCursor: "v1:2000:bb", hasMore: true }
+        : { items: [row("b"), row("c")], nextCursor: null, hasMore: false });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 3], queryFn: server, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(server).toHaveBeenCalledTimes(2);
+    expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]);
+  });
+
+  it("stops on a page that says hasMore but carries no cursor", async () => {
+    const queryFn = vi.fn().mockResolvedValue({ items: [row("a")], nextCursor: null, hasMore: true });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 4], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(queryFn).toHaveBeenCalledTimes(1);
   });
 });
