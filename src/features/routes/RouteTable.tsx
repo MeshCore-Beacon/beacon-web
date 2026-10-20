@@ -255,7 +255,7 @@ export function RouteTable(actions: RouteActions) {
   const { items: listRoutes, loadedCount, isPaging, isError, isLoading: listLoading, loadMore, hasMore } =
     useInfinitePages<KnownRoute, RouteCursor>({
       queryKey: ["routes", serverIata ?? ""],
-      queryFn: (cursor) => getKnownRoutesPage({ iata: serverIata, cursor }),
+      queryFn: (page) => getKnownRoutesPage({ iata: serverIata, cursor: page?.cursor }),
       getId: routeId,
       keepPrevious: true,
       auto: false,

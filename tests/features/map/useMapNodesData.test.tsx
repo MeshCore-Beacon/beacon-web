@@ -38,8 +38,9 @@ describe("useMapNodesData", () => {
     expect(result.current.nodes.map((n) => n.id)).toEqual(["a", "b", "c"]);
     expect(result.current.loadedCount).toBe(3);
     expect(mockGetNodesPage).toHaveBeenCalledTimes(2);
-    // second call paginates with the previous page's nextCursor; the map always requests neighbor ids
-    expect(mockGetNodesPage).toHaveBeenLastCalledWith(["YYZ"], { cursor: 2, neighbors: true });
+    // second call paginates with the previous page's nextCursor; the map always requests neighbor ids,
+    // at the server's page cap so a whole region takes a quarter of the requests
+    expect(mockGetNodesPage).toHaveBeenLastCalledWith(["YYZ"], { cursor: 2, neighbors: true, limit: 200 });
   });
 
   it("stops after a single page when hasMore is false", async () => {
@@ -76,5 +77,15 @@ describe("useMapNodesData", () => {
     await waitFor(() => expect(result.current.isPaging).toBe(false));
     expect(result.current.nodes.map((n) => n.id)).toEqual(["a", "b", "c"]); // b not doubled
     expect(result.current.loadedCount).toBe(3);
+  });
+  it("sends both cursors when the page carries nextPageCursor", async () => {
+    mockGetNodesPage
+      .mockResolvedValueOnce({ items: [node("a")], nextCursor: 2, nextPageCursor: "v1:2000:00000000-0000-0000-0000-000000000002", hasMore: true })
+      .mockResolvedValueOnce({ items: [node("b")], nextCursor: null, hasMore: false });
+
+    const { result } = renderHook(() => useMapNodesData(["YYZ"], "YYZ"), { wrapper: wrapper() });
+
+    await waitFor(() => expect(result.current.isPaging).toBe(false));
+    expect(mockGetNodesPage).toHaveBeenLastCalledWith(["YYZ"], { cursor: 2, pageCursor: "v1:2000:00000000-0000-0000-0000-000000000002", neighbors: true, limit: 200 });
   });
 });

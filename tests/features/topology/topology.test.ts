@@ -116,6 +116,22 @@ describe("3D topology evidence and bounds", () => {
     controller.abort(); await expect(loadTopology(undefined, controller.signal)).rejects.toThrow();
     expect(getNodesPage).toHaveBeenCalledTimes(NODE_CAP / 200);
   });
+  it("uses exact cursors across pages with the same legacy timestamp", async () => {
+    vi.mocked(getNodesPage).mockReset()
+      .mockResolvedValueOnce({ items: [a], nextCursor: 1, nextPageCursor: "exact-a", hasMore: true })
+      .mockResolvedValueOnce({ items: [b], nextCursor: 1, nextPageCursor: "exact-b", hasMore: true })
+      .mockResolvedValueOnce({ items: [c], nextCursor: null, hasMore: false });
+    const controller = new AbortController();
+    expect(await loadTopology(undefined, controller.signal)).toEqual({ nodes: [a, b, c], capped: false });
+    expect(getNodesPage).toHaveBeenNthCalledWith(2, undefined,
+      { cursor: undefined, pageCursor: "exact-a", limit: 200, neighbors: true }, controller.signal);
+    expect(getNodesPage).toHaveBeenNthCalledWith(3, undefined,
+      { cursor: undefined, pageCursor: "exact-b", limit: 200, neighbors: true }, controller.signal);
+    vi.mocked(getNodesPage).mockClear().mockResolvedValue({ items: [a], nextCursor: 1, nextPageCursor: "repeat", hasMore: true });
+    expect(await loadTopology(undefined, controller.signal)).toEqual({ nodes: [a], capped: true });
+    expect(getNodesPage).toHaveBeenCalledTimes(2);
+    vi.mocked(getNodesPage).mockReset();
+  });
   it("moves linked regions closer while keeping their islands apart", () => {
     const input = Array.from({ length: 9 }, (_, i) => node(String(i), `R${i}`));
     const before = buildTopology(input), after = buildTopology(input.map(n => n.id === "0" ? { ...n, neighborIds: ["8"] } : n));

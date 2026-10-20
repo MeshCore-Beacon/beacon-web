@@ -23,16 +23,19 @@ export type LiveReport = { key: string; hash: string; observerId: string; observ
 // Bounded, sequential, cancellable pages; no query per node or live packet.
 export async function loadTopology(iatas: string[] | undefined, signal: AbortSignal) {
   const nodes = new Map<string, NodeSummary>();
-  const cursors = new Set<number>();
+  const cursors = new Set<number | string>();
   let cursor: number | undefined;
+  let pageCursor: string | undefined;
   for (let page = 0; page < NODE_CAP / 200; page++) {
     signal.throwIfAborted();
-    const result = await getNodesPage(iatas, { cursor, limit: 200, neighbors: true }, signal);
+    const result = await getNodesPage(iatas, { cursor, pageCursor, limit: 200, neighbors: true }, signal);
     for (const node of result.items) if (nodes.size < NODE_CAP) nodes.set(node.id, node);
     if (!result.hasMore) return { nodes: [...nodes.values()], capped: false };
-    if (result.nextCursor == null || cursors.has(result.nextCursor)) break;
-    cursor = result.nextCursor;
-    cursors.add(cursor);
+    pageCursor = result.nextPageCursor || undefined;
+    cursor = pageCursor ? undefined : result.nextCursor ?? undefined;
+    const next = pageCursor ?? cursor;
+    if (next == null || cursors.has(next)) break;
+    cursors.add(next);
   }
   return { nodes: [...nodes.values()], capped: true };
 }

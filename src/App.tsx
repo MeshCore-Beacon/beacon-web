@@ -30,7 +30,7 @@ import { ChannelList } from "./features/channels/ChannelList";
 import { EmptyState } from "./components/EmptyState";
 import { usePacketDetail } from "./features/packets/usePacketDetail";
 import { WsManager } from "./api/ws-manager";
-import { shouldRetryQuery } from "./api/rate-limit";
+import { queryRetryDefaults } from "./api/rate-limit";
 import { WS_URL, ENABLED_TABS } from "./lib/constants";
 import type { PacketDetail } from "./types/api";
 
@@ -48,7 +48,7 @@ const StatsOverview = lazy(() => import("./features/stats/StatsOverview").then((
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: shouldRetryQuery,
+      ...queryRetryDefaults,
       refetchOnWindowFocus: false,
     },
   },

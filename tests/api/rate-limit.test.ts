@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   parseRetryAfter,
-  queryRetryDelay,
   shouldRetryQuery,
+  transientWaitMs,
+  queryRetryDelay,
   noteRateLimited,
   noteRequestOk,
   getRateLimitedUntil,
@@ -38,8 +39,16 @@ describe("parseRetryAfter", () => {
 });
 
 describe("shouldRetryQuery", () => {
-  it("never retries a 429", () => {
-    expect(shouldRetryQuery(0, { status: 429 })).toBe(false);
+  it("retries a 429 three times", () => {
+    expect([0, 1, 2, 3].map((n) => shouldRetryQuery(n, { status: 429, retryAfterMs: 1_000 }))).toEqual([true, true, true, false]);
+  });
+
+  it("retries a 503 with Retry-After three times", () => {
+    expect([0, 1, 2, 3].map((n) => shouldRetryQuery(n, { status: 503, retryAfterMs: 5_000 }))).toEqual([true, true, true, false]);
+  });
+
+  it("keeps two retries for a 503 without Retry-After", () => {
+    expect([0, 1, 2].map((n) => shouldRetryQuery(n, { status: 503 }))).toEqual([true, true, false]);
   });
 
   it("never retries a 404", () => {
@@ -57,11 +66,28 @@ describe("shouldRetryQuery", () => {
   });
 });
 
-describe("queryRetryDelay", () => {
-  it("honours Retry-After and otherwise backs off exponentially to a ceiling", () => {
-    expect(queryRetryDelay(0, Object.assign(new Error("429"), { retryAfterMs: 7_000 }))).toBe(7_000);
-    expect(queryRetryDelay(2, new Error("500"))).toBe(4_000);
-    expect(queryRetryDelay(10, new Error("500"))).toBe(30_000);
+describe("transientWaitMs / queryRetryDelay", () => {
+  it("waits Retry-After for a 503 that sent it", () => {
+    expect(transientWaitMs({ status: 503, retryAfterMs: 5_000 })).toBe(5_000);
+    expect(queryRetryDelay(0, { status: 503, code: "deadline_exceeded", retryAfterMs: 5_000 })).toBe(5_000);
+    expect(queryRetryDelay(0, { status: 503, code: "service_unavailable", retryAfterMs: 2_000 })).toBe(2_000);
+  });
+
+  it("waits Retry-After for a 429, or the default window without it", () => {
+    expect(queryRetryDelay(0, { status: 429, retryAfterMs: 1_000 })).toBe(1_000);
+    expect(queryRetryDelay(0, { status: 429 })).toBe(RATE_LIMIT_DEFAULT_MS);
+  });
+
+  it("caps a 503's wait at 30 s but leaves a 429's wait to the 5 min ceiling", () => {
+    expect(transientWaitMs({ status: 503, retryAfterMs: 120_000 })).toBe(30_000);
+    expect(queryRetryDelay(0, { status: 503, retryAfterMs: 120_000 })).toBe(30_000);
+    expect(queryRetryDelay(0, { status: 429, retryAfterMs: 120_000 })).toBe(120_000);
+  });
+
+  it("falls back to exponential backoff otherwise", () => {
+    expect(transientWaitMs({ status: 503 })).toBeUndefined();
+    expect(transientWaitMs({ status: 500, retryAfterMs: 5_000 })).toBeUndefined();
+    expect([0, 1, 5].map((n) => queryRetryDelay(n, { status: 500 }))).toEqual([1_000, 2_000, 30_000]);
   });
 });
 

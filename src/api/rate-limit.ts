@@ -1,4 +1,4 @@
-import { RATE_LIMIT_DEFAULT_MS, RATE_LIMIT_MAX_MS } from "../lib/constants";
+import { RATE_LIMIT_DEFAULT_MS, RATE_LIMIT_MAX_MS, TRANSIENT_WAIT_MAX_MS } from "../lib/constants";
 
 // Kept free of client.ts imports so tests that mock the client with partial factories stay valid.
 
@@ -17,18 +17,35 @@ export function parseRetryAfter(header: string | null): number | undefined {
   return Math.min(Math.max(ms, 0), RATE_LIMIT_MAX_MS);
 }
 
-// TanStack Query retry predicate: a 4xx won't improve by asking again, and retrying a 429 is exactly
-// what the server just asked us not to do. Two retries for everything else, as before.
+// A 429, or a 503 with Retry-After, is a pause: retry the same request after the wait, at most three
+// times. Other 4xx are final; anything else gets two quick retries.
 export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
-  if (failureCount >= 2) return false;
   const status = (error as { status?: unknown } | null)?.status;
+  if (status === 429 || transientWaitMs(error) !== undefined) return failureCount < 3;
+  if (failureCount >= 2) return false;
   if (typeof status === "number" && status >= 400 && status < 500) return false;
   return true;
 }
 
-// TanStack Query retry delay: wait out a Retry-After when the server sent one, otherwise back off.
-export const queryRetryDelay = (attempt: number, error: Error) =>
-  (error as { retryAfterMs?: number }).retryAfterMs ?? Math.min(1000 * 2 ** attempt, 30_000);
+// Retry-After of a 503 (the server's busy or deadline guard), capped; undefined for anything else.
+export function transientWaitMs(error: unknown): number | undefined {
+  const e = error as { status?: unknown; retryAfterMs?: unknown } | null;
+  return e?.status === 503 && typeof e.retryAfterMs === "number" ? Math.min(e.retryAfterMs, TRANSIENT_WAIT_MAX_MS) : undefined;
+}
+
+// TanStack Query retry delay: the server's wait when it gave one, else TanStack's own backoff.
+export function queryRetryDelay(failureCount: number, error: unknown): number {
+  return rateLimitWaitMs(error) ?? transientWaitMs(error) ?? Math.min(1000 * 2 ** failureCount, 30_000);
+}
+
+export const queryRetryDefaults = { retry: shouldRetryQuery, retryDelay: queryRetryDelay };
+
+// How long to hold off before asking again for what a 429 refused; undefined for any other error.
+export function rateLimitWaitMs(error: unknown): number | undefined {
+  const e = error as { status?: unknown; retryAfterMs?: unknown } | null;
+  if (e?.status !== 429) return undefined;
+  return typeof e.retryAfterMs === "number" ? e.retryAfterMs : RATE_LIMIT_DEFAULT_MS;
+}
 
 // App-wide "the API is throttling us" flag: fed by the fetch wrapper, read by the header badge.
 
