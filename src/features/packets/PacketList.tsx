@@ -70,6 +70,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
     isFetchingNextPage,
     isLoading,
     isError,
+    refetch,
     observersByHash,
     handlePacketObservation,
     handleLagged,
@@ -232,6 +233,12 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
 
         {isLoading && packets.length === 0 ? (
           <SkeletonRows />
+        ) : isError && allPackets.length === 0 ? (
+          // a failed history load is not an empty region: say so and offer a retry
+          <p role="alert" className="py-4 text-center text-xs font-mono text-danger">
+            {t("loadingPill.packets.failed")}{" · "}
+            <button type="button" disabled={isFetching} className="underline cursor-pointer disabled:opacity-40" onClick={() => void refetch()}>{t("packetList.retry")}</button>
+          </p>
         ) : (
           <PacketVirtualList
             key={listResetKey}
@@ -251,7 +258,7 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
         )}
         <LoadingPill
           loading={isLoading || isFetchingNextPage}
-          error={isError}
+          error={isError && allPackets.length > 0}
           count={packets.length}
           noun="packets"
           position="bottom-3 right-3"
