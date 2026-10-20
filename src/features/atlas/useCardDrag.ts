@@ -14,18 +14,24 @@ export function useCardDrag(count: number, onReorder: (from: number, to: number)
   const cards = useRef(new Map<number, HTMLElement>());
   const [drag, setDrag] = useState<Drag | null>(null);
   const cleanup = useRef<() => void>(() => {});
+  const active = useRef(false);
 
   useEffect(() => () => cleanup.current(), []);
 
   const start = useCallback((index: number, event: PointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || active.current) return;
     event.preventDefault();
+    active.current = true;
+    const pointerId = event.pointerId;
+    const handle = event.currentTarget;
+    handle.setPointerCapture?.(pointerId);
     const rects = Array.from({ length: count }, (_, i) => cards.current.get(i)?.getBoundingClientRect() ?? new DOMRect());
     const origin = { x: event.clientX, y: event.clientY };
     let current: Drag = { from: index, over: index, dx: 0, dy: 0, rects };
     setDrag(current);
 
     const onMove = (e: globalThis.PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
       const hit = rects.findIndex((r) => e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom);
       current = { ...current, dx: e.clientX - origin.x, dy: e.clientY - origin.y, over: hit === -1 ? current.over : hit };
       setDrag(current);
@@ -35,20 +41,27 @@ export function useCardDrag(count: number, onReorder: (from: number, to: number)
       setDrag(null);
       if (commit && current.over !== current.from) onReorder(current.from, current.over);
     };
-    const onUp = () => end(true);
+    const onUp = (e: globalThis.PointerEvent) => { if (e.pointerId === pointerId) end(true); };
     const onCancel = () => end(false);
+    const onPointerCancel = (e: globalThis.PointerEvent) => { if (e.pointerId === pointerId) end(false); };
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === "Escape") end(false);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("blur", onCancel);
+    handle.addEventListener("lostpointercapture", onPointerCancel);
     cleanup.current = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("pointercancel", onPointerCancel);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onCancel);
+      handle.removeEventListener("lostpointercapture", onPointerCancel);
+      if (handle.hasPointerCapture?.(pointerId)) handle.releasePointerCapture(pointerId);
+      active.current = false;
       cleanup.current = () => {};
     };
   }, [count, onReorder]);

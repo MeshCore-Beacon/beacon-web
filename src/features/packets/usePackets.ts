@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from 
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { getPackets } from "../../api/client";
 import { isRateLimited } from "../../api/rate-limit";
+import { fetchPage, nextPageParam } from "../../api/paging";
 import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
-import type { PacketSummary } from "../../types/api";
+import type { PacketSummary, PageParam } from "../../types/api";
 import type { PacketServerFilter } from "./types";
 import { LIVE_BUFFER_CAP } from "../../lib/constants";
 
@@ -214,14 +215,16 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     isFetchingNextPage,
     isLoading,
     isError,
+    refetch,
   } = useInfiniteQuery({
     // The unfiltered key must stay 2-element so its cached entry survives filter toggling; the
     // lagged/mount resets above match both shapes by prefix.
     queryKey: serverFilter ? ["packets", regionKey, serverFilter] : ["packets", regionKey],
     // first load and every scroll page are the default 50; getPackets fills in the limit
-    queryFn: ({ pageParam }) => getPackets(iatas, { cursor: pageParam, ...serverFilter }),
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
-    initialPageParam: undefined as number | undefined,
+    queryFn: ({ pageParam }) =>
+      fetchPage(pageParam, (page) => getPackets(iatas, { cursor: page?.cursor, pageCursor: page?.pageCursor, ...serverFilter })),
+    getNextPageParam: nextPageParam,
+    initialPageParam: undefined as PageParam<number> | undefined,
     staleTime: Infinity,
     enabled: !pending,
   });
@@ -260,6 +263,7 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     isFetchingNextPage,
     isLoading: isLoading || pending,
     isError,
+    refetch,
     observersByHash,
     handlePacketObservation,
     handleLagged,

@@ -115,16 +115,31 @@ export const PACKET_FLOW_DOT_HALO_LAYER_ID = "packet-flow-dot-halo"; // dark hal
 export const PACKET_FLOW_DOT_LAYER_ID = "packet-flow-dot"; // the moving packet dot
 export const PACKET_FLOW_COLOR = "#ff6b35"; // warm orange, distinct from the node palette so packets pop
 export const PACKET_FLOW_HOP_MS = 480; // ms the dot takes to cross one hop segment
-export const PACKET_FLOW_FLASH_MS = 900; // a crossed node's flash decays back to dim over this
+export const PACKET_FLOW_FLASH_MS = 900; // a crossed node fades out over this, from the moment the dot reaches it
 export const PACKET_FLOW_TRAIL_FADE_MS = 1000; // the dashed trail fades once the dot reaches the end
 export const PACKET_FLOW_MAX = 120; // cap on concurrent packet animations (busy-feed guard)
-// Idle individual-node opacity while Live is on. Kept low because with clustering off, co-located
-// markers overlap and their alphas composite toward bright; a crossed node still pops to full via
-// the max(dim, feature-state glow) expression.
+// Opacity of the nodes outside the selection focus. Kept low because overlapping markers composite
+// toward bright.
 export const LIVE_DIM_OPACITY = 0.08;
 // Clusters dim further: many overlapping semi-transparent hexagons composite toward opaque, so a
 // dense cluster field stops being see-through. A lower per-cluster alpha keeps the stack translucent.
 export const LIVE_CLUSTER_DIM_OPACITY = 0.07;
+
+// Live Map idle dots and lit nodes. The sizes and colours are shared with the Flutter app, so both
+// draw the same map; change them in step.
+export const LIVE_DOTS_LAYER_ID = "live-dots"; // idle nodes as small solid dots
+export const LIVE_LIT_SOURCE_ID = "live-lit"; // only the nodes a packet just crossed
+export const LIVE_LIT_LABEL_LAYER_ID = "live-lit-labels"; // their names, beneath every lit icon
+export const LIVE_LIT_ICON_LAYER_ID = "live-lit-icons";
+export const LIVE_DOT_OPACITY = 0.75;
+export const LIVE_DOT_RADIUS_STOPS: ReadonlyArray<readonly [number, number]> = [[7, 2.5], [9, 3], [12, 4.5], [15, 6]]; // [zoom, px]
+export const LIT_RING_RADIUS = 16; // px, the packet-orange ring baked into each lit icon
+export const LIT_RING_WIDTH = 2.5; // px
+export const LIT_GLOW_RADIUS = 18; // px, the type-colour glow fades to nothing here
+export const LIT_GLOW_OPACITY = 0.5;
+export const LIT_LABEL_SIZE = 12; // px
+export const LIT_CLICK_MIN_GLOW = 0.2; // a lit icon fainter than this no longer takes clicks
+export const litIconId = (typeName: string): string => `node-lit-${typeName}`;
 
 export const CLUSTER_RADIUS = 50; // px
 // Keep clustering alive across the whole reachable zoom range (default max is 22). maplibre drops

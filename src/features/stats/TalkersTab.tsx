@@ -11,6 +11,7 @@ import { IataChip } from "../../components/IataChip";
 import { formatCount, formatRatePerDay } from "../../lib/formatters";
 import { RANGE_MS } from "./types";
 import type { AdvertiserSort, TopAdvertiser, StatsRange } from "./types";
+import { EmojiText } from "../../components/EmojiText";
 
 interface TalkersTabProps {
   range: StatsRange;
@@ -56,7 +57,7 @@ export function TalkersTab({ range, onViewNode }: TalkersTabProps) {
         cell: (a) => (
           <div className="flex min-w-0 items-center gap-2">
             <span className={`truncate ${a.nodeName ? "text-text-normal" : "italic text-text-dim"}`}>
-              {a.nodeName ?? a.publicKey.slice(0, 8)}
+              <EmojiText text={a.nodeName ?? a.publicKey.slice(0, 8)} />
             </span>
             <Badge variant="default">{a.nodeTypeName}</Badge>
             <IataChip>{a.iata}</IataChip>

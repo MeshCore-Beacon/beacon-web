@@ -146,7 +146,7 @@ export function AtlasCard({
   );
 
   const actions = (
-    <div className="ml-auto flex shrink-0 items-center gap-1">
+    <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
       {views.length > 1 && (
         <Segmented
           size="xs"
@@ -294,7 +294,7 @@ export function AtlasCard({
               accent={c.series[0]!}
               spark={obs.sample.counts}
               markPeak
-              sublabel={t(`atlas.ranges.${range}`)}
+              sublabel={obs.sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`)}
             />
             <StatCard
               compact
@@ -302,18 +302,20 @@ export function AtlasCard({
               value={obs.sample.snr === null ? dash : `${obs.sample.snr.toFixed(1)} dB`}
               accent={c.series[2]!}
               spark={obs.sample.snrHourly}
+              interpolateGaps
             />
             <StatCard
               compact
               label={t("atlas.noiseFloor")}
-              value={obs.sample.noise === null ? dash : `${Math.round(obs.sample.noise)} dB`}
+              value={obs.sample.noise === null ? dash : `${Math.round(obs.sample.noise)} dBm`}
               accent={c.series[1]!}
               spark={obs.sample.noiseHourly}
+              interpolateGaps
             />
             {obs.sample.battery !== null ? (
-              <StatCard compact label={t("atlas.battery")} value={formatBattery(obs.sample.battery)} accent={c.series[3]!} spark={obs.sample.batteryHourly} />
+              <StatCard compact label={t("atlas.battery")} value={formatBattery(obs.sample.battery)} accent={c.series[3]!} spark={obs.sample.batteryHourly} interpolateGaps />
             ) : (
-              <StatCard compact label={t("atlas.uptime")} value={obs.sample.uptime === null ? dash : formatUptime(obs.sample.uptime)} accent={c.series[3]!} />
+              <StatCard compact label={t("atlas.uptime")} value={obs.sample.uptime === null ? dash : formatUptime(obs.sample.uptime)} accent={c.series[3]!} spark={obs.sample.uptimeHourly} />
             )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
@@ -324,6 +326,7 @@ export function AtlasCard({
               </span>
             )}
             {radio && <span>{radio}</span>}
+            {obs.sample.battery !== null && obs.sample.uptime !== null && <span>{t("atlas.uptime")} {formatUptime(obs.sample.uptime)}</span>}
             {obs.loading && <span role="status">{t("common.loading")}</span>}
             {obs.failed && <span className="text-danger">{t("common.loadFailed")}</span>}
             <span className="whitespace-nowrap">

@@ -14,6 +14,8 @@ const ws = { onObserverStatus: (handler: typeof statusHandler) => { statusHandle
 const defaults: ObserverDirectoryOptions = { sort: "traffic", search: "", status: "", type: "", broker: "", scope: "" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const failure = (status: number, message = "failed") => reply({ error: { code: "error", message } }, status);
+const info = (serverVersion: string) => reply({ minAppVersion: null, minWebVersion: null, serverVersion });
+const isInfo = (url: URL) => url.pathname.endsWith("/info");
 let requests: URL[];
 let respond: (url: URL) => Response | Promise<Response>;
 
@@ -23,7 +25,7 @@ beforeEach(() => {
   respond = () => reply(directoryPage([directoryRow("first")]));
   vi.stubGlobal("fetch", vi.fn(async (input: string) => {
     const url = new URL(input); requests.push(url);
-    return url.search === "?limit=1" ? reply(directoryPage([])) : respond(url);
+    return isInfo(url) ? info("2.0.8") : respond(url);
   }));
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -32,7 +34,7 @@ function view(options = defaults) {
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return renderHook(p => useObserverDirectory(ws, p), { wrapper, initialProps: options });
 }
-const listingRequests = () => requests.filter(url => url.search !== "?limit=1");
+const listingRequests = () => requests.filter(url => url.pathname.endsWith("/observers/directory"));
 
 it("loads only the first page initially, then returns later counts beyond 200 without duplicates", async () => {
   const first = Array.from({ length: 200 }, (_, i) => directoryRow(String(i), 1000 - i));
@@ -155,35 +157,56 @@ it("passes an empty region by slug instead of loading all observers", async () =
   expect(listingRequests()[0].searchParams.get("region")).toBe("empty");
 });
 
-it.each([404, 400])("shows upgrade required only for the documented legacy probe response (%s), and can detect an upgrade", async status => {
+it.each([
+  ["a server without /info (404)", () => failure(404, "not found")],
+  ["a server older than 2.0.2", () => info("2.0.1")],
+])("shows upgrade required for %s, and can detect an upgrade", async (_label, legacy) => {
   const fetcher = vi.mocked(fetch);
   fetcher.mockImplementation(async input => {
     const url = new URL(String(input)); requests.push(url);
-    return failure(status, "failed to parse observer UUID");
+    return isInfo(url) ? legacy() : reply(directoryPage([directoryRow("unexpected")]));
   });
   const { result } = view();
   await waitFor(() => expect(result.current.unsupported).toBe(true));
-  expect(requests.map(u => u.search)).toEqual(["?limit=1"]);
+  expect(requests).toHaveLength(1);
+  expect(isInfo(requests[0])).toBe(true);
   fetcher.mockImplementation(async input => {
     const url = new URL(String(input)); requests.push(url);
-    return reply(directoryPage([directoryRow("upgraded")]));
+    return isInfo(url) ? info("2.0.2") : reply(directoryPage([directoryRow("upgraded")]));
   });
   await act(async () => { await result.current.retry(); });
   await waitFor(() => expect(result.current.observers[0]?.id).toBe("upgraded"));
 });
 
-it.each([400, 500, 503])("does not mistake a probe failure (%s) for an older server", async status => {
+it.each([400, 500, 503])("does not mistake an /info failure (%s) for an older server", async status => {
   vi.mocked(fetch).mockResolvedValue(failure(status, "different failure"));
   const { result } = view();
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(result.current.unsupported).toBe(false);
 });
 
-it("rejects a successful probe lacking the directory contract", async () => {
-  vi.mocked(fetch).mockResolvedValue(reply({ items: [], hasMore: false }));
+it("treats a malformed serverVersion as supporting the directory", async () => {
+  vi.mocked(fetch).mockImplementation(async input => {
+    const url = new URL(String(input)); requests.push(url);
+    return isInfo(url) ? info("dev") : reply(directoryPage([directoryRow("first")]));
+  });
+  const { result } = view();
+  await waitFor(() => expect(result.current.observers).toHaveLength(1));
+  expect(result.current.unsupported).toBe(false);
+});
+
+it("rejects a directory page lacking the directory contract", async () => {
+  respond = () => reply({ items: [], hasMore: false });
   const { result } = view();
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(result.current.unsupported).toBe(false);
+});
+
+it("asks /info instead of probing the directory with limit=1", async () => {
+  const { result } = view();
+  await waitFor(() => expect(result.current.observers).toHaveLength(1));
+  expect(requests.filter(isInfo)).toHaveLength(1);
+  expect(requests.some(u => u.searchParams.get("limit") === "1")).toBe(false);
 });
 
 it("repeats every filter on continuation using the response window, then clears pages on refresh", async () => {
@@ -240,6 +263,7 @@ it("refreshes loaded rows each minute so fetched online status does not stay gre
     await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
     expect(result.current.observers[0]?.status).toBe("offline");
     expect(listingRequests()).toHaveLength(2);
+    expect(requests.filter(isInfo)).toHaveLength(1);
   } finally { vi.useRealTimers(); }
 });
 
