@@ -223,7 +223,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
               <MessageRow key={msg.packetHash || msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} onAnalyze={onAnalyze} />
             ))}
           </div>
-        ) : (
+        ) : isError ? null : (
           <div className="flex items-center justify-center h-32 text-text-muted text-xs font-mono">
             {t(!channel.keyKnown ? "channelMessages.emptyNoKey" : scope ? "channelMessages.emptyScope" : "channelMessages.empty", { scope })}
           </div>

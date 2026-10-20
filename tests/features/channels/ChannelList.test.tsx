@@ -117,6 +117,14 @@ describe("channel directory", () => {
     expect(screen.queryByText("#Channel 1")).not.toBeInTheDocument();
   });
 
+  it("shows the load error, not an empty list, when the first page fails", async () => {
+    keyed(new Error("unavailable"));
+    show();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load channels.");
+    expect(screen.queryByText("No matching channels loaded.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry loading channels" })).toBeInTheDocument();
+  });
+
   it("can retry an initial failure", async () => {
     keyed(new Error("temporary failure"), page([channel(1)]));
     show();
