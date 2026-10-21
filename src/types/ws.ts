@@ -64,8 +64,8 @@ export interface WsPacketObservation {
       observerPublicKey?: string; // only with configure{includeObserverKey}
       iata: string;
       heardAt: number;
-      rssi: number;
-      snr: number;
+      rssi?: number;
+      snr?: number;
       sourceBroker: string;
       pathLength?: PathLength;
       pathBytes?: string;

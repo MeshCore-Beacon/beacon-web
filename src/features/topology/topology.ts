@@ -182,7 +182,7 @@ export function reportFromEvent(event: WsPacketObservation["data"], graph: Topol
     const a = ids[i - 1], b = ids[i];
     if (a && b && a !== b) segments.push([a, b]);
   }
-  return { key: `${event.packetHash}|${obs.observerId}`, hash: event.packetHash, observerId: obs.observerId, observerName: typeof obs.observerName === "string" ? obs.observerName : obs.observerId.slice(0, 8), iata: obs.iata, at, heardAt: obs.heardAt, kind: packetKind(event.packet.payloadType), scope: typeof event.packet.scope === "string" ? event.packet.scope : "", snr: Number.isFinite(obs.snr) ? obs.snr : null, segments, partial: !Array.isArray(path) || path.length > 64 || hops.some(h => h != null && (h.confidence !== "high" || h.nodes?.length !== 1 || !graph.byId.has(h.nodes[0]!.id))) };
+  return { key: `${event.packetHash}|${obs.observerId}`, hash: event.packetHash, observerId: obs.observerId, observerName: typeof obs.observerName === "string" ? obs.observerName : obs.observerId.slice(0, 8), iata: obs.iata, at, heardAt: obs.heardAt, kind: packetKind(event.packet.payloadType), scope: typeof event.packet.scope === "string" ? event.packet.scope : "", snr: typeof obs.snr === "number" && Number.isFinite(obs.snr) ? obs.snr : null, segments, partial: !Array.isArray(path) || path.length > 64 || hops.some(h => h != null && (h.confidence !== "high" || h.nodes?.length !== 1 || !graph.byId.has(h.nodes[0]!.id))) };
 }
 
 export class LiveTraffic {

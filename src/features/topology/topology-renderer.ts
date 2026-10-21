@@ -33,6 +33,9 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   const p = (point: Point3) => projector(point);
   const line = (a: Point3, b: Point3) => { const from = p(a), to = p(b); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); };
   const curve = (a: Point3, b: Point3, cross: boolean) => pathControls(a, b, cross).map(p);
+  // Keep only currently animated segments. Expired flows cannot grow this cache,
+  // and a camera/size change invalidates every projected control point.
+  let flowCurves = new Map<[string, string], ReturnType<typeof curve>>();
   const strokeCurve = (points: ReturnType<typeof curve>) => {
     const [a, c, d, b] = points;
     ctx.beginPath(); ctx.moveTo(a!.x, a!.y); ctx.bezierCurveTo(c!.x, c!.y, d!.x, d!.y, b!.x, b!.y); ctx.stroke();
@@ -83,6 +86,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       baseDirty = true; if (t === 1) transition = null;
     }
     projector = createProjector(camera, width, height, extent);
+    if (baseDirty) flowCurves.clear();
     // Keep the mesh below live trails and the nodes above them. Trail changes
     // only recomposite these bounded, pixel-ratio-capped layers; they do not
     // reproject, sort and stroke the entire graph.
@@ -182,6 +186,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
     } else if (!paintedScene) composite(background);
     // All live flows remain visible in every link-display mode. Curves change
     // presentation only: their endpoints still come from exact observed segments.
+    const activeCurves = new Map<[string, string], ReturnType<typeof curve>>();
     for (const report of flows) {
       const progress = Math.min(1, (time - report.at) / FLOW_MS);
       const segmentIndex = Math.min(report.segments.length - 1, Math.floor(progress * report.segments.length));
@@ -189,7 +194,8 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       if (!pair) continue;
       const a = graph.byId.get(pair[0]), b = graph.byId.get(pair[1]);
       if (!a || !b) continue;
-      const points = curve(a, b, a.region !== b.region);
+      const points = flowCurves.get(pair) ?? curve(a, b, a.region !== b.region);
+      activeCurves.set(pair, points);
       const fraction = progress * report.segments.length - segmentIndex;
       const inv = 1 - fraction;
       const x = inv ** 3 * points[0]!.x + 3 * inv ** 2 * fraction * points[1]!.x + 3 * inv * fraction ** 2 * points[2]!.x + fraction ** 3 * points[3]!.x;
@@ -202,6 +208,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       ctx!.beginPath(); ctx!.arc(x, y, 8, 0, Math.PI * 2); ctx!.fill();
       ctx!.globalAlpha = 1; ctx!.beginPath(); ctx!.arc(x, y, 2.8, 0, Math.PI * 2); ctx!.fill();
     }
+    flowCurves = activeCurves;
     ctx!.globalAlpha = 1;
     ctx!.font = "600 11px Inter, sans-serif";
     ctx!.textAlign = "center";

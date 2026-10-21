@@ -5,6 +5,7 @@ import type { NodeSummary } from "../../../src/features/nodes/types";
 import type { ChartColors } from "../../../src/features/stats/chartTheme";
 import type { LiveChatter } from "../../../src/features/topology/chatter";
 import type { LiveReport } from "../../../src/features/topology/topology";
+import * as topologyGeometry from "../../../src/features/topology/topology";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -69,6 +70,22 @@ function drawing(width = 1200, height = 700) {
 }
 
 describe("topology rendering work", () => {
+  it("reuses active flow geometry between frames without freezing packet animation", () => {
+    const s = drawing();
+    const geometry = vi.spyOn(topologyGeometry, "pathControls");
+    s.traffic.add({key:"packet",at:1000,kind:"text",segments:[["a","b"]]} as LiveReport);
+    const renderer = createRenderer(s.canvas,s.graph,s.traffic,s.colors,vi.fn(),vi.fn())!;
+    try {
+      renderer.update("","","all",true,true); s.frame(0);
+      geometry.mockClear();
+      const ctx = s.contexts.get(s.canvas)!; ctx.arc.mockClear();
+      s.frame(34); s.frame(68);
+      expect(geometry).not.toHaveBeenCalled();
+      expect(ctx.arc.mock.calls.filter(call => call[2] === 2.8)).toHaveLength(2);
+      renderer.zoom(1.1); s.frame(102);
+      expect(geometry).toHaveBeenCalled();
+    } finally { renderer.dispose(); }
+  });
   it("copies rounded backing pixels without resampling on fractional-DPR phones", () => {
     const previous = Object.getOwnPropertyDescriptor(window,"devicePixelRatio")!;
     Object.defineProperty(window,"devicePixelRatio",{configurable:true,value:1.25});
