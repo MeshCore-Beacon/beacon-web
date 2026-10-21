@@ -617,7 +617,11 @@
       "no": "Nej",
       "fieldName": "Namn",
       "fieldPubkey": "Publik nyckel",
-      "all": "Alla"
+      "all": "Alla",
+      "telemetry": "Telemetri",
+      "telemetryAvailable": "Tillgänglig",
+      "telemetryHistory": "Repeatrar med telemetri under de senaste {{days}} dagarna. Äldre mätningar är historik, inte aktuell status.",
+      "telemetryLoadError": "Telemetritillgängligheten kunde inte hämtas. Ett tidigare resultat kan visas. Försök igen eller ta bort filtret."
     },
     "packetAnalyzer": {
       "title": "Paketanalyserare",
@@ -860,7 +864,8 @@
     },
     "charts": {
       "uniquePackets": "Unika paket",
-      "busy": "Beläggning"
+      "busy": "Beläggning",
+      "gapLegend": "Heldragna linjer och punkter visar mätningar. Streckade linjer uppskattar mellan saknade mätningar."
     },
     "packetList": {
       "pathSearchInvalid": "Ange fullständiga hopphashar med samma längd, separerade med blanksteg, kommatecken eller → (t.ex. 7f a4).",
@@ -921,6 +926,39 @@
     },
     "units": {
       "perDay": "{{value}}/d"
+    },
+    "nodeTelemetry": {
+      "shortTemperature": "Temp.",
+      "noData": "Ingen telemetri mottagen",
+      "more": "Mer telemetri ({{count}})",
+      "loadError": "Repeaterns telemetri kunde inte hämtas.",
+      "collected": "Repeatertelemetri · senaste 30 dagarna",
+      "collector": "Insamlare {{key}}",
+      "channel": "Kanal {{channel}}",
+      "limit": "De senaste 24 mätserierna visas.",
+      "metrics": {
+        "batteryMv": "Batteri",
+        "uptimeSeconds": "Drifttid",
+        "lastRssiDbm": "Senaste RSSI",
+        "lastSnrDb": "Senaste SNR",
+        "noiseFloorDbm": "Brusnivå",
+        "queueLength": "Kö",
+        "receivedPackets": "Mottagna paket",
+        "sentPackets": "Skickade paket",
+        "voltage": "Spänning",
+        "temperature": "Temperatur",
+        "humidity": "Luftfuktighet",
+        "relative_humidity": "Luftfuktighet",
+        "barometer": "Lufttryck",
+        "pressure": "Lufttryck",
+        "barometric_pressure": "Lufttryck",
+        "current": "Ström",
+        "power": "Effekt",
+        "illuminance": "Ljus",
+        "luminosity": "Ljus"
+      },
+      "addCard": "Lägg till repeaterns telemetrikort",
+      "refreshFailed": "Uppdateringen misslyckades; senast hämtade mätning visas."
     }
   }
 }

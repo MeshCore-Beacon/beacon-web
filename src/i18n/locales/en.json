@@ -654,7 +654,11 @@
       "no": "No",
       "fieldName": "Name",
       "fieldPubkey": "Public Key",
-      "all": "All"
+      "all": "All",
+      "telemetry": "Telemetry",
+      "telemetryAvailable": "Available",
+      "telemetryHistory": "Repeaters with telemetry in the last {{days}} days. Older readings are retained history, not live status.",
+      "telemetryLoadError": "Telemetry availability could not be loaded. A previous result may be shown. Retry or clear this filter."
     },
     "packetAnalyzer": {
       "title": "Packet Analyzer",
@@ -914,7 +918,8 @@
     },
     "charts": {
       "uniquePackets": "Unique packets",
-      "busy": "Busy"
+      "busy": "Busy",
+      "gapLegend": "Solid lines and dots show readings. Dashed lines estimate between missing samples."
     },
     "packetList": {
       "pathSearchInvalid": "Enter whole hop hashes of the same length, separated by spaces, commas or → (e.g. 7f a4).",
@@ -1141,6 +1146,39 @@
       "activityCounts": "Reports {{count}} · Observers {{observers}} · 60s",
       "incomplete": "Gaps",
       "controlsPan": "Left-drag to pan. Right-drag or Shift-drag to orbit. Scroll to zoom. Arrow keys pan; Shift+arrows orbit. Home fits the view."
+    },
+    "nodeTelemetry": {
+      "shortTemperature": "Temp.",
+      "noData": "No telemetry received",
+      "more": "More telemetry ({{count}})",
+      "loadError": "Repeater telemetry could not be loaded.",
+      "collected": "Repeater telemetry · last 30 days",
+      "collector": "Collector {{key}}",
+      "channel": "Ch {{channel}}",
+      "limit": "Latest 24 measurement series shown.",
+      "metrics": {
+        "batteryMv": "Battery",
+        "uptimeSeconds": "Uptime",
+        "lastRssiDbm": "Last RSSI",
+        "lastSnrDb": "Last SNR",
+        "noiseFloorDbm": "Noise floor",
+        "queueLength": "Queue",
+        "receivedPackets": "Received packets",
+        "sentPackets": "Sent packets",
+        "voltage": "Voltage",
+        "temperature": "Temperature",
+        "humidity": "Humidity",
+        "relative_humidity": "Humidity",
+        "barometer": "Pressure",
+        "pressure": "Pressure",
+        "barometric_pressure": "Pressure",
+        "current": "Current",
+        "power": "Power",
+        "illuminance": "Light",
+        "luminosity": "Light"
+      },
+      "addCard": "Add repeater telemetry card",
+      "refreshFailed": "Refresh failed; showing the last loaded sample."
     }
   }
 }

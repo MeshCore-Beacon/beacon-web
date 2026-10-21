@@ -634,7 +634,11 @@
       "no": "Non",
       "fieldName": "Nom",
       "fieldPubkey": "Clé publique",
-      "all": "Tous"
+      "all": "Tous",
+      "telemetry": "Télémétrie",
+      "telemetryAvailable": "Disponible",
+      "telemetryHistory": "Répéteurs avec télémétrie au cours des {{days}} derniers jours. Les anciennes mesures sont historiques, pas un état en direct.",
+      "telemetryLoadError": "La disponibilité de la télémétrie n’a pas pu être chargée. Un résultat précédent peut être affiché. Réessayez ou désactivez ce filtre."
     },
     "packetAnalyzer": {
       "title": "Analyseur de paquets",
@@ -913,7 +917,8 @@
     },
     "charts": {
       "uniquePackets": "Paquets uniques",
-      "busy": "Occupation"
+      "busy": "Occupation",
+      "gapLegend": "Traits pleins et points : mesures. Tirets : estimation entre des données manquantes."
     },
     "packetList": {
       "pathSearchInvalid": "Saisissez des hashs de saut complets de même longueur, séparés par des espaces, des virgules ou → (p. ex. 7f a4).",
@@ -1144,6 +1149,39 @@
       "activityCounts": "Rapports {{count}} · Observateurs {{observers}} · 60 s",
       "incomplete": "Interruptions",
       "controlsPan": "Glissez à gauche pour déplacer, à droite ou avec Maj pour pivoter. Molette pour zoomer. Flèches pour déplacer, Maj+flèches pour pivoter. Début recadre."
+    },
+    "nodeTelemetry": {
+      "shortTemperature": "Temp.",
+      "noData": "Aucune télémétrie reçue",
+      "more": "Autres mesures ({{count}})",
+      "loadError": "Impossible de charger la télémétrie du répéteur.",
+      "collected": "Télémétrie du répéteur · 30 derniers jours",
+      "collector": "Collecteur {{key}}",
+      "channel": "Canal {{channel}}",
+      "limit": "Les 24 séries de mesures les plus récentes sont affichées.",
+      "metrics": {
+        "batteryMv": "Batterie",
+        "uptimeSeconds": "Durée de fonctionnement",
+        "lastRssiDbm": "Dernier RSSI",
+        "lastSnrDb": "Dernier SNR",
+        "noiseFloorDbm": "Bruit de fond",
+        "queueLength": "File",
+        "receivedPackets": "Paquets reçus",
+        "sentPackets": "Paquets émis",
+        "voltage": "Tension",
+        "temperature": "Température",
+        "humidity": "Humidité",
+        "relative_humidity": "Humidité",
+        "barometer": "Pression",
+        "pressure": "Pression",
+        "barometric_pressure": "Pression",
+        "current": "Courant",
+        "power": "Puissance",
+        "illuminance": "Luminosité",
+        "luminosity": "Luminosité"
+      },
+      "addCard": "Ajouter la carte de télémétrie du répéteur",
+      "refreshFailed": "Échec de l’actualisation ; affichage du dernier échantillon chargé."
     }
   }
 }
