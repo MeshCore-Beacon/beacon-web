@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { signalHours, signalBinLabel, signalHistogramOption, signalTrendOption, signalCoverageOption } from "../../../src/features/stats/signal";
+import { average, signalHours, signalBinLabel, signalHistogramOption, signalTrendOption, signalCoverageOption } from "../../../src/features/stats/signal";
 import { readChartColors } from "../../../src/features/stats/chartTheme";
 import type { SignalStats } from "../../../src/features/stats/types";
 import i18n from "../../../src/i18n";
@@ -56,5 +56,15 @@ describe("signal analytics", () => {
     expect(tooltip.valueFormatter(null)).toBe("Aucun échantillon");
     expect(tooltip.valueFormatter(0)).toBe("0.00 dB");
     expect(JSON.stringify(signalFixture)).toBe(before);
+  });
+});
+
+describe("average", () => {
+  it("formats one decimal with the unit and a dash for no sample", () => {
+    expect(average(null)).toBe("—");
+    expect(average(undefined, "dB")).toBe("—");
+    expect(average(0, "dB")).toBe("0.0 dB");
+    expect(average(-102.46, "dBm")).toBe("-102.5 dBm");
+    expect(average(2.04)).toBe("2.0");
   });
 });
