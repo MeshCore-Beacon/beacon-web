@@ -1180,5 +1180,6 @@
       "addCard": "Add repeater telemetry card",
       "refreshFailed": "Refresh failed; showing the last loaded sample."
     }
-  }
+  },
+  "nodeTelemetry.historyLimited": "Latest {{count}} retained readings shown; this may not cover the full window."
 }

@@ -1183,5 +1183,6 @@
       "addCard": "Ajouter la carte de télémétrie du répéteur",
       "refreshFailed": "Échec de l’actualisation ; affichage du dernier échantillon chargé."
     }
-  }
+  },
+  "nodeTelemetry.historyLimited": "Les {{count}} derniers relevés conservés sont affichés ; la période peut être incomplète."
 }

@@ -87,18 +87,19 @@ export interface CollectedNodeSample {
   sensors?: { channel: number; kind: string; value: number; unit: string }[] | null;
 }
 
-export async function getCollectedNodeTelemetry(key: string, signal?: AbortSignal): Promise<{items: CollectedNodeSample[]; limit: number}> {
+export async function getCollectedNodeTelemetry(key: string, signal?: AbortSignal): Promise<{items: CollectedNodeSample[]; limit: number; truncated?: boolean; retentionDays?: number; windowStart?: number; windowEnd?: number}> {
   try {
-    const value = await request<{items: CollectedNodeSample[]; limit: number}>(`/node-telemetry/${encodeURIComponent(key)}`, undefined, signal);
-    if (!value || !Array.isArray(value.items) || value.items.length > 500 || value.items.some(sample =>
+    const value = await request<{items: CollectedNodeSample[]; limit: number; truncated?: boolean; retentionDays?: number; windowStart?: number; windowEnd?: number}>(`/node-telemetry/${encodeURIComponent(key)}`, undefined, signal);
+    if (!value || value.limit !== 500 || (value.truncated !== undefined && typeof value.truncated !== "boolean") || !Array.isArray(value.items) || value.items.length > 500 || value.items.some(sample =>
       !sample || typeof sample.nodeKey !== "string" || typeof sample.collectorKey !== "string" || typeof sample.radioKey !== "string" ||
       !/^[0-9a-f]{64}$/.test(sample.nodeKey) || !/^[0-9a-f]{64}$/.test(sample.collectorKey) || !/^[0-9a-f]{64}$/.test(sample.radioKey) ||
       !Number.isSafeInteger(sample.receivedAt) || sample.receivedAt <= 0 ||
+      (sample.intervalHours != null && (!Number.isInteger(sample.intervalHours) || sample.intervalHours < 1 || sample.intervalHours > 72)) ||
       (sample.sensors != null && (!Array.isArray(sample.sensors) || sample.sensors.length > 32 || sample.sensors.some(sensor => !sensor || typeof sensor.kind !== "string" || typeof sensor.unit !== "string" || !Number.isInteger(sensor.channel) || !Number.isFinite(sensor.value)))) ||
       (sample.values != null && (typeof sample.values !== "object" || Array.isArray(sample.values) || Object.values(sample.values).some(reading => typeof reading !== "number" || !Number.isFinite(reading)))))) {
       throw new Error("Invalid collected telemetry history");
     }
-    return value;
+    return {...value, truncated: value.truncated ?? value.items.length === 500};
   } catch (error) { if (isNotFound(error)) return {items: [], limit: 500}; throw error; }
 }
 

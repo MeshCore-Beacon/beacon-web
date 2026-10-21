@@ -960,5 +960,6 @@
       "addCard": "Lägg till repeaterns telemetrikort",
       "refreshFailed": "Uppdateringen misslyckades; senast hämtade mätning visas."
     }
-  }
+  },
+  "nodeTelemetry.historyLimited": "De {{count}} senaste sparade mätningarna visas; hela perioden kanske inte täcks."
 }

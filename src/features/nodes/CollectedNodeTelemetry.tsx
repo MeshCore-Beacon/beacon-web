@@ -38,6 +38,7 @@ export function CollectedNodeTelemetry({ publicKey, active, compact = false }: {
   return <section aria-label={t("nodeTelemetry.collected")} className="space-y-1.5">
     <div className="flex flex-wrap justify-between gap-1 text-[10px] text-text-muted"><span>{t("nodeTelemetry.collected")}</span><Timestamp value={samples.at(-1)!.receivedAt} /></div>
     {data.isError && <p role="status" className="text-xs text-warn">{t("nodeTelemetry.refreshFailed")}</p>}
+    {data.data?.truncated && <p className="text-[10px] text-text-muted">{t("nodeTelemetry.historyLimited",{count:samples.length})}</p>}
     {metrics.size > 24 && <p className="text-xs text-text-muted">{t("nodeTelemetry.limit")}</p>}
     <div className="grid grid-cols-2 gap-1.5">{ordered.slice(0,compact ? 2 : ordered.length).map(renderMetric)}</div>
     {compact && ordered.length>2 && <details className="text-[10px]"><summary className="min-h-6 cursor-pointer content-center text-primary">{t("nodeTelemetry.more",{count:ordered.length-2})}</summary><div className="mt-1 grid grid-cols-2 gap-1.5">{ordered.slice(2).map(renderMetric)}</div></details>}

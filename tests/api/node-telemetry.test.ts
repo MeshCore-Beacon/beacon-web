@@ -10,6 +10,14 @@ it("reads retained history without changing explicit sensor zeros", async () => 
   reply({items: [sample], limit: 500});
   expect((await getCollectedNodeTelemetry(key)).items[0]?.sensors?.[0]?.value).toBe(0);
 });
+it("preserves explicit history coverage and treats a legacy full page as possibly partial", async () => {
+  reply({items: [sample], limit: 500, truncated: true, retentionDays: 30, windowStart: 1, windowEnd: sample.receivedAt});
+  expect((await getCollectedNodeTelemetry(key)).truncated).toBe(true);
+  reply({items: Array.from({length:500},()=>sample), limit:500});
+  expect((await getCollectedNodeTelemetry(key)).truncated).toBe(true);
+  reply({items: [sample], limit:500, truncated:"false"});
+  await expect(getCollectedNodeTelemetry(key)).rejects.toThrow();
+});
 it("rejects malformed history instead of crashing cards or inventing values", async () => {
   for (const value of [null, {items: "not-an-array"}, {items: [null]}, {items: [{...sample, receivedAt: null}]}, {items: [{...sample, values: {batteryMv: null}}]}, {items: [{...sample, sensors: [null]}]}]) {
     reply(value);
