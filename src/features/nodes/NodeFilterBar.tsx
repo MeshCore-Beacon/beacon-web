@@ -102,13 +102,15 @@ export function NodeFilterBar({
       role="toolbar"
       aria-label={t("nodeFilters.label")}
     >
-      <SearchBar
-        value={search}
-        onChange={onSearchChange}
-        fields={searchFields}
-        field={searchField}
-        onFieldChange={onSearchFieldChange}
-      />
+      <div className="flex min-w-52 flex-1">
+        <SearchBar
+          value={search}
+          onChange={onSearchChange}
+          fields={searchFields}
+          field={searchField}
+          onFieldChange={onSearchFieldChange}
+        />
+      </div>
 
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>
 
