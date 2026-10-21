@@ -18,6 +18,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getPacketDetail: vi.fn(),
   getObserverDirectoryPage: vi.fn(),
   getObserver: vi.fn(),
+  getCollectedNodeTelemetry: vi.fn(),
 }));
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -50,6 +51,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
   vi.mocked(api.getNode).mockImplementation(async (id) => (id === second.id ? { ...node, ...second } : node));
+  vi.mocked(api.getCollectedNodeTelemetry).mockResolvedValue({items: [], limit: 500});
   vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [report], hasMore: true, nextCursor: 7 });
   vi.mocked(api.getPacketDetail).mockResolvedValue({ packetHash: report.packetHash, originPubkey: pin.publicKey, header: { payloadType: 4 }, observations: [
     { observerId: "observer-a", observerName: "Home listener", id: 1, heardAt: 1, iata: "YKF" },

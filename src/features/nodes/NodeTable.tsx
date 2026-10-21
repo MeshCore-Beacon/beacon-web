@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { getNodesPage } from "../../api/client";
+import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { getNodesPage, getTelemetryAvailability } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
@@ -19,6 +19,7 @@ import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
 import { patchNodeSummary } from "./node-updates";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
+import { hasCollectedTelemetry } from "./telemetry-availability";
 import type { TFunction } from "i18next";
 import type { NodeSummary, NodeIATA } from "./types";
 import type { CursorPage } from "../../types/api";
@@ -90,6 +91,16 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
+  const [telemetryFilter, setTelemetryFilter] = useState(false);
+  const telemetry = useQuery({
+    queryKey: ["node-telemetry-availability"],
+    queryFn: ({ signal }) => getTelemetryAvailability(signal),
+    enabled: telemetryFilter,
+    staleTime: 60_000,
+    retry: false,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+  });
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
 
@@ -197,8 +208,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const scopeOptions = useScopes(scopeFilter);
 
   const displayNodes = useMemo(
-    () => (scopeFilter ? nodes.filter((n) => n.defaultScope === scopeFilter) : nodes),
-    [nodes, scopeFilter],
+    () => nodes.filter((n) => (!scopeFilter || n.defaultScope === scopeFilter) && (!telemetryFilter || hasCollectedTelemetry(n, telemetry.data))),
+    [nodes, scopeFilter, telemetryFilter, telemetry.data],
   );
 
   const handleNodeUpdate = useCallback(
@@ -232,19 +243,27 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          telemetryFilter={telemetryFilter}
+          onTelemetryChange={setTelemetryFilter}
         />
 
-        <DataTable
+        {telemetryFilter && <div className="px-4 py-2 text-xs text-text-muted" role="status">
+          {telemetry.isError
+            ? <>{t("nodeFilters.telemetryLoadError")} <button type="button" className="underline text-primary" onClick={() => void telemetry.refetch()}>{t("observerPage.retry")}</button></>
+            : telemetry.data ? t("nodeFilters.telemetryHistory", { days: telemetry.data.retentionDays }) : t("common.loading")}
+        </div>}
+
+        {!(telemetryFilter && telemetry.isError && !telemetry.data) && <DataTable
           columns={columns}
           rows={displayNodes}
           rowKey={(n) => n.id}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
-          isLoading={isLoading || isResolved === false}
+          isLoading={isLoading || isResolved === false || (telemetryFilter && telemetry.isPending)}
           emptyLabel={t("nodes.empty")}
           defaultSort={{ id: "name" }}
           renderCard={(node) => renderNodeCard(node, t)}
-        />
+        />}
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>
     </div>

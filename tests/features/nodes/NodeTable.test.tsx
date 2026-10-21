@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeTable } from "../../../src/features/nodes/NodeTable";
-import { getNodesPage } from "../../../src/api/client";
+import { getNodesPage, getTelemetryAvailability } from "../../../src/api/client";
 import i18n from "../../../src/i18n";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 import type { WsManager } from "../../../src/api/ws-manager";
@@ -10,7 +10,7 @@ import type { WsManager } from "../../../src/api/ws-manager";
 const region = { iatas: ["YVR"], regionKey: "YVR", isResolved: true };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
 vi.mock("../../../src/hooks/useScopes", () => ({ useScopes: () => [] }));
-vi.mock("../../../src/api/client", () => ({ getNodesPage: vi.fn() }));
+vi.mock("../../../src/api/client", () => ({ getNodesPage: vi.fn(), getTelemetryAvailability: vi.fn() }));
 
 const fakeWsManager = { onNodeUpdate: () => () => {} } as unknown as WsManager;
 
@@ -39,6 +39,39 @@ function mount(items: NodeSummary[]) {
 
 beforeEach(() => {
   vi.mocked(getNodesPage).mockReset();
+  vi.mocked(getTelemetryAvailability).mockReset();
+});
+
+describe("collected telemetry filter", () => {
+  it("loads one availability index only on demand and matches full repeater keys", async () => {
+    const key = "ab".repeat(32);
+    vi.mocked(getTelemetryAvailability).mockResolvedValue({nodes: new Map([[key, 1792500000000]]), retentionDays: 30});
+    mount([
+      node({ id: key, publicKey: key.toUpperCase(), name: "Reporting repeater" }),
+      node({ id: "other", publicKey: "ac".repeat(32), name: "No telemetry" }),
+      node({ id: "companion", nodeType: 1, publicKey: key, name: "Companion" }),
+    ]);
+    await screen.findByText("Reporting repeater");
+    expect(getTelemetryAvailability).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", {name: /Telemetry/}));
+    fireEvent.click(screen.getByRole("option", {name: "Available"}));
+    await screen.findByText(/last 30 days/);
+    expect(screen.getByText("Reporting repeater")).toBeInTheDocument();
+    expect(screen.queryByText("No telemetry")).not.toBeInTheDocument();
+    expect(screen.queryByText("Companion")).not.toBeInTheDocument();
+    expect(getTelemetryAvailability).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports unavailable intake instead of claiming there are no matching nodes", async () => {
+    vi.mocked(getTelemetryAvailability).mockRejectedValue(new Error("unavailable"));
+    mount([node({name:"Visible before filtering"})]);
+    await screen.findByText("Visible before filtering");
+    fireEvent.click(screen.getByRole("button", {name: /Telemetry/}));
+    fireEvent.click(screen.getByRole("option", {name: "Available"}));
+    await screen.findByText(/Telemetry availability could not be loaded/);
+    expect(screen.queryByText("No nodes")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", {name: "Retry"})).toBeInTheDocument();
+  });
 });
 
 describe("NodeTable location column", () => {

@@ -23,6 +23,8 @@ interface NodeFilterBarProps {
   scopeFilter: string;
   onScopeChange: (s: string) => void;
   scopeOptions: string[];
+  telemetryFilter?: boolean;
+  onTelemetryChange?: (enabled: boolean) => void;
 }
 
 export function NodeFilterBar({
@@ -39,6 +41,8 @@ export function NodeFilterBar({
   scopeFilter,
   onScopeChange,
   scopeOptions,
+  telemetryFilter = false,
+  onTelemetryChange,
 }: NodeFilterBarProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -46,12 +50,13 @@ export function NodeFilterBar({
   // close the sheet when leaving mobile — derive during render, not in an effect
   if (sheetOpen && !isMobile) setSheetOpen(false);
 
-  const activeCount = [typeFilter, pathsFilter, tracesFilter, scopeFilter].filter(Boolean).length;
+  const activeCount = [typeFilter, pathsFilter, tracesFilter, scopeFilter, telemetryFilter].filter(Boolean).length;
   const clearAll = () => {
     onTypeChange("");
     onPathsChange("");
     onTracesChange("");
     onScopeChange("");
+    onTelemetryChange?.(false);
   };
 
   const multibyteOptions = [
@@ -68,6 +73,7 @@ export function NodeFilterBar({
   const controls = (fullWidth: boolean) => (
     <>
       <SelectDropdown label={t("nodeFilters.type")} options={typeOptions} allLabel={t("nodeFilters.all")} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
+      {onTelemetryChange && <SelectDropdown label={t("nodeFilters.telemetry")} options={[{value: "available", label: t("nodeFilters.telemetryAvailable")}]} allLabel={t("nodeFilters.any")} value={telemetryFilter ? "available" : ""} onChange={(value) => onTelemetryChange(value === "available")} fullWidth={fullWidth} />}
       <SelectDropdown label={t("nodeFilters.multibytePaths")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={pathsFilter} onChange={(v) => onPathsChange(v as MultibyteFilter)} fullWidth={fullWidth} />
       <SelectDropdown label={t("nodeFilters.multibyteTraces")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={tracesFilter} onChange={(v) => onTracesChange(v as MultibyteFilter)} fullWidth={fullWidth} />
       {scopeOptions.length > 0 && (
