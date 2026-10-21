@@ -1178,8 +1178,8 @@
         "luminosity": "Light"
       },
       "addCard": "Add repeater telemetry card",
-      "refreshFailed": "Refresh failed; showing the last loaded sample."
+      "refreshFailed": "Refresh failed; showing the last loaded sample.",
+      "historyLimited": "Latest {{count}} retained readings shown; this may not cover the full window."
     }
-  },
-  "nodeTelemetry.historyLimited": "Latest {{count}} retained readings shown; this may not cover the full window."
+  }
 }

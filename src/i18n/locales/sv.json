@@ -958,8 +958,8 @@
         "luminosity": "Ljus"
       },
       "addCard": "Lägg till repeaterns telemetrikort",
-      "refreshFailed": "Uppdateringen misslyckades; senast hämtade mätning visas."
+      "refreshFailed": "Uppdateringen misslyckades; senast hämtade mätning visas.",
+      "historyLimited": "De {{count}} senaste sparade mätningarna visas; hela perioden kanske inte täcks."
     }
-  },
-  "nodeTelemetry.historyLimited": "De {{count}} senaste sparade mätningarna visas; hela perioden kanske inte täcks."
+  }
 }

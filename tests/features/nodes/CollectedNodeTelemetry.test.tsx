@@ -11,13 +11,14 @@ function mount() { return render(<QueryClientProvider client={new QueryClient({ 
 
 describe("collector telemetry", () => {
   it("renders status-only and sensor-only reports with absent or null optional collections", async () => {
-    vi.mocked(getCollectedNodeTelemetry).mockResolvedValue({ limit: 500, items: [
+    vi.mocked(getCollectedNodeTelemetry).mockResolvedValue({ limit: 500, truncated: true, items: [
       { nodeKey: key, collectorKey: collector, radioKey: "ef".repeat(32), receivedAt: Date.now(), values: { batteryMv: 4120 }, sensors: null },
       { nodeKey: key, collectorKey: collector, radioKey: "ef".repeat(32), receivedAt: Date.now(), values: null, sensors: [{ channel: 2, kind: "temperature", value: 0, unit: "C" }] },
     ] });
     mount();
     await screen.findByText("4.12 V");
     expect(screen.getByText("0 C")).toBeInTheDocument();
+    expect(screen.getByText(/Latest 2 retained readings shown/)).toBeInTheDocument();
   });
   it("shows an initial service failure and lets a retry load actual readings", async () => {
     vi.mocked(getCollectedNodeTelemetry).mockRejectedValueOnce(new Error("unavailable")).mockResolvedValue({ limit: 500, items: [
