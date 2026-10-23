@@ -194,6 +194,7 @@ export class LiveTraffic {
   gapUntil = 0;
   markGap() { this.gapUntil = Date.now() + LIVE_WINDOW; }
   private seen = new Map<string, number>();
+  private flowSeen = new Map<string, number>();
   private ordered = true;
   private lastAt = -Infinity;
   add(report: LiveReport) {
@@ -212,13 +213,20 @@ export class LiveTraffic {
     }
     if (this.reports.length > REPORT_CAP) { this.reports.shift(); this.cappedUntil = report.at + LIVE_WINDOW; }
     if (report.segments.length) {
+      // Several observers can report the same packet/path. Keep every report
+      // and trail, but animate that exact packet/path only once per flight.
+      const key = JSON.stringify([report.hash || report.key,report.segments]);
+      const previous = this.flowSeen.get(key);
+      if (previous !== undefined && report.at-previous < FLOW_MS) return true;
+      this.flowSeen.set(key,report.at);
+      if (this.flowSeen.size > FLOW_CAP*2) this.flowSeen.delete(this.flowSeen.keys().next().value!);
       if (this.flows.length >= FLOW_CAP) this.cappedUntil = report.at + LIVE_WINDOW;
       if (this.flows.length >= FLOW_CAP) this.flows.shift();
       this.flows.push(report);
     }
     return true;
   }
-  clearFlows() { this.flows = []; }
+  clearFlows() { this.flows = []; this.flowSeen.clear(); }
   prune(now: number) {
     // Receipt times normally arrive in order: inspect only the expired prefix,
     // without copying the whole live window for every packet. Fall back after a
@@ -237,6 +245,10 @@ export class LiveTraffic {
     for (const [key, at] of this.seen) {
       if (now - at < LIVE_WINDOW) { if (this.ordered) break; continue; }
       this.seen.delete(key);
+    }
+    for (const [key, at] of this.flowSeen) {
+      if (now-at < FLOW_MS) { if (this.ordered) break; continue; }
+      this.flowSeen.delete(key);
     }
     for (const [key, trail] of this.trails) {
       if (now - trail.at < LIVE_WINDOW) { if (this.ordered) break; continue; }

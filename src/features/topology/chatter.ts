@@ -12,6 +12,8 @@ const clean = (value: string, limit: number) => value.replace(/[\u0000-\u001f\u0
 // per message, infer an identity from its sender text, or replay channel history.
 export class LiveChatter {
   private pending = new Map<string, Pending>();
+  private graph?: Topology;
+  private observers = new Map<string, string>();
   private entry(hash: string, now: number) {
     let entry = this.pending.get(hash);
     if (!entry) {
@@ -27,7 +29,11 @@ export class LiveChatter {
   }
   observe(event: WsPacketObservation["data"], graph: Topology, now: number) {
     if (event?.packet?.payloadType !== 5 || !event.packetHash || !Number.isFinite(event.observation?.heardAt)) return;
-    const observer = graph.nodes.find(n => n.observerId === event.observation.observerId);
+    if (this.graph !== graph) {
+      this.graph = graph; this.observers.clear();
+      for (const node of graph.nodes) if (node.observerId && !this.observers.has(node.observerId)) this.observers.set(node.observerId,node.id);
+    }
+    const observer = graph.byId.get(this.observers.get(event.observation.observerId) ?? "");
     const first = event.observation.resolvedPath?.[0];
     const relay = (event.packet.routeType === 0 || event.packet.routeType === 1) && first?.confidence === "high" && first.nodes.length === 1 ? graph.byId.get(first.nodes[0]!.id) : undefined;
     const node = observer ?? relay;
@@ -46,5 +52,5 @@ export class LiveChatter {
     }
     return bubbles;
   }
-  clear() { this.pending.clear(); }
+  clear() { this.pending.clear(); this.observers.clear(); this.graph = undefined; }
 }

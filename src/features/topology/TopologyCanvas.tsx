@@ -27,10 +27,10 @@ export function TopologyCanvas({ graph, traffic, chatter, colors, selected, onSe
   const renderer = useRef<ReturnType<typeof createRenderer>>(null);
   const cameraView = useRef<CameraView | undefined>(undefined);
   useEffect(() => {
-    if (!canvas.current) return;
+    if (!active || !canvas.current) return;
     renderer.current = createRenderer(canvas.current, graph, traffic, colors, id => selectNode(id), code => selectRegion(code), cameraView.current, chatter);
     return () => { if (graph.nodes.length) cameraView.current = renderer.current?.view(); renderer.current?.dispose(); renderer.current = null; };
-  }, [graph, traffic, colors, chatter]);
+  }, [graph, traffic, colors, chatter, active]);
   useEffect(() => { renderer.current?.update(selected, region, selected || display !== "selected" ? display : "all", motion, active); }, [selected, region, display, motion, active, tick, graph, colors]);
   const button = "min-h-11 rounded border border-border bg-bg-surface px-3 text-xs text-text-bright hover:border-primary";
   const compactButton = "min-h-8 rounded border border-border bg-bg-surface px-2 text-[11px] text-text-bright hover:border-primary";

@@ -10,6 +10,14 @@ const message = {id:1,packetHash:"hash",isPublic:true,channelHash:"11",senderNam
 const event = (id: string, heardAt: number) => ({packetHash:"hash",packet:{payloadType:5,routeType:1},observation:{observerId:`obs-${id}`,heardAt}} as WsPacketObservation["data"]);
 
 describe("Public topology chatter", () => {
+  it("rebuilds the observer lookup when a node snapshot changes", () => {
+    const chatter = new LiveChatter();
+    chatter.observe(event("a",200),graph,1000);chatter.message(message,1000);
+    expect(chatter.visible(1700)[0]?.nodeId).toBe("a");
+    chatter.observe({...event("a",100),packetHash:"next"},buildTopology([{...nodes[0]!,id:"replacement"}]),2000);
+    chatter.message({...message,packetHash:"next"},2000);
+    expect(chatter.visible(2700).find(b=>b.hash==="next")?.nodeId).toBe("replacement");
+  });
   it("joins either arrival order, anchors to the earliest mapped reception, deduplicates and expires", () => {
     const chatter = new LiveChatter();
     chatter.observe(event("b",200),graph,1_000);

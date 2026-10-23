@@ -70,6 +70,29 @@ function drawing(width = 1200, height = 700) {
 }
 
 describe("topology rendering work", () => {
+  it("does not repaint an unchanged idle mesh for a UI activity tick", () => {
+    const s=drawing();
+    const renderer=createRenderer(s.canvas,s.graph,s.traffic,s.colors,vi.fn(),vi.fn())!;
+    try {
+      renderer.update("","","all",true,true);s.frame(0);
+      renderer.update("","","all",true,true);
+      expect(s.frames.size).toBe(0);
+    } finally {renderer.dispose();}
+  });
+  it("coalesces rapid camera input to the same frame budget as animation", () => {
+    const s = drawing();
+    const renderer = createRenderer(s.canvas,s.graph,s.traffic,s.colors,vi.fn(),vi.fn())!;
+    try {
+      renderer.update("","","all",false,true); s.frame(0);
+      const ctx=s.contexts.get(s.canvas)!; ctx.clearRect.mockClear();
+      renderer.zoom(1.1); s.frame(8);
+      renderer.zoom(1.1); s.frame(16);
+      renderer.zoom(1.1); s.frame(24);
+      expect(ctx.clearRect).not.toHaveBeenCalled();
+      s.frame(34);
+      expect(ctx.clearRect).toHaveBeenCalled();
+    } finally {renderer.dispose();}
+  });
   it("reuses active flow geometry between frames without freezing packet animation", () => {
     const s = drawing();
     const geometry = vi.spyOn(topologyGeometry, "pathControls");
