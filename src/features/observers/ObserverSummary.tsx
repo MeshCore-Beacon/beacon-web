@@ -9,6 +9,7 @@ import { Tooltip } from "../../components/Tooltip";
 import { IataChip } from "../../components/IataChip";
 import type { Observer } from "./types";
 import type { ObserverActivity, TelemetryPoint } from "../stats/types";
+import { EmojiText } from "../../components/EmojiText";
 
 // Numbers at full size, units and words smaller, so "30d 16h 52m" and "-119 dBm" scan as values.
 function Measure({ text }: { text: string }) {
@@ -63,7 +64,7 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
     <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface px-3.5 py-3 sm:flex-row sm:items-start">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-          <h1 id={headingId} className="min-w-0 break-words text-lg font-semibold text-text-bright">{observer.displayName ?? observer.id.slice(0, 8)}</h1>
+          <h1 id={headingId} className="min-w-0 break-words text-lg font-semibold text-text-bright"><EmojiText text={observer.displayName ?? observer.id.slice(0, 8)} /></h1>
           <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
           </span>

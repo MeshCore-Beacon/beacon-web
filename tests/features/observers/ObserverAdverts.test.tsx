@@ -42,4 +42,15 @@ describe("ObserverAdverts", () => {
     renderAdverts();
     expect(await screen.findByText("No adverts heard")).toBeInTheDocument();
   });
+
+  it("shows an error with a retry instead of the empty state when the request fails", async () => {
+    mockGetObserverAdverts.mockRejectedValueOnce(Object.assign(new Error("unavailable"), { status: 503 }));
+    mockGetObserverAdverts.mockResolvedValueOnce({ items: [advert(1, "Node Alpha")], nextCursor: null, hasMore: false });
+    renderAdverts();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load");
+    expect(screen.queryByText("No adverts heard")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Node Alpha")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

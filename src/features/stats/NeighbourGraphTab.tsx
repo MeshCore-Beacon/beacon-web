@@ -10,6 +10,7 @@ import { NeighbourGraph } from "./NeighbourGraph";
 import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
 import { SearchBar } from "../../components/SearchBar";
+import { EmojiText } from "../../components/EmojiText";
 
 // Most-connected nodes rendered; past this the canvas force layout bogs down. Reuses the map's node
 // query (same cache), so the whole region still loads — this only caps what the full mesh draws.
@@ -82,7 +83,7 @@ export function NeighbourGraphTab() {
     <div className="flex h-full min-h-0 flex-col">
       {ego ? (
         <div className="shrink-0 border-b border-border bg-bg-surface px-4 py-2 text-center text-xs font-mono text-text-muted">
-          {t("neighbourGraph.neighborhoodOf")} <span className="text-text-normal">{selectedNode?.name ?? selectedId}</span> · {t("neighbourGraph.neighbors", { count: ego.nodes.length - 1 })} <InfoTip text={t("neighbourGraph.clickEmpty")} />
+          {t("neighbourGraph.neighborhoodOf")} <span className="text-text-normal"><EmojiText text={selectedNode?.name ?? selectedId ?? ""} /></span> · {t("neighbourGraph.neighbors", { count: ego.nodes.length - 1 })} <InfoTip text={t("neighbourGraph.clickEmpty")} />
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-surface px-4 py-2">

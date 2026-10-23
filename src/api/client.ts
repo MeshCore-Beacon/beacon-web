@@ -1,5 +1,7 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
+import { isBelowVersion } from "../lib/version";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
+import { parseTelemetryAvailability } from "../features/nodes/telemetry-availability";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
@@ -71,6 +73,36 @@ async function request<T>(path: string, params?: Record<string, string | number 
 
 // endpoint functions
 
+export async function getTelemetryAvailability(signal?: AbortSignal) {
+  return parseTelemetryAvailability(await request<unknown>("/node-telemetry/availability", undefined, signal));
+}
+
+export interface CollectedNodeSample {
+  nodeKey: string;
+  collectorKey: string;
+  radioKey: string;
+  receivedAt: number;
+  intervalHours?: number;
+  values?: Record<string, number> | null;
+  sensors?: { channel: number; kind: string; value: number; unit: string }[] | null;
+}
+
+export async function getCollectedNodeTelemetry(key: string, signal?: AbortSignal): Promise<{items: CollectedNodeSample[]; limit: number; truncated?: boolean; retentionDays?: number; windowStart?: number; windowEnd?: number}> {
+  try {
+    const value = await request<{items: CollectedNodeSample[]; limit: number; truncated?: boolean; retentionDays?: number; windowStart?: number; windowEnd?: number}>(`/node-telemetry/${encodeURIComponent(key)}`, undefined, signal);
+    if (!value || value.limit !== 500 || (value.truncated !== undefined && typeof value.truncated !== "boolean") || !Array.isArray(value.items) || value.items.length > 500 || value.items.some(sample =>
+      !sample || typeof sample.nodeKey !== "string" || typeof sample.collectorKey !== "string" || typeof sample.radioKey !== "string" ||
+      !/^[0-9a-f]{64}$/.test(sample.nodeKey) || !/^[0-9a-f]{64}$/.test(sample.collectorKey) || !/^[0-9a-f]{64}$/.test(sample.radioKey) ||
+      !Number.isSafeInteger(sample.receivedAt) || sample.receivedAt <= 0 ||
+      (sample.intervalHours != null && (!Number.isInteger(sample.intervalHours) || sample.intervalHours < 1 || sample.intervalHours > 72)) ||
+      (sample.sensors != null && (!Array.isArray(sample.sensors) || sample.sensors.length > 32 || sample.sensors.some(sensor => !sensor || typeof sensor.kind !== "string" || typeof sensor.unit !== "string" || !Number.isInteger(sensor.channel) || !Number.isFinite(sensor.value)))) ||
+      (sample.values != null && (typeof sample.values !== "object" || Array.isArray(sample.values) || Object.values(sample.values).some(reading => typeof reading !== "number" || !Number.isFinite(reading)))))) {
+      throw new Error("Invalid collected telemetry history");
+    }
+    return {...value, truncated: value.truncated ?? value.items.length === 500};
+  } catch (error) { if (isNotFound(error)) return {items: [], limit: 500}; throw error; }
+}
+
 export function getObserverComparison(
   iatas: StatsRegion,
   params: { observerA: string; observerB: string; since: number; until: number },
@@ -97,12 +129,13 @@ function statsRegionParams(r: StatsRegion): { iatas?: string; region?: string } 
 
 export function getPackets(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
+  params?: { cursor?: number; pageCursor?: string; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
 ): Promise<CursorPage<PacketSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/packets", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     payloadTypes: params?.payloadTypes?.length ? params.payloadTypes.join(",") : undefined,
     routeTypes: params?.routeTypes?.length ? params.routeTypes.join(",") : undefined,
@@ -267,8 +300,8 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
   return request(`/traces/${tag}`);
 }
 
-export async function getObserver(observerId: string): Promise<Observer> {
-  const observer = await request<Observer>(`/observers/${observerId}`);
+export async function getObserver(observerId: string, signal?: AbortSignal): Promise<Observer> {
+  const observer = await request<Observer>(`/observers/${observerId}`, undefined, signal);
   // Servers before json.RawMessage (and cache entries written by them) send the stored JSON as base64.
   let metadata: unknown = observer.statusMetadata;
   if (typeof metadata === "string") {
@@ -294,6 +327,7 @@ export function getNodesPage(
   iatas: string[] | undefined,
   params?: {
     cursor?: number;
+    pageCursor?: string;
     limit?: number;
     type?: string;
     name?: string;
@@ -308,6 +342,7 @@ export function getNodesPage(
   return request("/nodes", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     typeName: params?.type,
     name: params?.name,
@@ -347,13 +382,13 @@ export async function getObserverDirectoryPage(params: ObserverDirectoryRequest,
   return page;
 }
 
+// The directory shipped in server 2.0.2; /info arrived in 2.0.3, so a server without it predates the directory.
 export async function supportsObserverDirectory(signal?: AbortSignal): Promise<boolean> {
   try {
-    await getObserverDirectoryPage({ limit: 1 }, signal);
-    return true;
+    const info = await request<ServerInfo>("/info", undefined, signal);
+    return !isBelowVersion(info.serverVersion, "2.0.2");
   } catch (error) {
-    if (error instanceof ApiError && (error.status === 404 ||
-        (error.status === 400 && error.message === "failed to parse observer UUID"))) return false;
+    if (error instanceof ApiError && error.status === 404) return false;
     throw error;
   }
 }
@@ -361,12 +396,13 @@ export async function supportsObserverDirectory(signal?: AbortSignal): Promise<b
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.
 export function getObserversPage(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; type?: string; broker?: string; status?: string; name?: string },
+  params?: { cursor?: number; pageCursor?: string; limit?: number; type?: string; broker?: string; status?: string; name?: string },
 ): Promise<CursorPage<ObserverSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/observers", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     type: params?.type,
     broker: params?.broker,
@@ -457,12 +493,13 @@ export function getObserverTelemetry(
   range: string,
   interval?: string,
   afterId?: number,
+  signal?: AbortSignal,
 ): Promise<ObserverTelemetry> {
-  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
+  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId }, signal);
 }
 
-export function getObserverActivity(observerId: string, range: string, interval: string, until?: number): Promise<ObserverActivity> {
-  return request(`/observers/${observerId}/activity`, { range, interval, until });
+export function getObserverActivity(observerId: string, range: string, interval: string, until?: number, signal?: AbortSignal): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval, until }, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.
@@ -471,3 +508,23 @@ export function isNotFound(err: unknown): boolean {
 }
 
 export { ApiError };
+
+// Public cached MeshMapper metadata; counts are regional, never per-link evidence.
+export interface ScopeCatalogue {
+  iata: string;
+  url: string;
+  generatedAt: number;
+  checkedAt: number;
+  freshUntil: number;
+  lastError?: string;
+  repeaters: number;
+  scoped: number;
+  scopes: { name: string; repeaters: number; default: number; monitored: boolean; wardriving: boolean }[];
+}
+export function getScopeCatalogues(): Promise<ScopeCatalogue[]> {
+  return request("/scope-catalogues");
+}
+
+export function getTopologyLinks(iatas: string[] | undefined, window: string, signal?: AbortSignal): Promise<{ links: [string,string][]; capped: boolean; since: number; until: number }> {
+  return request("/routes/topology", { iatas: iatas?.join(","), window }, signal);
+}

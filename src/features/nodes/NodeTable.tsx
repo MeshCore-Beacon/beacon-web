@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { getNodesPage } from "../../api/client";
+import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { getNodesPage, getTelemetryAvailability } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
@@ -19,13 +19,16 @@ import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
 import { patchNodeSummary } from "./node-updates";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
+import { hasCollectedTelemetry } from "./telemetry-availability";
 import type { TFunction } from "i18next";
 import type { NodeSummary, NodeIATA } from "./types";
 import type { CursorPage } from "../../types/api";
 import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
+import { EmojiText } from "../../components/EmojiText";
+import { MAX_PAGE_SIZE } from "../../lib/constants";
 
-const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup
+const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 
 // Cell and card renderers can't call hooks, so the computed "last heard" label gets its own component.
 function IataBadge({ entry }: { entry: NodeIATA }) {
@@ -54,7 +57,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
     <div className="flex flex-col gap-1.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2">
         <span className={`flex-1 min-w-0 truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
-          {node.name ?? formatHex(node.id)}
+          <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
         <span className="shrink-0">
           <Badge variant="default">
@@ -90,6 +93,16 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied client-side over the loaded set
+  const [telemetryFilter, setTelemetryFilter] = useState(false);
+  const telemetry = useQuery({
+    queryKey: ["node-telemetry-availability"],
+    queryFn: ({ signal }) => getTelemetryAvailability(signal),
+    enabled: telemetryFilter,
+    staleTime: 60_000,
+    retry: false,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+  });
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
 
@@ -98,9 +111,10 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       id: "name",
       header: t("nodes.colName"),
       sortValue: (node) => node.name ?? formatHex(node.id),
+      width: "22%", // a share, not rem, so it gives way when the detail panel narrows the pane
       cell: (node) => (
-        <span className={`truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
-          {node.name ?? formatHex(node.id)}
+        <span className={`block truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`} title={node.name ?? formatHex(node.id)}>
+          <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
       ),
     },
@@ -146,12 +160,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       header: t("nodes.colNeighbors"),
       className: "text-text-muted",
       sortValue: (node) => node.knownNeighborCount,
+      width: "7rem",
       cell: (node) => node.knownNeighborCount.toLocaleString(),
     },
     {
       id: "location",
       header: t("nodes.colLocation"),
       className: "text-text-muted",
+      width: "9rem",
       cell: (node) =>
         hasMapLocation(node)
           ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
@@ -176,13 +192,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam],
   );
 
-  // page the region's nodes 50 at a time (filters stay server-side, in the query key); rows stream
+  // page the region's nodes 200 at a time (filters stay server-side, in the query key); rows stream
   // in as each batch lands. Loads once per filter set — WS updates keep them live, no 30s refetch.
   const { items: nodes, loadedCount, isPaging, isError, isLoading } = useInfinitePages<NodeSummary>({
     queryKey,
-    queryFn: (cursor) =>
+    queryFn: (page) =>
       getNodesPage(iatas, {
-        cursor,
+        cursor: page?.cursor,
+        pageCursor: page?.pageCursor,
+        limit: MAX_PAGE_SIZE,
         type: typeFilter || undefined,
         name: nameParam,
         pubkeyPrefix: pubkeyPrefixParam,
@@ -197,8 +215,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const scopeOptions = useScopes(scopeFilter);
 
   const displayNodes = useMemo(
-    () => (scopeFilter ? nodes.filter((n) => n.defaultScope === scopeFilter) : nodes),
-    [nodes, scopeFilter],
+    () => nodes.filter((n) => (!scopeFilter || n.defaultScope === scopeFilter) && (!telemetryFilter || hasCollectedTelemetry(n, telemetry.data))),
+    [nodes, scopeFilter, telemetryFilter, telemetry.data],
   );
 
   const handleNodeUpdate = useCallback(
@@ -216,7 +234,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex flex-col flex-1 min-w-0">
         <NodeFilterBar
           search={search}
@@ -232,19 +250,29 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          telemetryFilter={telemetryFilter}
+          onTelemetryChange={setTelemetryFilter}
         />
 
-        <DataTable
+        {telemetryFilter && <div className="px-4 py-2 text-xs text-text-muted" role="status">
+          {telemetry.isError
+            ? <>{t("nodeFilters.telemetryLoadError")} <button type="button" className="underline text-primary" onClick={() => void telemetry.refetch()}>{t("observerPage.retry")}</button></>
+            : telemetry.data ? t("nodeFilters.telemetryHistory", { days: telemetry.data.retentionDays }) : t("common.loading")}
+        </div>}
+
+        {!(telemetryFilter && telemetry.isError && !telemetry.data) && <DataTable
           columns={columns}
           rows={displayNodes}
-          rowKey={(n) => n.id}
+          rowKey={nodeId}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
-          isLoading={isLoading || isResolved === false}
+          isLoading={isLoading || isResolved === false || (telemetryFilter && telemetry.isPending)}
           emptyLabel={t("nodes.empty")}
           defaultSort={{ id: "name" }}
           renderCard={(node) => renderNodeCard(node, t)}
-        />
+          virtualize
+          minWidth="52rem"
+        />}
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>
     </div>

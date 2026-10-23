@@ -19,6 +19,7 @@ const basePackets = () => ({
   isFetchingNextPage: false,
   isLoading: false,
   isError: false,
+  refetch: vi.fn(),
   observersByHash: new Map(),
   handlePacketObservation: () => {},
   handleLagged: () => {},
@@ -180,11 +181,24 @@ describe("PacketList loading feedback", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading packets… (1)");
   });
 
-  it("surfaces a failed history fetch through the pill", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), isError: true }));
+  it("shows an error with a retry, not an empty list, when history fails with nothing loaded", () => {
+    const refetch = vi.fn();
+    usePackets.mockImplementation(() => ({ ...basePackets(), isError: true, refetch }));
     renderList();
 
-    expect(screen.getByRole("status").textContent).toContain("Failed to load packets");
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed to load packets");
+    expect(screen.queryByTestId("expanded")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps loaded packets and surfaces a later history failure through the pill", () => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("h1")], isError: true }));
+    renderList();
+
+    expect(screen.getByTestId("expanded")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Some packets failed to load (1 shown)");
   });
 
   it("renders neither pill nor skeletons when idle", () => {
