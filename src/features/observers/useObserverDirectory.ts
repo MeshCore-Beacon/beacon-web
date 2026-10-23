@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getObserverDirectoryPage, supportsObserverDirectory } from "../../api/client";
+import { queryRetryDelay } from "../../api/rate-limit";
 import { API_BASE } from "../../lib/constants";
 import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
 import { useStatsRegion } from "../stats/useStats";
@@ -18,9 +19,6 @@ export interface ObserverDirectoryOptions {
 }
 
 type Continuation = { cursor: number; since: number; until: number } | undefined;
-const retryDelay = (attempt: number, error: Error) =>
-  (error as { retryAfterMs?: number }).retryAfterMs ?? Math.min(1000 * 2 ** attempt, 30_000);
-
 export function useObserverDirectory(wsManager: WsManager, options: ObserverDirectoryOptions) {
   const { where, regionKey, isResolved } = useStatsRegion();
   const { sort, search, status, type, broker, scope } = options;
@@ -30,7 +28,7 @@ export function useObserverDirectory(wsManager: WsManager, options: ObserverDire
     queryFn: ({ signal }) => supportsObserverDirectory(signal),
     enabled: isResolved !== false,
     staleTime: 60_000,
-    retryDelay,
+    retryDelay: queryRetryDelay,
   });
   const queryKey = useMemo(() => ["observer-directory", API_BASE, regionKey, sort, search, status, type, broker, scope],
     [regionKey, sort, search, status, type, broker, scope]);
@@ -52,7 +50,7 @@ export function useObserverDirectory(wsManager: WsManager, options: ObserverDire
     staleTime: Infinity,
     refetchInterval: 60_000,
     gcTime: 0,
-    retryDelay,
+    retryDelay: queryRetryDelay,
   });
   const first = list.data?.pages[0];
   const sortChanged = list.data?.pages.some(page => page.effectiveSort !== first?.effectiveSort) ?? false;
