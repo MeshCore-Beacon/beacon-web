@@ -10,6 +10,7 @@ import { SelectDropdown } from "../../components/SelectDropdown";
 import { useScopes } from "../../hooks/useScopes";
 import { channelDisplayName } from "./types";
 import type { ChannelSummary, ChannelMessage } from "./types";
+import { EmojiText } from "../../components/EmojiText";
 
 // hash the sender name so their color stays consistent
 const SENDER_COLORS = [
@@ -38,7 +39,7 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
     >
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className={`text-xs font-semibold font-mono break-all ${senderColor(msg.senderName)}`}>
-          {msg.senderName}
+          <EmojiText text={msg.senderName} />
         </span>
         <Timestamp value={msg.sentAt} className="text-[11px] text-text-dim" />
         {reach > 0 && <span title={t("channelMessages.heardTimes", { count: reach })}>
@@ -51,7 +52,7 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
           className="ml-auto shrink-0 cursor-pointer font-mono text-[11px] text-text-dim transition-colors hover:text-primary group-hover:text-primary"
           onClick={(event) => { event.stopPropagation(); onAnalyze(msg.packetHash); }}>{t("channelMessages.viewPacket")} ›</button>}
       </div>
-      <div className="text-text-normal text-xs mt-0.5 whitespace-pre-wrap break-words">{msg.content}</div>
+      <div className="text-text-normal text-xs mt-0.5 whitespace-pre-wrap break-words"><EmojiText text={msg.content} /></div>
     </div>
   );
 }
@@ -222,7 +223,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
               <MessageRow key={msg.packetHash || msg.id} msg={msg} heardCount={heardCounts[msg.packetHash]} onAnalyze={onAnalyze} />
             ))}
           </div>
-        ) : (
+        ) : isError ? null : (
           <div className="flex items-center justify-center h-32 text-text-muted text-xs font-mono">
             {t(!channel.keyKnown ? "channelMessages.emptyNoKey" : scope ? "channelMessages.emptyScope" : "channelMessages.empty", { scope })}
           </div>

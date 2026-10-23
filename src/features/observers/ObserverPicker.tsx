@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { getObserversPage } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { Dropdown } from "../../components/Dropdown";
+import { EmojiText } from "../../components/EmojiText";
 
 function PickerPanel({ id, onPick, excludeId, label }: { id: string; onPick: (id: string) => void; excludeId?: string; label: string }) {
   const { t } = useTranslation();
@@ -55,7 +56,7 @@ function PickerPanel({ id, onPick, excludeId, label }: { id: string; onPick: (id
                 selected ? "bg-primary/10 text-text-bright" : "text-text-normal hover:bg-text-normal/3"
               }`}
             >
-              <span className="truncate">{o.displayName ?? o.id.slice(0, 8)}</span>
+              <span className="truncate"><EmojiText text={o.displayName ?? o.id.slice(0, 8)} /></span>
               <span className="shrink-0 text-[11px] text-text-dim">{o.iata}</span>
             </button>
           );
@@ -90,7 +91,7 @@ export function ObserverPicker({ id, name, onSelect, excludeId, label }: { id: s
             open ? "border-primary-dim" : "border-border hover:border-text-dim"
           }`}
         >
-          <span className={`truncate ${id ? "text-text-bright" : "text-text-dim"}`}>{name}</span>
+          <span className={`truncate ${id ? "text-text-bright" : "text-text-dim"}`}><EmojiText text={name} /></span>
           <span className="shrink-0 text-[9px] text-text-dim" aria-hidden>▾</span>
         </button>
       )}

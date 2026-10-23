@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeTable } from "../../../src/features/nodes/NodeTable";
@@ -6,6 +6,7 @@ import { getNodesPage } from "../../../src/api/client";
 import i18n from "../../../src/i18n";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 import type { WsManager } from "../../../src/api/ws-manager";
+import { stubVirtualLayout } from "../../virtual-layout";
 
 const region = { iatas: ["YVR"], regionKey: "YVR", isResolved: true };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
@@ -39,6 +40,36 @@ function mount(items: NodeSummary[]) {
 
 beforeEach(() => {
   vi.mocked(getNodesPage).mockReset();
+  stubVirtualLayout(500, 38); // the table is virtualized
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("NodeTable name column", () => {
+  it("keeps the full name readable when the cell cuts it off", async () => {
+    const name = "Ottawa-West Repeater (Kanata Hill) 2";
+    mount([node({ id: "node-long", name })]);
+    expect(await screen.findByText(name)).toHaveAttribute("title", name);
+  });
+});
+
+describe("NodeTable name column", () => {
+  it("gives an emoji in a name its own span so it can't paint over the next letter", async () => {
+    mount([node({ id: "node-skull", name: "☠️Grunt031" })]);
+    const glyph = await screen.findByText("☠️");
+    expect(glyph).toHaveClass("emoji-glyph");
+    expect(glyph.parentElement).toHaveTextContent("☠️Grunt031");
+  });
+});
+
+describe("NodeTable paging", () => {
+  it("asks for nodes at the server's page cap, so a whole region takes a quarter of the requests", async () => {
+    mount([node({ id: "node-a", name: "Node A" })]);
+    await screen.findByText("Node A");
+    expect(vi.mocked(getNodesPage)).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ limit: 200 }));
+  });
 });
 
 describe("NodeTable location column", () => {
@@ -91,5 +122,13 @@ describe("NodeTable in French", () => {
     await i18n.changeLanguage("fr");
     mount([]);
     expect(await screen.findByText("Aucun nœud")).toBeInTheDocument();
+  });
+});
+
+describe("NodeTable with thousands of nodes", () => {
+  it("mounts only the rows on screen", async () => {
+    mount(Array.from({ length: 2000 }, (_, i) => node({ id: `node-${i}`, name: `Node ${String(i).padStart(4, "0")}` })));
+    await screen.findByText("Node 0000");
+    expect(document.querySelectorAll("tbody tr[data-index]").length).toBeLessThan(50);
   });
 });

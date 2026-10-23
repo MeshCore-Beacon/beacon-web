@@ -30,13 +30,14 @@ import { ChannelList } from "./features/channels/ChannelList";
 import { EmptyState } from "./components/EmptyState";
 import { usePacketDetail } from "./features/packets/usePacketDetail";
 import { WsManager } from "./api/ws-manager";
-import { shouldRetryQuery } from "./api/rate-limit";
+import { queryRetryDefaults } from "./api/rate-limit";
 import { WS_URL, ENABLED_TABS } from "./lib/constants";
 import type { PacketDetail } from "./types/api";
 
 // Map (maplibre-gl, ~1MB) and My Atlas are lazy-loaded so their chunks are fetched on first visit
 // instead of bloating the initial bundle.
 const MyAtlasPage = lazy(() => import("./features/atlas/MyAtlasPage").then(m => ({ default: m.MyAtlasPage })));
+const TopologyPage = lazy(() => import("./features/topology/TopologyPage").then(m => ({ default: m.TopologyPage })));
 const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ default: m.MapView })));
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
@@ -47,7 +48,7 @@ const StatsOverview = lazy(() => import("./features/stats/StatsOverview").then((
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: shouldRetryQuery,
+      ...queryRetryDefaults,
       refetchOnWindowFocus: false,
     },
   },
@@ -89,13 +90,19 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 // wouldn't otherwise know was shareable). All-regions clears both params; any legacy ?region is folded
 // in. The guard skips redundant writes (and any setSearchParams feedback loop); replace keeps it out of
 // history.
-function RegionUrlSync() {
+export function RegionUrlSync() {
   const { selection } = useRegionSelection();
+  const previousSelection = useRef(selection);
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const next = selectionToParams(selection, searchParams);
+    if (previousSelection.current !== selection) {
+      next.delete("topoNode");
+      next.delete("topoFocus");
+    }
+    previousSelection.current = selection;
     if (next.toString() === searchParams.toString()) return;
     setSearchParams(next, { replace: true, state: location.state });
   }, [selection, searchParams, setSearchParams, location.state]);
@@ -304,6 +311,7 @@ function AppInner() {
 
   const tabContent: Record<string, React.ReactNode> = {
     MyAtlas: <MyAtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
+    Topology: <TopologyPage wsManager={wsManager} onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}
