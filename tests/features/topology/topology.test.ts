@@ -13,6 +13,19 @@ const hop = (id: string): ResolvedHop => ({ confidence: "high", nodes: [{ id, pu
 const event = (path: ResolvedHop[] = [hop("a"), hop("b"), hop("c")]): WsPacketObservation["data"] => ({ packetHash: "hash", packet: { payloadType: 5, payloadTypeName: "GRP_TXT", routeType: 1, routeTypeName: "FLOOD", isFirstObservation: true, observationCount: 1, scope: "#on" }, observation: { observerId: "obs", observerName: "Observer", iata: "YOW", heardAt: 1, rssi: -90, snr: 5, sourceBroker: "fixture", resolvedPath: path } });
 
 describe("3D topology evidence and bounds", () => {
+  it("animates repeated hearings once while retaining reports and distinct paths", () => {
+    const traffic = new LiveTraffic(), report = reportFromEvent(event(),graph,1000)!;
+    traffic.add(report);
+    traffic.add({...report,key:"hash|other",observerId:"other",at:1100});
+    expect(traffic.reports).toHaveLength(2);expect(traffic.flows).toHaveLength(1);
+    traffic.add({...report,key:"hash|another",observerId:"another",at:1200,segments:[["a","c"]]});
+    expect(traffic.flows).toHaveLength(2);expect(traffic.trails.size).toBe(3);
+    traffic.add({...report,key:"hash|later",observerId:"later",at:5300});
+    expect(traffic.flows).toHaveLength(2);
+    traffic.clearFlows();
+    traffic.add({...report,key:"hash|visible",at:5400});
+    expect(traffic.flows).toHaveLength(1);
+  });
   it("expires out-of-order receipts and trails after a clock adjustment", () => {
     const live = new LiveTraffic();
     const report = reportFromEvent(event(), graph, 2000)!;
@@ -28,7 +41,7 @@ describe("3D topology evidence and bounds", () => {
   it("does not replace retained history arrays when no observations have expired", () => {
     const live = new LiveTraffic();
     const reports = live.reports, flows = live.flows;
-    for (let i = 0; i < 100; i++) live.add({ ...reportFromEvent(event(), graph, 1000 + i)!, key: String(i) });
+    for (let i = 0; i < 100; i++) live.add({ ...reportFromEvent(event(), graph, 1000 + i)!, key: String(i), hash: String(i) });
     live.prune(1200);
     expect(live.reports).toBe(reports);
     expect(live.flows).toBe(flows);
@@ -81,7 +94,7 @@ describe("3D topology evidence and bounds", () => {
     const report = reportFromEvent(event(), graph, 100)!;
     expect(traffic.add(report)).toBe(true); expect(traffic.add({ ...report, at: 200 })).toBe(false);
     expect(traffic.add({ ...report, key: "hash|other", observerId: "other", at: 200 })).toBe(true);
-    for (let i = 0; i < REPORT_CAP + 10; i++) traffic.add({ ...report, key: `event${i}`, at: 300 });
+    for (let i = 0; i < REPORT_CAP + 10; i++) traffic.add({ ...report, key: `event${i}`, hash: `event${i}`, at: 300 });
     expect(traffic.reports).toHaveLength(REPORT_CAP); expect(traffic.flows).toHaveLength(FLOW_CAP); expect(traffic.cappedUntil).toBeGreaterThan(300);
     expect(traffic.trails.size).toBe(2);
     traffic.prune(5_000); expect(traffic.flows).toEqual([]); expect(traffic.trails.size).toBe(2);

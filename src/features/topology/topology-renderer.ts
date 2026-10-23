@@ -16,12 +16,13 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   let trailsDirty = true, layersValid = false, movingUntil = 0;
   const bubbleLayouts = new Map<string, { content: string; width: number; lines: string[] }>();
   const labelWidths = new Map<string, { font: string; label: string; width: number }>();
-  let width = 1, height = 1, ratio = 1, frame = 0, previousFrame = 0;
-  let running = true, motion = true, selected = "", dirty = true, baseDirty = true, regionCode = view?.region ?? "";
+  let width = 1, height = 1, ratio = 1, frame = 0, previousFrame = -Infinity;
+  let running = true, motion = true, selected = "", baseDirty = true, regionCode = view?.region ?? "";
   let fitted = !!view;
   let display: PathDisplay = "all";
   let regionHits: { code: string; x: number; y: number; width: number }[] = [];
   let lastTrailVersion = -1;
+  let lastReport: LiveTraffic["reports"][number] | undefined, hadPulse = false, lastBubbles = "";
   let projected: { id: string; x: number; y: number; depth: number; scale: number }[] = [];
   let related = new Set<string>();
   const pointers = new Map<number, { x: number; y: number }>();
@@ -43,7 +44,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   // Rounded backing sizes can differ from CSS size * ratio by half a pixel.
   // Copy backing pixels 1:1 so fractional-DPR phones do not blur each layer.
   const composite = (layer: HTMLCanvasElement) => ctx.drawImage(layer, 0, 0, layer.width / ratio, layer.height / ratio);
-  const wake = (changed = false) => { baseDirty ||= changed; dirty = true; if (!frame && running && !document.hidden) frame = requestAnimationFrame(draw); };
+  const wake = (changed = false) => { baseDirty ||= changed; if (!frame && running && !document.hidden) frame = requestAnimationFrame(draw); };
   function fit(smooth = true) {
     const regions = regionByCode.has(regionCode) ? [regionByCode.get(regionCode)!] : graph.regions;
     const points = regions.flatMap(r => [
@@ -76,9 +77,8 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
     const bubbles = chatter?.visible(time) ?? [];
     const flows = motion ? traffic.flows.filter(r => time - r.at < FLOW_MS) : [];
     // A fixed 30 fps ceiling and capped pixel ratio bound work on phones and large meshes.
-    if (!dirty && (flows.length || bubbles.length || transition) && now - previousFrame < 32) { frame = requestAnimationFrame(draw); return; }
+    if (now - previousFrame < 32) { frame = requestAnimationFrame(draw); return; }
     previousFrame = now;
-    dirty = false;
     if (transition) {
       const t = Math.min(1, (now - transition.at) / 420), ease = 1 - (1 - t) ** 3;
       const mix = (a: number, b: number) => a + (b - a) * ease, { from, to } = transition;
@@ -355,6 +355,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   return {
     update(id: string, region: string, paths: PathDisplay, animate: boolean, active: boolean) {
       const changeRegion = region !== regionCode;
+      const modeChanged = motion !== animate || running !== active;
       baseDirty ||= selected !== id || changeRegion || paths !== display;
       trailsDirty ||= lastTrailVersion !== traffic.trailVersion;
       lastTrailVersion = traffic.trailVersion;
@@ -365,7 +366,12 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       selected = id; regionCode = region; display = paths; motion = animate; running = active;
       if (!motion && transition) { camera = transition.to; transition = null; baseDirty = true; }
       if (changeRegion) fit();
-      if (!running) { cancelAnimationFrame(frame); frame = 0; } else wake();
+      const time = Date.now(), report = traffic.reports.at(-1);
+      const pulse = motion && traffic.reports.some(r => time-r.at < 1500);
+      const bubbles = JSON.stringify(chatter?.visible(time) ?? []);
+      const changed = baseDirty || trailsDirty || modeChanged || report !== lastReport || pulse || hadPulse || bubbles !== lastBubbles;
+      lastReport = report; hadPulse = pulse; lastBubbles = bubbles;
+      if (!running) { cancelAnimationFrame(frame); frame = 0; } else if (changed) wake();
     },
     zoom, fit, angle(top: boolean) { camera = { ...camera, yaw: 0, pitch: top ? Math.PI / 2 : DEFAULT_CAMERA.pitch }; fit(); },
     view(): CameraView { const current = transition?.to ?? camera; return { camera: { ...current, target: { ...current.target } }, region: regionCode, extent }; },
@@ -378,6 +384,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       document.removeEventListener("visibilitychange", visibility);
       document.fonts?.removeEventListener("loadingdone", fontsLoaded);
       for (const layer of [background, underlay, foreground]) layer.width = layer.height = 0;
+      canvas.width = canvas.height = 0;
     },
   };
 }
