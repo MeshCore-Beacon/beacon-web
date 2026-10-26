@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { RegionProvider, useRegion } from "../../src/hooks/useRegion";
+import { RegionProvider, useRegion, REGIONS_CACHE_KEY } from "../../src/hooks/useRegion";
 import { shouldRetryQuery } from "../../src/api/rate-limit";
 
 const getRegions = vi.fn();
@@ -70,5 +70,38 @@ describe("useRegion", () => {
 
     await waitFor(() => expect(result.current.isResolved).toBe(true));
     expect(result.current.regionKey).toBe("*");
+  });
+});
+
+describe("useRegion's stored region list", () => {
+  const stored = [{ id: 1, slug: "west", name: "West", iatas: ["YVR"] }];
+
+  it("resolves a returning visitor's region from the stored list before the server answers", async () => {
+    localStorage.setItem(REGIONS_CACHE_KEY, JSON.stringify(stored));
+    let answer!: (v: unknown) => void;
+    getRegions.mockReturnValue(new Promise((r) => { answer = r; }));
+    const { result } = setup(["west"]);
+
+    expect(result.current.isResolved).toBe(true);
+    expect(result.current.iatas).toEqual(["YVR"]);
+    expect(getRegions).toHaveBeenCalledTimes(1); // still asked, every load
+
+    await act(async () => answer([{ id: 1, slug: "west", name: "West", iatas: ["YVR", "YYJ"] }]));
+    await waitFor(() => expect(result.current.iatas).toEqual(["YVR", "YYJ"]));
+    expect(JSON.parse(localStorage.getItem(REGIONS_CACHE_KEY)!)[0].iatas).toEqual(["YVR", "YYJ"]);
+  });
+
+  it("stores the list it fetched", async () => {
+    getRegions.mockResolvedValue(stored);
+    const { result } = setup(["west"]);
+    await waitFor(() => expect(result.current.isResolved).toBe(true));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(REGIONS_CACHE_KEY) ?? "null")).toEqual(stored));
+  });
+
+  it("ignores a stored list it can't read", async () => {
+    localStorage.setItem(REGIONS_CACHE_KEY, JSON.stringify([{ slug: "west" }]));
+    getRegions.mockReturnValue(new Promise(() => {}));
+    const { result } = setup(["west"]);
+    expect(result.current.isResolved).toBe(false);
   });
 });
