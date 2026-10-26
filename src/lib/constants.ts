@@ -29,8 +29,8 @@ export const TRANSIENT_WAIT_MAX_MS = 30_000;
 // app tab names, in display order; the ?tab URL param is validated against this list
 export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Analytics"] as const;
 
-// Per-deployment config: read via runtimeEnv, so the Docker image's /config.js (written at container
-// start, see .build/) overrides the VITE_* build-time env.
+// Per-deployment config: read via runtimeEnv, so the Docker image's runtime config (written at
+// container start, see .build/) overrides the VITE_* build-time env.
 
 // Split a comma-separated env value into trimmed, non-empty entries.
 export function parseEnvList(raw: string | undefined): string[] {
