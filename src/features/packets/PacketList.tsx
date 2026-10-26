@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
 import { usePackets } from "./usePackets";
 import { usePacketDetail } from "./usePacketDetail";
+import { usePacketDetailRefresh } from "./usePacketDetailRefresh";
 import { usePacketFilters, matchesFilters, toServerFilter } from "./usePacketFilters";
 import { parsePathSearch } from "./path-search";
 import { useScopes } from "../../hooks/useScopes";
@@ -44,7 +44,6 @@ interface PacketListProps {
 export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservationId, onSelectObservation }: PacketListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { filters, setFilter, setSearch, setSearchField, clearFilters } = usePacketFilters();
   // single-value selections go to the server so scrolling pages through matching history
   const serverFilter = useMemo(() => toServerFilter(filters), [filters]);
@@ -111,14 +110,13 @@ export function PacketList({ wsManager, onAnalyze, onViewPath, selectedObservati
     if (expandedDetail) onViewPath(expandedDetail);
   }, [expandedDetail, onViewPath]);
 
-  // Refetch only the open row's detail, so its observation table keeps pace with the count ticking
-  // up beside it. Every other observation just lands in the list.
+  // Every observation lands in the list; the open row's detail also refetches, throttled, so its
+  // observation table catches up with the count ticking beside it.
+  const refreshDetail = usePacketDetailRefresh(expandedHash);
   const handleObservation = useCallback((data: WsPacketObservation["data"]) => {
     handlePacketObservation(data);
-    if (data.packetHash === expandedHash) {
-      queryClient.invalidateQueries({ queryKey: ["packet-detail", expandedHash] });
-    }
-  }, [handlePacketObservation, expandedHash, queryClient]);
+    refreshDetail(data.packetHash);
+  }, [handlePacketObservation, refreshDetail]);
 
   useWsPacketHandler(wsManager, handleObservation);
   useWsLaggedHandler(wsManager, handleLagged);
