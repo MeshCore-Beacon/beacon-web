@@ -144,7 +144,8 @@ export async function getIataBorder(iata: string): Promise<IataBorder | null> {
   return (body ?? null) as IataBorder | null;
 }
 
-export function getRegions(): Promise<RegionSummary[]> {
+// newer servers list each region's member IATAs and map hints too (the detail's fields)
+export function getRegions(): Promise<(RegionSummary & Partial<Region>)[]> {
   return request("/regions");
 }
 

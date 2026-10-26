@@ -9,7 +9,7 @@ import {
   serializeSelection,
   type RegionSelection,
 } from "./region-selection";
-import type { Region } from "../types/api";
+import type { Region, RegionSummary } from "../types/api";
 
 // Region context: the shared geographic filter. The provider holds the raw selection (region slugs +
 // individual IATAs); useRegions() loads the slug→IATAs expansion, and useRegion() combines them into
@@ -54,14 +54,17 @@ export interface RegionsData {
   settled: boolean; // the region list has loaded
 }
 
-// Loads the region list and each region's detail (member IATAs). Regions are near-static, so this is
-// cached long and shared via React Query across every caller. The N detail fetches are fine — there
-// are only a handful of regions.
+const listsIatas = (r: RegionSummary & Partial<Region>): r is Region => Array.isArray(r.iatas);
+
+// Loads the region list with each region's member IATAs. Regions are near-static, so this is cached
+// long and shared via React Query across every caller. A server that lists IATAs answers in one call;
+// an older one needs each region's detail.
 export function useRegions(): RegionsData {
   const { data } = useQuery({
     queryKey: ["regions"],
     queryFn: async () => {
       const summaries = await getRegions();
+      if (summaries.every(listsIatas)) return summaries;
       // a listed region whose detail 404s is dropped like an unknown slug; 4xx is never retried,
       // so failing the whole query would leave the selection unresolved for good
       const regions = await Promise.all(summaries.map((s) => getRegion(s.id).catch((err: unknown) => {

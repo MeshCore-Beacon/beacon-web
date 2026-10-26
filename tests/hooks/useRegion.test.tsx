@@ -31,6 +31,28 @@ beforeEach(() => {
 });
 
 describe("useRegion", () => {
+  it("resolves every region from the list alone when the server lists their IATAs", async () => {
+    getRegions.mockResolvedValue([
+      { id: 1, slug: "west", name: "West", iatas: ["YVR", "YYJ"] },
+      { id: 2, slug: "empty", name: "Empty", iatas: [] },
+    ]);
+    const { result } = setup(["west"]);
+
+    await waitFor(() => expect(result.current.isResolved).toBe(true));
+    expect(result.current.iatas).toEqual(["YVR", "YYJ"]);
+    expect(getRegions).toHaveBeenCalledTimes(1);
+    expect(getRegion).not.toHaveBeenCalled();
+  });
+
+  it("fetches each region when an older server lists them without IATAs", async () => {
+    getRegion.mockImplementation((id: number) => Promise.resolve({ id, slug: id === 1 ? "west" : "gone", name: "x", iatas: [`Y0${id}`] }));
+    const { result } = setup(["west"]);
+
+    await waitFor(() => expect(result.current.isResolved).toBe(true));
+    expect(result.current.iatas).toEqual(["Y01"]);
+    expect(getRegion).toHaveBeenCalledTimes(2);
+  });
+
   // the list and detail are cached separately server-side, so a listed region can 404 on its detail
   it("still resolves when one region's detail is missing", async () => {
     getRegion.mockImplementation((id: number) =>
