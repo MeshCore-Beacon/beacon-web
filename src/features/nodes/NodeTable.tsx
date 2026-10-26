@@ -6,7 +6,6 @@ import { useRegion } from "../../hooks/useRegion";
 import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
 import { useInfinitePages } from "../../hooks/useInfinitePages";
-import { patchInfinitePages } from "../../lib/infinite-pages";
 import { useWsNodeUpdateHandler } from "../../hooks/useWsHandlers";
 import { formatHex, timeAgoParts, formatRadio } from "../../lib/formatters";
 import { hasMapLocation } from "../map/location";
@@ -17,7 +16,7 @@ import { DataTable, type Column } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
-import { patchNodeSummary } from "./node-updates";
+import { patchNodePages } from "./node-updates";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
 import type { TFunction } from "i18next";
 import type { NodeSummary, NodeIATA } from "./types";
@@ -28,10 +27,12 @@ import { EmojiText } from "../../components/EmojiText";
 import { MAX_PAGE_SIZE } from "../../lib/constants";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
+const NAME_SORT = { id: "name" };
 
 // Cell and card renderers can't call hooks, so the computed "last heard" label gets its own component.
 function IataBadge({ entry }: { entry: NodeIATA }) {
   const { t } = useTranslation();
+  useTick(); // keep the label fresh; the table only re-renders when its rows change
   const { count, unit } = timeAgoParts(entry.lastHeard);
   const ago = t("timestamp.ago", { duration: t(`timestamp.unit.${unit}`, { count }) });
   return (
@@ -164,7 +165,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     },
   ], [t]);
 
-  useTick();
+  const renderCard = useCallback((node: NodeSummary) => renderNodeCard(node, t), [t]);
 
   // switching the field flips what the box means (a name vs a hex prefix), so stale text mustn't carry over
   const handleSearchFieldChange = useCallback((field: string) => {
@@ -210,9 +211,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
-      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey, (old) =>
-        patchInfinitePages(old, (items) => patchNodeSummary(items, data) ?? items),
-      );
+      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey, (old) => patchNodePages(old, data));
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
@@ -249,8 +248,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           onSelect={onSelectNode}
           isLoading={isLoading || isResolved === false}
           emptyLabel={t("nodes.empty")}
-          defaultSort={{ id: "name" }}
-          renderCard={(node) => renderNodeCard(node, t)}
+          defaultSort={NAME_SORT}
+          renderCard={renderCard}
           virtualize
           minWidth="52rem"
         />

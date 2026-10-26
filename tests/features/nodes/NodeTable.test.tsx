@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { act, render, screen, within, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeTable } from "../../../src/features/nodes/NodeTable";
 import { getNodesPage } from "../../../src/api/client";
@@ -103,6 +103,22 @@ describe("NodeTable IATA badge tooltip", () => {
     await i18n.changeLanguage("fr");
     fireEvent.mouseEnter(trigger);
     expect(screen.getByRole("tooltip")).toHaveTextContent("dernier contact il y a 7 j");
+  });
+});
+
+describe("NodeTable IATA badge freshness", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("keeps the last-heard label current while the rows stay the same", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    mount([node({ id: "node-fresh", name: "Fresh node", iatas: [{ iata: "YUL", lastHeard: Date.now() - 30_000 }] })]);
+    const trigger = (await screen.findByText("YUL")).parentElement!;
+    fireEvent.mouseEnter(trigger);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("last heard 30s ago");
+    fireEvent.mouseLeave(trigger);
+    act(() => vi.advanceTimersByTime(90_000));
+    fireEvent.mouseEnter(trigger);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("last heard 2m ago");
   });
 });
 

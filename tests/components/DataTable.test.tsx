@@ -37,6 +37,26 @@ it("sorts text with numeric runs in number order and empties last", () => {
   expect(order()).toEqual(["Node 10", "node 9", "Node 1", ""]);
 });
 
+it("keeps rows sorted as pages append and live updates replace rows, and after a re-sort", () => {
+  type Named = { id: string; name: string };
+  const cols: Column<Named>[] = [{ id: "name", header: "Name", cell: (r) => r.name, sortValue: (r) => r.name }];
+  const view = (data: Named[]) => <DataTable columns={cols} rows={data} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" defaultSort={{ id: "name" }} />;
+  const page1 = [{ id: "1", name: "delta" }, { id: "2", name: "alpha" }];
+  const { container, rerender } = render(view(page1));
+  const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+  expect(order()).toEqual(["alpha", "delta"]);
+  const page2 = [...page1, { id: "3", name: "charlie" }, { id: "4", name: "bravo" }];
+  rerender(view(page2));
+  expect(order()).toEqual(["alpha", "bravo", "charlie", "delta"]);
+  const patched = page2.map((r) => (r.id === "2" ? { ...r, name: "echo" } : r));
+  rerender(view(patched));
+  expect(order()).toEqual(["bravo", "charlie", "delta", "echo"]);
+  fireEvent.click(screen.getByRole("button", { name: /^Name/ }));
+  expect(order()).toEqual(["echo", "delta", "charlie", "bravo"]);
+  rerender(view([...patched, { id: "5", name: "able" }]));
+  expect(order()).toEqual(["echo", "delta", "charlie", "bravo", "able"]);
+});
+
 interface Row {
   id: string;
 }
