@@ -1,4 +1,5 @@
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery, keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { useRegion } from "../../hooks/useRegion";
 import {
   getStatsSeries,
@@ -23,11 +24,20 @@ const common = {
   refetchOnWindowFocus: false,
 } as const;
 
+// The resolved region a stats query is scoped to.
+export interface StatsScope {
+  where: StatsRegion;
+  regionKey: string;
+  isResolved?: boolean;
+}
+
 // A region with no member IATAs is sent by slug so the server returns zeros rather than every IATA.
-export function useStatsRegion() {
+export function useStatsRegion(): StatsScope {
   const { iatas, regionKey, isResolved, emptyRegion } = useRegion();
-  const where: StatsRegion = emptyRegion ? { region: emptyRegion } : iatas;
-  return { where, regionKey, isResolved };
+  return useMemo(() => {
+    const where: StatsRegion = emptyRegion ? { region: emptyRegion } : iatas;
+    return { where, regionKey, isResolved };
+  }, [iatas, regionKey, isResolved, emptyRegion]);
 }
 
 // Holds a query until the selected region resolves; an unresolved slug would otherwise fetch every IATA.
@@ -51,112 +61,94 @@ export function rolledWindow(range: StatsRange, now = Date.now()) {
   return { since: until - RANGE_MS[range], until };
 }
 
-export function useStatsSeries(range: StatsRange) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-series", regionKey, range],
-    ...gatedOn(isResolved, (signal) => {
-      const { since, until } = rolledWindow(range);
-      return getStatsSeries(since, until, where, signal);
-    }),
-    ...common,
-    refetchInterval: 60_000,
-  });
-}
+// Each query's options are shared by its hook and by the Analytics prefetch (prefetch.ts), so a
+// prefetched request is the very one the tab picks up when it mounts.
+export const statsSeriesQuery = (s: StatsScope, range: StatsRange) => queryOptions({
+  queryKey: ["stats-series", s.regionKey, range],
+  ...gatedOn(s.isResolved, (signal) => {
+    const { since, until } = rolledWindow(range);
+    return getStatsSeries(since, until, s.where, signal);
+  }),
+  ...common,
+  refetchInterval: 60_000,
+});
 
-export function useStatsObservations(range: StatsRange) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-observations", regionKey, range],
-    ...gatedOn(isResolved, (signal) => getStatsObservations(where, sinceFor(range), signal)),
-    ...common,
-    // feeds the observations chart + sparklines and gets no WS bumps, so refetch to stay fresh
-    refetchInterval: 60_000,
-  });
-}
+export const statsObservationsQuery = (s: StatsScope, range: StatsRange) => queryOptions({
+  queryKey: ["stats-observations", s.regionKey, range],
+  ...gatedOn(s.isResolved, (signal) => getStatsObservations(s.where, sinceFor(range), signal)),
+  ...common,
+  // feeds the observations chart + sparklines and gets no WS bumps, so refetch to stay fresh
+  refetchInterval: 60_000,
+});
 
-export function usePayloadBreakdown(range: StatsRange) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-payload", regionKey, range],
-    ...gatedOn(isResolved, () => getPayloadBreakdown(where, sinceFor(range))),
-    ...common,
-  });
-}
+export const payloadBreakdownQuery = (s: StatsScope, range: StatsRange) => queryOptions({
+  queryKey: ["stats-payload", s.regionKey, range],
+  ...gatedOn(s.isResolved, () => getPayloadBreakdown(s.where, sinceFor(range))),
+  ...common,
+});
 
-export function useTopNodes(range: StatsRange, limit = 10) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-top-nodes", regionKey, range, limit],
-    ...gatedOn(isResolved, () => getTopNodes(where, sinceFor(range), limit)),
-    ...common,
-  });
-}
+export const topNodesQuery = (s: StatsScope, range: StatsRange, limit = 10) => queryOptions({
+  queryKey: ["stats-top-nodes", s.regionKey, range, limit],
+  ...gatedOn(s.isResolved, () => getTopNodes(s.where, sinceFor(range), limit)),
+  ...common,
+});
 
-export function useTopObservers(range: StatsRange, limit = 10) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-top-observers", regionKey, range, limit],
-    ...gatedOn(isResolved, () => getTopObservers(where, sinceFor(range), limit)),
-    ...common,
-  });
-}
+export const topObserversQuery = (s: StatsScope, range: StatsRange, limit = 10) => queryOptions({
+  queryKey: ["stats-top-observers", s.regionKey, range, limit],
+  ...gatedOn(s.isResolved, () => getTopObservers(s.where, sinceFor(range), limit)),
+  ...common,
+});
 
-export function useTopAdvertisers(range: StatsRange, sort: AdvertiserSort, limit = 10) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-top-advertisers", regionKey, range, sort, limit],
-    ...gatedOn(isResolved, () => getTopAdvertisers(where, sinceFor(range), sort, limit)),
-    ...common,
-  });
-}
+export const topAdvertisersQuery = (s: StatsScope, range: StatsRange, sort: AdvertiserSort, limit = 10) => queryOptions({
+  queryKey: ["stats-top-advertisers", s.regionKey, range, sort, limit],
+  ...gatedOn(s.isResolved, () => getTopAdvertisers(s.where, sinceFor(range), sort, limit)),
+  ...common,
+});
 
-export function useTopTalkers(range: StatsRange, limit = 10) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-top-talkers", regionKey, range, limit],
-    ...gatedOn(isResolved, () => getTopTalkers(where, sinceFor(range), limit)),
-    ...common,
-  });
-}
+export const topTalkersQuery = (s: StatsScope, range: StatsRange, limit = 10) => queryOptions({
+  queryKey: ["stats-top-talkers", s.regionKey, range, limit],
+  ...gatedOn(s.isResolved, () => getTopTalkers(s.where, sinceFor(range), limit)),
+  ...common,
+});
 
-export function useRadioPresets() {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-radio-presets", regionKey],
-    ...gatedOn(isResolved, () => getRadioPresets(where)),
-    ...common,
-  });
-}
+export const radioPresetsQuery = (s: StatsScope) => queryOptions({
+  queryKey: ["stats-radio-presets", s.regionKey],
+  ...gatedOn(s.isResolved, () => getRadioPresets(s.where)),
+  ...common,
+});
 
 // node-types is a population census (no time window), so the key is region-only
-export function useNodeTypes() {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-node-types", regionKey],
-    ...gatedOn(isResolved, () => getStatsNodeTypes(where)),
-    ...common,
-  });
-}
+export const nodeTypesQuery = (s: StatsScope) => queryOptions({
+  queryKey: ["stats-node-types", s.regionKey],
+  ...gatedOn(s.isResolved, () => getStatsNodeTypes(s.where)),
+  ...common,
+});
 
 // clock drift reflects each node's latest measured drift, not a windowed aggregate, so region-only
-export function useClockDrift(limit = 100) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-clock-drift", regionKey, limit],
-    ...gatedOn(isResolved, () => getClockDrift(where, limit)),
-    ...common,
-  });
-}
+export const clockDriftQuery = (s: StatsScope, limit = 100) => queryOptions({
+  queryKey: ["stats-clock-drift", s.regionKey, limit],
+  ...gatedOn(s.isResolved, () => getClockDrift(s.where, limit)),
+  ...common,
+});
 
 // Packet counts are windowed from the series' first rolled hour so both cover the same hours;
 // observer and node counts are current membership.
-export function useScopes(range: StatsRange) {
-  const { where, regionKey, isResolved } = useStatsRegion();
-  return useQuery({
-    queryKey: ["stats-scopes", regionKey, range],
-    ...gatedOn(isResolved, (signal) => getStatsScopes(where, rolledWindow(range).since, signal)),
-    ...common,
-    refetchInterval: 60_000,
-  });
-}
+export const scopesQuery = (s: StatsScope, range: StatsRange) => queryOptions({
+  queryKey: ["stats-scopes", s.regionKey, range],
+  ...gatedOn(s.isResolved, (signal) => getStatsScopes(s.where, rolledWindow(range).since, signal)),
+  ...common,
+  refetchInterval: 60_000,
+});
+
+export const useStatsSeries = (range: StatsRange) => useQuery(statsSeriesQuery(useStatsRegion(), range));
+export const useStatsObservations = (range: StatsRange) => useQuery(statsObservationsQuery(useStatsRegion(), range));
+export const usePayloadBreakdown = (range: StatsRange) => useQuery(payloadBreakdownQuery(useStatsRegion(), range));
+export const useTopNodes = (range: StatsRange, limit = 10) => useQuery(topNodesQuery(useStatsRegion(), range, limit));
+export const useTopObservers = (range: StatsRange, limit = 10) => useQuery(topObserversQuery(useStatsRegion(), range, limit));
+export const useTopAdvertisers = (range: StatsRange, sort: AdvertiserSort, limit = 10) =>
+  useQuery(topAdvertisersQuery(useStatsRegion(), range, sort, limit));
+export const useTopTalkers = (range: StatsRange, limit = 10) => useQuery(topTalkersQuery(useStatsRegion(), range, limit));
+export const useRadioPresets = () => useQuery(radioPresetsQuery(useStatsRegion()));
+export const useNodeTypes = () => useQuery(nodeTypesQuery(useStatsRegion()));
+export const useClockDrift = (limit = 100) => useQuery(clockDriftQuery(useStatsRegion(), limit));
+export const useScopes = (range: StatsRange) => useQuery(scopesQuery(useStatsRegion(), range));
