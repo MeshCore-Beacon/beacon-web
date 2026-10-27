@@ -611,6 +611,8 @@
       "neighborLinesLiveNote": "All lines are off while Live Map is on",
       "areaBorders": "Area Borders",
       "areaBordersLabel": "Area borders",
+      "terrain": "Terrain",
+      "terrainLabel": "3D terrain and hillshade",
       "all": "All",
       "on": "On",
       "off": "Off",

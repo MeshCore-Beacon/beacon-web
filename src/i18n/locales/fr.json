@@ -591,6 +591,8 @@
       "neighborLinesLiveNote": "Toutes les lignes sont désactivées tant que la carte en direct est active",
       "areaBorders": "Limites de zone",
       "areaBordersLabel": "Limites de zone",
+      "terrain": "Relief",
+      "terrainLabel": "Relief 3D et ombrage",
       "all": "Tous",
       "on": "Activé",
       "off": "Désactivé",

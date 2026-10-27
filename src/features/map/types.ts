@@ -40,6 +40,9 @@ export const DEM_ATTRIBUTION =
 
 export const TERRAIN_EXAGGERATION = 1.5;
 
+// 3D terrain + hillshade, off by default: each view pulls dozens of uncached DEM tiles
+export const MAP_TERRAIN_STORAGE_KEY = "beacon-map-terrain";
+
 // The fallback/initial map view, configured per deployment via .env (VITE_MAP_CENTER as decimal
 // "lat,lon", VITE_MAP_ZOOM). Used before airports load and when a selection has no airport coords;
 // otherwise MapView fits bounds over the airports. With neither set,
