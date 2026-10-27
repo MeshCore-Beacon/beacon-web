@@ -7,6 +7,9 @@ export const LIVE_BUFFER_CAP = 500;
 export const DEFAULT_PAGE_SIZE = 50;
 // beacon-server's list cap (maxListLimit); views that load a whole region page at it to stay under the rate limit
 export const MAX_PAGE_SIZE = 200;
+// /nodes takes bigger pages, so the map and graph load a region in ~10x fewer requests; servers
+// before that clamp it to 200 and keep paging
+export const NODE_REGION_PAGE_SIZE = 2000;
 
 export const SCROLL_TOP_THRESHOLD_PX = 100;
 export const SCROLL_BOTTOM_THRESHOLD_PX = 500;
