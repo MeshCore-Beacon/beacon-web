@@ -205,19 +205,22 @@ function toCursorPage<T, C = number>(items: T[], limit: number, cursorOf: (last:
 
 // Known routes. /routes returns a bare array ordered last_seen DESC, id DESC; the next (older) batch
 // starts after the last row's lastSeen (ms), with its id breaking ties inside that millisecond. We wrap
-// it into a CursorPage here so RouteTable can stream pages via useInfinitePages. `iata` is a single code
-// ("" = all), unlike the comma-separated `iatas` used elsewhere.
+// it into a CursorPage here so RouteTable can stream pages via useInfinitePages. One IATA goes as `iata`,
+// which every server honours; several go as `iatas`, which servers before 2.1 ignore (answering with
+// every IATA's routes). Undefined or empty = all.
 export interface RouteCursor {
   lastSeen: number;
   id: number;
 }
 
 export async function getKnownRoutesPage(
-  params?: { iata?: string; hopCount?: number; cursor?: RouteCursor; limit?: number },
+  params?: { iatas?: string[]; hopCount?: number; cursor?: RouteCursor; limit?: number },
 ): Promise<CursorPage<KnownRoute, RouteCursor>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
+  const iatas = params?.iatas ?? [];
   const items = await request<KnownRoute[]>("/routes", {
-    iata: params?.iata,
+    iata: iatas.length === 1 ? iatas[0] : undefined,
+    iatas: iatas.length > 1 ? iatas.join(",") : undefined,
     hopCount: params?.hopCount,
     cursor: params?.cursor?.lastSeen,
     cursorId: params?.cursor?.id,

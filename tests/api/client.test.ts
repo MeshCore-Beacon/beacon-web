@@ -182,30 +182,42 @@ describe("getKnownRoutesPage", () => {
     lastSeen: 2,
   };
 
-  it("hits /routes, forwards iata/hopCount/cursor/cursorId/limit", async () => {
+  it("hits /routes, forwards one IATA as iata, hopCount/cursor/cursorId/limit", async () => {
     const getUrl = mockFetchOnce([route]);
 
-    await getKnownRoutesPage({ iata: "YYC", hopCount: 1, cursor: { lastSeen: 1234, id: 7 }, limit: 50 });
+    await getKnownRoutesPage({ iatas: ["YYC"], hopCount: 1, cursor: { lastSeen: 1234, id: 7 }, limit: 50 });
 
-    const url = getUrl();
-    expect(url).toContain("/routes");
-    expect(url).toContain("iata=YYC");
-    expect(url).toContain("hopCount=1");
-    expect(url).toContain("cursor=1234");
-    expect(url).toContain("cursorId=7");
-    expect(url).toContain("limit=50");
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/routes");
+    expect(url.searchParams.get("iata")).toBe("YYC");
+    expect(url.searchParams.has("iatas")).toBe(false);
+    expect(url.searchParams.get("hopCount")).toBe("1");
+    expect(url.searchParams.get("cursor")).toBe("1234");
+    expect(url.searchParams.get("cursorId")).toBe("7");
+    expect(url.searchParams.get("limit")).toBe("50");
+  });
+
+  it("sends several IATAs as the comma-separated iatas", async () => {
+    const getUrl = mockFetchOnce([route]);
+
+    await getKnownRoutesPage({ iatas: ["SEA", "KLS", "PDX"], cursor: { lastSeen: 1234, id: 7 } });
+
+    const url = new URL(getUrl());
+    expect(url.searchParams.get("iatas")).toBe("SEA,KLS,PDX");
+    expect(url.searchParams.has("iata")).toBe(false);
+    expect(url.searchParams.get("cursorId")).toBe("7");
   });
 
   it("omits cursor on the first page and defaults the limit to 50", async () => {
     const getUrl = mockFetchOnce([]);
 
-    await getKnownRoutesPage();
+    await getKnownRoutesPage({ iatas: [] });
 
     const url = getUrl();
     expect(url).toContain("/routes");
     expect(url).not.toContain("cursor=");
     expect(url).toContain("limit=50");
-    expect(url).not.toContain("iata=");
+    expect(url).not.toContain("iata");
     expect(url).not.toContain("hopCount=");
   });
 
