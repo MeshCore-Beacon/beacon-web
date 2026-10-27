@@ -277,3 +277,40 @@ describe("DataTable card mode", () => {
     expect(onEndReached).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("DataTable controlled sort", () => {
+  const cols: Column<Row>[] = [{ id: "id", header: "ID", cell: (r) => r.id, sortValue: (r) => r.id }];
+
+  it("shows presorted rows as given and asks the caller for the next order", () => {
+    const onSortChange = vi.fn();
+    const view = (sort: { id: string; direction: "asc" | "desc" }) => (
+      <DataTable columns={cols} rows={[{ id: "b" }, { id: "a" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={sort} onSortChange={onSortChange} presorted />
+    );
+    const { container, rerender } = render(view({ id: "id", direction: "asc" }));
+    const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+    expect(order()).toEqual(["b", "a"]);
+    fireEvent.click(screen.getByRole("button", { name: /^ID\s*▲$/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ id: "id", direction: "desc" });
+    expect(order()).toEqual(["b", "a"]); // nothing moves until the caller's rows do
+    rerender(view({ id: "id", direction: "desc" }));
+    expect(screen.getByRole("button", { name: /^ID\s*▼$/ })).toBeInTheDocument();
+  });
+
+  it("sorts rows itself under a controlled sort that isn't presorted", () => {
+    const { container } = render(
+      <DataTable columns={cols} rows={[{ id: "a" }, { id: "b" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={{ id: "id", direction: "desc" }} onSortChange={() => {}} />,
+    );
+    expect([...container.querySelectorAll("tbody tr")].map((r) => r.textContent)).toEqual(["b", "a"]);
+  });
+
+  it("goes back to the top when a presorted table's order changes", () => {
+    const view = (direction: "asc" | "desc") => (
+      <DataTable columns={cols} rows={[{ id: "a" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={{ id: "id", direction }} onSortChange={() => {}} presorted />
+    );
+    const { container, rerender } = render(view("asc"));
+    const scroller = container.firstElementChild as HTMLElement;
+    scroller.scrollTop = 120;
+    rerender(view("desc"));
+    expect(scroller.scrollTop).toBe(0);
+  });
+});

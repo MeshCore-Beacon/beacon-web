@@ -98,6 +98,23 @@ describe("getNodesPage", () => {
     expect(url).toContain("limit=50");
   });
 
+  it("sends sort, order and scope, and order only with a sort", async () => {
+    let getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false, sort: "name", order: "desc" });
+    const page = await getNodesPage(["YYZ"], { sort: "name", order: "desc", scope: "#bc", pageCursor: "s1:x" });
+    let url = getUrl();
+    expect(url).toContain("sort=name");
+    expect(url).toContain("order=desc");
+    expect(url).toContain("scope=%23bc");
+    expect(url).toContain("pageCursor=s1%3Ax");
+    expect(page.sort).toBe("name");
+
+    getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+    await getNodesPage(["YYZ"], { order: "desc" });
+    url = getUrl();
+    expect(url).not.toContain("sort=");
+    expect(url).not.toContain("order=");
+  });
+
   it("forwards the pubkeyPrefix search param", async () => {
     const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
 

@@ -10,10 +10,10 @@ import { createPageFlattener } from "../lib/infinite-pages";
 // table for every page was most of the client's work. The first page and the last show at once.
 const COMMIT_MS = 1_000;
 
-interface UseInfinitePagesOptions<T, C> {
+interface UseInfinitePagesOptions<T, C, P extends CursorPage<T, C>> {
   queryKey: QueryKey;
   // fetch one page; page is the previous page's next cursors (undefined for the first page)
-  queryFn: (page: PageParam<C> | undefined) => Promise<CursorPage<T, C>>;
+  queryFn: (page: PageParam<C> | undefined) => Promise<P>;
   // stable id accessor for dedup — pass a module-level fn so the memo isn't rebuilt every render
   getId: (item: T) => string;
   // keep the prior key's rows on screen while a new key (e.g. a filter change) loads its first page
@@ -31,7 +31,7 @@ interface UseInfinitePagesOptions<T, C> {
 // load only the first page and pull the rest on demand via loadMore(). Loads once per key (staleTime
 // Infinity, no maxPages); dedupes by id because a non-unique cursor can repeat a row across a page
 // boundary. Shared by the map and the entity tables.
-export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T, C>) {
+export function useInfinitePages<T, C = number, P extends CursorPage<T, C> = CursorPage<T, C>>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T, C, P>) {
   const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
@@ -118,5 +118,7 @@ export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keep
     isLoading: isLoading || (rateLimited && data === undefined),
     hasMore: hasNextPage && !errored,
     loadMore,
+    // the shown first page, for what a page says about the whole list (e.g. the order it is in)
+    firstPage: visible?.pages[0],
   };
 }

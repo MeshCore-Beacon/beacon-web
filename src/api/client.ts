@@ -3,7 +3,7 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
+import type { Node, NodeObservation, NodeNeighbor, NodePage, NodeSort } from "../features/nodes/types";
 import type {
   StatsSeries,
   SignalStats,
@@ -307,8 +307,12 @@ export function getNodesPage(
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
+    scope?: string; // transport scope name, e.g. "#bc"
+    // server-side order, paged by pageCursor alone; check the page's `sort`, older servers ignore it
+    sort?: NodeSort;
+    order?: "asc" | "desc";
   },
-): Promise<CursorPage<NodeSummary>> {
+): Promise<NodePage> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/nodes", {
     iatas: iatasParam(iatas),
@@ -321,6 +325,9 @@ export function getNodesPage(
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
+    scope: params?.scope,
+    sort: params?.sort,
+    order: params?.sort ? params.order : undefined,
   });
 }
 

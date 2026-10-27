@@ -1,3 +1,5 @@
+import type { CursorPage } from "../../types/api";
+
 export interface NodeIATA {
   iata: string;
   lastHeard: number; // unix ms
@@ -22,6 +24,16 @@ export interface NodeSummary {
   observerId?: string;
   // Server verdict against its configured local border union; absence is unknown/disabled.
   possiblyForeign?: boolean;
+}
+
+// /nodes orders besides the default (lastSeen, newest first); server 2.1.0+
+export type NodeSort = "name" | "type" | "neighbors";
+
+// A /nodes page. sort/order name the order its items are in; a server before 2.1.0 leaves them out
+// (and ignores the sort it was asked for).
+export interface NodePage extends CursorPage<NodeSummary> {
+  sort?: NodeSort | "lastSeen";
+  order?: "asc" | "desc";
 }
 
 export interface Node extends NodeSummary {
