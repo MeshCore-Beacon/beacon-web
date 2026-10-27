@@ -1,5 +1,4 @@
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
-import { isBelowVersion } from "../lib/version";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
@@ -352,16 +351,6 @@ export async function getObserverDirectoryPage(params: ObserverDirectoryRequest,
 }
 
 // The directory shipped in server 2.0.2; /info arrived in 2.0.3, so a server without it predates the directory.
-export async function supportsObserverDirectory(signal?: AbortSignal): Promise<boolean> {
-  try {
-    const info = await request<ServerInfo>("/info", undefined, signal);
-    return !isBelowVersion(info.serverVersion, "2.0.2");
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return false;
-    throw error;
-  }
-}
-
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.
 export function getObserversPage(
   iatas: string[] | undefined,

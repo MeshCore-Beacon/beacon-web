@@ -29,8 +29,9 @@ beforeEach(() => {
   }));
 });
 afterEach(() => vi.unstubAllGlobals());
-function view(options = defaults) {
+function view(options = defaults, seed?: (client: QueryClient) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seed?.(client);
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return renderHook(p => useObserverDirectory(ws, p), { wrapper, initialProps: options });
 }
@@ -183,6 +184,13 @@ it.each([400, 500, 503])("does not mistake an /info failure (%s) for an older se
   const { result } = view();
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(result.current.unsupported).toBe(false);
+});
+
+it("reads the server version the app already loaded, so the list is the first request", async () => {
+  const { result } = view(defaults, client => client.setQueryData(["server-info"], { minAppVersion: null, minWebVersion: null, serverVersion: "2.1.0" }));
+  await waitFor(() => expect(result.current.observers).toHaveLength(1));
+  expect(requests.filter(isInfo)).toHaveLength(0);
+  expect(listingRequests()).toHaveLength(1);
 });
 
 it("treats a malformed serverVersion as supporting the directory", async () => {
