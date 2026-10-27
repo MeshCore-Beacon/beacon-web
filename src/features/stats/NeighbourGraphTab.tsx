@@ -5,7 +5,8 @@ import { useRegion } from "../../hooks/useRegion";
 import { useMapNodesData } from "../map/useMapNodesData";
 import { getNodeNeighbors } from "../../api/client";
 import { useChartColors } from "./chartTheme";
-import { buildNeighbourGraph, buildEgoGraph, neighbourGraphOption } from "./neighbour-graph";
+import { buildNeighbourGraph, buildEgoGraph, neighbourGraphOption, withLayout, WORKER_LAYOUT_OVER } from "./neighbour-graph";
+import { useGraphLayout } from "./useGraphLayout";
 import { NeighbourGraph } from "./NeighbourGraph";
 import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
@@ -44,6 +45,10 @@ export function NeighbourGraphTab() {
   }, []);
 
   const graph = useMemo(() => buildNeighbourGraph(nodes, CAP), [nodes]);
+  // a big mesh is laid out in a worker once the pager settles; until then it shows as loading
+  const inWorker = graph.nodes.length > WORKER_LAYOUT_OVER;
+  const xy = useGraphLayout(graph, inWorker && !isPaging && !pending && !isAll);
+  const mesh = useMemo(() => (xy ? withLayout(graph, xy) : graph), [graph, xy]);
   const selectedNode = useMemo(
     () => (selectedId ? nodes.find((n) => n.id === selectedId) ?? null : null),
     [selectedId, nodes],
@@ -64,7 +69,7 @@ export function NeighbourGraphTab() {
     return buildEgoGraph(center, neighbours, dataUpdatedAt);
   }, [selectedId, selectedNode, neighbours, dataUpdatedAt]);
 
-  const option = useMemo(() => neighbourGraphOption(ego ?? graph, colors, t, { ego: !!ego }), [ego, graph, colors, t]);
+  const option = useMemo(() => neighbourGraphOption(ego ?? mesh, colors, t, { ego: !!ego }), [ego, mesh, colors, t]);
   const searchFields = useMemo(() => [{ value: "name", label: t("neighbourGraph.searchName") }], [t]);
 
   if (isAll)
@@ -76,7 +81,7 @@ export function NeighbourGraphTab() {
     );
   if (isError) return <EmptyState title={t("stats.tabs.graph")} subtitle={t("neighbourGraph.loadFailed")} />;
   // build only once the pager settles, or the force layout would restart on every streamed page
-  if (isPaging || pending) return <EmptyState title={t("neighbourGraph.loadingMesh")} subtitle={t("neighbourGraph.nodes", { count: loadedCount })} />;
+  if (isPaging || pending || (inWorker && !xy && !ego)) return <EmptyState title={t("neighbourGraph.loadingMesh")} subtitle={t("neighbourGraph.nodes", { count: loadedCount })} />;
   if (graph.nodes.length === 0) return <EmptyState title={t("stats.tabs.graph")} subtitle={t("neighbourGraph.noNodes")} />;
 
   return (
@@ -97,7 +102,7 @@ export function NeighbourGraphTab() {
         </div>
       )}
       <div className="min-h-0 flex-1">
-        <NeighbourGraph option={option} nodes={(ego ?? graph).nodes} search={ego ? "" : search} onSelect={handleSelect} />
+        <NeighbourGraph option={option} nodes={(ego ?? mesh).nodes} search={ego ? "" : search} onSelect={handleSelect} />
       </div>
     </div>
   );
