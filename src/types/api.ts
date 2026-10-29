@@ -6,7 +6,11 @@ export interface CursorPage<T, C = number> {
   items: T[];
   nextCursor: C | null;
   hasMore: boolean;
+  // opaque exact cursor; /packets (global), /nodes, /observers, /channels. Never parsed or built here.
+  nextPageCursor?: string;
 }
+
+export interface PageParam<C = number> { cursor?: C; pageCursor?: string }
 
 export interface LatestObserver {
   id: string;

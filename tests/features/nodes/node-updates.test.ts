@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { patchNodeSummary, upsertNodePages } from "../../../src/features/nodes/node-updates";
+import { patchNodePages, patchNodeSummary, upsertNodePages } from "../../../src/features/nodes/node-updates";
+import { patchInfinitePages } from "../../../src/lib/infinite-pages";
 import type { NodeSummary } from "../../../src/features/nodes/types";
 import type { WsNodeUpdate } from "../../../src/types/ws";
 import type { InfiniteData } from "@tanstack/react-query";
@@ -92,6 +93,31 @@ describe("patchNodeSummary", () => {
     const list = [node({ id: "a", name: "Keep", lat: 10, lng: 20 })];
     const out = patchNodeSummary(list, update({ nodeId: "a", name: "", lat: 10, lng: 20 }));
     expect(out).toBe(list);
+  });
+});
+
+describe("patchNodePages", () => {
+  const cache = (pages: NodeSummary[][]): InfiniteData<CursorPage<NodeSummary>> => ({
+    pages: pages.map((items, i) => ({ items, nextCursor: i + 1, hasMore: i < pages.length - 1 })),
+    pageParams: pages.map(() => undefined),
+  });
+
+  it("patches only the page holding the node, as patching every page would", () => {
+    const old = cache([[node({ id: "a" }), node({ id: "b" })], [node({ id: "c" })], [node({ id: "d" })]]);
+    const patched = patchNodePages(old, update({ nodeId: "c", name: "Renamed" }))!;
+    expect(patched).toEqual(patchInfinitePages(old, (items) => patchNodeSummary(items, update({ nodeId: "c", name: "Renamed" })) ?? items));
+    expect(patched.pages[1]!.items[0]!.name).toBe("Renamed");
+    expect(patched.pages[0]).toBe(old.pages[0]);
+    expect(patched.pages[2]).toBe(old.pages[2]);
+    const again = patchNodePages(patched, update({ nodeId: "c", name: "Twice" }))!;
+    expect(again.pages[1]!.items[0]!.name).toBe("Twice");
+  });
+
+  it("returns the same cache for an unknown node or an unchanged re-advert", () => {
+    const old = cache([[node({ id: "a", name: "Keep" })]]);
+    expect(patchNodePages(old, update({ nodeId: "zz" }))).toBe(old);
+    expect(patchNodePages(old, update({ nodeId: "a", name: "Keep", lat: undefined, lng: undefined }))).toBe(old);
+    expect(patchNodePages(undefined, update({}))).toBeUndefined();
   });
 });
 

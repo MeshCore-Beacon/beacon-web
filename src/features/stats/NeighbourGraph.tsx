@@ -41,10 +41,14 @@ export function NeighbourGraph({ option, nodes, search, onSelect }: Props) {
   // Search: highlight matches, dim the rest — a per-node itemStyle/label merge only. The layout is at
   // equilibrium, so a style-only merge (no x/y change) leaves node positions put — no relayout, no
   // flicker. `option` is a dep so styling re-applies after a region/ego swap replaces the chart state.
+  // A fresh option already draws undimmed, so an empty search skips the merge (a full re-render).
+  const dimmed = useRef<EChartsOption | null>(null);
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || chart.isDisposed()) return;
     const q = search.trim();
+    if (!q && dimmed.current !== option) return;
+    dimmed.current = q ? option : null;
     const data = nodes.map((n) => {
       if (!q) return { ...n, itemStyle: { opacity: 1 }, label: n.label ?? { show: false } };
       const match = nodeNameMatches(n.name, q);

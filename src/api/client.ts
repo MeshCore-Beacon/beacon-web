@@ -3,7 +3,7 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { NodeSummary, Node, NodeObservation, NodeNeighbor } from "../features/nodes/types";
+import type { Node, NodeObservation, NodeNeighbor, NodePage, NodeSort } from "../features/nodes/types";
 import type {
   StatsSeries,
   SignalStats,
@@ -97,12 +97,13 @@ function statsRegionParams(r: StatsRegion): { iatas?: string; region?: string } 
 
 export function getPackets(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
+  params?: { cursor?: number; pageCursor?: string; limit?: number; payloadTypes?: number[]; routeTypes?: number[]; scopes?: string[]; hashPrefix?: string },
 ): Promise<CursorPage<PacketSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/packets", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     payloadTypes: params?.payloadTypes?.length ? params.payloadTypes.join(",") : undefined,
     routeTypes: params?.routeTypes?.length ? params.routeTypes.join(",") : undefined,
@@ -142,7 +143,8 @@ export async function getIataBorder(iata: string): Promise<IataBorder | null> {
   return (body ?? null) as IataBorder | null;
 }
 
-export function getRegions(): Promise<RegionSummary[]> {
+// newer servers list each region's member IATAs and map hints too (the detail's fields)
+export function getRegions(): Promise<(RegionSummary & Partial<Region>)[]> {
   return request("/regions");
 }
 
@@ -203,19 +205,22 @@ function toCursorPage<T, C = number>(items: T[], limit: number, cursorOf: (last:
 
 // Known routes. /routes returns a bare array ordered last_seen DESC, id DESC; the next (older) batch
 // starts after the last row's lastSeen (ms), with its id breaking ties inside that millisecond. We wrap
-// it into a CursorPage here so RouteTable can stream pages via useInfinitePages. `iata` is a single code
-// ("" = all), unlike the comma-separated `iatas` used elsewhere.
+// it into a CursorPage here so RouteTable can stream pages via useInfinitePages. One IATA goes as `iata`,
+// which every server honours; several go as `iatas`, which servers before 2.1 ignore (answering with
+// every IATA's routes). Undefined or empty = all.
 export interface RouteCursor {
   lastSeen: number;
   id: number;
 }
 
 export async function getKnownRoutesPage(
-  params?: { iata?: string; hopCount?: number; cursor?: RouteCursor; limit?: number },
+  params?: { iatas?: string[]; hopCount?: number; cursor?: RouteCursor; limit?: number },
 ): Promise<CursorPage<KnownRoute, RouteCursor>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
+  const iatas = params?.iatas ?? [];
   const items = await request<KnownRoute[]>("/routes", {
-    iata: params?.iata,
+    iata: iatas.length === 1 ? iatas[0] : undefined,
+    iatas: iatas.length > 1 ? iatas.join(",") : undefined,
     hopCount: params?.hopCount,
     cursor: params?.cursor?.lastSeen,
     cursorId: params?.cursor?.id,
@@ -294,6 +299,7 @@ export function getNodesPage(
   iatas: string[] | undefined,
   params?: {
     cursor?: number;
+    pageCursor?: string;
     limit?: number;
     type?: string;
     name?: string;
@@ -301,12 +307,17 @@ export function getNodesPage(
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
+    scope?: string; // transport scope name, e.g. "#bc"
+    // server-side order, paged by pageCursor alone; check the page's `sort`, older servers ignore it
+    sort?: NodeSort;
+    order?: "asc" | "desc";
   },
-): Promise<CursorPage<NodeSummary>> {
+): Promise<NodePage> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/nodes", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     typeName: params?.type,
     name: params?.name,
@@ -314,6 +325,9 @@ export function getNodesPage(
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
+    scope: params?.scope,
+    sort: params?.sort,
+    order: params?.sort ? params.order : undefined,
   });
 }
 
@@ -346,26 +360,17 @@ export async function getObserverDirectoryPage(params: ObserverDirectoryRequest,
   return page;
 }
 
-export async function supportsObserverDirectory(signal?: AbortSignal): Promise<boolean> {
-  try {
-    await getObserverDirectoryPage({ limit: 1 }, signal);
-    return true;
-  } catch (error) {
-    if (error instanceof ApiError && (error.status === 404 ||
-        (error.status === 400 && error.message === "failed to parse observer UUID"))) return false;
-    throw error;
-  }
-}
-
+// The directory shipped in server 2.0.2; /info arrived in 2.0.3, so a server without it predates the directory.
 // Paginated /observers, mirroring getNodesPage; used by the Observers table.
 export function getObserversPage(
   iatas: string[] | undefined,
-  params?: { cursor?: number; limit?: number; type?: string; broker?: string; status?: string; name?: string },
+  params?: { cursor?: number; pageCursor?: string; limit?: number; type?: string; broker?: string; status?: string; name?: string },
 ): Promise<CursorPage<ObserverSummary>> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/observers", {
     iatas: iatasParam(iatas),
     cursor: params?.cursor,
+    pageCursor: params?.pageCursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
     type: params?.type,
     broker: params?.broker,
