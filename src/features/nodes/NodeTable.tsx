@@ -219,7 +219,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     keepPrevious: true,
     // Telemetry availability filters the loaded rows. Continue paced paging
     // while it is selected so an empty first page cannot hide later matches.
-    auto: clientSort || telemetryFilter,
+    auto: telemetryFilter ? telemetry.isSuccess && telemetry.data.nodes.size > 0 : clientSort,
     enabled: isResolved !== false,
   });
 
@@ -273,7 +273,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
         {!(telemetryFilter && telemetry.isError && !telemetry.data) && <DataTable
           columns={columns}
-          rows={nodes}
+          rows={displayNodes}
           rowKey={nodeId}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}

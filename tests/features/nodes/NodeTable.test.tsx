@@ -76,6 +76,21 @@ describe("NodeTable paging", () => {
 });
 
 describe("collected telemetry filter", () => {
+  it("continues sorted pages when the first page has no telemetry matches", async () => {
+    const key = "cd".repeat(32);
+    const first = Array.from({ length: 200 }, (_, i) => node({ id: `first-${i}`, name: `Node ${i}`, publicKey: "ab".repeat(32) }));
+    vi.mocked(getTelemetryAvailability).mockResolvedValue({ nodes: new Map([[key, 1792500000000]]), retentionDays: 30 });
+    vi.mocked(getNodesPage).mockImplementation(async (_iatas, params) => params?.pageCursor
+      ? { items: [node({ id: "later", name: "Later reporting repeater", publicKey: key })], hasMore: false, sort: "name" }
+      : { items: first, hasMore: true, nextPageCursor: "later-page", sort: "name" });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><NodeTable wsManager={fakeWsManager} selectedNodeId={null} onSelectNode={vi.fn()} /></QueryClientProvider>);
+    await screen.findByText("Node 0");
+    fireEvent.click(screen.getByRole("button", { name: /Telemetry/ }));
+    fireEvent.click(screen.getByRole("option", { name: "Available" }));
+    expect(await screen.findByText("Later reporting repeater")).toBeInTheDocument();
+    expect(getNodesPage).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ pageCursor: "later-page", sort: "name", order: "asc" }));
+  });
   it("loads one availability index only on demand and matches full repeater keys", async () => {
     const key = "ab".repeat(32);
     vi.mocked(getTelemetryAvailability).mockResolvedValue({nodes: new Map([[key, 1792500000000]]), retentionDays: 30});
