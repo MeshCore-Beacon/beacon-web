@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { getNodesPage } from "../../api/client";
+import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { getNodesPage, getTelemetryAvailability } from "../../api/client";
 import { useRegion } from "../../hooks/useRegion";
 import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
@@ -18,6 +18,7 @@ import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
 import { nodeSearchParams } from "./node-search";
 import { patchNodePages } from "./node-updates";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
+import { hasCollectedTelemetry } from "./telemetry-availability";
 import type { TFunction } from "i18next";
 import type { NodeSummary, NodeIATA, NodePage, NodeSort } from "./types";
 import type { CursorPage } from "../../types/api";
@@ -92,7 +93,17 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [typeFilter, setTypeFilter] = useState("");
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
-  const [scopeFilter, setScopeFilter] = useState(""); // "" = Any
+  const [scopeFilter, setScopeFilter] = useState(""); // "" = Any; applied by the server
+  const [telemetryFilter, setTelemetryFilter] = useState(false);
+  const telemetry = useQuery({
+    queryKey: ["node-telemetry-availability"],
+    queryFn: ({ signal }) => getTelemetryAvailability(signal),
+    enabled: telemetryFilter,
+    staleTime: 60_000,
+    retry: false,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+  });
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [sort, setSort] = useState<TableSort>(NAME_SORT);
@@ -206,13 +217,19 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       }),
     getId: nodeId,
     keepPrevious: true,
-    auto: clientSort,
+    // Telemetry availability filters the loaded rows. Continue paced paging
+    // while it is selected so an empty first page cannot hide later matches.
+    auto: telemetryFilter ? telemetry.isSuccess && telemetry.data.nodes.size > 0 : clientSort,
     enabled: isResolved !== false,
   });
 
   // rows with no `sort` beside them came from a server that didn't sort them
   if (!clientSort && firstPage && !firstPage.sort && firstPage.items.length > 0) setClientSort(true);
 
+  const displayNodes = useMemo(
+    () => telemetryFilter ? nodes.filter(n => hasCollectedTelemetry(n, telemetry.data)) : nodes,
+    [nodes, telemetryFilter, telemetry.data],
+  );
   const scopeOptions = useScopes(scopeFilter);
 
   const handleNodeUpdate = useCallback(
@@ -244,15 +261,23 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          telemetryFilter={telemetryFilter}
+          onTelemetryChange={setTelemetryFilter}
         />
 
-        <DataTable
+        {telemetryFilter && <div className="px-4 py-2 text-xs text-text-muted" role="status">
+          {telemetry.isError
+            ? <>{t("nodeFilters.telemetryLoadError")} <button type="button" className="underline text-primary" onClick={() => void telemetry.refetch()}>{t("observerPage.retry")}</button></>
+            : telemetry.data ? t("nodeFilters.telemetryHistory", { days: telemetry.data.retentionDays }) : t("common.loading")}
+        </div>}
+
+        {!(telemetryFilter && telemetry.isError && !telemetry.data) && <DataTable
           columns={columns}
-          rows={nodes}
+          rows={displayNodes}
           rowKey={nodeId}
           selectedKey={selectedNodeId}
           onSelect={onSelectNode}
-          isLoading={isLoading || isResolved === false}
+          isLoading={isLoading || isResolved === false || (telemetryFilter && telemetry.isPending)}
           emptyLabel={t("nodes.empty")}
           sort={sort}
           onSortChange={setSort}
@@ -261,7 +286,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           renderCard={renderCard}
           virtualize
           minWidth="52rem"
-        />
+        />}
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>
     </div>
