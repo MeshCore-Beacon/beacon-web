@@ -15,7 +15,7 @@ import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFo
 import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -100,6 +100,13 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const handleBordersChange = useCallback((on: boolean) => {
     setBorders(on);
     localStorage.setItem(MAP_BORDERS_STORAGE_KEY, on ? "on" : "off");
+  }, []);
+
+  // 3D terrain + hillshade, off by default; a viewer preference, so localStorage only (not in links)
+  const [terrain, setTerrain] = useState(() => localStorage.getItem(MAP_TERRAIN_STORAGE_KEY) === "on");
+  const handleTerrainChange = useCallback((on: boolean) => {
+    setTerrain(on);
+    localStorage.setItem(MAP_TERRAIN_STORAGE_KEY, on ? "on" : "off");
   }, []);
 
   // A deep-link camera opens the map here and suppresses the initial region fit (see useMapLibre).
@@ -201,7 +208,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 
-  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection));
+  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection), terrain);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
@@ -244,6 +251,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onNeighborLinesChange={handleNeighborLinesChange}
         borders={borders}
         onBordersChange={handleBordersChange}
+        terrain={terrain}
+        onTerrainChange={handleTerrainChange}
         buildShareParams={buildShareParams}
         liveMap={packetFlow}
       />

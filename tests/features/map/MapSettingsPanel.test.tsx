@@ -8,7 +8,7 @@ function mount() {
   render(<>
     <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
       clustered onClusteredChange={() => {}} neighborLines="selected" onNeighborLinesChange={() => {}}
-      borders onBordersChange={() => {}} buildShareParams={() => ({})} />
+      borders onBordersChange={() => {}} terrain={false} onTerrainChange={() => {}} buildShareParams={() => ({})} />
     <PacketFlowButton active={false} onToggle={() => {}} />
   </>);
 }
@@ -28,6 +28,7 @@ describe("map settings", () => {
     expect(screen.getByText("Paramètres de la carte")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Répéteur" })).toBeInTheDocument();
     expect(screen.getByText("Contour de zone")).toBeInTheDocument();
+    expect(screen.getByText("Relief")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lancer le flux de paquets en direct sur la carte" })).toHaveTextContent("Carte en direct");
   });
 
@@ -37,7 +38,7 @@ describe("map settings", () => {
     render(
       <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
         clustered onClusteredChange={onClusteredChange} neighborLines="selected" onNeighborLinesChange={() => {}}
-        borders onBordersChange={() => {}} buildShareParams={() => ({})} liveMap />,
+        borders onBordersChange={() => {}} terrain={false} onTerrainChange={() => {}} buildShareParams={() => ({})} liveMap />,
     );
     const group = screen.getByRole("group", { name: "Clustering" });
     const off = within(group).getByRole("button", { name: "Off" });
@@ -54,7 +55,7 @@ describe("map settings", () => {
     render(
       <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
         clustered onClusteredChange={() => {}} neighborLines="on" onNeighborLinesChange={onNeighborLinesChange}
-        borders onBordersChange={() => {}} buildShareParams={() => ({})} liveMap />,
+        borders onBordersChange={() => {}} terrain={false} onTerrainChange={() => {}} buildShareParams={() => ({})} liveMap />,
     );
     const group = screen.getByRole("group", { name: "Neighbor lines" });
     const on = within(group).getByRole("button", { name: "On" });
@@ -66,5 +67,19 @@ describe("map settings", () => {
     expect(onNeighborLinesChange).not.toHaveBeenCalled();
     fireEvent.click(within(group).getByRole("button", { name: "Off" }));
     expect(onNeighborLinesChange).toHaveBeenCalledWith("off");
+  });
+
+  it("shows terrain off and reports a switch to on", async () => {
+    await i18n.changeLanguage("en");
+    const onTerrainChange = vi.fn();
+    render(
+      <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
+        clustered onClusteredChange={() => {}} neighborLines="selected" onNeighborLinesChange={() => {}}
+        borders={false} onBordersChange={() => {}} terrain={false} onTerrainChange={onTerrainChange} buildShareParams={() => ({})} />,
+    );
+    const group = screen.getByRole("group", { name: "3D terrain and hillshade" });
+    expect(within(group).getByRole("button", { name: "Off" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(group).getByRole("button", { name: "On" }));
+    expect(onTerrainChange).toHaveBeenCalledWith(true);
   });
 });

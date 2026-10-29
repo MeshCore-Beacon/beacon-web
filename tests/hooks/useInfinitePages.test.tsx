@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useInfinitePages } from "../../src/hooks/useInfinitePages";
 import { getRateLimitedUntil, queryRetryDefaults } from "../../src/api/rate-limit";
+import { reservePage, resetPagePacer } from "../../src/api/page-pacer";
 
 interface Row {
   id: string;
@@ -24,6 +25,7 @@ function wrapperWith(client: QueryClient) {
   );
 }
 
+beforeEach(resetPagePacer);
 afterEach(() => vi.useRealTimers());
 
 describe("useInfinitePages", () => {
@@ -268,5 +270,62 @@ describe("useInfinitePages", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(queryFn).toHaveBeenCalledTimes(3);
     expect(result.current.items.map(rowId)).toEqual(["a"]);
+  });
+  it("chains a region-sized load at once, then paces the rest under the API's minute budget", async () => {
+    vi.useFakeTimers();
+    let n = 0;
+    const queryFn = vi.fn(async () => {
+      n++;
+      return { items: [row(`r${n}`)], nextCursor: n, hasMore: n < 45 };
+    });
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["paced", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await act(() => vi.advanceTimersByTimeAsync(10));
+    expect(queryFn).toHaveBeenCalledTimes(41); // the first page plus a burst of 40 chained ones
+    await act(() => vi.advanceTimersByTimeAsync(280));
+    expect(queryFn).toHaveBeenCalledTimes(41);
+    await act(() => vi.advanceTimersByTimeAsync(20));
+    expect(queryFn).toHaveBeenCalledTimes(42);
+    await act(() => vi.advanceTimersByTimeAsync(300 * 3));
+    expect(queryFn).toHaveBeenCalledTimes(45);
+    expect(result.current.items).toHaveLength(45);
+    expect(result.current.isPaging).toBe(false);
+  });
+
+  it("hands its waiting page slot back when the list unmounts", async () => {
+    vi.useFakeTimers();
+    let n = 0;
+    const queryFn = vi.fn(async () => {
+      n++;
+      return { items: [row(`r${n}`)], nextCursor: n, hasMore: true };
+    });
+    const { unmount } = renderHook(() => useInfinitePages({ queryKey: ["paced", 2], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await act(() => vi.advanceTimersByTimeAsync(10));
+    expect(queryFn).toHaveBeenCalledTimes(41); // page 42 waits for its slot
+    unmount();
+    expect(reservePage(Date.now())).toBeLessThan(300); // its slot, ~300 ms after the burst, is free again
+    await act(() => vi.advanceTimersByTimeAsync(1_000));
+    expect(queryFn).toHaveBeenCalledTimes(41);
+  });
+  it("shows the first page at once, then hands landed pages over at most once a second, and the last at once", async () => {
+    vi.useFakeTimers();
+    let n = 0;
+    const queryFn = vi.fn(() => new Promise<{ items: Row[]; nextCursor: number; hasMore: boolean }>((resolve) => {
+      n++;
+      const page = n;
+      setTimeout(() => resolve({ items: [row(`r${page}`)], nextCursor: page, hasMore: page < 15 }), 100);
+    }));
+    const { result } = renderHook(() => useInfinitePages({ queryKey: ["batched", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
+    await act(() => vi.advanceTimersByTimeAsync(150));
+    expect(result.current.items).toHaveLength(1);
+    await act(() => vi.advanceTimersByTimeAsync(800)); // ~9 pages have landed by now
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.isPaging).toBe(true);
+    await act(() => vi.advanceTimersByTimeAsync(200));
+    expect(result.current.items.length).toBeGreaterThanOrEqual(9);
+    expect(result.current.items.length).toBeLessThan(15);
+    await act(() => vi.advanceTimersByTimeAsync(600));
+    expect(queryFn).toHaveBeenCalledTimes(15);
+    expect(result.current.items.map(rowId)).toEqual(Array.from({ length: 15 }, (_, i) => `r${i + 1}`));
+    expect(result.current.isPaging).toBe(false);
   });
 });

@@ -1,20 +1,14 @@
-import { createInstance } from "i18next";
+import { createInstance, type ReadCallback } from "i18next";
 import { initReactI18next } from "react-i18next";
+import en from "./locales/en.json";
 
-interface Catalog {
-  name: string;
-  translation: Record<string, unknown>;
-}
+type Translation = Record<string, unknown>;
 
-const catalogs = import.meta.glob<Catalog>("./locales/*.json", { eager: true, import: "default" });
-const resources = Object.fromEntries(Object.entries(catalogs).map(([path, catalog]) => [
-  path.slice("./locales/".length, -".json".length), { translation: catalog.translation },
-]));
+// English stays bundled as the fallback; every other catalog is a chunk fetched on first use.
+const catalogs = import.meta.glob<Translation>(["./locales/*.json", "!./locales/en.json"], { import: "translation" });
 
-export const languages = Object.entries(catalogs).map(([path, catalog]) => ({
-  code: path.slice("./locales/".length, -".json".length),
-  name: catalog.name,
-}));
+// Native names come from vite.config.ts, so listing a language doesn't load its catalog.
+export const languages = Object.entries(__LANGUAGE_NAMES__).map(([code, name]) => ({ code, name }));
 
 export function readLanguagePreference(): string {
   try {
@@ -40,8 +34,20 @@ i18n.on("languageChanged", () => {
   }
 });
 
-void i18n.use(initReactI18next).init({
-  resources,
+// changeLanguage() waits on this, so the UI goes straight from one complete catalog to the next.
+const lazyCatalogs = {
+  type: "backend" as const,
+  read(language: string, _namespace: string, callback: ReadCallback) {
+    const load = catalogs[`./locales/${language}.json`];
+    if (!load) return callback(new Error(`No catalog for ${language}`), false);
+    load().then((translation) => callback(null, translation), (error: Error) => callback(error, false));
+  },
+};
+
+// Settles once the saved language's catalog is in (or failed to load), so the first render can wait for it.
+export const ready = i18n.use(initReactI18next).use(lazyCatalogs).init({
+  resources: { en: { translation: en.translation } },
+  partialBundledLanguages: true,
   lng: readLanguagePreference(),
   supportedLngs: languages.map(({ code }) => code),
   fallbackLng: "en",

@@ -245,21 +245,20 @@ export function RouteTable(actions: RouteActions) {
   const [search, setSearch] = useState<{ from: string; to: string; iatas: string[] | undefined } | null>(null);
   const [hashError, setHashError] = useState(false);
 
-  // /routes filters by a single IATA only, so when the region resolves to exactly one IATA push the
-  // filter to the server for true server-side paging; otherwise page unfiltered and filter the region
-  // client-side below (a region can span several IATAs, which the endpoint can't express).
-  const serverIata = iatas && iatas.length === 1 ? iatas[0] : undefined;
+  // The server filters the region (up to its 100-IATA cap); a longer one pages every IATA and is
+  // filtered client-side below.
+  const serverIatas = iatas && iatas.length <= MAX_SEARCH_IATAS ? iatas : undefined;
 
   // Page the route set on demand (50 at a time, cursor = last route's lastSeen + id) — the DataTable
   // pulls the next page via loadMore() as you scroll, instead of eagerly loading the whole set.
   const { items: listRoutes, loadedCount, isPaging, isError, isLoading: listLoading, loadMore, hasMore } =
     useInfinitePages<KnownRoute, RouteCursor>({
-      queryKey: ["routes", serverIata ?? ""],
-      queryFn: (page) => getKnownRoutesPage({ iata: serverIata, cursor: page?.cursor }),
+      queryKey: ["routes", serverIatas?.join(",") ?? ""],
+      queryFn: (page) => getKnownRoutesPage({ iatas: serverIatas, cursor: page?.cursor }),
       getId: routeId,
       keepPrevious: true,
       auto: false,
-      enabled: !regionPending,
+      enabled: !regionPending && iatas?.length !== 0,
     });
 
   // Two calls per search: routes within an IATA and routes crossing two. A one-IATA scope can't cross.
@@ -294,8 +293,8 @@ export function RouteTable(actions: RouteActions) {
     [iataCodes],
   );
 
-  // searching shows the server's matches as-is; otherwise show the region-filtered full list (empty
-  // region = all). Filtering by IATA stays client-side, consistent with the other tabs.
+  // searching shows the server's matches as-is; otherwise the list, kept to the region: a server before
+  // 2.1 ignores iatas and answers with every IATA's routes.
   const rows = useMemo(() => {
     if (search) return knownQuery.data;
     if (regionPending) return [];
@@ -333,15 +332,17 @@ export function RouteTable(actions: RouteActions) {
     }
   };
 
-  // A multi-IATA region filters globally-paged rows client-side, so the filtered list can be too
-  // short to ever trigger scroll paging — or empty, with the region's routes deeper in the cursor
-  // stream. Keep pulling pages until there's a screenful or the cap says the region is just sparse.
+  // Rows the region filter dropped mean the pages hold every IATA's routes (an older server, or a region
+  // too long to send), so the filtered list can be too short to ever trigger scroll paging — or empty,
+  // with the region's routes deeper in the cursor stream. Keep pulling pages until there's a screenful
+  // or the cap says the region is just sparse.
+  const filtering = !regionPending && !!iatas?.length && (!serverIatas || (rows?.length ?? 0) < listRoutes.length);
   useEffect(() => {
-    if (search || serverIata || !iatas?.length) return;
+    if (search || !filtering) return;
     if (!hasMore || isPaging) return;
     if ((rows?.length ?? 0) >= 50 || loadedCount >= 1000) return;
     loadMore();
-  }, [search, serverIata, iatas, hasMore, isPaging, rows, loadedCount, loadMore]);
+  }, [search, filtering, hasMore, isPaging, rows, loadedCount, loadMore]);
 
   const isMobile = useIsMobile();
   const panelOpen = Boolean(pathKey && routeIata || selectedRoute);
