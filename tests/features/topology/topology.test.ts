@@ -13,6 +13,16 @@ const hop = (id: string): ResolvedHop => ({ confidence: "high", nodes: [{ id, pu
 const event = (path: ResolvedHop[] = [hop("a"), hop("b"), hop("c")]): WsPacketObservation["data"] => ({ packetHash: "hash", packet: { payloadType: 5, payloadTypeName: "GRP_TXT", routeType: 1, routeTypeName: "FLOOD", isFirstObservation: true, observationCount: 1, scope: "#on" }, observation: { observerId: "obs", observerName: "Observer", iata: "YOW", heardAt: 1, rssi: -90, snr: 5, sourceBroker: "fixture", resolvedPath: path } });
 
 describe("3D topology evidence and bounds", () => {
+  it("requests larger pages without skipping a legacy server's smaller pages", async () => {
+    const signal = new AbortController().signal;
+    vi.mocked(getNodesPage).mockReset()
+      .mockResolvedValueOnce({ items: [a], hasMore: true, nextCursor: 17 })
+      .mockResolvedValueOnce({ items: [b], hasMore: false, nextCursor: null });
+    expect(await loadTopology(undefined, signal)).toEqual({ nodes: [a, b], capped: false });
+    expect(getNodesPage).toHaveBeenNthCalledWith(2, undefined,
+      { cursor: 17, pageCursor: undefined, limit: 2000, neighbors: true }, signal);
+    vi.mocked(getNodesPage).mockReset();
+  });
   it("animates repeated hearings once while retaining reports and distinct paths", () => {
     const traffic = new LiveTraffic(), report = reportFromEvent(event(),graph,1000)!;
     traffic.add(report);
@@ -137,9 +147,9 @@ describe("3D topology evidence and bounds", () => {
     const controller = new AbortController();
     expect(await loadTopology(undefined, controller.signal)).toEqual({ nodes: [a, b, c], capped: false });
     expect(getNodesPage).toHaveBeenNthCalledWith(2, undefined,
-      { cursor: undefined, pageCursor: "exact-a", limit: 200, neighbors: true }, controller.signal);
+      { cursor: undefined, pageCursor: "exact-a", limit: 2000, neighbors: true }, controller.signal);
     expect(getNodesPage).toHaveBeenNthCalledWith(3, undefined,
-      { cursor: undefined, pageCursor: "exact-b", limit: 200, neighbors: true }, controller.signal);
+      { cursor: undefined, pageCursor: "exact-b", limit: 2000, neighbors: true }, controller.signal);
     vi.mocked(getNodesPage).mockClear().mockResolvedValue({ items: [a], nextCursor: 1, nextPageCursor: "repeat", hasMore: true });
     expect(await loadTopology(undefined, controller.signal)).toEqual({ nodes: [a], capped: true });
     expect(getNodesPage).toHaveBeenCalledTimes(2);

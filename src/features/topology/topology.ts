@@ -1,5 +1,6 @@
 import type { ChartColors } from "../stats/chartTheme";
 import { getTopologyLinks, getNodesPage } from "../../api/client";
+import { NODE_REGION_PAGE_SIZE } from "../../lib/constants";
 import type { NodeSummary } from "../nodes/types";
 import type { KnownRoute, ResolvedHop } from "../../types/api";
 import type { WsPacketObservation } from "../../types/ws";
@@ -28,9 +29,10 @@ export async function loadTopology(iatas: string[] | undefined, signal: AbortSig
   let pageCursor: string | undefined;
   for (let page = 0; page < NODE_CAP / 200; page++) {
     signal.throwIfAborted();
-    const result = await getNodesPage(iatas, { cursor, pageCursor, limit: 200, neighbors: true }, signal);
+    const result = await getNodesPage(iatas, { cursor, pageCursor, limit: NODE_REGION_PAGE_SIZE, neighbors: true }, signal);
     for (const node of result.items) if (nodes.size < NODE_CAP) nodes.set(node.id, node);
     if (!result.hasMore) return { nodes: [...nodes.values()], capped: false };
+    if (nodes.size === NODE_CAP) break;
     pageCursor = result.nextPageCursor || undefined;
     cursor = pageCursor ? undefined : result.nextCursor ?? undefined;
     const next = pageCursor ?? cursor;
