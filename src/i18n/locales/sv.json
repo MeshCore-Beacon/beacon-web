@@ -576,6 +576,8 @@
       "neighborLinesLiveNote": "Alla linjer är av medan livekartan är på",
       "areaBorders": "Områdesgränser",
       "areaBordersLabel": "Områdesgränser",
+      "terrain": "Terräng",
+      "terrainLabel": "3D-terräng och reliefskuggning",
       "all": "Alla",
       "on": "På",
       "off": "Av",

@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createIncrementalSort } from "../lib/incremental-sort";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { EmptyState } from "./EmptyState";
 import { SkeletonRows } from "./SkeletonRows";
@@ -13,7 +14,8 @@ export interface Column<T> {
   width?: string; // pinned width in a virtualized table; unpinned columns share the rest
 }
 
-type SortDirection = "asc" | "desc";
+export type SortDirection = "asc" | "desc";
+export interface TableSort { id: string; direction: SortDirection }
 
 interface DataTableProps<T> {
   columns: Column<T>[];
@@ -24,6 +26,11 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   emptyLabel: string;
   defaultSort?: ({ id: string } | { header: string }) & { direction?: SortDirection };
+  // controlled sort: the header shows `sort` and a click asks onSortChange for the next one
+  sort?: TableSort;
+  onSortChange?: (sort: TableSort) => void;
+  // rows already arrive in `sort`'s order (the server sorted them), so they're shown as given
+  presorted?: boolean;
   // called when the scroll position nears the bottom, for on-demand paging (omit = no infinite scroll)
   onEndReached?: () => void;
   // when set, rows render as stacked cards below the md breakpoint instead of a table; sort UI lives
@@ -45,28 +52,29 @@ const CARD_ESTIMATE_PX = 100;
 
 // selectable, sticky-header list table shared by the entity tabs (observers, nodes, …)
 
-export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort, onEndReached, renderCard, virtualize = false, minWidth }: DataTableProps<T>) {
+function DataTableView<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoading, emptyLabel, defaultSort, sort: controlledSort, onSortChange, presorted = false, onEndReached, renderCard, virtualize = false, minWidth }: DataTableProps<T>) {
   const asCards = useIsMobile() && !!renderCard;
-  const [sort, setSort] = useState<{ id: string; direction: SortDirection }>(() => ({
+  const [ownSort, setOwnSort] = useState<TableSort>(() => ({
     id: defaultSort ? ("id" in defaultSort ? defaultSort.id : columns.find((col) => col.header === defaultSort.header)?.id ?? defaultSort.header) : "",
     direction: defaultSort?.direction ?? "asc",
   }));
+  const sort = controlledSort ?? ownSort;
 
   function toggleSort(id: string) {
-    setSort((prev) =>
-      prev.id === id
-        ? { id, direction: prev.direction === "asc" ? "desc" : "asc" }
-        : { id, direction: "asc" },
-    );
+    const next: TableSort = sort.id === id
+      ? { id, direction: sort.direction === "asc" ? "desc" : "asc" }
+      : { id, direction: "asc" };
+    if (onSortChange) onSortChange(next);
+    else setOwnSort(next);
   }
 
-  const sortedRows = useMemo(() => {
-    if (!rows) return rows;
+  const compareRows = useMemo(() => {
+    if (presorted) return undefined;
     const col = columns.find((c) => (c.id ?? c.header) === sort.id && c.sortValue);
-    if (!col?.sortValue) return rows;
+    if (!col?.sortValue) return undefined;
     const getValue = col.sortValue;
     const dir = sort.direction === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
+    return (a: T, b: T) => {
       const av = getValue(a);
       const bv = getValue(b);
       const aEmpty = av == null || av === "";
@@ -74,8 +82,15 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
       if (aEmpty || bEmpty) return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1; // empties sink to the bottom
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
       return textCollator.compare(String(av), String(bv)) * dir;
-    });
-  }, [rows, columns, sort]);
+    };
+  }, [columns, sort, presorted]);
+
+  // paging and live patches only append or swap rows, so the last sort is reused rather than redone
+  const [sortRows] = useState(() => createIncrementalSort<T>());
+  const sortedRows = useMemo(
+    () => (rows && compareRows ? sortRows(rows, compareRows) : rows),
+    [rows, compareRows, sortRows],
+  );
 
   // kept stable, since a new one re-places every row; cards and rows differ in height, so they cache apart
   const getItemKey = useCallback((index: number) => {
@@ -99,6 +114,12 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
   const padTop = virtualize ? (virtualRows[0]?.start ?? 0) : 0;
   const padBottom = virtualize ? virtualizer.getTotalSize() - (virtualRows.at(-1)?.end ?? 0) : 0;
   const measureRow = virtualize ? virtualizer.measureElement : undefined;
+
+  // a new server order starts again from its first page, so its top is what to show
+  const sortKey = `${sort.id}:${sort.direction}`;
+  useEffect(() => {
+    if (presorted && scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [presorted, sortKey]);
 
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     if (!onEndReached) return;
@@ -225,3 +246,6 @@ export function DataTable<T>({ columns, rows, rowKey, selectedKey, onSelect, isL
     </div>
   );
 }
+
+// a parent re-rendering for its own reasons (a paging pill, a held page) leaves the rows alone
+export const DataTable = memo(DataTableView) as typeof DataTableView;

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -274,21 +274,28 @@ describe("PacketList expanded row", () => {
 });
 
 describe("PacketList live observation invalidation", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+
   afterEach(() => {
+    vi.useRealTimers();
     usePackets.mockImplementation(basePackets);
     packetHandler = null;
   });
 
-  it("refetches the expanded row's detail when an observation arrives for it", () => {
+  it("refetches the expanded row's detail once for a burst of observations, without cancelling a fetch", () => {
     const handlePacketObservation = vi.fn();
     usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")], handlePacketObservation }));
 
     const { invalidate } = renderList("/?tab=Packets&hash=aa11");
     invalidate.mockClear();
-    packetHandler!(observation("aa11"));
+    for (let i = 0; i < 5; i++) packetHandler!(observation("aa11"));
 
-    expect(handlePacketObservation).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["packet-detail", "aa11"] });
+    // every observation still reaches the list, so the row's count keeps ticking
+    expect(handlePacketObservation).toHaveBeenCalledTimes(5);
+    expect(invalidate).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(5_000); });
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["packet-detail", "aa11"], exact: true }, { cancelRefetch: false });
   });
 
   it("leaves the detail query alone for observations on other packets", () => {
@@ -298,6 +305,7 @@ describe("PacketList live observation invalidation", () => {
     const { invalidate } = renderList("/?tab=Packets&hash=aa11");
     invalidate.mockClear();
     packetHandler!(observation("bb22"));
+    act(() => { vi.advanceTimersByTime(10_000); });
 
     expect(handlePacketObservation).toHaveBeenCalledTimes(1);
     expect(invalidate).not.toHaveBeenCalled();
@@ -310,7 +318,21 @@ describe("PacketList live observation invalidation", () => {
     const { invalidate } = renderList("/?tab=Packets");
     invalidate.mockClear();
     packetHandler!(observation("aa11"));
+    act(() => { vi.advanceTimersByTime(10_000); });
 
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it("drops the pending refetch when the row collapses", () => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
+
+    const { invalidate } = renderList("/?tab=Packets&hash=aa11");
+    invalidate.mockClear();
+    packetHandler!(observation("aa11"));
+    fireEvent.click(screen.getByRole("button", { name: "aa11" }));
+    act(() => { vi.advanceTimersByTime(10_000); });
+
+    expect(screen.getByTestId("expanded")).toHaveTextContent("null");
     expect(invalidate).not.toHaveBeenCalled();
   });
 });

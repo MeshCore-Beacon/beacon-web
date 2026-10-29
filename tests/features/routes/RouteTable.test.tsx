@@ -230,14 +230,29 @@ describe("RouteTable search", () => {
     expect(screen.getByText("41")).toBeInTheDocument();
   });
 
-  it("keeps paging for a multi-IATA region until its routes surface", async () => {
+  it("asks the server for a multi-IATA region's routes and pages on demand", async () => {
+    const regionRoute = (id: number, iata: string): KnownRoute =>
+      ({ id, iata, hopCount: 2, hops: [], firstSeen: 1, lastSeen: 100 - id, observationCount: 60 + id });
+    mockGetKnownRoutesPage.mockResolvedValue({ items: [regionRoute(1, "AAA"), regionRoute(2, "BBB")], nextCursor: { lastSeen: 98, id: 2 }, hasMore: true });
+
+    renderTable({ regions: [], iatas: ["BBB", "AAA"] });
+
+    expect(await screen.findByText("61")).toBeInTheDocument();
+    expect(screen.getByText("62")).toBeInTheDocument();
+    expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["AAA", "BBB"] }));
+    // the server filtered the page, so a short page waits for scroll instead of pulling more
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockGetKnownRoutesPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("filters and keeps paging when the server ignores iatas", async () => {
     const foreign: KnownRoute = { id: 1, iata: "CCC", hopCount: 1, hops: [], firstSeen: 1, lastSeen: 5, observationCount: 9 };
     const wanted: KnownRoute = { id: 2, iata: "AAA", hopCount: 2, hops: [], firstSeen: 1, lastSeen: 3, observationCount: 17 };
-    // first global page has nothing from the region; the region's route sits on page two
+    // an older server answers iatas with every IATA's routes: the region's route sits on page two
     mockGetKnownRoutesPage.mockImplementation(({ cursor } = {}) =>
       Promise.resolve(
         cursor === undefined
-          ? { items: [foreign], nextCursor: 5, hasMore: true }
+          ? { items: [foreign], nextCursor: { lastSeen: 5, id: 1 }, hasMore: true }
           : { items: [wanted], nextCursor: null, hasMore: false },
       ),
     );
@@ -246,7 +261,22 @@ describe("RouteTable search", () => {
 
     // without fill-paging the table dead-ends on "No routes" — scroll can never fire on an empty list
     expect(await screen.findByText("17")).toBeInTheDocument();
+    expect(screen.queryByText("9")).not.toBeInTheDocument();
     expect(mockGetKnownRoutesPage.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(mockGetKnownRoutesPage).toHaveBeenLastCalledWith(expect.objectContaining({ iatas: ["AAA", "BBB"], cursor: { lastSeen: 5, id: 1 } }));
+  });
+
+  it("pages every IATA and filters for a region too long to send", async () => {
+    const codes = Array.from({ length: 101 }, (_, i) => `X${String(i).padStart(2, "0")}`);
+    const foreign: KnownRoute = { id: 1, iata: "CCC", hopCount: 1, hops: [], firstSeen: 1, lastSeen: 5, observationCount: 9 };
+    const wanted: KnownRoute = { id: 2, iata: "X07", hopCount: 2, hops: [], firstSeen: 1, lastSeen: 3, observationCount: 17 };
+    mockGetKnownRoutesPage.mockResolvedValue({ items: [foreign, wanted], nextCursor: null, hasMore: false });
+
+    renderTable({ regions: [], iatas: codes });
+
+    expect(await screen.findByText("17")).toBeInTheDocument();
+    expect(screen.queryByText("9")).not.toBeInTheDocument();
+    expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: undefined }));
   });
 
   it("shows a route's observation count in the list", async () => {
@@ -299,7 +329,7 @@ it("does not navigate on a region change with no route selected", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Change region" }));
 
-  await waitFor(() => expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iata: "AAA" })));
+  await waitFor(() => expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["AAA"] })));
   expect(keys.length).toBe(initialKeyCount);
 });
 
@@ -309,7 +339,7 @@ it("preserves a shared saved route while a named region resolves", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/?tab=Routes&regions=ontario&route=shared-key&routeIata=YOW"]}><RegionProvider defaultSelection={{ regions: ["ontario"], iatas: [] }}><RouteTable /></RegionProvider></MemoryRouter></QueryClientProvider>);
   await waitFor(() => expect(getRegion).toHaveBeenCalledWith(1));
-  await waitFor(() => expect(getKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iata: "YOW" })));
+  await waitFor(() => expect(getKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["YOW"] })));
   expect(screen.getByTestId("saved-route-selection")).toHaveTextContent("shared-key");
   client.clear();
 });
@@ -333,4 +363,5 @@ it("shows no routes for a region with no IATAs", async () => {
   await waitFor(() => expect(getRegion).toHaveBeenCalled());
   expect(await screen.findByText("No routes")).toBeInTheDocument();
   expect(screen.queryByText("9")).not.toBeInTheDocument();
+  expect(mockGetKnownRoutesPage).not.toHaveBeenCalled();
 });

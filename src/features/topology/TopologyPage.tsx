@@ -9,8 +9,9 @@ import { useRegion } from "../../hooks/useRegion";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useChartColors, nodeTypeColor } from "../stats/chartTheme";
 import { NODE_TYPES } from "../../lib/node-types";
-import { buildTopology, LiveTraffic, loadTopology, loadTopologyRoutes, ROUTE_WINDOWS, reportFromEvent, type LiveReport, type PacketKind, flowColor, linkContext } from "./topology";
+import { LiveTraffic, loadTopology, loadTopologyRoutes, ROUTE_WINDOWS, reportFromEvent, type LiveReport, type PacketKind, flowColor, linkContext } from "./topology";
 import { TopologyCanvas } from "./TopologyCanvas";
+import { useTopologyLayout } from "./useTopologyLayout";
 import { BottomSheet } from "../../components/BottomSheet";
 
 type Props = { wsManager: WsManager; active?: boolean; onViewNode: (id: string) => void; onViewObserver: (id: string) => void; onAnalyzePacket: (hash: string) => void };
@@ -44,7 +45,9 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
   const data = useQuery({ queryKey: ["topology", iatas ?? "*"], queryFn: ({ signal }) => loadTopology(iatas, signal), enabled: active && resolved, staleTime: 120_000, refetchOnWindowFocus: false });
   const routes = useQuery({ queryKey: ["topology-routes", iatas ?? "*", routeWindow], queryFn: ({ signal }) => loadTopologyRoutes(iatas, signal, ROUTE_WINDOWS[routeWindow]), enabled: active && resolved, staleTime: 60_000, retry: false, refetchOnWindowFocus: false, placeholderData: keepPreviousData });
   const catalogues = useQuery({ queryKey: ["scope-catalogues"], queryFn: getScopeCatalogues, enabled: showInspector && resolved, staleTime: 300_000, refetchInterval: 300_000, refetchIntervalInBackground: false, refetchOnWindowFocus: false, retry: false });
-  const graph = useMemo(() => buildTopology(data.data?.nodes ?? [], iatas, routes.data?.routes ?? []), [data.data, iatas, routes.data]);
+  const layoutInput = useMemo(() => ({ nodes: data.data?.nodes ?? [], iatas, routes: routes.data?.routes ?? [] }), [data.data, iatas, routes.data]);
+  const layout = useTopologyLayout(layoutInput, active);
+  const graph = layout.graph;
   const requestedCameraRegion = params.get("topoFocus") || focus;
   const cameraRegion = graph.regions.some(r => r.code === requestedCameraRegion) ? requestedCameraRegion : "";
   const select = useCallback(async (id: string) => {
@@ -157,7 +160,8 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
     <div className="mx-auto flex h-full min-h-0 max-w-[2000px] flex-col gap-2">
 
       {data.isError && <p role="alert" className="text-sm text-danger">{t("topology.loadError")} <button className={button} onClick={() => data.refetch()}>{t("topology.refresh")}</button></p>}
-      {data.isLoading && <p role="status" className="text-sm text-text-normal">{t("topology.loading")}</p>}
+      {(data.isLoading || layout.pending) && <p role="status" className="text-sm text-text-normal">{t("topology.loading")}</p>}
+      {layout.error && <p role="alert" className="text-sm text-danger">{t("topology.loadError")} <button className={button} onClick={layout.retry}>{t("topology.refresh")}</button></p>}
       {routes.isError && <p role="alert" className="text-xs text-warn">{t("topology.routesError")} <button className={button} onClick={() => routes.refetch()}>{t("topology.refresh")}</button></p>}
       {(data.data?.capped || routes.data?.capped || graph.linksCapped || live.capped) && <p className="text-xs text-warn">{t("topology.bounded")}</p>}
       <div className={`grid min-h-0 flex-1 min-w-0 items-stretch gap-3 ${showInspector && !mobile ? "md:grid-cols-[minmax(0,1fr)_300px]" : ""}`}>

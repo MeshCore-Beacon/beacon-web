@@ -12,13 +12,8 @@ import { ClockDriftTab } from "./ClockDriftTab";
 import { CompareObserversTab } from "./CompareObserversTab";
 import { NeighbourGraphTab } from "./NeighbourGraphTab";
 import { observerDestination } from "../observers/observer-navigation";
+import { asStatsRange, asStatsTab } from "./stats-url";
 import type { StatsRange, StatsTab } from "./types";
-
-const TABS: StatsTab[] = ["mesh", "traffic", "signal", "paths", "scopes", "talkers", "clockdrift", "compare", "graph"];
-const RANGES: StatsRange[] = ["24h", "7d", "30d"];
-
-const asTab = (v: string | null): StatsTab => (TABS.includes(v as StatsTab) ? (v as StatsTab) : "mesh");
-const asRange = (v: string | null): StatsRange => (RANGES.includes(v as StatsRange) ? (v as StatsRange) : "7d");
 
 interface StatsOverviewProps {
   onViewNode?: (nodeId: string) => void;
@@ -29,8 +24,8 @@ interface StatsOverviewProps {
 export function StatsOverview({ onViewNode }: StatsOverviewProps) {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const tab = asTab(params.get("statsTab"));
-  const range = asRange(params.get("range"));
+  const tab = asStatsTab(params.get("statsTab"));
+  const range = asStatsRange(params.get("range"));
   const legacyObserver = params.get("statsTab") === "observer";
   const [infoSlot, setInfoSlot] = useState<HTMLElement | null>(null);
 

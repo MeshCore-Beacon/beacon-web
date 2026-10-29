@@ -37,6 +37,26 @@ it("sorts text with numeric runs in number order and empties last", () => {
   expect(order()).toEqual(["Node 10", "node 9", "Node 1", ""]);
 });
 
+it("keeps rows sorted as pages append and live updates replace rows, and after a re-sort", () => {
+  type Named = { id: string; name: string };
+  const cols: Column<Named>[] = [{ id: "name", header: "Name", cell: (r) => r.name, sortValue: (r) => r.name }];
+  const view = (data: Named[]) => <DataTable columns={cols} rows={data} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" defaultSort={{ id: "name" }} />;
+  const page1 = [{ id: "1", name: "delta" }, { id: "2", name: "alpha" }];
+  const { container, rerender } = render(view(page1));
+  const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+  expect(order()).toEqual(["alpha", "delta"]);
+  const page2 = [...page1, { id: "3", name: "charlie" }, { id: "4", name: "bravo" }];
+  rerender(view(page2));
+  expect(order()).toEqual(["alpha", "bravo", "charlie", "delta"]);
+  const patched = page2.map((r) => (r.id === "2" ? { ...r, name: "echo" } : r));
+  rerender(view(patched));
+  expect(order()).toEqual(["bravo", "charlie", "delta", "echo"]);
+  fireEvent.click(screen.getByRole("button", { name: /^Name/ }));
+  expect(order()).toEqual(["echo", "delta", "charlie", "bravo"]);
+  rerender(view([...patched, { id: "5", name: "able" }]));
+  expect(order()).toEqual(["echo", "delta", "charlie", "bravo", "able"]);
+});
+
 interface Row {
   id: string;
 }
@@ -255,5 +275,42 @@ describe("DataTable card mode", () => {
     setScroll(scroller, { scrollTop: 400, clientHeight: 500, scrollHeight: 1000 });
     fireEvent.scroll(scroller);
     expect(onEndReached).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("DataTable controlled sort", () => {
+  const cols: Column<Row>[] = [{ id: "id", header: "ID", cell: (r) => r.id, sortValue: (r) => r.id }];
+
+  it("shows presorted rows as given and asks the caller for the next order", () => {
+    const onSortChange = vi.fn();
+    const view = (sort: { id: string; direction: "asc" | "desc" }) => (
+      <DataTable columns={cols} rows={[{ id: "b" }, { id: "a" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={sort} onSortChange={onSortChange} presorted />
+    );
+    const { container, rerender } = render(view({ id: "id", direction: "asc" }));
+    const order = () => [...container.querySelectorAll("tbody tr")].map((r) => r.textContent);
+    expect(order()).toEqual(["b", "a"]);
+    fireEvent.click(screen.getByRole("button", { name: /^ID\s*▲$/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ id: "id", direction: "desc" });
+    expect(order()).toEqual(["b", "a"]); // nothing moves until the caller's rows do
+    rerender(view({ id: "id", direction: "desc" }));
+    expect(screen.getByRole("button", { name: /^ID\s*▼$/ })).toBeInTheDocument();
+  });
+
+  it("sorts rows itself under a controlled sort that isn't presorted", () => {
+    const { container } = render(
+      <DataTable columns={cols} rows={[{ id: "a" }, { id: "b" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={{ id: "id", direction: "desc" }} onSortChange={() => {}} />,
+    );
+    expect([...container.querySelectorAll("tbody tr")].map((r) => r.textContent)).toEqual(["b", "a"]);
+  });
+
+  it("goes back to the top when a presorted table's order changes", () => {
+    const view = (direction: "asc" | "desc") => (
+      <DataTable columns={cols} rows={[{ id: "a" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={{ id: "id", direction }} onSortChange={() => {}} presorted />
+    );
+    const { container, rerender } = render(view("asc"));
+    const scroller = container.firstElementChild as HTMLElement;
+    scroller.scrollTop = 120;
+    rerender(view("desc"));
+    expect(scroller.scrollTop).toBe(0);
   });
 });

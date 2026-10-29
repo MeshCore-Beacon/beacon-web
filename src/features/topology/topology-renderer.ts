@@ -1,6 +1,6 @@
 import { CHAT_MS, type LiveChatter } from "./chatter";
 import { nodeTypeColor, type ChartColors } from "../stats/chartTheme";
-import { DEFAULT_CAMERA, FLOW_MS, createProjector, fitCamera, panCamera, pathControls, visibleLinks, flowColor, linkContext, type Camera, type PathDisplay, type LiveTraffic, type Point3, type Topology } from "./topology";
+import { DEFAULT_CAMERA, FLOW_MS, createProjector, fitCamera, panCamera, pathControls, flowColor, linkContext, type Camera, type PathDisplay, type LiveTraffic, type Point3, type Topology } from "./topology";
 
 export type CameraView = { camera: Camera; region: string; extent: number };
 
@@ -13,7 +13,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   const underlay = document.createElement("canvas"), underlayCtx = underlay.getContext("2d");
   const foreground = document.createElement("canvas"), foregroundCtx = foreground.getContext("2d");
   if (!backgroundCtx || !underlayCtx || !foregroundCtx) return null;
-  let trailsDirty = true, layersValid = false, movingUntil = 0;
+  let trailsDirty = true, layersValid = false, movingUntil = 0, interactionPaint = false;
   const bubbleLayouts = new Map<string, { content: string; width: number; lines: string[] }>();
   const labelWidths = new Map<string, { font: string; label: string; width: number }>();
   let width = 1, height = 1, ratio = 1, frame = 0, previousFrame = -Infinity;
@@ -28,6 +28,13 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   const pointers = new Map<number, { x: number; y: number }>();
   let moved = false, start = { x: 0, y: 0 }, panning = false;
   const regionByCode = new Map(graph.regions.map(r => [r.code, r]));
+  // World geometry and evidence styling are immutable for this snapshot. Camera
+  // movement changes their projection, not their identity, scope or curve lift.
+  const links = graph.links.map(([a, b]) => {
+    const from = graph.byId.get(a)!, to = graph.byId.get(b)!;
+    const context = linkContext(from, to);
+    return { a, b, from, to, ...context, route: graph.routeLinks.has([a, b].sort().join("|")), controls: pathControls(from, to, context.crossRegion) };
+  });
   const extent = Math.max(220, ...graph.regions.map(r => Math.hypot(r.x, r.z) + r.radius));
   if (view) camera.zoom *= extent / view.extent;
   let projector = createProjector(camera, width, height, extent);
@@ -37,10 +44,16 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   // Keep only currently animated segments. Expired flows cannot grow this cache,
   // and a camera/size change invalidates every projected control point.
   let flowCurves = new Map<[string, string], ReturnType<typeof curve>>();
-  const strokeCurve = (points: ReturnType<typeof curve>) => {
+  const appendCurve = (points: ReturnType<typeof curve>) => {
+    // A cubic curve is contained in its control-point hull. Reject only curves
+    // entirely outside the viewport, including stroke/antialias padding. Keep
+    // crossing curves even when both endpoints are off screen.
+    if (points.every(q => q.x < -8) || points.every(q => q.x > width + 8) ||
+        points.every(q => q.y < -8) || points.every(q => q.y > height + 8)) return;
     const [a, c, d, b] = points;
-    ctx.beginPath(); ctx.moveTo(a!.x, a!.y); ctx.bezierCurveTo(c!.x, c!.y, d!.x, d!.y, b!.x, b!.y); ctx.stroke();
+    ctx.moveTo(a!.x, a!.y); ctx.bezierCurveTo(c!.x, c!.y, d!.x, d!.y, b!.x, b!.y);
   };
+  const strokeCurve = (points: ReturnType<typeof curve>) => { ctx.beginPath(); appendCurve(points); ctx.stroke(); };
   // Rounded backing sizes can differ from CSS size * ratio by half a pixel.
   // Copy backing pixels 1:1 so fractional-DPR phones do not blur each layer.
   const composite = (layer: HTMLCanvasElement) => ctx.drawImage(layer, 0, 0, layer.width / ratio, layer.height / ratio);
@@ -91,6 +104,10 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
     // only recomposite these bounded, pixel-ratio-capped layers; they do not
     // reproject, sort and stroke the entire graph.
     const cacheLayers = !transition && now >= movingUntil;
+    // While navigating, stroke same-style mesh curves together. Geometry and
+    // live particles are retained; only overlap blending is simplified. Restore
+    // the full per-edge composite once the camera settles, even without traffic.
+    if (interactionPaint && cacheLayers) baseDirty = true;
     let paintedScene = false;
     if (baseDirty || (trailsDirty && !layersValid)) {
     baseDirty = true;
@@ -118,15 +135,32 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       ctx!.fillStyle = colors.bgSurface; ctx!.globalAlpha = 0.9; ctx!.fill();
       ctx!.globalAlpha = region.code === regionCode ? 0.9 : 0.35; ctx!.stroke();
     }
-    for (const [a, b] of visibleLinks(graph, display, regionCode, selected)) {
+    const batches = new Map<string, { color: string; alpha: number; lineWidth: number; dashed: boolean; curves: ReturnType<typeof curve>[] }>();
+    for (const link of links) {
+      const { a, b, from, to, crossRegion, sharedDefault, route, controls } = link;
+      if (display !== "all" && a !== selected && b !== selected &&
+          !(display === "bundled" && regionCode && from.region === regionCode && to.region === regionCode)) continue;
       const lit = selected === a || selected === b;
-      const context = linkContext(graph.byId.get(a)!, graph.byId.get(b)!);
-      ctx!.globalAlpha = selected ? (lit ? 0.7 : 0.07) : 0.2;
-      ctx!.strokeStyle = lit ? colors.textBright : graph.routeLinks.has([a, b].sort().join("|")) ? colors.secondary : context.sharedDefault ? colors.green : context.crossRegion ? colors.primary : colors.textMuted;
-      ctx!.setLineDash(context.crossRegion ? [3, 4] : []);
-      ctx!.lineWidth = lit ? 1.6 : 0.7;
-      strokeCurve(curve(graph.byId.get(a)!, graph.byId.get(b)!, context.crossRegion));
+      const alpha = selected ? (lit ? 0.7 : 0.07) : 0.2;
+      const color = lit ? colors.textBright : route ? colors.secondary : sharedDefault ? colors.green : crossRegion ? colors.primary : colors.textMuted;
+      const lineWidth = lit ? 1.6 : 0.7, points = controls.map(p);
+      if (!cacheLayers) {
+        const key = `${color}|${alpha}|${lineWidth}|${crossRegion}`;
+        let batch = batches.get(key);
+        if (!batch) { batch = { color, alpha, lineWidth, dashed: crossRegion, curves: [] }; batches.set(key, batch); }
+        batch.curves.push(points);
+      } else {
+        ctx!.globalAlpha = alpha; ctx!.strokeStyle = color;
+        ctx!.setLineDash(crossRegion ? [3, 4] : []); ctx!.lineWidth = lineWidth;
+        strokeCurve(points);
+      }
     }
+    for (const batch of batches.values()) {
+      ctx!.globalAlpha = batch.alpha; ctx!.strokeStyle = batch.color;
+      ctx!.setLineDash(batch.dashed ? [3, 4] : []); ctx!.lineWidth = batch.lineWidth;
+      ctx!.beginPath(); for (const points of batch.curves) appendCurve(points); ctx!.stroke();
+    }
+    interactionPaint = !cacheLayers;
     ctx!.setLineDash([]);
     ctx!.globalAlpha = 1;
     if (cacheLayers) {
@@ -285,7 +319,7 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       for(let i=0;i<Math.min(2,lines.length);i++)ctx!.fillText(lines[i]!.slice(0,i===1 && lines.length>2 ? -2 : undefined)+(i===1 && lines.length>2 ? "…" : ""),box.x+9,box.y+39+i*17,w-18);
     }
     ctx!.globalAlpha=1;
-    if (flows.length || transition || (bubbles.length && motion)) frame = requestAnimationFrame(draw);
+    if (flows.length || transition || interactionPaint || (bubbles.length && motion)) frame = requestAnimationFrame(draw);
   }
 
   function resize() {

@@ -70,6 +70,55 @@ function drawing(width = 1200, height = 700) {
 }
 
 describe("topology rendering work", () => {
+  it("batches navigation strokes then restores full detail without waiting for traffic", () => {
+    const s = drawing();
+    s.graph = buildTopology([...s.graph.nodes, { ...s.graph.nodes[0]!, id: "c", publicKey: "cc".repeat(32), neighborIds: ["a", "b"] }]);
+    const renderer = createRenderer(s.canvas, s.graph, s.traffic, s.colors, vi.fn(), vi.fn())!;
+    try {
+      renderer.update("", "", "all", false, true); s.frame(0);
+      const ctx = s.contexts.get(s.canvas)!;
+      const completeStrokes = ctx.stroke.mock.calls.length;
+      ctx.stroke.mockClear(); ctx.bezierCurveTo.mockClear();
+      renderer.zoom(1.1); s.frame(34);
+      expect(ctx.bezierCurveTo).toHaveBeenCalledTimes(3);
+      expect(ctx.stroke.mock.calls.length).toBeLessThan(completeStrokes);
+      expect(s.frames.size).toBe(1);
+      ctx.stroke.mockClear(); ctx.bezierCurveTo.mockClear();
+      s.frame(170);
+      expect(ctx.bezierCurveTo).toHaveBeenCalledTimes(3);
+      expect(ctx.stroke).toHaveBeenCalledTimes(completeStrokes);
+      expect(s.frames.size).toBe(0);
+    } finally { renderer.dispose(); }
+  });
+  it("keeps snapshot curve geometry while reprojecting a moving camera", () => {
+    const s = drawing();
+    const geometry = vi.spyOn(topologyGeometry, "pathControls");
+    const renderer = createRenderer(s.canvas, s.graph, s.traffic, s.colors, vi.fn(), vi.fn())!;
+    try {
+      renderer.update("", "", "all", false, true); s.frame(0);
+      geometry.mockClear();
+      const ctx = s.contexts.get(s.canvas)!; ctx.bezierCurveTo.mockClear();
+      renderer.zoom(1.1); s.frame(34);
+      expect(geometry).not.toHaveBeenCalled();
+      expect(ctx.bezierCurveTo).toHaveBeenCalled();
+    } finally { renderer.dispose(); }
+  });
+  it("culls wholly offscreen curves but retains paths crossing the viewport", () => {
+    for (const crossing of [false, true]) {
+      const s = drawing();
+      s.graph.nodes[0]!.x = crossing ? -10000 : 10000;
+      s.graph.nodes[1]!.x = 11000;
+      for (const node of s.graph.nodes) node.z = 0;
+      const renderer = createRenderer(s.canvas, s.graph, s.traffic, s.colors, vi.fn(), vi.fn(), {
+        camera: { yaw: 0, pitch: Math.PI / 2, zoom: 1, target: { x: 0, y: 0, z: 0 } }, region: "", extent: 220,
+      })!;
+      try {
+        renderer.update("", "", "all", false, true); s.frame(0);
+        expect(s.contexts.get(s.canvas)!.bezierCurveTo).toHaveBeenCalledTimes(crossing ? 1 : 0);
+        expect(s.graph.links).toHaveLength(1);
+      } finally { renderer.dispose(); }
+    }
+  });
   it("does not repaint an unchanged idle mesh for a UI activity tick", () => {
     const s=drawing();
     const renderer=createRenderer(s.canvas,s.graph,s.traffic,s.colors,vi.fn(),vi.fn())!;
