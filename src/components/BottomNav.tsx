@@ -6,7 +6,7 @@ import { touchClick } from "../lib/touch-click";
 
 // Mobile-only tab bar (hidden at md+); overflow tabs live behind "More" in a bottom sheet.
 const PRIMARY_TABS = ["Packets", "Channels", "Map", "Nodes"] as const;
-const OVERFLOW_TABS = ["Observers", "Routes", "Traces", "Analytics", "MyAtlas"] as const;
+const OVERFLOW_TABS = ["Observers", "Topology", "Routes", "Traces", "Analytics", "MyAtlas"] as const;
 // inline SVGs, 20px / 1.6 stroke to match the rest of the icons
 function Icon({ name }: { name: string }) {
   const common = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };

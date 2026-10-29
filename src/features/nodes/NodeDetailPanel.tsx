@@ -12,7 +12,9 @@ import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
 import { MeshMapperSection } from "./MeshMapperSection";
+import { CollectedNodeTelemetry } from "./CollectedNodeTelemetry";
 import { Tooltip } from "../../components/Tooltip";
+import { EmojiText } from "../../components/EmojiText";
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   const { t } = useTranslation();
@@ -23,7 +25,7 @@ function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClic
     >
       <div className="flex items-center gap-2 text-[11px]">
         <span className={`font-mono font-semibold tracking-wider truncate ${neighbor.name ? "text-primary" : "text-text-dim italic"}`}>
-          {neighbor.name ?? formatHex(neighbor.id)}
+          <EmojiText text={neighbor.name ?? formatHex(neighbor.id)} />
         </span>
         <Badge variant="default">{neighbor.nodeTypeName}</Badge>
         <IataChip>{neighbor.iata}</IataChip>
@@ -124,7 +126,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
           <Section title={t("nodeDetail.summary")} first>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
-                  {node.name ?? formatHex(node.id)}
+                  <EmojiText text={node.name ?? formatHex(node.id)} />
                 </span>
                 <Badge variant="default">{node.nodeTypeName}</Badge>
                 <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
@@ -171,6 +173,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             )}
 
             {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
+            {node.nodeType === 2 && <CollectedNodeTelemetry publicKey={node.publicKey} active />}
 
             <Section title={t("nodeDetail.capabilities")}>
               <div className="flex flex-col gap-0.5 font-mono text-[13px]">

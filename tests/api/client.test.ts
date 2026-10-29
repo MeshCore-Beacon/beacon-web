@@ -98,6 +98,23 @@ describe("getNodesPage", () => {
     expect(url).toContain("limit=50");
   });
 
+  it("sends sort, order and scope, and order only with a sort", async () => {
+    let getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false, sort: "name", order: "desc" });
+    const page = await getNodesPage(["YYZ"], { sort: "name", order: "desc", scope: "#bc", pageCursor: "s1:x" });
+    let url = getUrl();
+    expect(url).toContain("sort=name");
+    expect(url).toContain("order=desc");
+    expect(url).toContain("scope=%23bc");
+    expect(url).toContain("pageCursor=s1%3Ax");
+    expect(page.sort).toBe("name");
+
+    getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+    await getNodesPage(["YYZ"], { order: "desc" });
+    url = getUrl();
+    expect(url).not.toContain("sort=");
+    expect(url).not.toContain("order=");
+  });
+
   it("forwards the pubkeyPrefix search param", async () => {
     const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
 
@@ -124,6 +141,30 @@ describe("getNodesPage", () => {
     expect(url).toContain("supportsMultibytePaths=true");
     expect(url).toContain("supportsMultibyteTraces=false");
     expect(url).not.toContain("type="); // server param is typeName, not type
+  });
+});
+
+describe.each([
+  ["getPackets", "/packets", (p: { cursor?: number; pageCursor?: string }) => getPackets(["YOW"], p)],
+  ["getNodesPage", "/nodes", (p: { cursor?: number; pageCursor?: string }) => getNodesPage(["YOW"], p)],
+  ["getObserversPage", "/observers", (p: { cursor?: number; pageCursor?: string }) => getObserversPage(["YOW"], p)],
+])("%s page cursors", (_name, path, call) => {
+  it("sends both cursor and pageCursor when both are given", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+    await call({ cursor: 1792442625019, pageCursor: "v1:1792442625019123:ab01" });
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain(path);
+    expect(url.searchParams.get("cursor")).toBe("1792442625019");
+    expect(url.searchParams.get("pageCursor")).toBe("v1:1792442625019123:ab01");
+  });
+  it("sends no pageCursor when only cursor is given", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+    await call({ cursor: 100 });
+    expect(new URL(getUrl()).searchParams.has("pageCursor")).toBe(false);
+  });
+  it("returns nextPageCursor from the page untouched", async () => {
+    mockFetchOnce({ items: [], nextCursor: 4, nextPageCursor: "v1:4000:ff", hasMore: true });
+    await expect(call({})).resolves.toMatchObject({ nextCursor: 4, nextPageCursor: "v1:4000:ff" });
   });
 });
 
@@ -158,30 +199,42 @@ describe("getKnownRoutesPage", () => {
     lastSeen: 2,
   };
 
-  it("hits /routes, forwards iata/hopCount/cursor/cursorId/limit", async () => {
+  it("hits /routes, forwards one IATA as iata, hopCount/cursor/cursorId/limit", async () => {
     const getUrl = mockFetchOnce([route]);
 
-    await getKnownRoutesPage({ iata: "YYC", hopCount: 1, cursor: { lastSeen: 1234, id: 7 }, limit: 50 });
+    await getKnownRoutesPage({ iatas: ["YYC"], hopCount: 1, cursor: { lastSeen: 1234, id: 7 }, limit: 50 });
 
-    const url = getUrl();
-    expect(url).toContain("/routes");
-    expect(url).toContain("iata=YYC");
-    expect(url).toContain("hopCount=1");
-    expect(url).toContain("cursor=1234");
-    expect(url).toContain("cursorId=7");
-    expect(url).toContain("limit=50");
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/routes");
+    expect(url.searchParams.get("iata")).toBe("YYC");
+    expect(url.searchParams.has("iatas")).toBe(false);
+    expect(url.searchParams.get("hopCount")).toBe("1");
+    expect(url.searchParams.get("cursor")).toBe("1234");
+    expect(url.searchParams.get("cursorId")).toBe("7");
+    expect(url.searchParams.get("limit")).toBe("50");
+  });
+
+  it("sends several IATAs as the comma-separated iatas", async () => {
+    const getUrl = mockFetchOnce([route]);
+
+    await getKnownRoutesPage({ iatas: ["SEA", "KLS", "PDX"], cursor: { lastSeen: 1234, id: 7 } });
+
+    const url = new URL(getUrl());
+    expect(url.searchParams.get("iatas")).toBe("SEA,KLS,PDX");
+    expect(url.searchParams.has("iata")).toBe(false);
+    expect(url.searchParams.get("cursorId")).toBe("7");
   });
 
   it("omits cursor on the first page and defaults the limit to 50", async () => {
     const getUrl = mockFetchOnce([]);
 
-    await getKnownRoutesPage();
+    await getKnownRoutesPage({ iatas: [] });
 
     const url = getUrl();
     expect(url).toContain("/routes");
     expect(url).not.toContain("cursor=");
     expect(url).toContain("limit=50");
-    expect(url).not.toContain("iata=");
+    expect(url).not.toContain("iata");
     expect(url).not.toContain("hopCount=");
   });
 
@@ -604,6 +657,13 @@ describe("error responses", () => {
 
     mockFetchOnce([]);
     await getScopes();
+    expect(getRateLimitedUntil()).toBeNull();
+  });
+
+  it("a 503 with Retry-After carries retryAfterMs and does not mark rate-limited", async () => {
+    mockError(503, { error: { code: "deadline_exceeded", message: "The request ran past its database time limit. Retry later." } }, { "Retry-After": "5" });
+    const err = await getScopes().catch((e: unknown) => e);
+    expect(err).toMatchObject({ name: "ApiError", status: 503, code: "deadline_exceeded", retryAfterMs: 5_000 });
     expect(getRateLimitedUntil()).toBeNull();
   });
 

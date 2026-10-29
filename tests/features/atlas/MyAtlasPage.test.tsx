@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MyAtlasPage } from "../../../src/features/atlas/MyAtlasPage";
-import { ATLAS_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
+import { ATLAS_KEY, ATLAS_LEGACY_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
 import type { Node } from "../../../src/features/nodes/types";
@@ -18,6 +18,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getPacketDetail: vi.fn(),
   getObserverDirectoryPage: vi.fn(),
   getObserver: vi.fn(),
+  getCollectedNodeTelemetry: vi.fn(),
 }));
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -50,6 +51,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
   vi.mocked(api.getNode).mockImplementation(async (id) => (id === second.id ? { ...node, ...second } : node));
+  vi.mocked(api.getCollectedNodeTelemetry).mockResolvedValue({items: [], limit: 500});
   vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [report], hasMore: true, nextCursor: 7 });
   vi.mocked(api.getPacketDetail).mockResolvedValue({ packetHash: report.packetHash, originPubkey: pin.publicKey, header: { payloadType: 4 }, observations: [
     { observerId: "observer-a", observerName: "Home listener", id: 1, heardAt: 1, iata: "YKF" },
@@ -62,6 +64,15 @@ afterEach(() => {
 });
 
 describe("My Atlas", () => {
+  it("reads legacy saved nodes and retains their original storage when saving the new model", async () => {
+    const legacy = JSON.stringify({ version: 1, nodes: [pin], range: "24h" });
+    localStorage.setItem(ATLAS_LEGACY_KEY, legacy);
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    fireEvent.click(screen.getByRole("button", { name: "3d" }));
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(pin.publicKey);
+    expect(localStorage.getItem(ATLAS_LEGACY_KEY)).toBe(legacy);
+  });
   it("renders saved nodes as Signal-style cards and nothing else before a search", async () => {
     save();
     mount();

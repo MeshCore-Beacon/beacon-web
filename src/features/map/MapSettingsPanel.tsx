@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
 import { NODE_TYPE_FILTER_OPTIONS, type NeighborLinesMode } from "./types";
+import { liveNeighborLines } from "./live-map";
 import { Section } from "../../components/DetailPanel";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { useIsMobile } from "../../hooks/useMediaQuery";
@@ -56,8 +57,12 @@ interface MapSettingsPanelProps {
   onNeighborLinesChange: (mode: NeighborLinesMode) => void;
   borders: boolean;
   onBordersChange: (on: boolean) => void;
+  terrain: boolean;
+  onTerrainChange: (on: boolean) => void;
   // builds deep-link params for the current view, evaluated at copy time (reads the live camera)
   buildShareParams: () => Record<string, string | null>;
+  // Live Map forces clustering off while it runs; the saved choice comes back afterwards
+  liveMap?: boolean;
 }
 
 export function MapSettingsPanel({
@@ -71,7 +76,10 @@ export function MapSettingsPanel({
   onNeighborLinesChange,
   borders,
   onBordersChange,
+  terrain,
+  onTerrainChange,
   buildShareParams,
+  liveMap = false,
 }: MapSettingsPanelProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -136,20 +144,24 @@ export function MapSettingsPanel({
             <SegmentedControl
               ariaLabel={t("map.clustering")}
               options={[on, off]}
-              value={clustered ? "on" : "off"}
+              value={clustered && !liveMap ? "on" : "off"}
               onChange={(v) => onClusteredChange(v === "on")}
               className="w-full"
+              disabled={liveMap}
             />
+            {liveMap && <div className="text-[9px] text-text-dim mt-1">{t("map.clusteringLiveNote")}</div>}
           </Section>
           <Section title={t("map.neighborLines")}>
             <SegmentedControl
               ariaLabel={t("map.neighborLinesLabel")}
               options={neighborOptions}
-              value={neighborLines}
+              value={liveNeighborLines(neighborLines, liveMap)}
               onChange={(v) => onNeighborLinesChange(v as NeighborLinesMode)}
               className="w-full"
+              disabledValues={liveMap ? ["on"] : undefined}
             />
-            {neighborLines === "selected" && <NeighborLegend />}
+            {liveMap && <div className="text-[9px] text-text-dim mt-1">{t("map.neighborLinesLiveNote")}</div>}
+            {liveNeighborLines(neighborLines, liveMap) === "selected" && <NeighborLegend />}
           </Section>
           <Section title={t("map.areaBorders")}>
             <SegmentedControl
@@ -160,6 +172,15 @@ export function MapSettingsPanel({
               className="w-full"
             />
             {borders && <BorderLegend />}
+          </Section>
+          <Section title={t("map.terrain")}>
+            <SegmentedControl
+              ariaLabel={t("map.terrainLabel")}
+              options={[on, off]}
+              value={terrain ? "on" : "off"}
+              onChange={(v) => onTerrainChange(v === "on")}
+              className="w-full"
+            />
           </Section>
           <div className="px-3 py-2.5 border-t border-border-subtle flex justify-end">
             <CopyLinkButton
