@@ -115,6 +115,13 @@ describe("getNodesPage", () => {
     expect(url).not.toContain("order=");
   });
 
+  it("asks for the oldest heard first", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false, sort: "lastSeen", order: "asc" });
+    await getNodesPage(["YYZ"], { sort: "lastSeen", order: "asc" });
+    expect(getUrl()).toContain("sort=lastSeen");
+    expect(getUrl()).toContain("order=asc");
+  });
+
   it("forwards the pubkeyPrefix search param", async () => {
     const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
 
