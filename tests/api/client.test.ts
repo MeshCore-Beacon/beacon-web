@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, isNotFound } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, getObserverComparison, isNotFound } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -113,6 +113,13 @@ describe("getNodesPage", () => {
     url = getUrl();
     expect(url).not.toContain("sort=");
     expect(url).not.toContain("order=");
+  });
+
+  it("asks for the oldest heard first", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false, sort: "lastSeen", order: "asc" });
+    await getNodesPage(["YYZ"], { sort: "lastSeen", order: "asc" });
+    expect(getUrl()).toContain("sort=lastSeen");
+    expect(getUrl()).toContain("order=asc");
   });
 
   it("forwards the pubkeyPrefix search param", async () => {
@@ -722,5 +729,26 @@ describe("a region with no IATAs", () => {
     await expect(getTraces([])).resolves.toEqual([]);
     await expect(getScopes([])).resolves.toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+// The analyzer's scrape block lets browser /api calls through on their Referer, so leave it alone.
+describe("API fetches keep the browser's referrer", () => {
+  it("passes no options but an abort signal, on every fetch path", async () => {
+    const inits: (RequestInit | undefined)[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        inits.push(init);
+        return { ok: true, status: 200, headers: new Headers(), json: async () => ({ items: [], nextCursor: null, hasMore: false }) } as Response;
+      }),
+    );
+
+    await getPackets(["YOW"]);
+    await getObserverComparison(undefined, { observerA: "a", observerB: "b", since: 0, until: 1 }, new AbortController().signal);
+    await getIataBorder("YOW");
+
+    expect(inits).toHaveLength(3);
+    for (const init of inits) expect(Object.keys(init ?? {}).filter((k) => k !== "signal")).toEqual([]);
   });
 });

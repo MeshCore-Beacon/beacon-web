@@ -661,3 +661,93 @@ describe("usePackets page cursors", () => {
     expect(result.current.isError).toBe(false);
   });
 });
+
+describe("usePackets lag merge", () => {
+  let qc: QueryClient;
+  let rafCallbacks: FrameRequestCallback[];
+  const lag = { v: 1, type: "lagged", droppedCount: 0, since: 0, lastObservationId: 0 } as const;
+
+  beforeEach(() => {
+    getPackets.mockReset();
+    getPackets.mockResolvedValue({ items: [], nextCursor: null });
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    rafCallbacks = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      rafCallbacks.push(cb);
+      return rafCallbacks.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", () => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    region.iatas = ["YOW"];
+    region.regionKey = "YOW";
+  });
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+  const flushRaf = () => rafCallbacks.splice(0).forEach((cb) => cb(0));
+
+  // A mounted list holding three loaded pages, its mount fetch settled.
+  async function scrolledList() {
+    const view = renderHook(() => usePackets(), { wrapper });
+    await waitFor(() => expect(view.result.current.isFetching).toBe(false));
+    seedThreePages(qc);
+    getPackets.mockClear();
+    return view;
+  }
+  const hashes = (r: { current: ReturnType<typeof usePackets> }) => r.current.allPackets.map((p) => p.packetHash);
+  const pages = () => qc.getQueryData<{ pages: unknown[] }>(["packets", "YOW"])?.pages;
+
+  it("slots the missed packets in above a list the newest page overlaps, keeping its pages", async () => {
+    const { result } = await scrolledList();
+    getPackets.mockResolvedValue({ items: [packet("new2"), packet("new1"), packet("a1")], nextCursor: 999, hasMore: true });
+    await act(async () => {
+      await result.current.handleLagged(lag);
+    });
+    act(() => flushRaf());
+    expect(hashes(result)).toEqual(["new2", "new1", "a1", "b2", "c3"]);
+    expect(pages()).toHaveLength(3);
+    expect(getPackets).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts over from the newest page alone when it leaves a hole", async () => {
+    const { result } = await scrolledList();
+    getPackets.mockResolvedValue({ items: [packet("new2"), packet("new1")], nextCursor: 999, hasMore: true });
+    await act(async () => {
+      await result.current.handleLagged(lag);
+    });
+    act(() => flushRaf());
+    expect(pages()).toHaveLength(1);
+    expect(hashes(result)).toEqual(["new2", "new1"]);
+    expect(getPackets).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the list when the newest page can't be fetched", async () => {
+    const { result } = await scrolledList();
+    getPackets.mockRejectedValue(new Error("down"));
+    await act(async () => {
+      await result.current.handleLagged(lag);
+    });
+    expect(pages()).toHaveLength(3);
+    expect(hashes(result)).toEqual(["a1", "b2", "c3"]);
+  });
+
+  it("drops a merge that lands after the region changed", async () => {
+    const { result, rerender } = await scrolledList();
+    let resolve!: (page: unknown) => void;
+    getPackets.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+    const healing = result.current.handleLagged(lag);
+    region.iatas = ["YUL"];
+    region.regionKey = "YUL";
+    rerender();
+    await act(async () => {
+      resolve({ items: [packet("new1"), packet("a1")], nextCursor: 999, hasMore: true });
+      await healing;
+    });
+    act(() => flushRaf());
+    expect(hashes(result)).not.toContain("new1");
+  });
+});

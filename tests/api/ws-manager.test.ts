@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WsManager } from "../../src/api/ws-manager";
+import { WS_RECONNECT_GRACE_MS, WS_STABLE_MS } from "../../src/lib/constants";
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
@@ -546,5 +547,134 @@ describe("WsManager reconnect backoff", () => {
     expect(MockWebSocket.instances).toHaveLength(2);
     vi.advanceTimersByTime(1);
     expect(MockWebSocket.instances).toHaveLength(3);
+  });
+});
+
+describe("WsManager pause and resume", () => {
+  const hello = { v: 1, type: "hello", serverTime: 1, connectionId: "c" };
+
+  it("closes the socket on pause and stays closed", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage(hello);
+    mgr.pause();
+    expect(ws.readyState).toBe(MockWebSocket.CLOSED);
+    expect(mgr.getStatus()).toBe("disconnected");
+    vi.advanceTimersByTime(120_000);
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it("cancels a pending reconnect", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    MockWebSocket.instances[0]!.simulateClose(1006);
+    mgr.pause();
+    vi.advanceTimersByTime(120_000);
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it("reconnects at once on resume and signals lagged so views backfill", () => {
+    const handler = vi.fn();
+    const mgr = new WsManager("ws://test/ws");
+    mgr.onLagged(handler);
+    mgr.connect({ iatas: ["YOW"] });
+    const ws1 = MockWebSocket.instances[0]!;
+    ws1.simulateOpen();
+    ws1.simulateMessage(hello);
+    mgr.pause();
+    mgr.updateSubscription({ iatas: ["YUL"] });
+
+    expect(mgr.resume()).toBe(true);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    const ws2 = MockWebSocket.instances[1]!;
+    ws2.simulateOpen();
+    ws2.simulateMessage(hello);
+    expect(JSON.parse(ws2.sent[0]!).scope.iatas).toEqual(["YUL"]);
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing on resume without a pause, or on pause before connect", () => {
+    const idle = new WsManager("ws://test/ws");
+    idle.pause();
+    expect(idle.resume()).toBe(false);
+    expect(MockWebSocket.instances).toHaveLength(0);
+
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    expect(mgr.resume()).toBe(false);
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it("forgets a pause on disconnect", () => {
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    mgr.pause();
+    mgr.disconnect();
+    expect(mgr.resume()).toBe(false);
+  });
+});
+
+describe("WsManager reconnect grace", () => {
+  const hello = { v: 1, type: "hello", serverTime: 1, connectionId: "c" };
+
+  // A link that has held long enough to count as healthy, with its status changes recorded.
+  function healthyLink() {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const statuses: string[] = [];
+    const mgr = new WsManager("ws://test/ws");
+    mgr.onStatusChange((s) => statuses.push(s));
+    mgr.connect({ iatas: ["YOW"] });
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage(hello);
+    vi.advanceTimersByTime(WS_STABLE_MS);
+    statuses.length = 0;
+    return { mgr, ws, statuses };
+  }
+
+  it("hides a quick reconnect after a healthy link drops", () => {
+    const { mgr, ws, statuses } = healthyLink();
+    ws.simulateClose(1006);
+    expect(mgr.getStatus()).toBe("connected");
+    vi.advanceTimersByTime(1000);
+    const next = MockWebSocket.instances[1]!;
+    next.simulateOpen();
+    next.simulateMessage(hello);
+    vi.advanceTimersByTime(WS_RECONNECT_GRACE_MS);
+    expect(statuses).toEqual([]);
+    expect(mgr.getStatus()).toBe("connected");
+  });
+
+  it("shows the reconnect once it outlasts the grace, as its latest state", () => {
+    const { mgr, ws, statuses } = healthyLink();
+    ws.simulateClose(1006);
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.instances[1]!.onerror?.();
+    expect(mgr.getStatus()).toBe("connected");
+    vi.advanceTimersByTime(WS_RECONNECT_GRACE_MS - 1000);
+    expect(statuses).toEqual(["error"]);
+  });
+
+  it("shows a drop at once when the link was not yet healthy", () => {
+    const listener = vi.fn();
+    const mgr = new WsManager("ws://test/ws");
+    mgr.connect({ iatas: ["YOW"] });
+    const ws = MockWebSocket.instances[0]!;
+    ws.simulateOpen();
+    ws.simulateMessage(hello);
+    mgr.onStatusChange(listener);
+    ws.simulateClose(1006);
+    expect(listener).toHaveBeenCalledWith("connecting");
+  });
+
+  it("reports a disconnect during the grace straight away", () => {
+    const { mgr, ws } = healthyLink();
+    ws.simulateClose(1006);
+    mgr.disconnect();
+    expect(mgr.getStatus()).toBe("disconnected");
+    vi.advanceTimersByTime(WS_RECONNECT_GRACE_MS);
+    expect(mgr.getStatus()).toBe("disconnected");
   });
 });

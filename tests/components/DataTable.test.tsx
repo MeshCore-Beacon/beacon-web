@@ -296,6 +296,22 @@ describe("DataTable controlled sort", () => {
     expect(screen.getByRole("button", { name: /^ID\s*▼$/ })).toBeInTheDocument();
   });
 
+  it("starts a column in its own first direction, then flips it", () => {
+    const onSortChange = vi.fn();
+    const withTime: Column<Row>[] = [...cols, { id: "time", header: "Time", cell: (r) => r.id, sortValue: (r) => r.id, firstSortDirection: "desc" }];
+    const view = (sort: { id: string; direction: "asc" | "desc" }) => (
+      <DataTable columns={withTime} rows={[{ id: "a" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={sort} onSortChange={onSortChange} presorted />
+    );
+    const { rerender } = render(view({ id: "id", direction: "asc" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Time\s*▼$/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ id: "time", direction: "desc" });
+    rerender(view({ id: "time", direction: "desc" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Time/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ id: "time", direction: "asc" });
+    fireEvent.click(screen.getByRole("button", { name: /^ID/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ id: "id", direction: "asc" });
+  });
+
   it("sorts rows itself under a controlled sort that isn't presorted", () => {
     const { container } = render(
       <DataTable columns={cols} rows={[{ id: "a" }, { id: "b" }]} rowKey={(r) => r.id} selectedKey={null} onSelect={() => {}} emptyLabel="none" sort={{ id: "id", direction: "desc" }} onSortChange={() => {}} />,

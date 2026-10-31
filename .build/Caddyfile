@@ -5,6 +5,7 @@
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
+		# Never no-referrer: the analyzer's scrape block lets /api calls through on their Referer
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 
@@ -16,6 +17,15 @@
 		file_server {
 			precompressed br gzip
 		}
+	}
+
+	# Scans for /.env, /.git or *.php get a 404, not the app shell, so ban jails see them as probes
+	@probe {
+		path */.* *.php
+		not path /.well-known/*
+	}
+	handle @probe {
+		respond 404
 	}
 
 	# Revalidate the shell so a deploy's new asset hashes are picked up

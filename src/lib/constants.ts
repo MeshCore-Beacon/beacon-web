@@ -22,6 +22,10 @@ export const WS_RECONNECT_MAX_MS = 30_000;
 export const WS_RECONNECT_JITTER = 0.25;
 // a link that held this long counts as healthy, so the next drop restarts the backoff from scratch
 export const WS_STABLE_MS = 10_000;
+// a healthy link that drops keeps showing as connected this long, so a server or proxy reload goes unseen
+export const WS_RECONNECT_GRACE_MS = 3_000;
+// a tab hidden this long drops its live feed, so a forgotten background tab stops streaming
+export const WS_HIDDEN_PAUSE_MS = 5 * 60_000;
 
 // window to assume when a 429 arrives without Retry-After, and a ceiling on what the header can ask
 export const RATE_LIMIT_DEFAULT_MS = 10_000;
