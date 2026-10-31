@@ -119,6 +119,18 @@ describe("patchNodePages", () => {
     expect(patchNodePages(old, update({ nodeId: "a", name: "Keep", lat: undefined, lng: undefined }))).toBe(old);
     expect(patchNodePages(undefined, update({}))).toBeUndefined();
   });
+
+  it("moves lastSeen up to the arrival time only when given one", () => {
+    const same = update({ nodeId: "a", name: "Keep", lat: undefined, lng: undefined });
+    const old = cache([[node({ id: "a", name: "Keep", lastSeen: 1_000 })], [node({ id: "b", lastSeen: 500 })]]);
+    const bumped = patchNodePages(old, same, 5_000)!;
+    expect(bumped.pages[0]!.items[0]!.lastSeen).toBe(5_000);
+    expect(bumped.pages[1]).toBe(old.pages[1]);
+    expect(patchNodePages(old, same)).toBe(old); // the map passes no time
+    expect(patchNodePages(bumped, same, 4_000)).toBe(bumped); // never back in time
+    const bare = cache([[node({ id: "a", name: "Keep" })]]);
+    expect(patchNodePages(bare, same, 5_000)).toBe(bare); // rows from a server without lastSeen
+  });
 });
 
 describe("upsertNodePages", () => {

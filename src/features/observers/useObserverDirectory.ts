@@ -53,7 +53,8 @@ export function useObserverDirectory(wsManager: WsManager, options: ObserverDire
     },
     enabled: isResolved !== false && supported === true,
     staleTime: Infinity,
-    refetchInterval: 60_000,
+    // a refetch reloads every loaded page, so past the first only the WebSocket keeps status fresh
+    refetchInterval: query => ((query.state.data?.pages.length ?? 0) > 1 ? false : 60_000),
     gcTime: 0,
     retryDelay: queryRetryDelay,
   });

@@ -6,9 +6,11 @@ import type { WsNodeUpdate } from "../../types/ws";
 // Patch a node's name/lat/lng in a cached list (immutably); nodes not already in the list are left
 // alone — the Nodes table can't blindly insert because its cache is filter-scoped. The map uses
 // upsertNodePages below instead, which does insert. Shared so the two stay in step.
+// heardAt (the Nodes table's arrival time) moves a row's lastSeen up; the map passes none.
 export function patchNodeSummary(
   list: NodeSummary[] | undefined,
   data: WsNodeUpdate["data"],
+  heardAt?: number,
 ): NodeSummary[] | undefined {
   if (!list) return list;
   const idx = list.findIndex((n) => n.id === data.nodeId);
@@ -20,11 +22,13 @@ export function patchNodeSummary(
   const lat = data.lat === undefined ? prev.lat : data.lat;
   const lng = data.lng === undefined ? prev.lng : data.lng;
   const possiblyForeign = data.possiblyForeign === undefined ? prev.possiblyForeign : data.possiblyForeign ?? undefined;
+  // rows from a server that doesn't send lastSeen don't gain one
+  const lastSeen = heardAt === undefined || prev.lastSeen == null ? prev.lastSeen : Math.max(prev.lastSeen, heardAt);
   // a re-advert that re-sends the same values must keep the SAME ref so the page patch no-ops
   // (otherwise an unchanged node would trigger a full map FeatureCollection rebuild + setData)
-  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign) return list;
+  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign && lastSeen === prev.lastSeen) return list;
   const updated = [...list];
-  updated[idx] = { ...prev, name, lat, lng, possiblyForeign };
+  updated[idx] = { ...prev, name, lat, lng, possiblyForeign, lastSeen };
   return updated;
 }
 
@@ -45,12 +49,13 @@ function idsOf(page: CursorPage<NodeSummary>): Set<string> {
 export function patchNodePages(
   old: InfiniteData<CursorPage<NodeSummary>> | undefined,
   data: WsNodeUpdate["data"],
+  heardAt?: number,
 ): InfiniteData<CursorPage<NodeSummary>> | undefined {
   if (!old) return old;
   let pages: CursorPage<NodeSummary>[] | undefined;
   old.pages.forEach((page, i) => {
     if (!idsOf(page).has(data.nodeId)) return;
-    const items = patchNodeSummary(page.items, data);
+    const items = patchNodeSummary(page.items, data, heardAt);
     if (!items || items === page.items) return;
     pages ??= [...old.pages];
     pages[i] = { ...page, items };

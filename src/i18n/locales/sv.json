@@ -291,6 +291,7 @@
       "colRadio": "Radio",
       "colAreas": "Områden",
       "colNeighbors": "Grannar",
+      "colLastHeard": "Senast mottagen",
       "colLocation": "Position",
       "observer": "Observatör",
       "empty": "Inga noder",

@@ -11,6 +11,7 @@ import { formatHex, timeAgoParts, formatRadio } from "../../lib/formatters";
 import { hasMapLocation } from "../map/location";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
+import { Timestamp } from "../../components/Timestamp";
 import { ObserverIcon } from "../../components/ObserverIcon";
 import { DataTable, type Column, type TableSort } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -28,6 +29,19 @@ import { MAX_PAGE_SIZE } from "../../lib/constants";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 const NAME_SORT: TableSort = { id: "name", direction: "asc" };
+
+// the orders the server pages through; radio sorts only on the client fallback
+function toNodeSort(id: string): NodeSort | undefined {
+  switch (id) {
+    case "name":
+    case "type":
+    case "neighbors":
+    case "lastSeen":
+      return id;
+    default:
+      return undefined;
+  }
+}
 
 // Cell and card renderers can't call hooks, so the computed "last heard" label gets its own component.
 function IataBadge({ entry }: { entry: NodeIATA }) {
@@ -59,6 +73,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
         <span className={`flex-1 min-w-0 truncate ${node.name ? "text-text-normal" : "text-text-dim italic"}`}>
           <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
+        {node.lastSeen != null && <Timestamp value={node.lastSeen} className="shrink-0 text-text-dim text-[11px]" />}
         <span className="shrink-0">
           <Badge variant="default">
             {node.isObserver && (
@@ -98,6 +113,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [sort, setSort] = useState<TableSort>(NAME_SORT);
   // A server before 2.1 ignores sort: then every page loads and the table sorts them itself, as before.
   const [clientSort, setClientSort] = useState(false);
+  // A server that doesn't send lastSeen can't sort by it either, so Last heard stays hidden there.
+  const [noLastSeen, setNoLastSeen] = useState(false);
 
   const columns = useMemo<Column<NodeSummary>[]>(() => [
     {
@@ -156,6 +173,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       width: "7rem",
       cell: (node) => node.knownNeighborCount.toLocaleString(),
     },
+    ...(noLastSeen ? [] : [{
+      id: "lastSeen",
+      header: t("nodes.colLastHeard"),
+      className: "text-text-muted",
+      sortValue: (node) => node.lastSeen,
+      firstSortDirection: "desc",
+      width: "10rem",
+      cell: (node) => (node.lastSeen == null ? "—" : <Timestamp value={node.lastSeen} />),
+    } satisfies Column<NodeSummary>]),
     {
       id: "location",
       header: t("nodes.colLocation"),
@@ -166,7 +192,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
           : "—",
     },
-  ], [t, clientSort]);
+  ], [t, clientSort, noLastSeen]);
 
   const renderCard = useCallback((node: NodeSummary) => renderNodeCard(node, t), [t]);
 
@@ -180,7 +206,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   // so toggling the field with an empty box is a no-op and a name never gets sent as a hex prefix
   const { name: nameParam, pubkeyPrefix: pubkeyPrefixParam } = nodeSearchParams(searchField, search);
 
-  const serverSort = clientSort ? undefined : (sort.id as NodeSort);
+  const serverSort = clientSort ? undefined : toNodeSort(sort.id);
   const queryKey = useMemo(
     () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, serverSort ?? "", serverSort ? sort.direction : ""],
     [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, serverSort, sort.direction],
@@ -212,12 +238,18 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   // rows with no `sort` beside them came from a server that didn't sort them
   if (!clientSort && firstPage && !firstPage.sort && firstPage.items.length > 0) setClientSort(true);
+  const firstRow = firstPage?.items[0];
+  if (!noLastSeen && firstRow && firstRow.lastSeen == null) {
+    setNoLastSeen(true);
+    if (sort.id === "lastSeen") setSort(NAME_SORT);
+  }
 
   const scopeOptions = useScopes(scopeFilter);
 
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
-      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey, (old) => patchNodePages(old, data));
+      // the event rides on an advert just heard, so its row's Last heard becomes now; no row moves
+      queryClient.setQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey, (old) => patchNodePages(old, data, Date.now()));
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
@@ -260,7 +292,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           onEndReached={clientSort ? undefined : loadMore}
           renderCard={renderCard}
           virtualize
-          minWidth="52rem"
+          minWidth={noLastSeen ? "52rem" : "62rem"}
         />
         <LoadingPill loading={isPaging} error={isError} count={loadedCount} noun="nodes" position="bottom-3 right-3" />
       </div>
