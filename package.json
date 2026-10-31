@@ -1,7 +1,7 @@
 {
   "name": "beacon-web",
   "private": true,
-  "version": "2.0.5-dev1.1",
+  "version": "2.1.0",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -45,7 +45,7 @@
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12",
-    "vitest": "^4.1.11"
+    "vite": "^8.3.5",
+    "vitest": "^4.1.12"
   }
 }

@@ -5,6 +5,11 @@ export const WS_URL = runtimeEnv("VITE_WS_URL", import.meta.env.VITE_WS_URL) ?? 
 
 export const LIVE_BUFFER_CAP = 500;
 export const DEFAULT_PAGE_SIZE = 50;
+// beacon-server's list cap (maxListLimit); views that load a whole region page at it to stay under the rate limit
+export const MAX_PAGE_SIZE = 200;
+// /nodes takes bigger pages, so the map and graph load a region in ~10x fewer requests; servers
+// before that clamp it to 200 and keep paging
+export const NODE_REGION_PAGE_SIZE = 2000;
 
 export const SCROLL_TOP_THRESHOLD_PX = 100;
 export const SCROLL_BOTTOM_THRESHOLD_PX = 500;
@@ -21,12 +26,14 @@ export const WS_STABLE_MS = 10_000;
 // window to assume when a 429 arrives without Retry-After, and a ceiling on what the header can ask
 export const RATE_LIMIT_DEFAULT_MS = 10_000;
 export const RATE_LIMIT_MAX_MS = 300_000;
+// ceiling on a 503's Retry-After: a busy server should be asked again well before a rate-limit window
+export const TRANSIENT_WAIT_MAX_MS = 30_000;
 
 // app tab names, in display order; the ?tab URL param is validated against this list
-export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Routes", "Traces", "Analytics", "MyAtlas"] as const;
+export const TABS = ["Packets", "Channels", "Map", "Nodes", "Observers", "Topology", "Routes", "Traces", "Analytics", "MyAtlas"] as const;
 
-// Per-deployment config: read via runtimeEnv, so the Docker image's /config.js (written at container
-// start, see .build/) overrides the VITE_* build-time env.
+// Per-deployment config: read via runtimeEnv, so the Docker image's runtime config (written at
+// container start, see .build/) overrides the VITE_* build-time env.
 
 // Split a comma-separated env value into trimmed, non-empty entries.
 export function parseEnvList(raw: string | undefined): string[] {

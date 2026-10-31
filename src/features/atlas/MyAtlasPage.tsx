@@ -169,7 +169,7 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
           />
         </span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-col gap-3.5 p-4">
           {typed.length > 0 && (
             <Card title={t("atlas.matches")}>

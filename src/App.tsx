@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { RegionProvider, useRegion, useRegionSelection } from "./hooks/useRegion";
 import {
   ALL_REGIONS,
@@ -30,13 +30,17 @@ import { ChannelList } from "./features/channels/ChannelList";
 import { EmptyState } from "./components/EmptyState";
 import { usePacketDetail } from "./features/packets/usePacketDetail";
 import { WsManager } from "./api/ws-manager";
-import { shouldRetryQuery } from "./api/rate-limit";
+import { queryRetryDefaults } from "./api/rate-limit";
 import { WS_URL, ENABLED_TABS } from "./lib/constants";
+import { prefetchStatsTab } from "./features/stats/prefetch";
+import { asStatsRange, asStatsTab } from "./features/stats/stats-url";
+import { useStatsRegion } from "./features/stats/useStats";
 import type { PacketDetail } from "./types/api";
 
 // Map (maplibre-gl, ~1MB) and My Atlas are lazy-loaded so their chunks are fetched on first visit
 // instead of bloating the initial bundle.
 const MyAtlasPage = lazy(() => import("./features/atlas/MyAtlasPage").then(m => ({ default: m.MyAtlasPage })));
+const TopologyPage = lazy(() => import("./features/topology/TopologyPage").then(m => ({ default: m.TopologyPage })));
 const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ default: m.MapView })));
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
@@ -47,7 +51,7 @@ const StatsOverview = lazy(() => import("./features/stats/StatsOverview").then((
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: shouldRetryQuery,
+      ...queryRetryDefaults,
       refetchOnWindowFocus: false,
     },
   },
@@ -67,6 +71,43 @@ function computeInitialSelection(params: URLSearchParams): RegionSelection {
   const legacy = localStorage.getItem("beacon-region");
   if (legacy && legacy !== "*") return { regions: [], iatas: [legacy.toUpperCase()] };
   return ALL_REGIONS;
+}
+
+// null-render: starts the open Analytics sub-tab's requests alongside its lazy chunk
+function AnalyticsPrefetch({ active }: { active: boolean }) {
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const scope = useStatsRegion();
+  const tab = asStatsTab(searchParams.get("statsTab"));
+  const range = asStatsRange(searchParams.get("range"));
+  // old ?statsTab=observer links are redirected to the Observers tab, not shown
+  const redirected = searchParams.get("statsTab") === "observer";
+  useEffect(() => {
+    if (active && !redirected) prefetchStatsTab(queryClient, tab, range, scope);
+  }, [active, redirected, queryClient, tab, range, scope]);
+  return null;
+}
+
+// Once the first view has had time to load, fetch the lazy tabs' code so a later click doesn't wait
+// on it; skipped when the browser asks to save data.
+const PRELOAD_DELAY_MS = 3_000;
+function usePreloadLazyTabs() {
+  useEffect(() => {
+    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
+    let idle: number | undefined;
+    const preload = () => {
+      if (ENABLED_TABS.includes("Analytics")) void import("./features/stats/StatsOverview");
+      if (ENABLED_TABS.includes("Map")) void import("./features/map/MapView");
+    };
+    const timer = setTimeout(() => {
+      if ("requestIdleCallback" in window) idle = requestIdleCallback(preload, { timeout: 5_000 });
+      else preload();
+    }, PRELOAD_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      if (idle !== undefined) cancelIdleCallback(idle);
+    };
+  }, []);
 }
 
 // null-render component -- easiest way to sync region changes into the WS manager
@@ -89,13 +130,19 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 // wouldn't otherwise know was shareable). All-regions clears both params; any legacy ?region is folded
 // in. The guard skips redundant writes (and any setSearchParams feedback loop); replace keeps it out of
 // history.
-function RegionUrlSync() {
+export function RegionUrlSync() {
   const { selection } = useRegionSelection();
+  const previousSelection = useRef(selection);
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const next = selectionToParams(selection, searchParams);
+    if (previousSelection.current !== selection) {
+      next.delete("topoNode");
+      next.delete("topoFocus");
+    }
+    previousSelection.current = selection;
     if (next.toString() === searchParams.toString()) return;
     setSearchParams(next, { replace: true, state: location.state });
   }, [selection, searchParams, setSearchParams, location.state]);
@@ -155,6 +202,7 @@ function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  usePreloadLazyTabs();
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
@@ -304,6 +352,7 @@ function AppInner() {
 
   const tabContent: Record<string, React.ReactNode> = {
     MyAtlas: <MyAtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
+    Topology: <TopologyPage wsManager={wsManager} onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}
@@ -327,6 +376,7 @@ function AppInner() {
   return (
     <RegionProvider defaultSelection={initialSelection}>
       <RegionWatcher wsManager={wsManager} />
+      <AnalyticsPrefetch active={activeTab === "Analytics"} />
       <Routes><Route path="*" element={<RegionUrlSync />} /></Routes>
       <SelectionResetOnRegion onRegionChange={clearSelection} />
       <PathLinkRestore

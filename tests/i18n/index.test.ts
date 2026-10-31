@@ -104,3 +104,65 @@ describe("language preferences and catalogs", () => {
     expect(i18n.t("mesh.obs", { lng: "fr", value: "1,2k" })).toBe("1,2k obs");
   });
 });
+
+describe("catalog loading", () => {
+  // A fresh module instance per test, reading an isolated store, so the shared instance's catalogs
+  // (and other suites' saved language) can't leak in.
+  async function freshI18n(saved?: string) {
+    const store = new Map<string, string>(saved ? [["beacon-language", saved]] : []);
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+      removeItem: (key: string) => store.delete(key),
+    });
+    vi.resetModules();
+    return import("../../src/i18n");
+  }
+  const loaded = (instance: typeof i18n) =>
+    languages.map(({ code }) => code).filter((code) => instance.hasResourceBundle(code, "translation"));
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("starts an English visitor synchronously with only the English catalog", async () => {
+    const { default: fresh } = await freshI18n();
+    expect(fresh.isInitialized).toBe(true);
+    expect(fresh.t("tabs.Packets")).toBe("Packets");
+    expect(loaded(fresh)).toEqual(["en"]);
+  });
+
+  it("loads only the saved language, and is ready only once it has", async () => {
+    const { default: fresh, ready } = await freshI18n("sv");
+    await ready;
+    expect(loaded(fresh)).toEqual(["en", "sv"]);
+    expect(fresh.resolvedLanguage).toBe("sv");
+    expect(fresh.t("tabs.Packets")).toBe("Paket");
+    expect(document.documentElement.lang).toBe("sv");
+    expect(localStorage.getItem("beacon-language")).toBe("sv");
+  });
+
+  it("loads a picked language's catalog before switching to it", async () => {
+    const { default: fresh } = await freshI18n();
+    const seen: [string, boolean, string][] = [];
+    fresh.on("languageChanged", (language) => {
+      seen.push([language, fresh.hasResourceBundle(language, "translation"), fresh.t("tabs.Packets")]);
+    });
+    const switching = fresh.changeLanguage("fr");
+    // Still English while the catalog loads: never raw keys, never a half-switched language.
+    expect(fresh.resolvedLanguage).toBe("en");
+    expect(fresh.t("tabs.Packets")).toBe("Packets");
+    await switching;
+    expect(seen).toEqual([["fr", true, "Paquets"]]);
+    expect(loaded(fresh)).toEqual(["en", "fr"]);
+    expect(localStorage.getItem("beacon-language")).toBe("fr");
+  });
+
+  it("falls back to English for keys a loaded catalog lacks", async () => {
+    const { default: fresh } = await freshI18n("fr");
+    fresh.addResource("en", "translation", "fallbackTest", "English fallback");
+    await fresh.changeLanguage("fr");
+    expect(fresh.t("tabs.Packets")).toBe("Paquets");
+    expect(fresh.t("fallbackTest")).toBe("English fallback");
+  });
+});

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MessagePanel } from "../../../src/features/channels/MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "../../../src/features/channels/types";
 import i18n from "../../../src/i18n";
+import { getChannelMessagesPage } from "../../../src/api/client";
 
 // Older live WS messages have no id — preserve that compatible runtime shape.
 const restMsg: ChannelMessage = {
@@ -94,10 +95,11 @@ describe("MessagePanel multi-line messages", () => {
     );
 
     // jsdom doesn't collapse whitespace the way a browser does, so the class is what pins this;
-    // the normalizer override stops findByText from collapsing the newlines before matching
-    const body = await screen.findByText(multiLineMsg.content, { normalizer: (s) => s });
+    // the body's leading emoji sits in its own span, so match the whole div's text, newlines intact
+    const body = await screen.findByText((_, el) => el?.tagName === "DIV" && el.textContent === multiLineMsg.content);
     expect(body.className).toContain("whitespace-pre-wrap");
     expect(body.className).toContain("break-words");
+    expect(body.querySelector(".emoji-glyph")).toHaveTextContent("🟠");
   });
 });
 
@@ -146,5 +148,22 @@ describe("MessagePanel live follow", () => {
     // scrollIntoView also scrolls every ancestor up to the document, shoving the whole app shell up
     expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     expect(scrollTo).toHaveBeenCalled();
+  });
+});
+
+describe("MessagePanel load failure", () => {
+  it("shows the error and retry instead of the empty state", async () => {
+    await i18n.changeLanguage("en");
+    vi.mocked(getChannelMessagesPage).mockRejectedValueOnce(Object.assign(new Error("unavailable"), { status: 503 }));
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MessagePanel channel={channel} heardCounts={{}} regionKey="*" scope="#ops" />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load messages.");
+    expect(screen.queryByText(/No messages/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("live two")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

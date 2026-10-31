@@ -14,6 +14,8 @@ const ws = { onObserverStatus: (handler: typeof statusHandler) => { statusHandle
 const defaults: ObserverDirectoryOptions = { sort: "traffic", search: "", status: "", type: "", broker: "", scope: "" };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const failure = (status: number, message = "failed") => reply({ error: { code: "error", message } }, status);
+const info = (serverVersion: string) => reply({ minAppVersion: null, minWebVersion: null, serverVersion });
+const isInfo = (url: URL) => url.pathname.endsWith("/info");
 let requests: URL[];
 let respond: (url: URL) => Response | Promise<Response>;
 
@@ -23,16 +25,17 @@ beforeEach(() => {
   respond = () => reply(directoryPage([directoryRow("first")]));
   vi.stubGlobal("fetch", vi.fn(async (input: string) => {
     const url = new URL(input); requests.push(url);
-    return url.search === "?limit=1" ? reply(directoryPage([])) : respond(url);
+    return isInfo(url) ? info("2.0.8") : respond(url);
   }));
 });
 afterEach(() => vi.unstubAllGlobals());
-function view(options = defaults) {
+function view(options = defaults, seed?: (client: QueryClient) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seed?.(client);
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return renderHook(p => useObserverDirectory(ws, p), { wrapper, initialProps: options });
 }
-const listingRequests = () => requests.filter(url => url.search !== "?limit=1");
+const listingRequests = () => requests.filter(url => url.pathname.endsWith("/observers/directory"));
 
 it("loads only the first page initially, then returns later counts beyond 200 without duplicates", async () => {
   const first = Array.from({ length: 200 }, (_, i) => directoryRow(String(i), 1000 - i));
@@ -155,35 +158,63 @@ it("passes an empty region by slug instead of loading all observers", async () =
   expect(listingRequests()[0].searchParams.get("region")).toBe("empty");
 });
 
-it.each([404, 400])("shows upgrade required only for the documented legacy probe response (%s), and can detect an upgrade", async status => {
+it.each([
+  ["a server without /info (404)", () => failure(404, "not found")],
+  ["a server older than 2.0.2", () => info("2.0.1")],
+])("shows upgrade required for %s, and can detect an upgrade", async (_label, legacy) => {
   const fetcher = vi.mocked(fetch);
   fetcher.mockImplementation(async input => {
     const url = new URL(String(input)); requests.push(url);
-    return failure(status, "failed to parse observer UUID");
+    return isInfo(url) ? legacy() : reply(directoryPage([directoryRow("unexpected")]));
   });
   const { result } = view();
   await waitFor(() => expect(result.current.unsupported).toBe(true));
-  expect(requests.map(u => u.search)).toEqual(["?limit=1"]);
+  expect(requests).toHaveLength(1);
+  expect(isInfo(requests[0])).toBe(true);
   fetcher.mockImplementation(async input => {
     const url = new URL(String(input)); requests.push(url);
-    return reply(directoryPage([directoryRow("upgraded")]));
+    return isInfo(url) ? info("2.0.2") : reply(directoryPage([directoryRow("upgraded")]));
   });
   await act(async () => { await result.current.retry(); });
   await waitFor(() => expect(result.current.observers[0]?.id).toBe("upgraded"));
 });
 
-it.each([400, 500, 503])("does not mistake a probe failure (%s) for an older server", async status => {
+it.each([400, 500, 503])("does not mistake an /info failure (%s) for an older server", async status => {
   vi.mocked(fetch).mockResolvedValue(failure(status, "different failure"));
   const { result } = view();
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(result.current.unsupported).toBe(false);
 });
 
-it("rejects a successful probe lacking the directory contract", async () => {
-  vi.mocked(fetch).mockResolvedValue(reply({ items: [], hasMore: false }));
+it("reads the server version the app already loaded, so the list is the first request", async () => {
+  const { result } = view(defaults, client => client.setQueryData(["server-info"], { minAppVersion: null, minWebVersion: null, serverVersion: "2.1.0" }));
+  await waitFor(() => expect(result.current.observers).toHaveLength(1));
+  expect(requests.filter(isInfo)).toHaveLength(0);
+  expect(listingRequests()).toHaveLength(1);
+});
+
+it("treats a malformed serverVersion as supporting the directory", async () => {
+  vi.mocked(fetch).mockImplementation(async input => {
+    const url = new URL(String(input)); requests.push(url);
+    return isInfo(url) ? info("dev") : reply(directoryPage([directoryRow("first")]));
+  });
+  const { result } = view();
+  await waitFor(() => expect(result.current.observers).toHaveLength(1));
+  expect(result.current.unsupported).toBe(false);
+});
+
+it("rejects a directory page lacking the directory contract", async () => {
+  respond = () => reply({ items: [], hasMore: false });
   const { result } = view();
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(result.current.unsupported).toBe(false);
+});
+
+it("asks /info instead of probing the directory with limit=1", async () => {
+  const { result } = view();
+  await waitFor(() => expect(result.current.observers).toHaveLength(1));
+  expect(requests.filter(isInfo)).toHaveLength(1);
+  expect(requests.some(u => u.searchParams.get("limit") === "1")).toBe(false);
 });
 
 it("repeats every filter on continuation using the response window, then clears pages on refresh", async () => {
@@ -240,49 +271,29 @@ it("refreshes loaded rows each minute so fetched online status does not stay gre
     await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
     expect(result.current.observers[0]?.status).toBe("offline");
     expect(listingRequests()).toHaveLength(2);
+    expect(requests.filter(isInfo)).toHaveLength(1);
   } finally { vi.useRealTimers(); }
 });
 
-it("uses a fresh rolling window on periodic refresh and replaces all loaded pages atomically", async () => {
+it("stops the minute refresh once a second page is loaded, leaving status to the WebSocket", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-05T12:15:23.456Z"));
-  let generation = 0;
-  let finishSecondPage: (response: Response) => void;
-  const page = (part: string, end: number) => directoryPage([directoryRow(`${generation}-${part}`, generation ? 200 : 100)], {
-    windowStart: end - 7 * 86400000, windowEnd: end,
-    hasMore: part === "first", nextCursor: part === "first" ? 200 : undefined,
-    maxObservationCount: generation ? 200 : 100,
-  });
-  respond = url => {
-    const continuation = url.searchParams.has("cursor");
-    if (generation && continuation) return new Promise(resolve => { finishSecondPage = resolve; });
-    return reply(page(continuation ? "second" : "first", continuation ? Number(url.searchParams.get("until")) : Date.now()));
-  };
+  respond = url => url.searchParams.has("cursor")
+    ? reply(directoryPage([directoryRow("second")]))
+    : reply(directoryPage([directoryRow("first")], { hasMore: true, nextCursor: 200 }));
   try {
     const { result } = view();
     await act(async () => { await vi.advanceTimersByTimeAsync(10); });
     await act(async () => { await result.current.loadMore(); await vi.advanceTimersByTimeAsync(10); });
-    expect(result.current.observers.map(o => o.id)).toEqual(["0-first", "0-second"]);
-    const oldEnd = result.current.windowEnd;
-    generation = 1;
-    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
-    const refreshFirst = listingRequests().at(-2)!.searchParams;
-    const refreshNext = listingRequests().at(-1)!.searchParams;
-    expect(refreshFirst.has("cursor")).toBe(false);
-    expect(refreshFirst.has("since")).toBe(false);
-    expect(refreshFirst.has("until")).toBe(false);
-    expect(Number(refreshNext.get("until"))).toBeGreaterThan(oldEnd!);
-    expect(Number(refreshNext.get("until")) - Number(refreshNext.get("since"))).toBe(7 * 86400000);
-    expect(result.current.windowEnd).toBe(oldEnd);
-    expect(result.current.observers.map(o => o.id)).toEqual(["0-first", "0-second"]);
-    expect(result.current.maxObservationCount).toBe(100);
+    expect(result.current.observers.map(o => o.id)).toEqual(["first", "second"]);
+    expect(listingRequests()).toHaveLength(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60_000); });
+    expect(listingRequests()).toHaveLength(2);
     await act(async () => {
-      finishSecondPage!(reply(page("second", Number(refreshNext.get("until")))));
+      statusHandler({ observerId: "second", online: false, lastStatusAt: Date.now() } as WsObserverStatus["data"]);
       await vi.advanceTimersByTimeAsync(10);
     });
-    expect(result.current.observers.map(o => o.id)).toEqual(["1-first", "1-second"]);
-    expect(result.current.windowEnd).toBe(Number(refreshNext.get("until")));
-    expect(result.current.maxObservationCount).toBe(200);
+    expect(result.current.observers[1]?.status).toBe("offline");
   } finally { vi.useRealTimers(); }
 });
 
