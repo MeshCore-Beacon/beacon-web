@@ -19,6 +19,15 @@
 		}
 	}
 
+	# Scans for /.env, /.git or *.php get a 404, not the app shell, so ban jails see them as probes
+	@probe {
+		path */.* *.php
+		not path /.well-known/*
+	}
+	handle @probe {
+		respond 404
+	}
+
 	# Revalidate the shell so a deploy's new asset hashes are picked up
 	handle {
 		header Cache-Control "no-cache"
