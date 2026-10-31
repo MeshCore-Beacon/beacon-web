@@ -1,9 +1,10 @@
+import type { ScopeActivity } from "../features/scopes/types";
 import { API_BASE, DEFAULT_PAGE_SIZE } from "../lib/constants";
 import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { Node, NodeObservation, NodeNeighbor, NodePage, NodeSort } from "../features/nodes/types";
+import type { Node, NodeScopeEvidence, NodeObservation, NodeNeighbor, NodePage, NodeSort } from "../features/nodes/types";
 import type {
   StatsSeries,
   SignalStats,
@@ -311,7 +312,7 @@ export function getNodesPage(
     pubkeyPrefix?: string; // case-insensitive hex prefix; server matches and validates
     supportsMultibytePaths?: "true" | "false";
     supportsMultibyteTraces?: "true" | "false";
-    neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
+    neighbors?: boolean; scopeEvidence?: boolean; // include each node's neighborIds (?neighbors=true)
     scope?: string; // transport scope name, e.g. "#bc"
     // server-side order, paged by pageCursor alone; check the page's `sort`, older servers ignore it
     sort?: NodeSort;
@@ -331,6 +332,7 @@ export function getNodesPage(
     supportsMultibytePaths: params?.supportsMultibytePaths,
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
+    scopeEvidence: params?.scopeEvidence ? "true" : undefined,
     scope: params?.scope,
     sort: params?.sort,
     order: params?.sort ? params.order : undefined,
@@ -501,4 +503,18 @@ export function getScopeCatalogues(): Promise<ScopeCatalogue[]> {
 
 export function getTopologyLinks(iatas: string[] | undefined, window: string, signal?: AbortSignal): Promise<{ links: [string,string][]; capped: boolean; since: number; until: number }> {
   return request("/routes/topology", { iatas: iatas?.join(","), window }, signal);
+}
+
+export function getScopeActivity(iatas: string[] | undefined, hours: 1 | 6 | 24, signal?: AbortSignal): Promise<ScopeActivity> { if(noIatas(iatas)) return Promise.resolve({since:0,until:Date.now(),truncated:false,scopes:[],observers:[],countries:[]}); return request("/scopes/activity", { iatas: iatasParam(iatas), hours }, signal); }
+
+// Read-only bounded POST; scope summaries refresh without fetching neighbours or rerunning layout.
+export async function getNodeScopeBatch(ids: string[], signal?:AbortSignal):Promise<Record<string,NodeScopeEvidence>> {
+  const result:Record<string,NodeScopeEvidence>={};
+  const unique=[...new Set(ids)].sort();
+  for(let offset=0;offset<unique.length;offset+=1000){
+    signal?.throwIfAborted();
+    const response=await fetch(`${API_BASE}/nodes/scopes`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nodeIds:unique.slice(offset,offset+1000)}),signal});
+    if(!response.ok)throw await errorFrom(response);noteRequestOk();Object.assign(result,await response.json());
+  }
+  return result;
 }

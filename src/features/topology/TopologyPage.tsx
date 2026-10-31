@@ -1,15 +1,21 @@
+import { ScopeWindow, scopeControl } from "../scopes/ScopeControls";
+import { scopeMapHref } from "../scopes/model";
+import { observedPacketScope } from "../scopes/packet-scope";
+import { ScopeTag } from "../../components/ScopeTag";
+import { nodeScopeStats, parseScopeHours } from "../nodes/scope-evidence";
+import { scopeColor } from "../map/repeater-scopes";
 import { LiveChatter } from "./chatter";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getScopeCatalogues } from "../../api/client";
+import { getScopeCatalogues, getNodeScopeBatch } from "../../api/client";
 import type { WsManager } from "../../api/ws-manager";
 import { useRegion } from "../../hooks/useRegion";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useChartColors, nodeTypeColor } from "../stats/chartTheme";
 import { NODE_TYPES } from "../../lib/node-types";
-import { LiveTraffic, loadTopology, loadTopologyRoutes, ROUTE_WINDOWS, reportFromEvent, type LiveReport, type PacketKind, flowColor, linkContext } from "./topology";
+import { LiveTraffic, loadTopology, loadTopologyRoutes, ROUTE_WINDOWS, reportFromEvent, type LiveReport, type PacketKind, flowColor } from "./topology";
 import { TopologyCanvas } from "./TopologyCanvas";
 import { useTopologyLayout } from "./useTopologyLayout";
 import { BottomSheet } from "../../components/BottomSheet";
@@ -39,6 +45,10 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
   const searchInput = useRef<HTMLInputElement>(null);
   const [params, setParams] = useSearchParams();
   const selected = params.get("topoNode") || "";
+  const scopeHours=parseScopeHours(params.get("scope_hours"));
+  const scopeFilter=params.get("topo_scope")||"";
+  const colorScopes=params.get("topo_scope_colors")==="on";
+  const changeScope=(key:string,value:string)=>setParams(prev=>{const next=new URLSearchParams(prev);if(value)next.set(key,value);else next.delete(key);return next;},{replace:true});
   const showInspector = active && (searchOpen || !!selected);
   const requestedWindow = params.get("topoWindow") || "15m";
   const routeWindow = Object.hasOwn(ROUTE_WINDOWS, requestedWindow) ? requestedWindow as keyof typeof ROUTE_WINDOWS : "15m";
@@ -48,6 +58,19 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
   const layoutInput = useMemo(() => ({ nodes: data.data?.nodes ?? [], iatas, routes: routes.data?.routes ?? [] }), [data.data, iatas, routes.data]);
   const layout = useTopologyLayout(layoutInput, active);
   const graph = layout.graph;
+  const scopeIds=useMemo(()=>{
+    const picked=new Set([selected]);if(selected)for(const [a,b] of graph.links){if(a===selected)picked.add(b);if(b===selected)picked.add(a);}
+    return (data.data?.nodes??[]).filter(n=>n.nodeType===2&&(colorScopes||scopeFilter||picked.has(n.id))).map(n=>n.id);
+  },[data.data,graph,selected,colorScopes,scopeFilter]);
+  const scopeSnapshot=useQuery({queryKey:["topology-scope-evidence",scopeIds],queryFn:({signal})=>getNodeScopeBatch(scopeIds,signal),enabled:active&&scopeIds.length>0,staleTime:30_000,refetchInterval:60_000,refetchIntervalInBackground:false,retry:false});
+  const scopeNodes=useMemo(()=>(data.data?.nodes??[]).map(n=>scopeSnapshot.data?.[n.id]?{...n,scopeEvidence:scopeSnapshot.data[n.id]}:n),[data.data,scopeSnapshot.data]);
+  const scopeOptions=useMemo(()=>[...new Set(["*","?",...scopeNodes.flatMap(n=>nodeScopeStats(n).scopeNames)])].sort(),[scopeNodes]);
+  const scopeStyle=useMemo(()=>{
+    if(!colorScopes&&!scopeFilter)return undefined;
+    const colors=new Map<string,string>(),matches=scopeFilter?new Set<string>():undefined;
+    for(const n of scopeNodes) {const s=nodeScopeStats(n,scopeHours);if(colorScopes&&n.nodeType===2)colors.set(n.id,s.repeatScope?scopeColor(s.repeatScope,true):"#94a3b8");if(scopeFilter&&s.scopeNames.includes(scopeFilter))matches?.add(n.id);}
+    return {colors,matches};
+  },[scopeNodes,scopeHours,colorScopes,scopeFilter]);
   const requestedCameraRegion = params.get("topoFocus") || focus;
   const cameraRegion = graph.regions.some(r => r.code === requestedCameraRegion) ? requestedCameraRegion : "";
   const select = useCallback(async (id: string) => {
@@ -61,6 +84,7 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
   const status = useSyncExternalStore(subscribe, () => wsManager.getStatus());
   const receive = useEffectEvent((event: Parameters<typeof reportFromEvent>[0]) => {
     if (document.hidden || (iatas && !iatas.includes(event?.observation?.iata))) return;
+    if(scopeFilter&&observedPacketScope(event.packet)!==scopeFilter)return;
     if (showChatter) chatter.observe(event,graph,Date.now());
     const report = reportFromEvent(event, graph, Date.now());
     if (report) traffic.add(report);
@@ -70,6 +94,7 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
     if (!document.hidden && showChatter) chatter.message(event,Date.now());
   });
   useEffect(() => { if (!showChatter) chatter.clear(); },[showChatter,chatter]);
+  useEffect(()=>{traffic.clear();chatter.clear();},[scopeFilter,traffic,chatter]);
   useEffect(() => {
     if (!active || !resolved || !data.data) return;
     const packet = wsManager.onPacketObservation(event => receive(event));
@@ -93,7 +118,8 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
     return { observers: [...observers].sort((a, b) => b[1].count - a[1].count), kinds, paths: live.reports.filter(r => r.segments.length).length };
   }, [live.reports]);
   const matches = useMemo(() => search.trim() ? graph.nodes.filter(n => `${n.name ?? ""} ${n.publicKey}`.toLowerCase().includes(search.trim().toLowerCase())).slice(0, 30) : [], [graph.nodes, search]);
-  const node = graph.byId.get(selected);
+  const pickedNode=graph.byId.get(selected);
+  const node=pickedNode&&scopeSnapshot.data?.[selected]?{...pickedNode,scopeEvidence:scopeSnapshot.data[selected]}:pickedNode;
   const catalogue = catalogues.data?.find(c => c.iata === (node?.region || focus));
   const catalogueStale = catalogue && (!!catalogue.lastError || !catalogue.checkedAt || live.now > catalogue.freshUntil);
   const visibleNeighbours = node ? graph.links.filter(([a, b]) => a === node.id || b === node.id).map(([a, b]) => graph.byId.get(a === node.id ? b : a)!) : [];
@@ -115,9 +141,10 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
             <input ref={searchInput} className="min-h-11 w-full rounded border border-border bg-bg-base px-3 text-sm text-text-bright" aria-label={t("topology.search")} placeholder={t("topology.search")} value={search} onChange={e => setSearch(e.target.value)} />
             <div className="mt-2 max-h-44 overflow-y-auto">{matches.map(n => <button key={n.id} className={`flex min-h-9 w-full items-center justify-between gap-2 rounded px-2 text-left text-xs ${selected === n.id ? "bg-primary/15 text-primary" : "text-text-normal hover:bg-bg-raised"}`} onClick={() => select(n.id)} aria-pressed={selected === n.id}><span className="truncate">{n.name || n.publicKey.slice(0, 10)}</span><span className="shrink-0 font-mono text-[10px]">{n.region}</span></button>)}{search.trim() && !matches.length && <p className="py-3 text-xs text-text-muted">{t("topology.noNodes")}</p>}</div>
             {node && <div className="mt-3 space-y-2 border-t border-border pt-3"><h3 className="break-words text-sm text-text-bright">{node.name || node.publicKey.slice(0, 12)}</h3><p className="text-xs text-text-normal">{t("topology.neighbours", { count: visibleNeighbours.length })}</p><div className="flex flex-wrap gap-2"><button className={button} onClick={() => onViewNode(node.id)}>{t("topology.nodeDetails")}</button>{node.observerId && <button className={button} onClick={() => onViewObserver(node.observerId!)}>{t("topology.observerDetails")}</button>}<button className={button} onClick={() => setParams(prev => { const next = new URLSearchParams(prev); next.delete("topoNode"); return next; })}>{t("topology.clear")}</button></div>
+              {node.scopeEvidence&&<div className="flex flex-wrap gap-1 py-2">{nodeScopeStats(node,scopeHours).scopeNames.map(s=><ScopeTag key={s} href={scopeMapHref(s,scopeHours,window.location.search)}>{s}</ScopeTag>)}</div>}
               {node.defaultScope && <p className="break-words text-xs text-green">{t("topology.defaultScope")}: {node.defaultScope}</p>}
               {visibleNeighbours.length > 12 && <p className="text-[10px] text-text-muted">{t("topology.neighbourLimit", { count: visibleNeighbours.length })}</p>}
-              <div className="max-h-40 overflow-y-auto">{neighbours.map(neighbour => { const context = linkContext(node, neighbour); const listed = context.sharedDefault && catalogues.data?.some(c => (c.iata === node.region || c.iata === neighbour.region) && c.scopes.some(scope => scope.name === context.sharedDefault)); return <button key={neighbour.id} className="flex min-h-10 w-full items-center justify-between gap-2 border-t border-border-subtle text-left text-xs text-text-normal" onClick={() => select(neighbour.id)}><span className="truncate">{neighbour.name || neighbour.publicKey.slice(0, 8)}</span><span className={`shrink-0 font-mono text-[10px] ${context.sharedDefault ? "text-green" : "text-primary"}`} title={listed ? t("topology.cataloguedLink") : undefined}>{context.sharedDefault || `${node.region} ↔ ${neighbour.region}`}{listed ? " · MM" : ""}</span></button>; })}</div>
+              <div className="max-h-40 overflow-y-auto">{neighbours.map(neighbour => { const other=nodeScopeStats({...neighbour,scopeEvidence:scopeSnapshot.data?.[neighbour.id]??neighbour.scopeEvidence},scopeHours);const shared=nodeScopeStats(node,scopeHours).scopeNames.filter(name=>other.scopeNames.includes(name)); return <button key={neighbour.id} className="flex min-h-10 w-full items-center justify-between gap-2 border-t border-border-subtle text-left text-xs text-text-normal" onClick={() => select(neighbour.id)}><span className="truncate">{neighbour.name || neighbour.publicKey.slice(0, 8)}</span><span className={`shrink-0 font-mono text-[10px] ${shared.length ? "text-green" : "text-primary"}`} title={t("scopeView.routeHelp")}>{shared.length?shared.slice(0,2).join(" · "):`${node.region} ↔ ${neighbour.region}`}</span></button>; })}</div>
             </div>}
           </div>
           {(focus || node) && <div className="rounded-sm border border-border bg-bg-surface p-3"><h2 className="text-sm font-semibold text-text-bright">MeshMapper · {node?.region || focus}</h2>
@@ -134,6 +161,9 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
     <button className={compactButton} aria-expanded={showInspector} onClick={showInspector ? closeInspector : openInspector}>{t(showInspector ? "topology.hideInspector" : "topology.find")}</button>
   </>;
   const settings = <>
+    <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={colorScopes} onChange={e=>changeScope("topo_scope_colors",e.target.checked?"on":"")}/>{t("scopeView.colorScopes")}</label>
+    <div className="flex flex-wrap gap-2"><ScopeWindow value={scopeHours} onChange={h=>changeScope("scope_hours",String(h))}/><select aria-label={t("scopeView.trafficScope")} className={scopeControl} value={scopeFilter} onChange={e=>changeScope("topo_scope",e.target.value)}><option value="">{t("scopeView.all")}</option>{scopeOptions.map(s=><option key={s} value={s}>{s==="*"?t("scopeView.unscoped"):s==="?"?t("scopeView.unresolved"):s}</option>)}</select></div>
+    <p className="text-[10px] text-text-muted">{t("map.scopeClusters")} {t("scopeView.unknownHelp")}</p>
     <label className="flex min-h-9 items-center gap-2 text-xs text-text-normal"><input type="checkbox" checked={showChatter} onChange={e=>setShowChatter(e.target.checked)} />{t("topology.publicChatter")}</label>
     <p className="text-[10px] text-text-muted">{t("topology.chatterHint")}</p>
     <label className="flex min-h-11 items-center gap-2 text-xs text-text-normal"><input type="checkbox" checked={animate && !reducedMotion} disabled={reducedMotion} onChange={e => setAnimate(e.target.checked)} />{t(reducedMotion ? "topology.reducedMotion" : "topology.motion")}</label>
@@ -159,13 +189,14 @@ function TopologySession({ wsManager, active = true, onViewNode, onViewObserver,
   return <section ref={section} className="h-full min-h-0 w-full min-w-0 overflow-hidden p-2 md:p-3" aria-label={t("topology.title")}>
     <div className="mx-auto flex h-full min-h-0 max-w-[2000px] flex-col gap-2">
 
+      {scopeSnapshot.isError&&(colorScopes||scopeFilter)&&<p role="alert" className="text-xs text-warn">{t("scopeView.unavailable")}</p>}
       {data.isError && <p role="alert" className="text-sm text-danger">{t("topology.loadError")} <button className={button} onClick={() => data.refetch()}>{t("topology.refresh")}</button></p>}
       {(data.isLoading || layout.pending) && <p role="status" className="text-sm text-text-normal">{t("topology.loading")}</p>}
       {layout.error && <p role="alert" className="text-sm text-danger">{t("topology.loadError")} <button className={button} onClick={layout.retry}>{t("topology.refresh")}</button></p>}
       {routes.isError && <p role="alert" className="text-xs text-warn">{t("topology.routesError")} <button className={button} onClick={() => routes.refetch()}>{t("topology.refresh")}</button></p>}
       {(data.data?.capped || routes.data?.capped || graph.linksCapped || live.capped) && <p className="text-xs text-warn">{t("topology.bounded")}</p>}
       <div className={`grid min-h-0 flex-1 min-w-0 items-stretch gap-3 ${showInspector && !mobile ? "md:grid-cols-[minmax(0,1fr)_300px]" : ""}`}>
-        <TopologyCanvas graph={graph} traffic={traffic} chatter={chatter} colors={colors} selected={selected} onSelect={select} region={cameraRegion} onRegion={focusCamera} heading={heading} controls={controls} settings={settings}
+        <TopologyCanvas scopeStyle={scopeStyle} graph={graph} traffic={traffic} chatter={chatter} colors={colors} selected={selected} onSelect={select} region={cameraRegion} onRegion={focusCamera} heading={heading} controls={controls} settings={settings}
           motion={animate && !reducedMotion} active={active} tick={live.tick} />
         {showInspector && !mobile && <aside aria-label={t("topology.inspector")} className="min-h-0 min-w-0 overflow-y-auto rounded-sm border border-border bg-bg-surface">{inspector}</aside>}
       </div>

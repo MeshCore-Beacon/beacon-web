@@ -81,7 +81,7 @@ describe("MQTT-derived repeater scope colours", () => {
     const many = buildRepeaterScopeStyle(nodesToFeatureCollection(all), true);
     expect(many.entries.some(e => e.name === "#scope99")).toBe(true);
     expect(many.entries).toHaveLength(MAX_COLORED_SCOPES);
-    expect(Object.keys(many.clusterProperties)).toHaveLength(MAX_COLORED_SCOPES + 2);
+    expect(Object.keys(many.clusterProperties)).toHaveLength(MAX_COLORED_SCOPES + 3);
     expect(many.imageIds.length).toBeLessThanOrEqual((MAX_COLORED_SCOPES + 1) * 3);
     expect(many.overflow).toBe(true);
   });

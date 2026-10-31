@@ -1,3 +1,5 @@
+import { ScopeWindow, scopeControl } from "../scopes/ScopeControls";
+import type { ScopeHours } from "../nodes/scope-evidence";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Map as MapLibreMap } from "maplibre-gl";
@@ -5,7 +7,8 @@ import type { FeatureCollection, Point } from "geojson";
 import type { NodeFeatureProps } from "./node-geojson";
 import { visibleScopeRows, type RepeaterScopeStyle, type ScopeLegendRow } from "./repeater-scopes";
 
-export function ScopeLegend({ mapRef, isReady, geojson, style }: {
+export function ScopeLegend({ mapRef, isReady, geojson, style, hours=24, onHours, focus="", onFocus, mode="highlight", onMode }: {
+  hours?: ScopeHours; onHours?: (h:ScopeHours)=>void; focus?: string; onFocus?: (s:string)=>void; mode?: "highlight"|"isolate"; onMode?: (m:"highlight"|"isolate")=>void;
   mapRef: React.RefObject<MapLibreMap | null>; isReady: boolean;
   geojson: FeatureCollection<Point, NodeFeatureProps>; style: RepeaterScopeStyle;
 }) {
@@ -22,12 +25,13 @@ export function ScopeLegend({ mapRef, isReady, geojson, style }: {
     return () => { map.off("moveend", update); map.off("resize", update); };
   }, [mapRef, isReady, geojson, style]);
   return <section aria-label={t("map.repeaterScopes")} className="absolute bottom-16 sm:bottom-7 right-3 z-10 w-56 max-w-[calc(100%-1.5rem)] border border-border rounded-sm bg-bg-raised/95 p-2.5 shadow-lg font-mono text-[11px]">
-    <h3 className="font-semibold text-text-normal">{t("map.scopesInView")}</h3>
-    <p className="mt-1 text-[10px] text-text-muted">{t("map.scopesSource")}</p>
+    <div className="flex items-center justify-between gap-2"><h3 className="font-semibold text-text-normal">{t("map.scopesInView")}</h3>{onHours&&<ScopeWindow value={hours} onChange={onHours}/>}</div>
+    {focus&&<div className="mt-2 flex flex-wrap gap-1"><span className="w-full break-all text-text-bright">{focus}</span><select aria-label={t("scopeView.displayMode")} className={scopeControl} value={mode} onChange={e=>onMode?.(e.target.value as "highlight"|"isolate")}><option value="highlight">{t("scopeView.highlight")}</option><option value="isolate">{t("scopeView.isolate")}</option></select><button className={scopeControl} onClick={()=>onFocus?.("")}>{t("scopeView.clear")}</button></div>}
+    <p className="mt-1 text-[10px] text-text-muted">{t("scopeView.any")} · {t("scopeView.reports")} ({hours}h)</p>
     <ul className="mt-2 max-h-32 overflow-y-auto space-y-1" aria-label={t("map.scopeLegend")}>
       {rows.map(row => <li key={row.kind === "named" ? `name:${row.name}` : row.kind} className="flex items-center gap-2">
         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-sm border border-text-muted/50" style={{ backgroundColor: row.color }} />
-        <span className="min-w-0 flex-1 truncate text-text-normal" title={row.name ?? undefined}>{row.name === "?" ? t("map.scopeUnmatched") : row.name === "*" ? t("map.scopeWildcard") : row.name ?? t(row.kind === "empty" ? "map.scopeReportedEmpty" : row.kind === "unknown" ? "map.scopeUnknown" : "map.scopeOther")}</span>
+        <button type="button" disabled={!row.name} aria-pressed={!!row.name&&focus===row.name} onClick={()=>row.name&&onFocus?.(focus===row.name?"":row.name)} className="min-h-6 min-w-0 flex-1 truncate text-left text-text-normal enabled:hover:underline aria-pressed:text-text-bright" title={row.name ?? undefined}>{row.name === "?" ? t("map.scopeUnmatched") : row.name === "*" ? t("map.scopeWildcard") : row.name ?? t(row.kind === "empty" ? "map.scopeReportedEmpty" : row.kind === "unknown" ? "map.scopeUnknown" : "map.scopeOther")}</button>
         <span className="tabular-nums text-text-muted">{row.count.toLocaleString()} · {row.repeats ? row.repeats.toLocaleString() : "—"}</span>
       </li>)}
     </ul>

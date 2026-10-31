@@ -2,9 +2,11 @@ import { CHAT_MS, type LiveChatter } from "./chatter";
 import { nodeTypeColor, type ChartColors } from "../stats/chartTheme";
 import { DEFAULT_CAMERA, FLOW_MS, createProjector, fitCamera, panCamera, pathControls, flowColor, linkContext, type Camera, type PathDisplay, type LiveTraffic, type Point3, type Topology } from "./topology";
 
+export type ScopeRenderStyle = { colors: ReadonlyMap<string,string>; matches?: ReadonlySet<string> };
 export type CameraView = { camera: Camera; region: string; extent: number };
 
 export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traffic: LiveTraffic, colors: ChartColors, select: (id: string) => void, focus: (code: string) => void, view?: CameraView, chatter?: LiveChatter) {
+  let scopeStyle: ScopeRenderStyle | undefined;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   let camera = { ...(view?.camera ?? DEFAULT_CAMERA), target: { ...(view?.camera.target ?? DEFAULT_CAMERA.target) } };
@@ -183,7 +185,8 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
       const lit = related.has(n.id);
       const radius = n.id === selected ? 6 : Math.max(0.8, Math.min(4.2, q.scale * (5 + Math.log2(1 + n.knownNeighborCount))));
       ctx!.globalAlpha = selected && !lit ? 0.16 : n.stale ? 0.4 : 0.9;
-      ctx!.fillStyle = nodeTypeColor(n.nodeTypeName, colors);
+      if(scopeStyle?.matches&&!scopeStyle.matches.has(n.id))ctx!.globalAlpha*=0.2;
+      ctx!.fillStyle = scopeStyle?.colors.get(n.id) ?? nodeTypeColor(n.nodeTypeName, colors);
       ctx!.beginPath();
       if (n.nodeTypeName === "companion") { ctx!.moveTo(q.x, q.y - radius); ctx!.lineTo(q.x + radius, q.y + radius); ctx!.lineTo(q.x - radius, q.y + radius); ctx!.closePath(); }
       else if (n.nodeTypeName === "room_server" || n.nodeTypeName === "sensor") ctx!.rect(q.x - radius, q.y - radius, radius * 2, radius * 2);
@@ -387,7 +390,8 @@ export function createRenderer(canvas: HTMLCanvasElement, graph: Topology, traff
   canvas.addEventListener("wheel", wheel, { passive: false }); canvas.addEventListener("keydown", key);
   document.addEventListener("visibilitychange", visibility);
   return {
-    update(id: string, region: string, paths: PathDisplay, animate: boolean, active: boolean) {
+    update(id: string, region: string, paths: PathDisplay, animate: boolean, active: boolean, nextScopeStyle?: ScopeRenderStyle) {
+      baseDirty ||= scopeStyle !== nextScopeStyle; scopeStyle=nextScopeStyle;
       const changeRegion = region !== regionCode;
       const modeChanged = motion !== animate || running !== active;
       baseDirty ||= selected !== id || changeRegion || paths !== display;

@@ -3,9 +3,9 @@ import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "rea
 import { useTranslation } from "react-i18next";
 import type { ChartColors } from "../stats/chartTheme";
 import type { PathDisplay, LiveTraffic, Topology } from "./topology";
-import { createRenderer, type CameraView } from "./topology-renderer";
+import { createRenderer, type CameraView, type ScopeRenderStyle } from "./topology-renderer";
 
-export function TopologyCanvas({ graph, traffic, chatter, colors, selected, onSelect, region, onRegion, heading, controls, settings, motion, active, tick }: { graph: Topology; traffic: LiveTraffic; chatter?: LiveChatter; colors: ChartColors; selected: string; onSelect: (id: string) => void; region: string; onRegion: (code: string) => void; heading: ReactNode; controls: ReactNode; settings: ReactNode; motion: boolean; active: boolean; tick: number }) {
+export function TopologyCanvas({ graph, traffic, chatter, colors, selected, onSelect, region, onRegion, heading, controls, settings, motion, active, tick, scopeStyle }: { graph: Topology; traffic: LiveTraffic; chatter?: LiveChatter; colors: ChartColors; selected: string; onSelect: (id: string) => void; region: string; onRegion: (code: string) => void; heading: ReactNode; controls: ReactNode; settings: ReactNode; motion: boolean; active: boolean; tick: number; scopeStyle?: ScopeRenderStyle }) {
   const { t } = useTranslation();
   const canvas = useRef<HTMLCanvasElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -31,7 +31,7 @@ export function TopologyCanvas({ graph, traffic, chatter, colors, selected, onSe
     renderer.current = createRenderer(canvas.current, graph, traffic, colors, id => selectNode(id), code => selectRegion(code), cameraView.current, chatter);
     return () => { if (graph.nodes.length) cameraView.current = renderer.current?.view(); renderer.current?.dispose(); renderer.current = null; };
   }, [graph, traffic, colors, chatter, active]);
-  useEffect(() => { renderer.current?.update(selected, region, selected || display !== "selected" ? display : "all", motion, active); }, [selected, region, display, motion, active, tick, graph, colors]);
+  useEffect(() => { renderer.current?.update(selected, region, selected || display !== "selected" ? display : "all", motion, active, scopeStyle); }, [selected, region, display, motion, active, tick, graph, colors, scopeStyle]);
   const button = "min-h-11 rounded border border-border bg-bg-surface px-3 text-xs text-text-bright hover:border-primary";
   const compactButton = "min-h-8 rounded border border-border bg-bg-surface px-2 text-[11px] text-text-bright hover:border-primary";
   return <div ref={panel} className={`flex min-h-0 min-w-0 flex-col gap-2 bg-bg-base ${expanded ? "h-dvh p-2" : "h-full"}`}>

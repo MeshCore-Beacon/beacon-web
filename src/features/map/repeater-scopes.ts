@@ -63,6 +63,7 @@ export function buildRepeaterScopeStyle(fc: FeatureCollection<Point, NodeFeature
   const weights: ExpressionSpecification[] = entries.map(e => ["let", "scopeIndex", ["index-of", e.name, ["coalesce", ["get", "scopeNames"], ["literal", []]]],
     ["case", [">=", ["var", "scopeIndex"], 0], ["number", ["at", ["var", "scopeIndex"], ["coalesce", ["get", "scopeRepeatValues"], ["literal", []]]], 0], 0]]);
   const clusterProperties: RepeaterScopeStyle["clusterProperties"] = {
+    scopeFocusCount: ["+", ["case", ["boolean", ["get", "scopeFocus"], true], 1, 0]],
     scopeRepeaters: ["+", ["case", repeater, 1, 0]],
     scopeUnknown: ["+", ["case", repeater, ["max", 0, ["-", ["number", ["get", "totalRepeatObservations"], 0], ["+", 0, ...weights]]], 0]],
   };

@@ -1,6 +1,7 @@
 // Deep-link map view <-> URL params. Pure and maplibre-free so it stays unit-testable; mirrors the
 // region-selection.ts pattern. Inbound parsing is lenient — any invalid/unknown value is dropped so a
 // malformed link degrades to the normal view rather than breaking.
+import { parseScopeHours, type ScopeHours } from "../nodes/scope-evidence";
 import { MAP_STYLES, type NeighborLinesMode } from "./types";
 import { NODE_TYPE_NAMES } from "../../lib/node-types";
 
@@ -14,7 +15,9 @@ export interface ParsedMapView {
   styleId?: string;
   flow?: boolean;
   borders?: boolean;
+  dimNodes?: boolean;
   repeaterScopes?: boolean;
+  scopeHours?: ScopeHours; scopeFocus?: string; scopeMode?: "highlight" | "isolate";
 }
 
 // The live map state a copy-link snapshot is built from (every field concrete).
@@ -27,7 +30,9 @@ export interface MapViewSnapshot {
   styleId: string;
   flow: boolean;
   borders: boolean;
+  dimNodes?: boolean;
   repeaterScopes?: boolean;
+  scopeHours?: ScopeHours; scopeFocus?: string; scopeMode?: "highlight" | "isolate";
 }
 
 const NEIGHBOR_MODES: NeighborLinesMode[] = ["on", "selected", "off"];
@@ -88,11 +93,17 @@ export function parseMapView(params: URLSearchParams): ParsedMapView {
   const flow = parseBool(params.get("flow"));
   if (flow !== undefined) view.flow = flow;
 
+  const dimNodes = parseBool(params.get("dim_nodes"));
+  if (dimNodes !== undefined) view.dimNodes = dimNodes;
+
   const borders = parseBool(params.get("borders"));
   if (borders !== undefined) view.borders = borders;
   const scopes = parseBool(params.get("repeater_scopes"));
   if (scopes !== undefined) view.repeaterScopes = scopes;
 
+  if(params.has("scope_hours")) view.scopeHours=parseScopeHours(params.get("scope_hours"));
+  const focus=params.get("scope_focus"); if(focus && focus.length<=128) view.scopeFocus=focus;
+  if(params.get("scope_mode")==="isolate" || params.get("scope_mode")==="highlight") view.scopeMode=params.get("scope_mode") as "isolate" | "highlight";
   return view;
 }
 
@@ -116,6 +127,8 @@ export function buildMapParams(view: MapViewSnapshot): Record<string, string | n
     style: view.styleId,
     flow: view.flow ? "on" : "off",
     borders: view.borders ? "on" : "off",
+    ...(view.dimNodes !== undefined ? { dim_nodes: view.dimNodes ? "on" : "off" } : {}),
     repeater_scopes: view.repeaterScopes ? "on" : "off",
+    ...(view.scopeHours!==undefined?{scope_hours:String(view.scopeHours)}:{}), ...(view.scopeFocus!==undefined?{scope_focus:view.scopeFocus||null}:{}), ...(view.scopeMode?{scope_mode:view.scopeMode}:{}),
   };
 }

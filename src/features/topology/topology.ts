@@ -1,3 +1,4 @@
+import { observedPacketScope } from "../scopes/packet-scope";
 import type { ChartColors } from "../stats/chartTheme";
 import { getTopologyLinks, getNodesPage } from "../../api/client";
 import { NODE_REGION_PAGE_SIZE } from "../../lib/constants";
@@ -184,7 +185,7 @@ export function reportFromEvent(event: WsPacketObservation["data"], graph: Topol
     const a = ids[i - 1], b = ids[i];
     if (a && b && a !== b) segments.push([a, b]);
   }
-  return { key: `${event.packetHash}|${obs.observerId}`, hash: event.packetHash, observerId: obs.observerId, observerName: typeof obs.observerName === "string" ? obs.observerName : obs.observerId.slice(0, 8), iata: obs.iata, at, heardAt: obs.heardAt, kind: packetKind(event.packet.payloadType), scope: typeof event.packet.scope === "string" ? event.packet.scope : "", snr: typeof obs.snr === "number" && Number.isFinite(obs.snr) ? obs.snr : null, segments, partial: !Array.isArray(path) || path.length > 64 || hops.some(h => h != null && (h.confidence !== "high" || h.nodes?.length !== 1 || !graph.byId.has(h.nodes[0]!.id))) };
+  return { key: `${event.packetHash}|${obs.observerId}`, hash: event.packetHash, observerId: obs.observerId, observerName: typeof obs.observerName === "string" ? obs.observerName : obs.observerId.slice(0, 8), iata: obs.iata, at, heardAt: obs.heardAt, kind: packetKind(event.packet.payloadType), scope: observedPacketScope(event.packet), snr: typeof obs.snr === "number" && Number.isFinite(obs.snr) ? obs.snr : null, segments, partial: !Array.isArray(path) || path.length > 64 || hops.some(h => h != null && (h.confidence !== "high" || h.nodes?.length !== 1 || !graph.byId.has(h.nodes[0]!.id))) };
 }
 
 export class LiveTraffic {
@@ -228,6 +229,7 @@ export class LiveTraffic {
     }
     return true;
   }
+  clear() { this.clearFlows();this.reports=[];this.trails.clear();this.seen.clear();this.ordered=true;this.lastAt=-Infinity;this.trailVersion++; }
   clearFlows() { this.flows = []; this.flowSeen.clear(); }
   prune(now: number) {
     // Receipt times normally arrive in order: inspect only the expired prefix,

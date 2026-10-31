@@ -418,12 +418,12 @@ export function useMapNodes(
         NODES_POINT_LAYER_ID,
         quietLive ? (["all", UNCLUSTERED, ["==", ["get", "id"], selectedNodeId ?? ""]] as FilterSpecification) : UNCLUSTERED,
       );
-      map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", iconOpacity);
-      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", labelOpacity);
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", scopesRef.current ? ["*", iconOpacity, ["case", ["boolean", ["get", "scopeFocus"], true], 1, 0.18]] : iconOpacity);
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", scopesRef.current ? ["*", labelOpacity, ["case", ["boolean", ["get", "scopeFocus"], true], 1, 0.1]] : labelOpacity);
     }
     // a cluster can't tell which nodes it holds, so both modes just dim it flat (matches live mode)
     if (map.getLayer(NODES_CLUSTER_LAYER_ID)) {
-      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : 1);
+      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : scopesRef.current ? ["case", [">", ["number",["get","scopeFocusCount"],0],0],1,0.18] : 1);
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", dimActive ? 0 : 1);
     }
   }, [mapRef, isReady, live, dimIdleNodes, focusIds, clustered, themeKey, selectedNodeId, dotTypes, scopeKey]);

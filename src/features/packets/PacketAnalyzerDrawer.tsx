@@ -1,3 +1,4 @@
+import { scopeMapHref } from "../scopes/model";
 import { useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -110,7 +111,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 <Badge variant={payloadTypeVariant(detail.header.payloadType)}>
                   {PAYLOAD_TYPE_NAMES[detail.header.payloadType as PayloadTypeValue] ?? t("observerPage.unknown")}
                 </Badge>
-                {detail.scope && <ScopeTag boxed>{detail.scope}</ScopeTag>}
+                {detail.scope && <ScopeTag boxed href={scopeMapHref(detail.scope!,24,window.location.search)}>{detail.scope}</ScopeTag>}
                 <Tooltip
                   label={t("investigation.heardBy", { count: observerCount })}
                   className="ml-auto"
@@ -186,7 +187,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                       <span className="text-text-dim"> (2B) = </span>
                       <span className="text-text-normal">{detail.transportCodes.regionCode}</span>
                       <span className="text-text-dim"> → </span>
-                      {detail.scope ? <ScopeTag>{detail.scope}</ScopeTag> : <span className="text-text-dim">{t("packetAnalyzer.noKnownScope")}</span>}
+                      {detail.scope ? <ScopeTag href={scopeMapHref(detail.scope!,24,window.location.search)}>{detail.scope}</ScopeTag> : <span className="text-text-dim">{t("packetAnalyzer.noKnownScope")}</span>}
                     </div>
                     <div>
                       <span className="text-text-dim">{t("packetAnalyzer.code2")} </span>

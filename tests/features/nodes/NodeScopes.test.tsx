@@ -10,12 +10,12 @@ describe("node scope evidence", () => {
     render(<NodeScopes node={node} />);
     expect(screen.getByText("#default")).toBeInTheDocument();
     expect(screen.getByText("#on")).toBeInTheDocument();
-    expect(screen.getByText("Unscoped / wildcard (*)")).toBeInTheDocument();
-    expect(screen.getByText("Scoped · name unresolved")).toBeInTheDocument();
+    expect(screen.getByText("Unscoped traffic")).toBeInTheDocument();
+    expect(screen.getByText("Scope name unresolved")).toBeInTheDocument();
     expect(screen.getByText("#heard")).toBeInTheDocument();
     expect(screen.getByText("15")).toBeInTheDocument();
     expect(screen.getByText("Advert default")).toBeInTheDocument();
-    expect(screen.getByText("Heard by observer")).toBeInTheDocument();
+    expect(screen.getByText(/Receiver heard/)).toBeInTheDocument();
     expect(screen.getByText(/Stored scope-list replies differ/)).toBeInTheDocument();
   });
 });

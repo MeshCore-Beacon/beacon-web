@@ -8,9 +8,11 @@ export interface NodeIATA {
 export interface NodeScopeEvidence {
   since: number; until: number; scopes: NodeScope[];
   reportedEmpty?: boolean; conflictingReports?: boolean;
+  hourly?: NodeScopeHour[];
 }
 export interface NodeScope {
   name: string; repeatObservations: number; repeatedAt?: number;
+  repeatObservations1h?: number; repeatObservations6h?: number; firstRepeatedAt?: number; uniqueSamples?: number; uniqueSince?: number;
   minHashBytes?: number; reported?: boolean; reportedAt?: number; heardAt?: number;
 }
 
@@ -131,3 +133,5 @@ export interface NodeObservation {
   snr?: number;
   hopCount?: number;
 }
+
+export interface NodeScopeHour { name: string; hour: number; reports: number; uniqueSamples: number; firstSeen: number; lastSeen: number }

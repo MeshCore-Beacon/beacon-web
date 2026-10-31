@@ -12,6 +12,7 @@ export interface NodeFeatureProps {
   nodeTypeName: string;
   isObserver: boolean; // role flag; selects the observer-pip marker variant (default false)
   scopeNames?: string[];
+  scopeFocus?: boolean;
   scopeReportedEmpty?: boolean;
   scopeRepeatValues?: number[];
   repeatScope?: string | null;
@@ -20,12 +21,12 @@ export interface NodeFeatureProps {
 }
 
 export function nodesToFeatureCollection(
-  nodes: NodeSummary[],
+  nodes: NodeSummary[], hours: 1 | 6 | 24 = 24,
 ): FeatureCollection<Point, NodeFeatureProps> {
   const features: Feature<Point, NodeFeatureProps>[] = [];
   for (const n of nodes) {
     if (!hasMapLocation(n)) continue;
-    const scopes = n.nodeTypeName === "repeater" ? nodeScopeStats(n) : null;
+    const scopes = n.nodeTypeName === "repeater" ? nodeScopeStats(n,hours) : null;
     features.push({
       type: "Feature",
       // GeoJSON/maplibre order is [lng, lat]; the API sends decimal degrees as-is

@@ -14,6 +14,7 @@ import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
+import { type ScopeHours } from "../nodes/scope-evidence";
 import { ScopeLegend } from "./ScopeLegend";
 import { buildRepeaterScopeStyle } from "./repeater-scopes";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
@@ -106,6 +107,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     setBorders(on);
     localStorage.setItem(MAP_BORDERS_STORAGE_KEY, on ? "on" : "off");
   }, []);
+  const [scopeHours,setScopeHours]=useState<ScopeHours>(()=>urlView.scopeHours??24);
+  const [scopeFocus,setScopeFocus]=useState(()=>urlView.scopeFocus??"");
+  const [scopeMode,setScopeMode]=useState<"highlight"|"isolate">(()=>urlView.scopeMode??"highlight");
   const [repeaterScopes, setRepeaterScopes] = useState(() => urlView.repeaterScopes ?? localStorage.getItem("beacon-map-repeater-scopes") === "on");
   const handleRepeaterScopesChange = useCallback((on: boolean) => {
     setRepeaterScopes(on);
@@ -160,7 +164,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // split memos: rebuild the FeatureCollection only when nodes change; a type-filter change just
   // re-filters the already-built collection instead of re-running the full transform over all nodes
-  const baseFc = useMemo(() => nodesToFeatureCollection(nodes), [nodes]);
+  const baseFc = useMemo(() => nodesToFeatureCollection(nodes,scopeHours), [nodes,scopeHours]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
   // Live Map lights crossed nodes from the unfiltered list and draws idle nodes as dots
   const liveNodeIndex = useMemo(() => buildLiveNodeIndex(baseFc), [baseFc]);
@@ -168,8 +172,11 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // Live forces clustering off so every crossed node can light; the saved choice is untouched
   const effectiveClustered = clustered && !packetFlow;
   const mapGeojson = useMemo(
-    () => (packetFlow ? withSelectedNode(geojson, baseFc, selectedNodeId) : geojson),
-    [packetFlow, geojson, baseFc, selectedNodeId],
+    () => {
+      const source=packetFlow?withSelectedNode(geojson,baseFc,selectedNodeId):geojson;
+      if(!repeaterScopes||!scopeFocus)return source;
+      return {...source,features:source.features.filter(f=>scopeMode!=="isolate"||f.properties.scopeNames?.includes(scopeFocus)).map(f=>({...f,properties:{...f.properties,scopeFocus:!!f.properties.scopeNames?.includes(scopeFocus)}}))};
+    }, [packetFlow,geojson,baseFc,selectedNodeId,repeaterScopes,scopeFocus,scopeMode],
   );
 
   // Selected mode colours the one node's edges by observation count + freshness, which only the node
@@ -220,7 +227,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection), terrain);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
-  const scopeStyle = useMemo(() => repeaterScopes ? buildRepeaterScopeStyle(mapGeojson, isDark) : null, [repeaterScopes, mapGeojson, isDark]);
+  const scopeStyle = useMemo(() => repeaterScopes ? buildRepeaterScopeStyle(geojson, isDark) : null, [repeaterScopes, geojson, isDark]);
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
   // Evaluated at click, so it reads the real camera; forces tab=Map so the link lands on the map.
@@ -237,15 +244,15 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       flow: packetFlow,
       dimNodes,
       borders,
-      repeaterScopes,
+      repeaterScopes, scopeHours, scopeFocus, scopeMode,
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, dimNodes, borders, repeaterScopes]);
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, dimNodes, borders, repeaterScopes, scopeHours, scopeFocus, scopeMode]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes, dimNodes, scopeStyle);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}:${scopeHours}:${scopeFocus}:${scopeMode}`, dotTypes, dimNodes, scopeStyle);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
-  useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey, isDark, liveNodeIndex, onSelectNode);
+  useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey, isDark, liveNodeIndex, onSelectNode, repeaterScopes ? scopeFocus : "");
 
   return (
     <div className="relative flex flex-1 min-h-0">
@@ -273,7 +280,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         buildShareParams={buildShareParams}
         liveMap={packetFlow}
       />
-      {scopeStyle && <ScopeLegend mapRef={mapRef} isReady={isReady} geojson={mapGeojson} style={scopeStyle} />}
+      {scopeStyle && <ScopeLegend mapRef={mapRef} isReady={isReady} geojson={geojson} style={scopeStyle} hours={scopeHours} onHours={setScopeHours} focus={scopeFocus} onFocus={setScopeFocus} mode={scopeMode} onMode={setScopeMode} />}
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
       <LoadingPill loading={isPaging || regionPending} error={nodesError} count={loadedCount} noun="nodes" />
