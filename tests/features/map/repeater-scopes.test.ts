@@ -10,7 +10,7 @@ import type { WsNodeUpdate } from "../../../src/types/ws";
 const node = (id: string, scope?: string, lng = -80, type = "repeater"): NodeSummary => ({
   id, publicKey: id, name: id, nodeType: type === "repeater" ? 2 : 1,
   nodeTypeName: type, lat: 43, lng, iatas: [], knownNeighborCount: 0,
-  ...(scope === undefined ? {} : { defaultScope: scope }),
+  ...(scope === undefined ? {} : { defaultScope: scope, scopeEvidence: { since: 1, until: 2, scopes: [{ name: scope, repeatObservations: 1 }] } }),
 });
 
 function evaluate(value: ExpressionSpecification, properties: Record<string, unknown>) {
@@ -22,7 +22,7 @@ function evaluate(value: ExpressionSpecification, properties: Record<string, unk
 function cluster(nodes: NodeSummary[], style = buildRepeaterScopeStyle(nodesToFeatureCollection(nodes), true)) {
   const props: Record<string, number> = {};
   for (const [key, [, mapped]] of Object.entries(style.clusterProperties)) {
-    props[key] = nodes.reduce((n, item) => n + Number(evaluate(mapped, { ...item })), 0);
+    props[key] = nodesToFeatureCollection(nodes).features.reduce((n, item) => n + Number(evaluate(mapped, item.properties)), 0);
   }
   return { style, props };
 }
@@ -46,7 +46,7 @@ describe("MQTT-derived repeater scope colours", () => {
     expect(scopePointImage(null, ["literal", "normal"])).toEqual(["literal", "normal"]);
   });
 
-  it("uses a unique dominant scope and leaves ties or mostly unknown clusters neutral", () => {
+  it("uses observed repeat weight, with ties neutral and missing reports unable to outvote measurements", () => {
     const all = [node("a", "#on"), node("b", "#on"), node("c", "#qc")];
     const { style, props } = cluster(all);
     expect(evaluate(style.clusterColor, props)).toBe(scopeColor("#on", true));
@@ -54,9 +54,23 @@ describe("MQTT-derived repeater scope colours", () => {
     const tied = cluster([all[0]!, all[2]!], style);
     expect(evaluate(style.clusterColor, tied.props)).toBe(style.neutral);
     const unknown = cluster([all[0]!, node("u1"), node("u2")], style);
-    expect(evaluate(style.clusterColor, unknown.props)).toBe(style.neutral);
+    expect(evaluate(style.clusterColor, unknown.props)).toBe(scopeColor("#on", true));
     const companions = cluster([node("device", "#on", 0, "companion")], style);
     expect(evaluate(scopeClusterImage(style, ["literal", "normal"]), companions.props)).toBe("normal");
+  });
+
+  it("ranks repeats independently of defaults, lists every reported/heard scope and retains wildcard", () => {
+    const a = { ...node("a", "#default"), scopeEvidence: { since: 1, until: 2, scopes: [
+      { name: "#default", repeatObservations: 1 }, { name: "#repeat", repeatObservations: 9 },
+      { name: "*", repeatObservations: 3, reported: true }, { name: "#heard", repeatObservations: 0, heardAt: 1 },
+    ] } };
+    const fc = nodesToFeatureCollection([a]); const style = buildRepeaterScopeStyle(fc, true);
+    expect(evaluate(style.pointColor, fc.features[0]!.properties)).toBe(scopeColor("#repeat", true));
+    expect(style.entries.map(e => e.name)).toEqual(["#default", "#heard", "#repeat", "*"]);
+    const advertised = nodesToFeatureCollection([{ ...node("b", "#default"), scopeEvidence: undefined }]);
+    expect(evaluate(style.pointColor, advertised.features[0]!.properties)).toBe(style.neutral);
+    const fewBusy = cluster([a, node("b", "#default"), node("c", "#default")], style);
+    expect(evaluate(style.clusterColor, fewBusy.props)).toBe(scopeColor("#repeat", true));
   });
 
   it("handles an empty catalogue and bounds cluster properties and image variants", () => {

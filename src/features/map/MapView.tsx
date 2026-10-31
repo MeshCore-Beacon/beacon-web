@@ -126,7 +126,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // nodes for the selected region (its own key, independent of the Nodes-table filters/page cap).
   // Pages in 50 at a time so the map fills batch by batch; nodesKey matches the hook's query key.
   const nodesKey = useMemo(() => ["map-nodes", regionKey], [regionKey]);
-  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey, { enabled: !regionPending });
+  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey, { enabled: !regionPending, refreshScopes: repeaterScopes });
 
   // patch-or-insert the live update into the paged node cache (the shared helper preserves refs
   // when nothing changed, so a same-values re-advert doesn't trigger a full map repaint); brand-new

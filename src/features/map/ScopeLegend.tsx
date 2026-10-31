@@ -27,8 +27,8 @@ export function ScopeLegend({ mapRef, isReady, geojson, style }: {
     <ul className="mt-2 max-h-32 overflow-y-auto space-y-1" aria-label={t("map.scopeLegend")}>
       {rows.map(row => <li key={row.kind === "named" ? `name:${row.name}` : row.kind} className="flex items-center gap-2">
         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-sm border border-text-muted/50" style={{ backgroundColor: row.color }} />
-        <span className="min-w-0 flex-1 truncate text-text-normal" title={row.name ?? undefined}>{row.name ?? t(row.kind === "unknown" ? "map.scopeUnknown" : "map.scopeOther")}</span>
-        <span className="tabular-nums text-text-muted">{row.count.toLocaleString()}</span>
+        <span className="min-w-0 flex-1 truncate text-text-normal" title={row.name ?? undefined}>{row.name === "*" ? t("map.scopeWildcard") : row.name ?? t(row.kind === "empty" ? "map.scopeReportedEmpty" : row.kind === "unknown" ? "map.scopeUnknown" : "map.scopeOther")}</span>
+        <span className="tabular-nums text-text-muted">{row.count.toLocaleString()} · {row.repeats ? row.repeats.toLocaleString() : "—"}</span>
       </li>)}
     </ul>
     {!rows.length && <p className="mt-2 text-text-muted">{t("map.noRepeatersInView")}</p>}

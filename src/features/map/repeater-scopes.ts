@@ -45,25 +45,26 @@ export function scopeColor(name: string, dark: boolean): string {
 
 export function buildRepeaterScopeStyle(fc: FeatureCollection<Point, NodeFeatureProps>, dark: boolean): RepeaterScopeStyle {
   const names = [...new Set(fc.features.filter(f => f.properties.nodeTypeName === "repeater")
-    .map(f => reportedScope(f.properties.defaultScope)).filter((s): s is string => s !== undefined))].sort();
+    .flatMap(f => f.properties.scopeNames ?? []).filter((s): s is string => reportedScope(s) !== undefined))].sort();
   const entries = names.slice(0, MAX_COLORED_SCOPES).map(name => ({ name, color: scopeColor(name, dark) }));
   const neutral = dark ? "#94a3b8" : "#64748b";
   const repeater: ExpressionSpecification = ["==", ["get", "nodeTypeName"], "repeater"];
-  const scope: ExpressionSpecification = ["coalesce", ["get", "defaultScope"], ""];
+  const scope: ExpressionSpecification = ["coalesce", ["get", "repeatScope"], ""];
   const pointColor: ExpressionSpecification = entries.length
     ? ["match", scope, ...entries.flatMap(e => [e.name, e.color]), neutral] as ExpressionSpecification
     : ["literal", neutral];
+  const weights: ExpressionSpecification[] = entries.map(e => ["number", ["get", e.name, ["coalesce", ["get", "scopeRepeats"], ["literal", {}]]], 0]);
   const clusterProperties: RepeaterScopeStyle["clusterProperties"] = {
     scopeRepeaters: ["+", ["case", repeater, 1, 0]],
-    scopeUnknown: ["+", ["case", ["all", repeater, ["!", ["in", scope, ["literal", entries.map(e => e.name)]]]], 1, 0]],
+    scopeUnknown: ["+", ["case", repeater, ["max", 0, ["-", ["number", ["get", "totalRepeatObservations"], 0], ["+", 0, ...weights]]], 0]],
   };
-  entries.forEach((e, i) => {
-    clusterProperties[`scope${i}`] = ["+", ["case", ["all", repeater, ["==", scope, e.name]], 1, 0]];
+  entries.forEach((_, i) => {
+    clusterProperties[`scope${i}`] = ["+", ["case", repeater, weights[i]!, 0]];
   });
   const counts: ExpressionSpecification[] = entries.map((_, i) => ["get", `scope${i}`]);
   const allCounts: ExpressionSpecification[] = [...counts, ["get", "scopeUnknown"]];
-  // Only a unique winner can colour a cluster. Unknown/overflow members compete
-  // too, so a lone known scope cannot colour a mostly-unknown cluster.
+  // Sum observed repeat reports, never configured memberships or advert defaults.
+  // Overflow traffic competes too; ties and a lack of repeat evidence stay neutral.
   const clusterColor: ExpressionSpecification = ["let", "most", ["max", 0, ...allCounts],
     ["case", ["all", [">", ["var", "most"], 0],
       ["==", ["+", 0, ...allCounts.map<ExpressionSpecification>(c => ["case", ["==", c, ["var", "most"]], 1, 0])], 1],
@@ -88,7 +89,7 @@ export function scopeClusterImage(style: RepeaterScopeStyle | null, base: Expres
     ["concat", SCOPE_IMAGE_PREFIX, ["slice", style.clusterColor, 1], `-${SCOPE_CLUSTER_ICON}`], base] : base;
 }
 
-export interface ScopeLegendRow { name: string | null; color: string; count: number; kind: "named" | "unknown" | "other" }
+export interface ScopeLegendRow { name: string | null; color: string; count: number; repeats: number; kind: "named" | "unknown" | "other" | "empty" }
 export interface MapBounds { getWest(): number; getEast(): number; getSouth(): number; getNorth(): number }
 
 // O(loaded nodes), on settled camera/data changes only. Bounds counts are not
@@ -104,11 +105,16 @@ export function visibleScopeRows(fc: FeatureCollection<Point, NodeFeatureProps>,
     const [lng, lat] = f.geometry.coordinates;
     if (lng === undefined || lat === undefined || lat < bounds.getSouth() || lat > bounds.getNorth()) continue;
     if (width < 360 && ((lng - west) % 360 + 360) % 360 > width) continue;
-    const name = reportedScope(f.properties.defaultScope);
-    const kind = !name ? "unknown" : palette.has(name) ? "named" : "other";
-    const key = kind === "named" ? `name:${name}` : kind;
-    const row = rows.get(key) ?? { name: kind === "named" ? name! : null, color: name ? palette.get(name) ?? style.neutral : style.neutral, count: 0, kind };
-    row.count++; rows.set(key, row);
+    const names = f.properties.scopeNames?.length ? f.properties.scopeNames : [undefined];
+    const counted = new Set<string>();
+    for (const name of names) {
+      const kind = !name ? f.properties.scopeReportedEmpty ? "empty" : "unknown" : palette.has(name) ? "named" : "other";
+      const key = kind === "named" ? `name:${name}` : kind;
+      const row = rows.get(key) ?? { name: kind === "named" ? name! : null, color: name ? palette.get(name) ?? style.neutral : style.neutral, count: 0, repeats: 0, kind };
+      if (!counted.has(key)) { row.count++; counted.add(key); }
+      row.repeats += name ? f.properties.scopeRepeats?.[name] ?? 0 : 0;
+      rows.set(key, row);
+    }
   }
-  return [...rows.values()].sort((a, b) => b.count - a.count || (a.name ?? a.kind).localeCompare(b.name ?? b.kind));
+  return [...rows.values()].sort((a, b) => b.repeats - a.repeats || b.count - a.count || (a.name ?? a.kind).localeCompare(b.name ?? b.kind));
 }

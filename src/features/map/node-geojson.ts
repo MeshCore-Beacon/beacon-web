@@ -1,6 +1,7 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { NodeSummary, NodeNeighbor } from "../nodes/types";
 import { hasMapLocation } from "./location";
+import { nodeScopeStats } from "../nodes/scope-evidence";
 
 // Build the maplibre GeoJSON source from the nodes API response. Properties stay primitive because
 // clustering serializes them, and there's no maplibre import, so this stays unit-testable.
@@ -10,6 +11,11 @@ export interface NodeFeatureProps {
   name: string | null;
   nodeTypeName: string;
   isObserver: boolean; // role flag; selects the observer-pip marker variant (default false)
+  scopeNames?: string[];
+  scopeReportedEmpty?: boolean;
+  scopeRepeats?: Record<string, number>;
+  repeatScope?: string | null;
+  totalRepeatObservations?: number;
   defaultScope?: string; // MQTT-observed advert scope, not a configured forwarding list
 }
 
@@ -29,6 +35,7 @@ export function nodesToFeatureCollection(
         nodeTypeName: n.nodeTypeName,
         isObserver: !!n.isObserver,
         ...(n.defaultScope ? { defaultScope: n.defaultScope } : {}),
+        ...(n.nodeTypeName === "repeater" ? { ...nodeScopeStats(n), scopeReportedEmpty: !!n.scopeEvidence?.reportedEmpty } : {}),
       },
     });
   }
