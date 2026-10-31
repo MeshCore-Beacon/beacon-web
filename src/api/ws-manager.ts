@@ -5,6 +5,7 @@ import {
   WS_RECONNECT_MAX_MS,
   WS_RECONNECT_JITTER,
   WS_STABLE_MS,
+  WS_RECONNECT_GRACE_MS,
 } from "../lib/constants";
 
 // attempt index at which the backoff first reaches WS_RECONNECT_MAX_MS
@@ -38,6 +39,9 @@ export class WsManager {
   private paused = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
+  // while set, a reconnect's interim states wait in graceStatus instead of reaching listeners
+  private graceTimer: ReturnType<typeof setTimeout> | null = null;
+  private graceStatus: WsStatus = "connecting";
   private msgCounter = 0;
   private lastEventTimestamp: number = Date.now();
   // liveness for the ping check; unlike lastEventTimestamp it restarts with each connection
@@ -316,9 +320,11 @@ export class WsManager {
   }
 
   private scheduleReconnect(closeCode?: number): void {
-    this.setStatus("connecting");
     // only a link that actually held resets the backoff — an accept-then-close must keep escalating
-    if (this.openedAt !== null && Date.now() - this.openedAt >= WS_STABLE_MS) this.reconnectAttempt = 0;
+    const healthy = this.openedAt !== null && Date.now() - this.openedAt >= WS_STABLE_MS;
+    if (healthy) this.startGrace();
+    this.setStatus("connecting");
+    if (healthy) this.reconnectAttempt = 0;
     this.openedAt = null;
     // 1008 policy / 1013 try-again-later mean the server is shedding us: go straight to the longest wait
     if (closeCode === 1008 || closeCode === 1013) this.reconnectAttempt = Math.max(this.reconnectAttempt, CAP_ATTEMPT);
@@ -345,11 +351,31 @@ export class WsManager {
   }
 
   private setStatus(status: WsStatus): void {
+    if (this.graceTimer && (status === "connecting" || status === "error")) {
+      this.graceStatus = status;
+      return;
+    }
+    this.endGrace();
     if (this.status === status) return;
     this.status = status;
     for (const handler of this.statusHandlers) {
       handler(status);
     }
+  }
+
+  private startGrace(): void {
+    if (this.graceTimer || this.status !== "connected") return;
+    this.graceStatus = "connecting";
+    this.graceTimer = setTimeout(() => {
+      this.graceTimer = null;
+      this.setStatus(this.graceStatus);
+    }, WS_RECONNECT_GRACE_MS);
+  }
+
+  private endGrace(): void {
+    if (!this.graceTimer) return;
+    clearTimeout(this.graceTimer);
+    this.graceTimer = null;
   }
 
   private teardownSocket(): void {
