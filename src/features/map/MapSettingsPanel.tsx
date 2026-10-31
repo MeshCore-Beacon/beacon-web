@@ -56,6 +56,8 @@ interface MapSettingsPanelProps {
   onNeighborLinesChange: (mode: NeighborLinesMode) => void;
   borders: boolean;
   onBordersChange: (on: boolean) => void;
+  repeaterScopes?: boolean;
+  onRepeaterScopesChange?: (on: boolean) => void;
   // builds deep-link params for the current view, evaluated at copy time (reads the live camera)
   buildShareParams: () => Record<string, string | null>;
 }
@@ -71,6 +73,8 @@ export function MapSettingsPanel({
   onNeighborLinesChange,
   borders,
   onBordersChange,
+  repeaterScopes = false,
+  onRepeaterScopesChange,
   buildShareParams,
 }: MapSettingsPanelProps) {
   const { t } = useTranslation();
@@ -99,7 +103,7 @@ export function MapSettingsPanel({
   };
 
   return (
-    <div className="absolute top-3 left-3 z-10 w-60 max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg overflow-hidden font-mono">
+    <div className="absolute top-3 left-3 z-10 flex max-h-[calc(100%-1.5rem)] flex-col w-60 max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg overflow-hidden font-mono">
       <button
         type="button"
         onClick={toggle}
@@ -119,7 +123,7 @@ export function MapSettingsPanel({
       </button>
 
       {open && (
-        <div className="border-t border-border-subtle">
+        <div className="min-h-0 overflow-y-auto border-t border-border-subtle">
           <Section title={t("map.tiles")} first>
             <MapStyleSwitcher styleId={styleId} onChange={onStyleChange} className="w-full" />
           </Section>
@@ -160,6 +164,10 @@ export function MapSettingsPanel({
               className="w-full"
             />
             {borders && <BorderLegend />}
+            <label className="mt-2 flex min-h-9 cursor-pointer items-center gap-2 text-[11px] text-text-normal">
+              <input type="checkbox" checked={repeaterScopes} onChange={e => onRepeaterScopesChange?.(e.target.checked)} className="accent-primary" />
+              {t("map.repeaterScopes")}
+            </label>
           </Section>
           <div className="px-3 py-2.5 border-t border-border-subtle flex justify-end">
             <CopyLinkButton

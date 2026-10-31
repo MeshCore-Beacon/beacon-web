@@ -13,6 +13,8 @@ import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { MapSettingsPanel } from "./MapSettingsPanel";
+import { ScopeLegend } from "./ScopeLegend";
+import { buildRepeaterScopeStyle } from "./repeater-scopes";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
@@ -97,6 +99,11 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const handleBordersChange = useCallback((on: boolean) => {
     setBorders(on);
     localStorage.setItem(MAP_BORDERS_STORAGE_KEY, on ? "on" : "off");
+  }, []);
+  const [repeaterScopes, setRepeaterScopes] = useState(() => urlView.repeaterScopes ?? localStorage.getItem("beacon-map-repeater-scopes") === "on");
+  const handleRepeaterScopesChange = useCallback((on: boolean) => {
+    setRepeaterScopes(on);
+    try { localStorage.setItem("beacon-map-repeater-scopes", on ? "on" : "off"); } catch { /* unavailable storage */ }
   }, []);
 
   // A deep-link camera opens the map here and suppresses the initial region fit (see useMapLibre).
@@ -191,6 +198,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection));
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
+  const scopeStyle = useMemo(() => repeaterScopes ? buildRepeaterScopeStyle(geojson, isDark) : null, [repeaterScopes, geojson, isDark]);
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
   // Evaluated at click, so it reads the real camera; forces tab=Map so the link lands on the map.
@@ -206,11 +214,12 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       styleId,
       flow: packetFlow,
       borders,
+      repeaterScopes,
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders]);
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders, repeaterScopes]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, scopeStyle);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey);
@@ -232,8 +241,11 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onNeighborLinesChange={handleNeighborLinesChange}
         borders={borders}
         onBordersChange={handleBordersChange}
+        repeaterScopes={repeaterScopes}
+        onRepeaterScopesChange={handleRepeaterScopesChange}
         buildShareParams={buildShareParams}
       />
+      {scopeStyle && <ScopeLegend mapRef={mapRef} isReady={isReady} geojson={geojson} style={scopeStyle} />}
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
       <LoadingPill loading={isPaging || regionPending} error={nodesError} count={loadedCount} noun="nodes" />

@@ -10,6 +10,7 @@ export interface NodeFeatureProps {
   name: string | null;
   nodeTypeName: string;
   isObserver: boolean; // role flag; selects the observer-pip marker variant (default false)
+  defaultScope?: string; // MQTT-observed advert scope, not a configured forwarding list
 }
 
 export function nodesToFeatureCollection(
@@ -27,6 +28,7 @@ export function nodesToFeatureCollection(
         name: n.name,
         nodeTypeName: n.nodeTypeName,
         isObserver: !!n.isObserver,
+        ...(n.defaultScope ? { defaultScope: n.defaultScope } : {}),
       },
     });
   }

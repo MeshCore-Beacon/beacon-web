@@ -618,7 +618,15 @@
         "zoomIn": "Zoom avant",
         "zoomOut": "Zoom arrière",
         "closePopup": "Fermer la fenêtre"
-      }
+      },
+      "repeaterScopes": "Portées des répéteurs",
+      "scopesInView": "Portées visibles",
+      "scopeLegend": "Légende des portées des répéteurs",
+      "scopesSource": "Dernière portée reconnue dans les annonces (MQTT). Comptage des positions chargées des répéteurs.",
+      "scopeUnknown": "Portée inconnue",
+      "scopeOther": "Autres portées",
+      "noRepeatersInView": "Aucun répéteur dans la vue.",
+      "scopeClusters": "Les groupes montrent la portée la plus fréquente. Égalités et inconnues restent neutres. Une portée partagée ne prouve pas un lien."
     },
     "nodeFilters": {
       "label": "Filtres des nœuds",

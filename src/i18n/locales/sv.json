@@ -602,7 +602,15 @@
         "zoomIn": "Zooma in",
         "zoomOut": "Zooma ut",
         "closePopup": "Stäng popup"
-      }
+      },
+      "repeaterScopes": "Repeatrarnas scopes",
+      "scopesInView": "Scopes i vyn",
+      "scopeLegend": "Förklaring av repeaterscopes",
+      "scopesSource": "Senast identifierade annonsscope (MQTT). Antal utifrån inlästa repeaterpositioner.",
+      "scopeUnknown": "Okänd scope",
+      "scopeOther": "Övriga scopes",
+      "noRepeatersInView": "Inga repeatrar i vyn.",
+      "scopeClusters": "Kluster visar vanligaste scope. Lika antal och okända visas neutralt. Gemensam scope bevisar ingen länk."
     },
     "nodeFilters": {
       "label": "Nodfilter",

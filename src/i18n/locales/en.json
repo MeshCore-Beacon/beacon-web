@@ -284,7 +284,7 @@
       "observations_one": "{{formatted}} obs",
       "observations_other": "{{formatted}} obs",
       "hops": "Hops",
-            "hardware": "Hardware",
+      "hardware": "Hardware",
       "power": "Power",
       "antenna": "Antenna",
       "powerSource": "Power source",
@@ -638,7 +638,15 @@
         "zoomIn": "Zoom in",
         "zoomOut": "Zoom out",
         "closePopup": "Close popup"
-      }
+      },
+      "repeaterScopes": "Repeater scopes",
+      "scopesInView": "Scopes in view",
+      "scopeLegend": "Repeater scope legend",
+      "scopesSource": "Last matched advert scope (MQTT). Counts use loaded repeater locations.",
+      "scopeUnknown": "Scope unknown",
+      "scopeOther": "Additional scopes",
+      "noRepeatersInView": "No repeaters in view.",
+      "scopeClusters": "Clusters show the most common scope. Ties and unknowns stay neutral. A shared scope is not proof of a link."
     },
     "nodeFilters": {
       "label": "Node filters",
