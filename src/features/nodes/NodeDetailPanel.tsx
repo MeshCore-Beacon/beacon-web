@@ -12,6 +12,7 @@ import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
 import { MeshMapperSection } from "./MeshMapperSection";
+import { NodeScopes } from "./NodeScopes";
 import { Tooltip } from "../../components/Tooltip";
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
@@ -88,6 +89,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
     staleTime: 30_000,
+    refetchInterval: (query) => !query.state.error && query.state.data?.scopeEvidence ? 60_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const { data: observations } = useQuery({
@@ -170,6 +173,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               </Section>
             )}
 
+            <NodeScopes node={node} />
             {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
 
             <Section title={t("nodeDetail.capabilities")}>
@@ -178,7 +182,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 <Field label={t("nodeDetail.multibytePaths")} value={node.supportsMultibytePaths ? t("nodeDetail.yes") : t("nodeDetail.no")} />
                 <Field label={t("nodeDetail.multibyteTraces")} value={node.supportsMultibyteTraces ? t("nodeDetail.yes") : t("nodeDetail.no")} />
                 {node.radio && <Field label={t("nodeDetail.radio")} value={formatRadio(node.radio) ?? "—"} />}
-                {node.defaultScope && <Field label={t("nodeDetail.scope")} value={node.defaultScope} />}
+                {node.defaultScope && <Field label={t("map.scopeAdvert")} value={node.defaultScope} />}
               </div>
             </Section>
 

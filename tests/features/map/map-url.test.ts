@@ -116,6 +116,7 @@ describe("buildMapParams", () => {
       style: "liberty",
       flow: "on",
       borders: "on",
+      repeater_scopes: "off",
     });
   });
 
@@ -134,12 +135,18 @@ describe("buildMapParams", () => {
       styleId: "liberty",
       flow: true,
       borders: true,
+      repeaterScopes: false,
     });
   });
 
   it("round-trips an All-node-type snapshot (no node_type key survives)", () => {
     const built = buildMapParams({ ...snapshot, nodeType: "" });
     expect(parseMapView(toParams(built)).nodeType).toBeUndefined();
+  });
+
+  it("round-trips the scope overlay and ignores invalid URL values", () => {
+    expect(parseMapView(toParams(buildMapParams({ ...snapshot, repeaterScopes: true })))).toMatchObject({ repeaterScopes: true });
+    expect(parseMapView(new URLSearchParams("repeater_scopes=maybe"))).toEqual({});
   });
 });
 

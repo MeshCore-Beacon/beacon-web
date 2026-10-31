@@ -21,11 +21,12 @@ export function patchNodeSummary(
   const lat = data.lat === undefined ? prev.lat : data.lat;
   const lng = data.lng === undefined ? prev.lng : data.lng;
   const possiblyForeign = data.possiblyForeign === undefined ? prev.possiblyForeign : data.possiblyForeign ?? undefined;
+  const defaultScope = data.defaultScope === undefined ? prev.defaultScope : data.defaultScope;
   // a re-advert that re-sends the same values must keep the SAME ref so patchInfinitePages no-ops
   // (otherwise an unchanged node would trigger a full map FeatureCollection rebuild + setData)
-  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign) return list;
+  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign && defaultScope === prev.defaultScope) return list;
   const updated = [...list];
-  updated[idx] = { ...prev, name, lat, lng, possiblyForeign };
+  updated[idx] = { ...prev, name, lat, lng, possiblyForeign, defaultScope };
   return updated;
 }
 

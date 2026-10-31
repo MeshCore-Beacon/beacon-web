@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MapSettingsPanel } from "../../../src/features/map/MapSettingsPanel";
 import { PacketFlowButton } from "../../../src/features/map/PacketFlowButton";
 import i18n from "../../../src/i18n";
@@ -14,6 +14,15 @@ function mount() {
 }
 
 describe("map settings", () => {
+  it("toggles repeater scopes without changing borders or neighbour lines", () => {
+    const scopes = vi.fn(), borders = vi.fn(), neighbors = vi.fn();
+    render(<MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
+      clustered onClusteredChange={() => {}} neighborLines="selected" onNeighborLinesChange={neighbors}
+      borders={false} onBordersChange={borders} repeaterScopes={false} onRepeaterScopesChange={scopes} buildShareParams={() => ({})} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Repeater scopes" }));
+    expect(scopes).toHaveBeenCalledWith(true);
+    expect(borders).not.toHaveBeenCalled(); expect(neighbors).not.toHaveBeenCalled();
+  });
   it("renders in English", () => {
     mount();
     expect(screen.getByText("Map Settings")).toBeInTheDocument();
