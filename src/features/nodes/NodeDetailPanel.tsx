@@ -89,6 +89,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
     staleTime: 30_000,
+    refetchInterval: (query) => !query.state.error && query.state.data?.scopeEvidence ? 60_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const { data: observations } = useQuery({

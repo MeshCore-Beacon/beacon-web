@@ -12,7 +12,7 @@ export function NodeScopes({ node }: { node: Node }) {
   return <Section title={t("map.scopeDetailsTitle")}>
     <p className="mb-2 text-[11px] text-text-muted">{t("map.scopeCounts")}</p>
     {!node.scopeEvidence && <p className="mb-2 text-[11px] text-text-muted">{t("map.scopeEvidenceUnavailable")}</p>}
-    {stats.scopeNames.length ? <ul className="space-y-2 font-mono text-[11px]">
+    {stats.scopeNames.length ? <ul className="max-h-64 overflow-y-auto space-y-2 font-mono text-[11px]">
       {stats.scopeNames.sort((a,b) => (stats.scopeRepeats[b] ?? 0) - (stats.scopeRepeats[a] ?? 0) || a.localeCompare(b)).map(name => {
         const s = evidence.get(name);
         const sources = [s?.repeatObservations ? t("map.scopeRepeated") : "", s?.minHashBytes ? t("map.scopeHashEvidence", { bytes: s.minHashBytes }) : "", s?.reported ? t("map.scopeReported") : "", s?.heardAt ? t("map.scopeHeard") : "", node.defaultScope === name ? t("map.scopeAdvert") : ""].filter(Boolean);
