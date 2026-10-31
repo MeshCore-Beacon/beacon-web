@@ -5,7 +5,17 @@ export interface NodeIATA {
   lastHeard: number; // unix ms
 }
 
+export interface NodeScopeEvidence {
+  since: number; until: number; scopes: NodeScope[];
+  reportedEmpty?: boolean; conflictingReports?: boolean;
+}
+export interface NodeScope {
+  name: string; repeatObservations: number; repeatedAt?: number;
+  minHashBytes?: number; reported?: boolean; reportedAt?: number; heardAt?: number;
+}
+
 export interface NodeSummary {
+  scopeEvidence?: NodeScopeEvidence;
   id: string;
   publicKey: string;
   nodeType: number;

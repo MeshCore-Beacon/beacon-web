@@ -12,6 +12,7 @@ import {
   LIT_GLOW_OPACITY,
   litIconId,
 } from "./types";
+import { SCOPE_CLUSTER_ICON, SCOPE_IMAGE_PREFIX } from "./repeater-scopes";
 
 // Marker icons: per-type SVG + cluster hexagon, recolored and rasterized to maplibre images (unknown
 // type = canvas ring). Async, so provided lazily via the missing-image resolver in useMapNodes; re-colors on theme.
@@ -219,11 +220,11 @@ const CLUSTER_DIM = 0.16; // dormant segment opacity
 
 // The hexagon with `lit` of its 12 gauge segments glowing. The count is overlaid by the symbol
 // layer's text-field; the var(--node-color)/glow matches styleSvg so it themes like the glyphs.
-function clusterSvg(lit: number): string {
-  const lines = CLUSTER_GAUGE.map(
+function clusterSvg(lit: number, gauge = true): string {
+  const lines = gauge ? CLUSTER_GAUGE.map(
     ([x1, y1, x2, y2], i) =>
       `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity="${i < lit ? CLUSTER_LIT : CLUSTER_DIM}"></line>`,
-  ).join("");
+  ).join("") : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72" fill="none" role="img" aria-label="cluster" style="color:var(--node-color,#bcd8ff);filter:drop-shadow(0 0 4px currentColor);overflow:visible"><polygon points="36.0,10.0 58.5,23.0 58.5,49.0 36.0,62.0 13.5,49.0 13.5,23.0" fill="#0c1018" fill-opacity="0.92" stroke="currentColor" stroke-width="2.25" stroke-linejoin="round"></polygon>${lines}</svg>`;
 }
 
@@ -237,13 +238,24 @@ export interface RasterIcon {
 export async function rasterizeNodeIcon(id: string, isDark: boolean): Promise<RasterIcon | null> {
   const scale = currentScale();
   const styles = getComputedStyle(document.documentElement);
+  let scopeColor: string | undefined;
+  if (id.startsWith(SCOPE_IMAGE_PREFIX)) {
+    const match = /^scope-([0-9a-f]{6})-(.+)$/.exec(id);
+    if (!match) return null;
+    scopeColor = `#${match[1]}`;
+    id = match[2]!;
+  }
+  if (id === SCOPE_CLUSTER_ICON && scopeColor) {
+    const svg = styleSvg(clusterSvg(0, false), scopeColor, isDark, { base: 72, padded: 96 });
+    return { data: await rasterizeSvg(svg, scale, CLUSTER_SIZE), pixelRatio: scale };
+  }
 
   // Cluster hexagon: look up this id's density level and rasterize the recolored SVG. Checked before
   // the generic node- arm so cluster ids never fall into the per-type glyph path.
   if (id.startsWith(CLUSTER_ICON_ID)) {
     const bucket = CLUSTER_BUCKETS.find((b) => b.id === id);
     if (!bucket) return null;
-    const color = styles.getPropertyValue(CLUSTER_COLOR.colorVar).trim() || CLUSTER_COLOR.fallback;
+    const color = scopeColor ?? (styles.getPropertyValue(CLUSTER_COLOR.colorVar).trim() || CLUSTER_COLOR.fallback);
     const svg = styleSvg(clusterSvg(bucket.lit), color, isDark, { base: 72, padded: 96 });
     const data = await rasterizeSvg(svg, scale, CLUSTER_SIZE);
     return { data, pixelRatio: scale };
@@ -274,7 +286,7 @@ export async function rasterizeNodeIcon(id: string, isDark: boolean): Promise<Ra
   const color = NODE_TYPE_COLOR[type];
   const svg = svgText(type, observer, isDark);
   if (!color || !svg) return null;
-  const nodeColor = styles.getPropertyValue(color.colorVar).trim() || color.fallback;
+  const nodeColor = scopeColor ?? (styles.getPropertyValue(color.colorVar).trim() || color.fallback);
   // light basemaps use the hollow Wireframe glyph -> give it a solid backing for contrast
   const backing = isDark ? undefined : WIREFRAME_BACKING;
   const data = await rasterizeSvg(styleSvg(svg, nodeColor, isDark), scale, MARKER_SIZE, backing);

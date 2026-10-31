@@ -24,6 +24,7 @@ interface UseInfinitePagesOptions<T, C, P extends CursorPage<T, C>> {
   // false = don't fetch at all (idle query). Lets a caller gate a heavy load off — e.g. the neighbour
   // graph skips the ~5k-node "All regions" fetch until a region is picked.
   enabled?: boolean;
+  refetchInterval?: number | false;
 }
 
 // Page through a cursor-paginated endpoint. By default it auto-chains page by page as each settles so
@@ -31,7 +32,7 @@ interface UseInfinitePagesOptions<T, C, P extends CursorPage<T, C>> {
 // load only the first page and pull the rest on demand via loadMore(). Loads once per key (staleTime
 // Infinity, no maxPages); dedupes by id because a non-unique cursor can repeat a row across a page
 // boundary. Shared by the map and the entity tables.
-export function useInfinitePages<T, C = number, P extends CursorPage<T, C> = CursorPage<T, C>>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T, C, P>) {
+export function useInfinitePages<T, C = number, P extends CursorPage<T, C> = CursorPage<T, C>>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true, refetchInterval = false }: UseInfinitePagesOptions<T, C, P>) {
   const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
@@ -39,6 +40,8 @@ export function useInfinitePages<T, C = number, P extends CursorPage<T, C> = Cur
       getNextPageParam: nextPageParam,
       initialPageParam: undefined as PageParam<C> | undefined,
       staleTime: Infinity,
+      refetchInterval,
+      refetchIntervalInBackground: false,
       enabled,
       placeholderData: keepPrevious ? keepPreviousData : undefined,
     });

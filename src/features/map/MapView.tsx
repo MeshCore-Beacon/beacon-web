@@ -14,6 +14,8 @@ import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
+import { ScopeLegend } from "./ScopeLegend";
+import { buildRepeaterScopeStyle } from "./repeater-scopes";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
 import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
@@ -92,6 +94,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // live packet-flow animation: opt-in per session (off by default, not persisted; a deep link can seed it)
   const [packetFlow, setPacketFlow] = useState(() => urlView.flow ?? false);
+  const [dimNodes, setDimNodes] = useState(() => { try { return urlView.dimNodes ?? localStorage.getItem("beacon-map-dim-live-nodes") === "on"; } catch { return false; } });
+  const changeDimNodes = (on: boolean) => { setDimNodes(on); try { localStorage.setItem("beacon-map-dim-live-nodes", on ? "on" : "off"); } catch { /* visit-local preference */ } };
+
   // what the map draws; the saved choice stays in neighborLines for the panel, storage and links
   const shownNeighborLines = liveNeighborLines(neighborLines, packetFlow);
 
@@ -100,6 +105,11 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const handleBordersChange = useCallback((on: boolean) => {
     setBorders(on);
     localStorage.setItem(MAP_BORDERS_STORAGE_KEY, on ? "on" : "off");
+  }, []);
+  const [repeaterScopes, setRepeaterScopes] = useState(() => urlView.repeaterScopes ?? localStorage.getItem("beacon-map-repeater-scopes") === "on");
+  const handleRepeaterScopesChange = useCallback((on: boolean) => {
+    setRepeaterScopes(on);
+    try { localStorage.setItem("beacon-map-repeater-scopes", on ? "on" : "off"); } catch { /* unavailable storage */ }
   }, []);
 
   // 3D terrain + hillshade, off by default; a viewer preference, so localStorage only (not in links)
@@ -129,7 +139,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // nodes for the selected region (its own key, independent of the Nodes-table filters/page cap).
   // Pages in 50 at a time so the map fills batch by batch; nodesKey matches the hook's query key.
   const nodesKey = useMemo(() => ["map-nodes", regionKey], [regionKey]);
-  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey, { enabled: !regionPending });
+  const { nodes, loadedCount, isPaging, isError: nodesError } = useMapNodesData(selectedIatas, regionKey, { enabled: !regionPending, refreshScopes: repeaterScopes });
 
   // patch-or-insert the live update into the paged node cache (the shared helper preserves refs
   // when nothing changed, so a same-values re-advert doesn't trigger a full map repaint); brand-new
@@ -210,6 +220,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection), terrain);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
+  const scopeStyle = useMemo(() => repeaterScopes ? buildRepeaterScopeStyle(mapGeojson, isDark) : null, [repeaterScopes, mapGeojson, isDark]);
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
   // Evaluated at click, so it reads the real camera; forces tab=Map so the link lands on the map.
@@ -224,12 +235,14 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       neighborLines,
       styleId,
       flow: packetFlow,
+      dimNodes,
       borders,
+      repeaterScopes,
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders]);
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, dimNodes, borders, repeaterScopes]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes, dimNodes, scopeStyle);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey, isDark, liveNodeIndex, onSelectNode);
@@ -251,11 +264,16 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onNeighborLinesChange={handleNeighborLinesChange}
         borders={borders}
         onBordersChange={handleBordersChange}
+        dimNodes={dimNodes}
+        onDimNodesChange={changeDimNodes}
         terrain={terrain}
         onTerrainChange={handleTerrainChange}
+        repeaterScopes={repeaterScopes}
+        onRepeaterScopesChange={handleRepeaterScopesChange}
         buildShareParams={buildShareParams}
         liveMap={packetFlow}
       />
+      {scopeStyle && <ScopeLegend mapRef={mapRef} isReady={isReady} geojson={mapGeojson} style={scopeStyle} />}
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
       <LoadingPill loading={isPaging || regionPending} error={nodesError} count={loadedCount} noun="nodes" />

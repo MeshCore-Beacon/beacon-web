@@ -1,6 +1,7 @@
 import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 import type { NodeSummary, NodeNeighbor } from "../nodes/types";
 import { hasMapLocation } from "./location";
+import { nodeScopeStats } from "../nodes/scope-evidence";
 
 // Build the maplibre GeoJSON source from the nodes API response. Properties stay primitive because
 // clustering serializes them, and there's no maplibre import, so this stays unit-testable.
@@ -10,6 +11,12 @@ export interface NodeFeatureProps {
   name: string | null;
   nodeTypeName: string;
   isObserver: boolean; // role flag; selects the observer-pip marker variant (default false)
+  scopeNames?: string[];
+  scopeReportedEmpty?: boolean;
+  scopeRepeatValues?: number[];
+  repeatScope?: string | null;
+  totalRepeatObservations?: number;
+  defaultScope?: string; // MQTT-observed advert scope, not a configured forwarding list
 }
 
 export function nodesToFeatureCollection(
@@ -18,6 +25,7 @@ export function nodesToFeatureCollection(
   const features: Feature<Point, NodeFeatureProps>[] = [];
   for (const n of nodes) {
     if (!hasMapLocation(n)) continue;
+    const scopes = n.nodeTypeName === "repeater" ? nodeScopeStats(n) : null;
     features.push({
       type: "Feature",
       // GeoJSON/maplibre order is [lng, lat]; the API sends decimal degrees as-is
@@ -27,6 +35,16 @@ export function nodesToFeatureCollection(
         name: n.name,
         nodeTypeName: n.nodeTypeName,
         isObserver: !!n.isObserver,
+        ...(n.defaultScope ? { defaultScope: n.defaultScope } : {}),
+        // MapLibre's worker serializer requires ordinary data. Parallel arrays
+        // also keep names such as "$name" out of its reserved object-key space.
+        ...(scopes ? {
+          scopeNames: scopes.scopeNames,
+          scopeRepeatValues: scopes.scopeNames.map(name => scopes.scopeRepeats[name] ?? 0),
+          repeatScope: scopes.repeatScope,
+          totalRepeatObservations: scopes.totalRepeatObservations,
+          scopeReportedEmpty: !!n.scopeEvidence?.reportedEmpty,
+        } : {}),
       },
     });
   }
