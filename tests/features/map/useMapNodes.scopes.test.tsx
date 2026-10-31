@@ -46,23 +46,29 @@ describe("scope layer lifecycle", () => {
     const iconRef = { current: null };
     const fc = nodesToFeatureCollection([{ id: "a", name: "A", publicKey: "a", nodeType: 2, nodeTypeName: "repeater", lat: 43, lng: -80, iatas: [], knownNeighborCount: 0, defaultScope: "#on" } as NodeSummary]);
     const style = buildRepeaterScopeStyle(fc, true);
-    const { rerender, unmount } = renderHook(({ enabled, data }) =>
-      useMapNodes(mapRef, iconRef, true, data, true, "dark", true, () => {}, null, false, null, "YKF", enabled ? buildRepeaterScopeStyle(data, true) : null),
-    { initialProps: { enabled: false, data: fc } });
+    const { rerender, unmount } = renderHook(({ enabled, data, clustered }) =>
+      useMapNodes(mapRef, iconRef, true, data, true, "dark", clustered, () => {}, null, false, null, "YKF", enabled ? buildRepeaterScopeStyle(data, true) : null),
+    { initialProps: { enabled: false, data: fc, clustered: true } });
     await waitFor(() => expect(map.addImage).toHaveBeenCalled());
     const sourcesBefore = map.addSource.mock.calls.filter(c => c[0] === NODES_SOURCE_ID).length;
     const spiderBefore = spiders.at(-1)!;
-    rerender({ enabled: true, data: fc });
+    rerender({ enabled: true, data: fc, clustered: true });
     await waitFor(() => expect(map.hasImage(style.imageIds[0]!)).toBe(true));
     expect(spiderBefore.unspiderfyAll).toHaveBeenCalled();
     expect(map.removeSource).toHaveBeenCalledWith(NODES_SOURCE_ID);
     expect(map.addSource.mock.calls.filter(c => c[0] === NODES_SOURCE_ID)).toHaveLength(sourcesBefore + 1);
     const styledArgs = map.addSource.mock.calls.filter(c => c[0] === NODES_SOURCE_ID).at(-1)! as unknown as [string, { clusterProperties: unknown }];
     expect(styledArgs[1].clusterProperties).toEqual(style.clusterProperties);
+    // Live Map temporarily disables clustering. Keep the already-loaded sprites
+    // across that source recreation or scoped markers disappear on return.
+    map.removeImage.mockClear();
+    rerender({ enabled: true, data: fc, clustered: false });
+    expect(map.removeImage).not.toHaveBeenCalled();
+    for (const id of style.imageIds) expect(map.hasImage(id)).toBe(true);
     const removed = map.removeSource.mock.calls.length;
-    rerender({ enabled: true, data: { ...fc, features: fc.features.map(f => ({ ...f, properties: { ...f.properties, name: "Renamed" } })) } });
+    rerender({ enabled: true, clustered: false, data: { ...fc, features: fc.features.map(f => ({ ...f, properties: { ...f.properties, name: "Renamed" } })) } });
     expect(map.removeSource).toHaveBeenCalledTimes(removed);
-    rerender({ enabled: false, data: fc });
+    rerender({ enabled: false, data: fc, clustered: false });
     for (const id of style.imageIds) expect(map.removeImage).toHaveBeenCalledWith(id);
     unmount();
     expect(map.off.mock.calls.filter(c => c[0] === "click").length).toBe(map.on.mock.calls.filter(c => c[0] === "click").length);

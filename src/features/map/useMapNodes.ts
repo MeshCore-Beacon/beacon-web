@@ -169,7 +169,9 @@ export function useMapNodes(
         if (map.getLayer(id)) map.removeLayer(id);
       }
       map.removeSource(NODES_SOURCE_ID);
-      for (const id of scopeImagesRef.current) if (map.hasImage(id)) map.removeImage(id);
+      if (appliedScopeKeyRef.current !== scopeKey) {
+        for (const id of scopeImagesRef.current) if (map.hasImage(id)) map.removeImage(id);
+      }
     }
     appliedClusteredRef.current = clustered;
     appliedScopeKeyRef.current = scopeKey;
