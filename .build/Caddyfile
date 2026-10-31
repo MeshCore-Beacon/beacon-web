@@ -5,6 +5,7 @@
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
+		# Never no-referrer: the analyzer's scrape block lets /api calls through on their Referer
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 
