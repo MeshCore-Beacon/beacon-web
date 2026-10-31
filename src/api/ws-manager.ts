@@ -35,6 +35,7 @@ export class WsManager {
   private reconnectAttempt = 0;
   private openedAt: number | null = null;
   private intentionalClose = false;
+  private paused = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private msgCounter = 0;
@@ -134,6 +135,7 @@ export class WsManager {
   }
 
   disconnect(): void {
+    this.paused = false;
     this.intentionalClose = true;
     this.reconnectAttempt = 0;
     this.openedAt = null;
@@ -142,6 +144,21 @@ export class WsManager {
     this.subscriptionId = null;
     this.lastSubscribeId = null;
     this.setStatus("disconnected");
+  }
+
+  // Closes the socket for a hidden tab; resume() reopens it, and the reconnect's lag notice backfills.
+  pause(): void {
+    if (this.paused || !this.filter) return;
+    this.disconnect();
+    this.paused = true;
+  }
+
+  // Reopens a paused connection at once. Returns whether there was one to reopen.
+  resume(): boolean {
+    if (!this.paused) return false;
+    this.paused = false;
+    this.doConnect();
+    return true;
   }
 
   // exponential backoff w/ jitter to avoid thundering herd on reconnect

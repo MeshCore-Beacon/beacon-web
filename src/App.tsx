@@ -14,6 +14,7 @@ import {
 } from "./hooks/region-selection";
 import { ThemeProvider } from "./hooks/useTheme";
 import { useIsMobile } from "./hooks/useMediaQuery";
+import { usePauseWhenHidden } from "./hooks/usePauseWhenHidden";
 import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
 import { VersionGate } from "./components/VersionGate";
@@ -341,6 +342,7 @@ function AppInner() {
     return () => wsManager.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  usePauseWhenHidden(wsManager);
 
   const tabContent: Record<string, React.ReactNode> = {
     Packets: (
