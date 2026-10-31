@@ -44,9 +44,16 @@ export function scopeColor(name: string, dark: boolean): string {
 }
 
 export function buildRepeaterScopeStyle(fc: FeatureCollection<Point, NodeFeatureProps>, dark: boolean): RepeaterScopeStyle {
-  const names = [...new Set(fc.features.filter(f => f.properties.nodeTypeName === "repeater")
-    .flatMap(f => f.properties.scopeNames ?? []).filter((s): s is string => reportedScope(s) !== undefined))].sort();
-  const entries = names.slice(0, MAX_COLORED_SCOPES).map(name => ({ name, color: scopeColor(name, dark) }));
+  const totals = new Map<string, number>();
+  for (const f of fc.features) {
+    if (f.properties.nodeTypeName !== "repeater") continue;
+    for (const name of f.properties.scopeNames ?? []) {
+      if (reportedScope(name)) totals.set(name, (totals.get(name) ?? 0) + (f.properties.scopeRepeats?.[name] ?? 0));
+    }
+  }
+  // Keep the busiest scopes visible when a world view exceeds the sprite budget.
+  const names = [...totals.keys()].sort((a,b) => totals.get(b)! - totals.get(a)! || (a < b ? -1 : a > b ? 1 : 0));
+  const entries = names.slice(0, MAX_COLORED_SCOPES).sort().map(name => ({ name, color: scopeColor(name, dark) }));
   const neutral = dark ? "#94a3b8" : "#64748b";
   const repeater: ExpressionSpecification = ["==", ["get", "nodeTypeName"], "repeater"];
   const scope: ExpressionSpecification = ["coalesce", ["get", "repeatScope"], ""];

@@ -76,7 +76,10 @@ describe("MQTT-derived repeater scope colours", () => {
   it("handles an empty catalogue and bounds cluster properties and image variants", () => {
     const unknown = cluster([node("u")]);
     expect(evaluate(unknown.style.clusterColor, unknown.props)).toBe(unknown.style.neutral);
-    const many = buildRepeaterScopeStyle(nodesToFeatureCollection(Array.from({ length: 100 }, (_, i) => node(String(i), `#scope${i}`))), true);
+    const all = Array.from({ length: 100 }, (_, i) => node(String(i), `#scope${i}`));
+    all[99]!.scopeEvidence!.scopes[0]!.repeatObservations = 1000;
+    const many = buildRepeaterScopeStyle(nodesToFeatureCollection(all), true);
+    expect(many.entries.some(e => e.name === "#scope99")).toBe(true);
     expect(many.entries).toHaveLength(MAX_COLORED_SCOPES);
     expect(Object.keys(many.clusterProperties)).toHaveLength(MAX_COLORED_SCOPES + 2);
     expect(many.imageIds.length).toBeLessThanOrEqual((MAX_COLORED_SCOPES + 1) * 3);
