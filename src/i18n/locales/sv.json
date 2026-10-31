@@ -622,7 +622,8 @@
       "scopeReportedEmpty": "Ett listsvar innehöll inga poster.",
       "scopeReportConflict": "Sparade listsvar skiljer sig; alla rapporterade poster visas.",
       "scopeReportMeaning": "Antalen är mottagna MQTT-rapporter om upplösta floodvägar, inte unika radiosändningar. Listor och annonsstandard är separata; inga rapporter betyder okänt.",
-      "scopeHashEvidence": "{{bytes}}-bytes väghash"
+      "scopeHashEvidence": "{{bytes}}-bytes väghash",
+      "scopeUnmatched": "Scope · okänt namn"
     },
     "nodeFilters": {
       "label": "Nodfilter",

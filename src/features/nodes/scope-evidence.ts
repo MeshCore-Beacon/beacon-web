@@ -17,5 +17,5 @@ export function nodeScopeStats(node: Pick<NodeSummary, "defaultScope" | "scopeEv
     if (count > most) { most = count; dominant = name; }
     else if (count === most) dominant = null;
   }
-  return { scopeNames: [...names].sort(), scopeRepeats: repeats, repeatScope: dominant, totalRepeatObservations: total };
+  return { scopeNames: [...names].sort(), scopeRepeats: repeats, repeatScope: dominant === "?" ? null : dominant, totalRepeatObservations: total };
 }

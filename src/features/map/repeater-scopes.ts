@@ -48,7 +48,7 @@ export function buildRepeaterScopeStyle(fc: FeatureCollection<Point, NodeFeature
   for (const f of fc.features) {
     if (f.properties.nodeTypeName !== "repeater") continue;
     for (const name of f.properties.scopeNames ?? []) {
-      if (reportedScope(name)) totals.set(name, (totals.get(name) ?? 0) + (f.properties.scopeRepeats?.[name] ?? 0));
+      if (name !== "?" && reportedScope(name)) totals.set(name, (totals.get(name) ?? 0) + (f.properties.scopeRepeats?.[name] ?? 0));
     }
   }
   // Keep the busiest scopes visible when a world view exceeds the sprite budget.
@@ -96,7 +96,7 @@ export function scopeClusterImage(style: RepeaterScopeStyle | null, base: Expres
     ["concat", SCOPE_IMAGE_PREFIX, ["slice", style.clusterColor, 1], `-${SCOPE_CLUSTER_ICON}`], base] : base;
 }
 
-export interface ScopeLegendRow { name: string | null; color: string; count: number; repeats: number; kind: "named" | "unknown" | "other" | "empty" }
+export interface ScopeLegendRow { name: string | null; color: string; count: number; repeats: number; kind: "named" | "unknown" | "other" | "empty" | "unmatched" }
 export interface MapBounds { getWest(): number; getEast(): number; getSouth(): number; getNorth(): number }
 
 // O(loaded nodes), on settled camera/data changes only. Bounds counts are not
@@ -115,9 +115,9 @@ export function visibleScopeRows(fc: FeatureCollection<Point, NodeFeatureProps>,
     const names = f.properties.scopeNames?.length ? f.properties.scopeNames : [undefined];
     const counted = new Set<string>();
     for (const name of names) {
-      const kind = !name ? f.properties.scopeReportedEmpty ? "empty" : "unknown" : palette.has(name) ? "named" : "other";
+      const kind = name === "?" ? "unmatched" : !name ? f.properties.scopeReportedEmpty ? "empty" : "unknown" : palette.has(name) ? "named" : "other";
       const key = kind === "named" ? `name:${name}` : kind;
-      const row = rows.get(key) ?? { name: kind === "named" ? name! : null, color: name ? palette.get(name) ?? style.neutral : style.neutral, count: 0, repeats: 0, kind };
+      const row = rows.get(key) ?? { name: kind === "named" || kind === "unmatched" ? name! : null, color: name ? palette.get(name) ?? style.neutral : style.neutral, count: 0, repeats: 0, kind };
       if (!counted.has(key)) { row.count++; counted.add(key); }
       row.repeats += name ? f.properties.scopeRepeats?.[name] ?? 0 : 0;
       rows.set(key, row);

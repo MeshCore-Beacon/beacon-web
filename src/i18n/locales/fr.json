@@ -638,7 +638,8 @@
       "scopeReportedEmpty": "Une réponse de liste ne contenait aucune entrée.",
       "scopeReportConflict": "Les listes enregistrées diffèrent ; toutes les entrées signalées sont affichées.",
       "scopeReportMeaning": "Les nombres comptent les réceptions MQTT de chemins flood résolus, pas les émissions radio uniques. Listes et portée des annonces sont distinctes ; aucune observation signifie inconnue.",
-      "scopeHashEvidence": "Chemin identifié sur {{bytes}} octet(s)"
+      "scopeHashEvidence": "Chemin identifié sur {{bytes}} octet(s)",
+      "scopeUnmatched": "Portée · nom non résolu"
     },
     "nodeFilters": {
       "label": "Filtres des nœuds",

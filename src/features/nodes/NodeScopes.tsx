@@ -17,8 +17,8 @@ export function NodeScopes({ node }: { node: Node }) {
         const s = evidence.get(name);
         const sources = [s?.repeatObservations ? t("map.scopeRepeated") : "", s?.minHashBytes ? t("map.scopeHashEvidence", { bytes: s.minHashBytes }) : "", s?.reported ? t("map.scopeReported") : "", s?.heardAt ? t("map.scopeHeard") : "", node.defaultScope === name ? t("map.scopeAdvert") : ""].filter(Boolean);
         return <li key={name}>
-          <div className="flex items-center gap-2"><span aria-hidden className="h-2 w-2 shrink-0" style={{backgroundColor:scopeColor(name,true)}} />
-            <span className="min-w-0 flex-1 break-all text-text-normal">{name === "*" ? t("map.scopeWildcard") : name}</span>
+          <div className="flex items-center gap-2"><span aria-hidden className="h-2 w-2 shrink-0" style={{backgroundColor:name === "?" ? "#94a3b8" : scopeColor(name,true)}} />
+            <span className="min-w-0 flex-1 break-all text-text-normal">{name === "?" ? t("map.scopeUnmatched") : name === "*" ? t("map.scopeWildcard") : name}</span>
             <span className="tabular-nums text-text-normal">{s?.repeatObservations ? s.repeatObservations.toLocaleString() : "—"}</span></div>
           <p className="mt-0.5 pl-4 text-[10px] text-text-muted">{sources.join(" · ")}</p>
         </li>;

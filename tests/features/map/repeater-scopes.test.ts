@@ -86,6 +86,19 @@ describe("MQTT-derived repeater scope colours", () => {
     expect(many.overflow).toBe(true);
   });
 
+  it("keeps unresolved scoped repeats distinct from wildcard and neutral when they dominate", () => {
+    const a = { ...node("a", "#on"), scopeEvidence: { since: 1, until: 2, scopes: [
+      { name: "?", repeatObservations: 30 }, { name: "#on", repeatObservations: 10 }, { name: "*", repeatObservations: 5 },
+    ] } };
+    const fc = nodesToFeatureCollection([a]); const { style, props } = cluster([a]);
+    expect(style.entries.some(e => e.name === "?")).toBe(false);
+    expect(evaluate(style.pointColor, fc.features[0]!.properties)).toBe(style.neutral);
+    expect(evaluate(style.clusterColor, props)).toBe(style.neutral);
+    const rows = visibleScopeRows(fc, style, { getWest: () => -90, getEast: () => -70, getSouth: () => 40, getNorth: () => 50 });
+    expect(rows.find(r => r.kind === "unmatched")?.repeats).toBe(30);
+    expect(rows.find(r => r.name === "*")?.repeats).toBe(5);
+  });
+
   it("counts located repeaters in the viewport once across the antimeridian", () => {
     const fc = nodesToFeatureCollection([node("east", "#on", 175), node("west", "#on", -175), node("out", "#qc", 0), node("unknown", undefined, 178), node("device", "#qc", 179, "companion")]);
     const style = buildRepeaterScopeStyle(fc, true);

@@ -658,7 +658,8 @@
       "scopeReportedEmpty": "A scope-list reply reported no entries.",
       "scopeReportConflict": "Stored scope-list replies differ; all reported entries are shown.",
       "scopeReportMeaning": "Repeat counts are accepted MQTT hearings of resolved flood paths, not unique RF transmissions. Lists and advert defaults are separate; no reports means unknown.",
-      "scopeHashEvidence": "{{bytes}}-byte path match"
+      "scopeHashEvidence": "{{bytes}}-byte path match",
+      "scopeUnmatched": "Scoped · name unresolved"
     },
     "nodeFilters": {
       "label": "Node filters",
