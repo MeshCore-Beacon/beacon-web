@@ -117,8 +117,8 @@ export function getPackets(
   });
 }
 
-export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
-  return request(`/packets/${packetHash}`);
+export function getPacketDetail(packetHash: string, signal?: AbortSignal): Promise<PacketDetail> {
+  return request(`/packets/${packetHash}`, undefined, signal);
 }
 
 // /info: the oldest client versions this server accepts (null = no requirement) and its own version.
@@ -277,8 +277,8 @@ export function getTraceDetail(tag: string): Promise<TraceDetail> {
   return request(`/traces/${tag}`);
 }
 
-export async function getObserver(observerId: string): Promise<Observer> {
-  const observer = await request<Observer>(`/observers/${observerId}`);
+export async function getObserver(observerId: string, signal?: AbortSignal): Promise<Observer> {
+  const observer = await request<Observer>(`/observers/${observerId}`, undefined, signal);
   // Servers before json.RawMessage (and cache entries written by them) send the stored JSON as base64.
   let metadata: unknown = observer.statusMetadata;
   if (typeof metadata === "string") {
@@ -317,6 +317,7 @@ export function getNodesPage(
     sort?: NodeSort;
     order?: "asc" | "desc";
   },
+  signal?: AbortSignal,
 ): Promise<NodePage> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/nodes", {
@@ -333,7 +334,7 @@ export function getNodesPage(
     scope: params?.scope,
     sort: params?.sort,
     order: params?.sort ? params.order : undefined,
-  });
+  }, signal);
 }
 
 export interface ObserverDirectoryRequest {
@@ -384,18 +385,19 @@ export function getObserversPage(
   });
 }
 
-export function getNode(nodeId: string): Promise<Node> {
-  return request(`/nodes/${nodeId}`);
+export function getNode(nodeId: string, signal?: AbortSignal): Promise<Node> {
+  return request(`/nodes/${nodeId}`, undefined, signal);
 }
 
 export function getNodeObservations(
   nodeId: string,
   params?: { cursor?: number; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<NodeObservation>> {
   return request(`/nodes/${nodeId}/observations`, {
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
-  });
+  }, signal);
 }
 
 export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {
@@ -465,12 +467,13 @@ export function getObserverTelemetry(
   range: string,
   interval?: string,
   afterId?: number,
+  signal?: AbortSignal,
 ): Promise<ObserverTelemetry> {
-  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId });
+  return request(`/observers/${observerId}/telemetry`, { range, interval, afterId }, signal);
 }
 
-export function getObserverActivity(observerId: string, range: string, interval: string, until?: number): Promise<ObserverActivity> {
-  return request(`/observers/${observerId}/activity`, { range, interval, until });
+export function getObserverActivity(observerId: string, range: string, interval: string, until?: number, signal?: AbortSignal): Promise<ObserverActivity> {
+  return request(`/observers/${observerId}/activity`, { range, interval, until }, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.
@@ -479,3 +482,23 @@ export function isNotFound(err: unknown): boolean {
 }
 
 export { ApiError };
+
+// Public cached MeshMapper metadata; counts are regional, never per-link evidence.
+export interface ScopeCatalogue {
+  iata: string;
+  url: string;
+  generatedAt: number;
+  checkedAt: number;
+  freshUntil: number;
+  lastError?: string;
+  repeaters: number;
+  scoped: number;
+  scopes: { name: string; repeaters: number; default: number; monitored: boolean; wardriving: boolean }[];
+}
+export function getScopeCatalogues(): Promise<ScopeCatalogue[]> {
+  return request("/scope-catalogues");
+}
+
+export function getTopologyLinks(iatas: string[] | undefined, window: string, signal?: AbortSignal): Promise<{ links: [string,string][]; capped: boolean; since: number; until: number }> {
+  return request("/routes/topology", { iatas: iatas?.join(","), window }, signal);
+}
