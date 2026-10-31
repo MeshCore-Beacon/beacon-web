@@ -47,8 +47,8 @@ export function buildRepeaterScopeStyle(fc: FeatureCollection<Point, NodeFeature
   const totals = new Map<string, number>();
   for (const f of fc.features) {
     if (f.properties.nodeTypeName !== "repeater") continue;
-    for (const name of f.properties.scopeNames ?? []) {
-      if (name !== "?" && reportedScope(name)) totals.set(name, (totals.get(name) ?? 0) + (f.properties.scopeRepeats?.[name] ?? 0));
+    for (const [i, name] of (f.properties.scopeNames ?? []).entries()) {
+      if (name !== "?" && reportedScope(name)) totals.set(name, (totals.get(name) ?? 0) + (f.properties.scopeRepeatValues?.[i] ?? 0));
     }
   }
   // Keep the busiest scopes visible when a world view exceeds the sprite budget.
@@ -60,7 +60,8 @@ export function buildRepeaterScopeStyle(fc: FeatureCollection<Point, NodeFeature
   const pointColor: ExpressionSpecification = entries.length
     ? ["match", scope, ...entries.flatMap(e => [e.name, e.color]), neutral] as ExpressionSpecification
     : ["literal", neutral];
-  const weights: ExpressionSpecification[] = entries.map(e => ["number", ["get", e.name, ["coalesce", ["get", "scopeRepeats"], ["literal", {}]]], 0]);
+  const weights: ExpressionSpecification[] = entries.map(e => ["let", "scopeIndex", ["index-of", e.name, ["coalesce", ["get", "scopeNames"], ["literal", []]]],
+    ["case", [">=", ["var", "scopeIndex"], 0], ["number", ["at", ["var", "scopeIndex"], ["coalesce", ["get", "scopeRepeatValues"], ["literal", []]]], 0], 0]]);
   const clusterProperties: RepeaterScopeStyle["clusterProperties"] = {
     scopeRepeaters: ["+", ["case", repeater, 1, 0]],
     scopeUnknown: ["+", ["case", repeater, ["max", 0, ["-", ["number", ["get", "totalRepeatObservations"], 0], ["+", 0, ...weights]]], 0]],
@@ -119,7 +120,7 @@ export function visibleScopeRows(fc: FeatureCollection<Point, NodeFeatureProps>,
       const key = kind === "named" ? `name:${name}` : kind;
       const row = rows.get(key) ?? { name: kind === "named" || kind === "unmatched" ? name! : null, color: name ? palette.get(name) ?? style.neutral : style.neutral, count: 0, repeats: 0, kind };
       if (!counted.has(key)) { row.count++; counted.add(key); }
-      row.repeats += name ? f.properties.scopeRepeats?.[name] ?? 0 : 0;
+      row.repeats += name ? f.properties.scopeRepeatValues?.[f.properties.scopeNames!.indexOf(name)] ?? 0 : 0;
       rows.set(key, row);
     }
   }
