@@ -1009,6 +1009,33 @@
       "scoped": "Trafik med namngiven scope",
       "displayMode": "Scopevisning",
       "more": "Visa fler rader (första {{count}} per tabell visas)"
+    },
+    "meshmapperProfile": {
+      "provenance": "Platsuppgifter anges av ägare eller regionala administratörer i MeshMapper; de är inte uppmätt telemetri.",
+      "refreshFailed": "Uppdateringen misslyckades; senast hämtade data visas.",
+      "reports": "MeshMapper-observationer",
+      "reportHint": "Observationerna använder MeshMappers egen täckning och tidsperioder, separat från Beacon.",
+      "status": "Status hos leverantören",
+      "statuses": {
+        "active": "Aktiv",
+        "ambiguous": "Tvetydigt ID",
+        "inactive": "Inaktiv",
+        "disabled": "Inaktiverad"
+      },
+      "backbone": "Stamnätsplats",
+      "trafficShare": "Andel regional routad trafik",
+      "firstSeen": "Först registrerad",
+      "lastHeard": "Senast hörd annons",
+      "advertBytes": "Hashbyte i annonser",
+      "currentPreset": "Aktuell förinställning (MHz, kHz, SF)",
+      "radioHistory": "Förinställningar hörda under de senaste 30 dagarna",
+      "witnesses_one": "{{count}} källa",
+      "witnesses_other": "{{count}} källor",
+      "neighbors": "Uppladdad granntabell ({{count}})",
+      "neighborHint": "Uppladdad av en repeateradministratör. Posterna skapar inte Beacon-rutter; ett olöst prefix är inte en verifierad nodidentitet.",
+      "unresolved": "Olöst prefix",
+      "fetched": "hämtat",
+      "open": "Visa i MeshMapper"
     }
   }
 }

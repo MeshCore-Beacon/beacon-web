@@ -79,6 +79,17 @@ export interface MeshMapperRepeater {
   scopes: MeshMapperScope[];
   scopesCheckedAt?: number; // set with empty scopes = it answered with none; absent = never asked
   defaultScope?: MeshMapperDefaultScope; // separate from Node.defaultScope (Beacon's own match)
+  profileUrl?: string;
+  refreshFailed?: boolean;
+  status?: "active" | "ambiguous" | "inactive" | "disabled";
+  firstSeen?: number;
+  lastHeard?: number;
+  advertBytes?: number;
+  backbone?: boolean;
+  backboneShare?: number;
+  currentPreset?: string;
+  radios?: { preset: string; lastSeen?: number; witnesses?: number }[];
+  neighbors?: { key: string; resolved: boolean; snr?: number; heardAt?: number }[];
 }
 
 export interface MeshMapperSite {

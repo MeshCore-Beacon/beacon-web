@@ -1232,6 +1232,33 @@
       "scoped": "Trafic à portée nommée",
       "displayMode": "Affichage des portées",
       "more": "Afficher plus de lignes ({{count}} premières par tableau)"
+    },
+    "meshmapperProfile": {
+      "provenance": "Les détails du site sont saisis par les propriétaires ou administrateurs régionaux dans MeshMapper ; ce ne sont pas des mesures de télémétrie.",
+      "refreshFailed": "Actualisation échouée ; affichage des dernières données récupérées.",
+      "reports": "Observations MeshMapper",
+      "reportHint": "Ces observations utilisent la couverture et les périodes propres à MeshMapper, séparément de Beacon.",
+      "status": "État du fournisseur",
+      "statuses": {
+        "active": "Actif",
+        "ambiguous": "Identifiant ambigu",
+        "inactive": "Inactif",
+        "disabled": "Désactivé"
+      },
+      "backbone": "Site de dorsale",
+      "trafficShare": "Part du trafic routé régional",
+      "firstSeen": "Premier enregistrement",
+      "lastHeard": "Dernière annonce reçue",
+      "advertBytes": "Octets du hash des annonces",
+      "currentPreset": "Préréglage actuel (MHz, kHz, SF)",
+      "radioHistory": "Préréglages reçus au cours des 30 derniers jours",
+      "witnesses_one": "{{count}} témoin",
+      "witnesses_other": "{{count}} témoins",
+      "neighbors": "Table de voisins envoyée ({{count}})",
+      "neighborHint": "Envoyée par un administrateur du répéteur. Ces entrées ne créent pas de routes Beacon ; un préfixe non résolu ne confirme pas une identité.",
+      "unresolved": "Préfixe non résolu",
+      "fetched": "récupéré",
+      "open": "Voir dans MeshMapper"
     }
   }
 }

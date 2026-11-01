@@ -1229,6 +1229,33 @@
       "scoped": "Named scoped traffic",
       "displayMode": "Scope display",
       "more": "Show more rows (first {{count}} per table shown)"
+    },
+    "meshmapperProfile": {
+      "provenance": "Site details are entered by owners or regional admins in MeshMapper; they are not measured telemetry.",
+      "refreshFailed": "Refresh failed; showing the last fetched data.",
+      "reports": "MeshMapper observations",
+      "reportHint": "Provider observations use MeshMapper’s own coverage and time windows, separately from Beacon.",
+      "status": "Provider status",
+      "statuses": {
+        "active": "Active",
+        "ambiguous": "ID ambiguity",
+        "inactive": "Inactive",
+        "disabled": "Disabled"
+      },
+      "backbone": "Backbone site",
+      "trafficShare": "Regional routed-traffic share",
+      "firstSeen": "First registered",
+      "lastHeard": "Last advert heard",
+      "advertBytes": "Advert hash bytes",
+      "currentPreset": "Current preset (MHz, kHz, SF)",
+      "radioHistory": "Presets heard in the last 30 days",
+      "witnesses_one": "{{count}} witness",
+      "witnesses_other": "{{count}} witnesses",
+      "neighbors": "Uploaded neighbour table ({{count}})",
+      "neighborHint": "Uploaded by a repeater administrator. These entries do not create Beacon routes; an unresolved prefix is not a verified node identity.",
+      "unresolved": "Unresolved prefix",
+      "fetched": "fetched",
+      "open": "View in MeshMapper"
     }
   }
 }
