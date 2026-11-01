@@ -1187,7 +1187,7 @@
       "last": "Dernière répétition",
       "distribution": "Répartition des répétitions observées",
       "reports": "Rapports de répétition",
-      "received": "Réceptions par diffusion",
+      "received": "Réceptions par diffusion hors traces",
       "samples": "Échantillons de trajet dédupliqués",
       "sampleHelp": "Les mêmes paquets, chemins et identités résolues sont comptés une fois par zone de réception et heure UTC, tous observateurs confondus. Ce ne sont pas des transmissions radio uniques.",
       "first": "Première observation",

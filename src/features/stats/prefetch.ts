@@ -1,3 +1,4 @@
+import { scopeActivityQuery } from "../scopes/query";
 import type { QueryClient } from "@tanstack/react-query";
 import { getPathStats, getSignalStats } from "../../api/client";
 import {
@@ -35,7 +36,7 @@ const TAB_QUERIES: Partial<Record<StatsTab, Prefetch>> = {
   traffic: (qc, s, range) => [qc.prefetchQuery(statsObservationsQuery(s, range))],
   signal: (qc, s, range) => [qc.prefetchQuery(windowedStatsQuery("stats-signal", s, range, getSignalStats))],
   paths: (qc, s, range) => [qc.prefetchQuery(windowedStatsQuery("stats-paths", s, range, getPathStats))],
-  scopes: (qc, s, range) => [qc.prefetchQuery(scopesQuery(s, range)), qc.prefetchQuery(statsSeriesQuery(s, range))],
+  scopes: (qc, s, range) => [qc.prefetchQuery(scopesQuery(s, range)), qc.prefetchQuery(statsSeriesQuery(s, range)),qc.prefetchQuery(scopeActivityQuery(s.where,s.regionKey))],
   talkers: (qc, s, range) => [
     qc.prefetchQuery(topAdvertisersQuery(s, range, "flood", 20)),
     qc.prefetchQuery(topTalkersQuery(s, range, 20)),

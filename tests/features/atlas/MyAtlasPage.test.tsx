@@ -164,8 +164,8 @@ describe("My Atlas", () => {
     expect(await screen.findByText("A public key prefix is hex only (0-9, a-f).")).toBeInTheDocument();
     expect(api.getNodesPage).not.toHaveBeenCalled();
     typeSearch("abcd");
+    await waitFor(()=>expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkeyPrefix: "abcd", limit: 8 }, expect.any(AbortSignal)),{timeout:3000});
     await screen.findByRole("button", { name: "Add Renamed repeater" });
-    expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkeyPrefix: "abcd", limit: 8 }, expect.any(AbortSignal));
   });
 
   it("clears the box when the search field changes, as the Nodes table does", async () => {

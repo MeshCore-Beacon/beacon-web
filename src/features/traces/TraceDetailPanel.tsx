@@ -1,3 +1,4 @@
+import { observedPacketScope } from "../scopes/packet-scope";
 import { scopeMapHref } from "../scopes/model";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -61,7 +62,7 @@ function TracePacketRow({ pkt, onAnalyze, onViewNode }: {
     >
       <div className="flex items-center gap-2 text-[11px] text-text-dim">
         <Badge variant="default">{pkt.routeTypeName || t("traces.unknown")}</Badge>
-        {pkt.scope && <ScopeTag href={scopeMapHref(pkt.scope!,24,window.location.search)}>{pkt.scope}</ScopeTag>}
+        {observedPacketScope(pkt)&&<ScopeTag scopeName={observedPacketScope(pkt)} href={scopeMapHref(observedPacketScope(pkt),24,window.location.search)}>{pkt.scope||t(observedPacketScope(pkt)==="*"?"scopeView.unscoped":"scopeView.unresolved")}</ScopeTag>}
         <span className="ml-auto font-mono text-text-dim">{t("traces.analyze")}</span>
       </div>
       <div className="mt-1.5 flex flex-col gap-0.5 font-mono text-[11px]">

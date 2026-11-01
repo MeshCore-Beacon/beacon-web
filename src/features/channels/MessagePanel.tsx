@@ -48,7 +48,7 @@ function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heard
         </span>}
         {/* Unscoped is the default, so only a named or unresolved scope earns a chip. */}
         {msg.scope ? <ScopeTag boxed href={scopeMapHref(msg.scope!,24,window.location.search)} className="max-w-full break-all">{msg.scope}</ScopeTag>
-          : msg.scopeStatus === "unknown" && <span className="rounded-sm bg-text-normal/5 px-1.5 py-px font-mono text-[11px] text-text-dim">{t("channelMessages.unknownScope")}</span>}
+          : msg.scopeStatus === "unknown" && <ScopeTag scopeName="?" href={scopeMapHref("?",24,window.location.search)}>{t("channelMessages.unknownScope")}</ScopeTag>}
         {onAnalyze && <button type="button" aria-label={t("channelMessages.inspect", { sender: msg.senderName })}
           className="ml-auto shrink-0 cursor-pointer font-mono text-[11px] text-text-dim transition-colors hover:text-primary group-hover:text-primary"
           onClick={(event) => { event.stopPropagation(); onAnalyze(msg.packetHash); }}>{t("channelMessages.viewPacket")} ›</button>}

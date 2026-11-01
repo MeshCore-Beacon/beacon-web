@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { getScopeActivity } from "../../api/client";
+import { scopeActivityQuery } from "./query";
 import { useRegion } from "../../hooks/useRegion";
 import { Timestamp } from "../../components/Timestamp";
 import { ScopeTag } from "../../components/ScopeTag";
@@ -11,8 +11,8 @@ import { ScopeHistory } from "./ScopeHistory";
 import type { ScopeHours } from "../nodes/scope-evidence";
 
 function useActivity(hours:ScopeHours,global=false,enabled=true) {
-  const {iatas,regionKey,isResolved}=useRegion();
-  return useQuery({queryKey:["scope-activity",global?"all":regionKey,hours],queryFn:({signal})=>getScopeActivity(global?undefined:iatas,hours,signal),enabled:enabled&&(global||isResolved!==false),staleTime:30_000,refetchInterval:60_000,refetchIntervalInBackground:false,retry:false});
+  const {iatas,regionKey,isResolved,emptyRegion}=useRegion();
+  return useQuery({...scopeActivityQuery(global?undefined:emptyRegion?{region:emptyRegion}:iatas,global?"*":regionKey,hours),enabled:enabled&&(global||isResolved!==false),staleTime:30_000,refetchInterval:60_000,refetchIntervalInBackground:false,retry:false});
 }
 
 export function ObserverScopeActivity({observerId}:{observerId:string}) {

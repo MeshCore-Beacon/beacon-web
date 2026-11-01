@@ -1184,7 +1184,7 @@
       "last": "Last repeat",
       "distribution": "Observed repeat distribution",
       "reports": "Repeat reports",
-      "received": "Flood receptions",
+      "received": "Flood reports (excluding traces)",
       "samples": "Deduplicated path samples",
       "sampleHelp": "Equal packet, path and resolved identities are counted once per receiving area and UTC hour across observers. This is not a count of RF transmissions.",
       "first": "First evidence",

@@ -47,7 +47,7 @@ describe("scope layer lifecycle", () => {
     const fc = nodesToFeatureCollection([{ id: "a", name: "A", publicKey: "a", nodeType: 2, nodeTypeName: "repeater", lat: 43, lng: -80, iatas: [], knownNeighborCount: 0, defaultScope: "#on" } as NodeSummary]);
     const style = buildRepeaterScopeStyle(fc, true);
     const { rerender, unmount } = renderHook(({ enabled, data, clustered }) =>
-      useMapNodes(mapRef, iconRef, true, data, true, "dark", clustered, () => {}, null, false, null, "YKF", enabled ? buildRepeaterScopeStyle(data, true) : null),
+      useMapNodes(mapRef, iconRef, true, data, true, "dark", clustered, () => {}, null, false, null, "YKF", undefined, true, enabled ? buildRepeaterScopeStyle(data, true) : null),
     { initialProps: { enabled: false, data: fc, clustered: true } });
     await waitFor(() => expect(map.addImage).toHaveBeenCalled());
     const sourcesBefore = map.addSource.mock.calls.filter(c => c[0] === NODES_SOURCE_ID).length;

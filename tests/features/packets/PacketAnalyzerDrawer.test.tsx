@@ -138,7 +138,7 @@ describe("PacketAnalyzerDrawer in French", () => {
       expect(screen.getByText(text)).toBeInTheDocument();
     }
     expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("Code de portée 58C0 (2B) = 49240");
-    expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("aucune portée connue");
+    expect(screen.getByText("Codes de transport").parentElement!).toHaveTextContent("Nom de portée non résolu");
     expect(screen.getByText("sauts=2")).toBeInTheDocument();
     expect(screen.getByText("Chiffré — clé non disponible")).toBeInTheDocument();
   });
@@ -164,10 +164,10 @@ describe("transport scope", () => {
     expect(within(field).getByText("#yow")).toBeInTheDocument();
     expect(field).toHaveTextContent("Code 2 0000 (2B) = 0");
   });
-  it("says when a scope code matched no known scope", () => {
+  it("says when a scope code matched Scope name unresolved", () => {
     const d = transport(); delete d.scope;
     render(<MemoryRouter><PacketAnalyzerDrawer detail={d} selectedObservationId={null} onClose={() => {}} /></MemoryRouter>);
-    expect(screen.getByText("Transport Codes").parentElement!).toHaveTextContent("no known scope");
+    expect(screen.getByText("Transport Codes").parentElement!).toHaveTextContent("Scope name unresolved");
   });
 });
 
