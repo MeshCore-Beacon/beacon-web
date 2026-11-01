@@ -116,7 +116,11 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   // A server that doesn't send lastSeen can't sort by it either, so Last heard stays hidden there.
   const [noLastSeen, setNoLastSeen] = useState(false);
 
-  const columns = useMemo<Column<NodeSummary>[]>(() => [
+  const columns = useMemo<Column<NodeSummary>[]>(() => {
+    // One calculation per immutable node/window, not one allocation per sort comparison.
+    const cache=new WeakMap<NodeSummary,ReturnType<typeof nodeScopeStats>>();
+    const scopeStats=(node:NodeSummary)=>{let value=cache.get(node);if(!value){value=nodeScopeStats(node,scopeHours);cache.set(node,value);}return value;};
+    return [
     {
       id: "name",
       header: t("nodes.colName"),
@@ -187,10 +191,10 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           ? `${node.lat.toFixed(2)}, ${node.lng.toFixed(2)}`
           : "—",
     },
-    {id:"dominantScope",header:t("scopeView.dominant"),sortValue:n=>nodeScopeStats(n,scopeHours).repeatScope,cell:n=>{const name=nodeScopeStats(n,scopeHours).repeatScope;return name?<ScopeTag>{name}</ScopeTag>:"—";}},
-    {id:"unscopedShare",header:t("scopeView.share"),sortValue:n=>{const s=nodeScopeStats(n,scopeHours);return s.totalRepeatObservations?(s.scopeRepeats["*"]??0)/s.totalRepeatObservations:null;},cell:n=>{const s=nodeScopeStats(n,scopeHours);return s.totalRepeatObservations?`${(100*(s.scopeRepeats["*"]??0)/s.totalRepeatObservations).toFixed(1)}%`:"—";}},
+    {id:"dominantScope",header:t("scopeView.dominant"),sortValue:n=>scopeStats(n).repeatScope,cell:n=>{const name=scopeStats(n).repeatScope;return name?<ScopeTag>{name}</ScopeTag>:"—";}},
+    {id:"unscopedShare",header:t("scopeView.share"),sortValue:n=>{const s=scopeStats(n);return s.totalRepeatObservations?(s.scopeRepeats["*"]??0)/s.totalRepeatObservations:null;},cell:n=>{const s=scopeStats(n);return s.totalRepeatObservations?`${(100*(s.scopeRepeats["*"]??0)/s.totalRepeatObservations).toFixed(1)}%`:"—";}},
     {id:"lastRepeat",header:t("scopeView.last"),sortValue:n=>Math.max(0,...(n.scopeEvidence?.scopes??[]).map(s=>s.repeatedAt??0))||null,cell:n=>{const at=Math.max(0,...(n.scopeEvidence?.scopes??[]).map(s=>s.repeatedAt??0));return at?<Timestamp value={at}/>:"—";}},
-  ], [t, clientSort, noLastSeen,scopeHours]);
+  ];}, [t, clientSort, noLastSeen,scopeHours]);
 
   const renderCard = useCallback((node: NodeSummary) => renderNodeCard(node, t), [t]);
 
