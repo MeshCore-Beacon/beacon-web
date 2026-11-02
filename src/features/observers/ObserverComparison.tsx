@@ -15,6 +15,7 @@ import { heardOption } from "../stats/chartOptions";
 import { fillActivity, intervalToMs } from "../stats/transforms";
 import { RANGE_MS, type ObserverActivity, type StatsRange } from "../stats/types";
 import type { Observer } from "./types";
+import { EmojiText } from "../../components/EmojiText";
 
 function statusNoise(observer: Observer) {
   const n = observerNoiseFloor(observer);
@@ -82,7 +83,7 @@ export function ObserverComparison({ observerA, activityA, range, observerBId, u
   return <section aria-label={t("observerCompare.title")} className="space-y-4 rounded-lg border border-primary-dim p-3">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold text-text-bright">{t("observerCompare.title")}</h2>
       <button type="button" className={ACTION_BUTTON_CLASS} onClick={refresh}>{t("observerCompare.refresh")}</button></div>
-    <p className="break-words text-sm text-text-normal">A: {observerA.displayName ?? observerA.id} {b.data && <>· B: {b.data.displayName ?? b.data.id}</>}</p>
+    <p className="break-words text-sm text-text-normal">A: <EmojiText text={observerA.displayName ?? observerA.id} /> {b.data && <>· B: <EmojiText text={b.data.displayName ?? b.data.id} /></>}</p>
     <ObserverPicker id={observerBId} name={b.data?.displayName ?? t("observerCompare.choose")} excludeId={observerA.id} label={t("observerCompare.partner")} onSelect={onSelect} />
     {until == null ? <p role="alert">{t("observerCompare.invalidTime")}</p> : !valid ? <p role={observerBId ? "alert" : "status"}>{t(observerBId ? "observerCompare.invalidObserver" : "observerCompare.choose")}</p> : b.isError || activityB.isError ? <p role="alert">{t("observerPage.loadFailed")}</p> : !activityA || activityB.isPending || b.isPending ? <p role="status">{t("common.loading")}</p> : !aligned ? <p role="status">{t("observerCompare.unavailable")}</p> : <>
       <p className="flex flex-wrap items-center gap-2 text-xs text-text-muted">{t("observerPage.window")}: {date(start)} – {date(end)}<InfoTip text={t("observerCompare.currentNote")} /></p>

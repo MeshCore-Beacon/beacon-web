@@ -25,7 +25,7 @@ export function useAtlasObserver(observerId: string | null, range: AtlasRange, a
   const observer = useQuery({
     ...base,
     queryKey: ["atlas-observer", observerId],
-    queryFn: () => getObserver(observerId!),
+    queryFn: ({ signal }) => getObserver(observerId!, signal),
     enabled: active && !throttled && observerId !== null,
     refetchInterval: ATLAS_REFRESH_MS,
   });
@@ -33,14 +33,14 @@ export function useAtlasObserver(observerId: string | null, range: AtlasRange, a
   const activity = useQuery({
     ...base,
     queryKey: ["atlas-observer-activity", observerId, range],
-    queryFn: () => getObserverActivity(observerId!, OBSERVER_RANGE[range], OBSERVER_INTERVAL, undefined),
+    queryFn: ({ signal }) => getObserverActivity(observerId!, OBSERVER_RANGE[range], OBSERVER_INTERVAL, undefined, signal),
     enabled: series,
     refetchInterval: (query) => pollUnlessMissing(query.state.error),
   });
   const telemetry = useQuery({
     ...base,
     queryKey: ["atlas-observer-telemetry", observerId, range],
-    queryFn: () => getObserverTelemetry(observerId!, OBSERVER_RANGE[range], OBSERVER_INTERVAL),
+    queryFn: ({ signal }) => getObserverTelemetry(observerId!, OBSERVER_RANGE[range], OBSERVER_INTERVAL, undefined, signal),
     enabled: series,
     refetchInterval: (query) => pollUnlessMissing(query.state.error),
   });
@@ -51,7 +51,7 @@ export function useAtlasObserver(observerId: string | null, range: AtlasRange, a
   return {
     observer,
     sample,
-    loading: open && (activity.isPending || telemetry.isPending),
+    loading: open && (activity.isLoading || telemetry.isLoading),
     unsupported: isNotFound(activity.error) || isNotFound(telemetry.error),
     failed: (activity.isError && !isNotFound(activity.error)) || (telemetry.isError && !isNotFound(telemetry.error)),
   };

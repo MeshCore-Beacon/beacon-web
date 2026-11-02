@@ -14,6 +14,7 @@ import type { PacketPath } from "./packet-path";
 import { packetPathsToFeatures } from "./packet-path";
 import { resolveMapStyle, DEFAULT_CENTER, DEFAULT_ZOOM, IATA_ZOOM } from "./types";
 import { mapLocale } from "./useMapLibre";
+import { splitEmoji } from "../../lib/emoji";
 
 // Private ids — this map instance is dedicated to the popup, so they can't collide with the main map.
 const LINE_SOURCE = "pp-lines";
@@ -66,7 +67,13 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
       const el = document.createElement("div");
       const name = document.createElement("div");
       name.className = "pp-popup-name";
-      name.textContent = (f.properties?.title as string) ?? "";
+      for (const part of splitEmoji((f.properties?.title as string) ?? "")) {
+        if (!part.emoji) { name.append(part.text); continue; }
+        const glyph = document.createElement("span");
+        glyph.className = "emoji-glyph";
+        glyph.textContent = part.text;
+        name.append(glyph);
+      }
       const coords = document.createElement("div");
       coords.className = "pp-popup-coords";
       coords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;

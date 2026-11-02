@@ -5,12 +5,24 @@ type Handler = (e?: unknown) => void;
 
 const maps = vi.hoisted(() => [] as FakeMap[]);
 
+interface FakeLayer {
+  id: string;
+  type: string;
+  source?: string;
+}
+
 interface FakeMap {
   fire: (type: string, e?: unknown) => void;
   fitBounds: ReturnType<typeof vi.fn>;
   flyTo: ReturnType<typeof vi.fn>;
   setStyle: ReturnType<typeof vi.fn>;
+  sources: Record<string, { type: string; tiles?: string[] }>;
+  layers: FakeLayer[];
+  terrain: { source: string; exaggeration?: number } | null;
 }
+
+// the basemap's own label layer; hillshade has to slot in beneath it
+const BASEMAP_LABELS = vi.hoisted(() => ({ id: "basemap-labels", type: "symbol" }));
 
 vi.mock("../../../src/features/map/maplibre-worker", () => ({}));
 vi.mock("maplibre-gl", () => {
@@ -18,7 +30,15 @@ vi.mock("maplibre-gl", () => {
     handlers: Record<string, Handler[]> = {};
     fitBounds = vi.fn();
     flyTo = vi.fn();
-    setStyle = vi.fn();
+    sources: FakeMap["sources"] = {};
+    layers: FakeLayer[] = [BASEMAP_LABELS];
+    terrain: FakeMap["terrain"] = null;
+    // like maplibre, a new style drops everything that was added by hand
+    setStyle = vi.fn(() => {
+      this.sources = {};
+      this.layers = [BASEMAP_LABELS];
+      this.terrain = null;
+    });
     constructor() {
       maps.push(this as unknown as FakeMap);
     }
@@ -33,13 +53,38 @@ vi.mock("maplibre-gl", () => {
       return document.createElement("div");
     }
     setMissingStyleImageResolver() {}
-    getSource() {
-      return {};
+    addSource(id: string, spec: FakeMap["sources"][string]) {
+      if (this.sources[id]) throw new Error(`source ${id} exists`);
+      this.sources[id] = spec;
     }
-    getLayer() {
-      return {};
+    removeSource(id: string) {
+      if (this.terrain?.source === id || this.layers.some((l) => l.source === id)) throw new Error(`source ${id} in use`);
+      delete this.sources[id];
     }
-    setTerrain() {}
+    getSource(id: string) {
+      return this.sources[id];
+    }
+    addLayer(layer: FakeLayer, beforeId?: string) {
+      const at = beforeId ? this.layers.findIndex((l) => l.id === beforeId) : -1;
+      if (at < 0) this.layers.push(layer);
+      else this.layers.splice(at, 0, layer);
+    }
+    removeLayer(id: string) {
+      this.layers = this.layers.filter((l) => l.id !== id);
+    }
+    getLayer(id: string) {
+      return this.layers.find((l) => l.id === id);
+    }
+    getStyle() {
+      return { layers: this.layers };
+    }
+    setTerrain(terrain: FakeMap["terrain"]) {
+      if (terrain && !this.sources[terrain.source]) throw new Error(`no source ${terrain.source}`);
+      this.terrain = terrain;
+    }
+    getTerrain() {
+      return this.terrain;
+    }
     remove() {}
   }
   class LngLatBounds {
@@ -56,10 +101,10 @@ const { resolveMapStyle } = await import("../../../src/features/map/types");
 
 const camera = { center: [-75.7, 45.4] as [number, number], zoom: 9 };
 
-function mount(props: { styleId?: string; fitPoints: [number, number][] | null; fitScope?: string; onStyleError?: (id: string) => void }) {
+function mount(props: { styleId?: string; fitPoints: [number, number][] | null; fitScope?: string; onStyleError?: (id: string) => void; terrain?: boolean }) {
   const hook = renderHook(
     (p: typeof props) => {
-      const r = useMapLibre(p.styleId ?? "dark", p.fitPoints, p.onStyleError, camera, p.fitScope);
+      const r = useMapLibre(p.styleId ?? "dark", p.fitPoints, p.onStyleError, camera, p.fitScope, p.terrain);
       // the map attaches to the container ref, so hand it a node before the init effect runs
       if (!r.containerRef.current) r.containerRef.current = document.createElement("div");
       return r;
@@ -113,5 +158,63 @@ describe("useMapLibre basemap swap errors", () => {
       map.fire("error", { error: Object.assign(new Error("offline"), { status: 0, url: resolveMapStyle("liberty").url }) }),
     );
     expect(onStyleError).toHaveBeenCalledWith("dark");
+  });
+});
+
+describe("useMapLibre terrain", () => {
+  const demTiles = (map: FakeMap) =>
+    Object.values(map.sources).filter((src) => src.tiles?.some((t) => t.includes("elevation-tiles-prod")));
+  const layerIds = (map: FakeMap) => map.layers.map((l) => l.id);
+
+  function expectNoTerrain(map: FakeMap) {
+    expect(demTiles(map)).toHaveLength(0);
+    expect(map.sources).toEqual({});
+    expect(layerIds(map)).toEqual(["basemap-labels"]);
+    expect(map.terrain).toBeNull();
+  }
+
+  function expectTerrain(map: FakeMap) {
+    expect(Object.keys(map.sources).sort()).toEqual(["hillshade-dem", "terrain-dem"]);
+    expect(demTiles(map)).toHaveLength(2);
+    expect(layerIds(map)).toEqual(["hillshade", "basemap-labels"]);
+    expect(map.terrain).toEqual({ source: "terrain-dem", exaggeration: 1.5 });
+  }
+
+  it("adds no terrain or hillshade by default", () => {
+    const { map } = mount({ fitPoints: null });
+    expectNoTerrain(map);
+  });
+
+  it("adds terrain and hillshade when switched on, and removes them when switched off", () => {
+    const { map, rerender } = mount({ fitPoints: null });
+    rerender({ fitPoints: null, terrain: true });
+    expectTerrain(map);
+    rerender({ fitPoints: null, terrain: false });
+    expectNoTerrain(map);
+  });
+
+  it("adds terrain on the first load when it starts on", () => {
+    const { map } = mount({ fitPoints: null, terrain: true });
+    expectTerrain(map);
+  });
+
+  it("re-adds terrain after a basemap swap only while it is on", () => {
+    const { map, rerender } = mount({ fitPoints: null, terrain: true });
+    rerender({ styleId: "liberty", fitPoints: null, terrain: true });
+    act(() => map.fire("style.load"));
+    expectTerrain(map);
+    rerender({ styleId: "liberty", fitPoints: null, terrain: false });
+    rerender({ styleId: "positron", fitPoints: null, terrain: false });
+    act(() => map.fire("style.load"));
+    expectNoTerrain(map);
+  });
+
+  it("applies a switch made mid-swap once the new style loads", () => {
+    const { map, rerender } = mount({ fitPoints: null });
+    rerender({ styleId: "liberty", fitPoints: null });
+    rerender({ styleId: "liberty", fitPoints: null, terrain: true });
+    expectNoTerrain(map);
+    act(() => map.fire("style.load"));
+    expectTerrain(map);
   });
 });

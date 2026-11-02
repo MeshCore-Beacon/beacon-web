@@ -12,11 +12,12 @@ import { useMapPacketFlow } from "./useMapPacketFlow";
 import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
 import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
+import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { ScopeLegend } from "./ScopeLegend";
 import { buildRepeaterScopeStyle } from "./repeater-scopes";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -93,6 +94,11 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // live packet-flow animation: opt-in per session (off by default, not persisted; a deep link can seed it)
   const [packetFlow, setPacketFlow] = useState(() => urlView.flow ?? false);
+  const [dimNodes, setDimNodes] = useState(() => { try { return urlView.dimNodes ?? localStorage.getItem("beacon-map-dim-live-nodes") === "on"; } catch { return false; } });
+  const changeDimNodes = (on: boolean) => { setDimNodes(on); try { localStorage.setItem("beacon-map-dim-live-nodes", on ? "on" : "off"); } catch { /* visit-local preference */ } };
+
+  // what the map draws; the saved choice stays in neighborLines for the panel, storage and links
+  const shownNeighborLines = liveNeighborLines(neighborLines, packetFlow);
 
   // IATA region borders overlay, off by default; seeded URL -> localStorage like the other toggles
   const [borders, setBorders] = useState(() => urlView.borders ?? localStorage.getItem(MAP_BORDERS_STORAGE_KEY) === "on");
@@ -104,6 +110,13 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const handleRepeaterScopesChange = useCallback((on: boolean) => {
     setRepeaterScopes(on);
     try { localStorage.setItem("beacon-map-repeater-scopes", on ? "on" : "off"); } catch { /* unavailable storage */ }
+  }, []);
+
+  // 3D terrain + hillshade, off by default; a viewer preference, so localStorage only (not in links)
+  const [terrain, setTerrain] = useState(() => localStorage.getItem(MAP_TERRAIN_STORAGE_KEY) === "on");
+  const handleTerrainChange = useCallback((on: boolean) => {
+    setTerrain(on);
+    localStorage.setItem(MAP_TERRAIN_STORAGE_KEY, on ? "on" : "off");
   }, []);
 
   // A deep-link camera opens the map here and suppresses the initial region fit (see useMapLibre).
@@ -149,6 +162,15 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // re-filters the already-built collection instead of re-running the full transform over all nodes
   const baseFc = useMemo(() => nodesToFeatureCollection(nodes), [nodes]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
+  // Live Map lights crossed nodes from the unfiltered list and draws idle nodes as dots
+  const liveNodeIndex = useMemo(() => buildLiveNodeIndex(baseFc), [baseFc]);
+  const dotTypes = useMemo(() => idleDotTypes(typeFilter), [typeFilter]);
+  // Live forces clustering off so every crossed node can light; the saved choice is untouched
+  const effectiveClustered = clustered && !packetFlow;
+  const mapGeojson = useMemo(
+    () => (packetFlow ? withSelectedNode(geojson, baseFc, selectedNodeId) : geojson),
+    [packetFlow, geojson, baseFc, selectedNodeId],
+  );
 
   // Selected mode colours the one node's edges by observation count + freshness, which only the node
   // detail endpoint carries (the list's neighborIds are bare uuids). Shares the panel's query cache
@@ -156,26 +178,26 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const { data: focusNeighbors } = useQuery({
     queryKey: ["node-neighbors", selectedNodeId],
     queryFn: () => getNodeNeighbors(selectedNodeId!),
-    enabled: neighborLines === "selected" && !!selectedNodeId,
+    enabled: shownNeighborLines === "selected" && !!selectedNodeId,
     staleTime: 30_000,
   });
 
   // "on" is a pure client-side render over already-loaded nodes (neighborIds ship with every map
   // page) so it never refetches; "selected" colours the detail edges; "off" short-circuits to none.
   const neighborEdges = useMemo(() => {
-    if (neighborLines === "off") return EMPTY_EDGES;
-    if (neighborLines === "selected") {
+    if (shownNeighborLines === "off") return EMPTY_EDGES;
+    if (shownNeighborLines === "selected") {
       if (!selectedNodeId) return EMPTY_EDGES;
       return buildFocusedNeighborEdges(nodes.find((n) => n.id === selectedNodeId), focusNeighbors ?? []);
     }
     return buildNeighborEdges(nodes, "on", selectedNodeId);
-  }, [nodes, neighborLines, selectedNodeId, focusNeighbors]);
+  }, [nodes, shownNeighborLines, selectedNodeId, focusNeighbors]);
 
   // With neighbors shown and a node selected, fade every other node (like live mode) to spotlight
   // the selection and its neighbors. null when there's nothing to focus, so the map stays full-bright.
   const focusIds = useMemo(
-    () => (neighborLines === "off" ? null : neighborFocusIds(nodes, selectedNodeId)),
-    [nodes, neighborLines, selectedNodeId],
+    () => (shownNeighborLines === "off" ? null : neighborFocusIds(nodes, selectedNodeId)),
+    [nodes, shownNeighborLines, selectedNodeId],
   );
 
   // IATA coords to frame: the selection's airports, or every airport for "All". Regions carry no
@@ -196,9 +218,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 
-  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection));
+  const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection), terrain);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
-  const scopeStyle = useMemo(() => repeaterScopes ? buildRepeaterScopeStyle(geojson, isDark) : null, [repeaterScopes, geojson, isDark]);
+  const scopeStyle = useMemo(() => repeaterScopes ? buildRepeaterScopeStyle(mapGeojson, isDark) : null, [repeaterScopes, mapGeojson, isDark]);
 
   // Snapshot the current view (live camera + settings) into deep-link params for the copy button.
   // Evaluated at click, so it reads the real camera; forces tab=Map so the link lands on the map.
@@ -213,16 +235,17 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       neighborLines,
       styleId,
       flow: packetFlow,
+      dimNodes,
       borders,
       repeaterScopes,
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders, repeaterScopes]);
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, dimNodes, borders, repeaterScopes]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, geojson, isDark, themeKey, clustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, scopeStyle);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes, dimNodes, scopeStyle);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
-  useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey);
+  useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey, isDark, liveNodeIndex, onSelectNode);
 
   return (
     <div className="relative flex flex-1 min-h-0">
@@ -241,11 +264,16 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onNeighborLinesChange={handleNeighborLinesChange}
         borders={borders}
         onBordersChange={handleBordersChange}
+        dimNodes={dimNodes}
+        onDimNodesChange={changeDimNodes}
+        terrain={terrain}
+        onTerrainChange={handleTerrainChange}
         repeaterScopes={repeaterScopes}
         onRepeaterScopesChange={handleRepeaterScopesChange}
         buildShareParams={buildShareParams}
+        liveMap={packetFlow}
       />
-      {scopeStyle && <ScopeLegend mapRef={mapRef} isReady={isReady} geojson={geojson} style={scopeStyle} />}
+      {scopeStyle && <ScopeLegend mapRef={mapRef} isReady={isReady} geojson={mapGeojson} style={scopeStyle} />}
       <PacketFlowButton active={packetFlow} onToggle={() => setPacketFlow((v) => !v)} />
       {/* streams in 50 at a time; the count climbs as pages land, then the pill disappears */}
       <LoadingPill loading={isPaging || regionPending} error={nodesError} count={loadedCount} noun="nodes" />

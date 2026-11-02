@@ -5,11 +5,13 @@ import { useRegion } from "../../hooks/useRegion";
 import { useMapNodesData } from "../map/useMapNodesData";
 import { getNodeNeighbors } from "../../api/client";
 import { useChartColors } from "./chartTheme";
-import { buildNeighbourGraph, buildEgoGraph, neighbourGraphOption } from "./neighbour-graph";
+import { buildNeighbourGraph, buildEgoGraph, neighbourGraphOption, withLayout, WORKER_LAYOUT_OVER } from "./neighbour-graph";
+import { useGraphLayout } from "./useGraphLayout";
 import { NeighbourGraph } from "./NeighbourGraph";
 import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
 import { SearchBar } from "../../components/SearchBar";
+import { EmojiText } from "../../components/EmojiText";
 
 // Most-connected nodes rendered; past this the canvas force layout bogs down. Reuses the map's node
 // query (same cache), so the whole region still loads — this only caps what the full mesh draws.
@@ -43,6 +45,10 @@ export function NeighbourGraphTab() {
   }, []);
 
   const graph = useMemo(() => buildNeighbourGraph(nodes, CAP), [nodes]);
+  // a big mesh is laid out in a worker once the pager settles; until then it shows as loading
+  const inWorker = graph.nodes.length > WORKER_LAYOUT_OVER;
+  const xy = useGraphLayout(graph, inWorker && !isPaging && !pending && !isAll);
+  const mesh = useMemo(() => (xy ? withLayout(graph, xy) : graph), [graph, xy]);
   const selectedNode = useMemo(
     () => (selectedId ? nodes.find((n) => n.id === selectedId) ?? null : null),
     [selectedId, nodes],
@@ -63,7 +69,7 @@ export function NeighbourGraphTab() {
     return buildEgoGraph(center, neighbours, dataUpdatedAt);
   }, [selectedId, selectedNode, neighbours, dataUpdatedAt]);
 
-  const option = useMemo(() => neighbourGraphOption(ego ?? graph, colors, t, { ego: !!ego }), [ego, graph, colors, t]);
+  const option = useMemo(() => neighbourGraphOption(ego ?? mesh, colors, t, { ego: !!ego }), [ego, mesh, colors, t]);
   const searchFields = useMemo(() => [{ value: "name", label: t("neighbourGraph.searchName") }], [t]);
 
   if (isAll)
@@ -75,14 +81,14 @@ export function NeighbourGraphTab() {
     );
   if (isError) return <EmptyState title={t("stats.tabs.graph")} subtitle={t("neighbourGraph.loadFailed")} />;
   // build only once the pager settles, or the force layout would restart on every streamed page
-  if (isPaging || pending) return <EmptyState title={t("neighbourGraph.loadingMesh")} subtitle={t("neighbourGraph.nodes", { count: loadedCount })} />;
+  if (isPaging || pending || (inWorker && !xy && !ego)) return <EmptyState title={t("neighbourGraph.loadingMesh")} subtitle={t("neighbourGraph.nodes", { count: loadedCount })} />;
   if (graph.nodes.length === 0) return <EmptyState title={t("stats.tabs.graph")} subtitle={t("neighbourGraph.noNodes")} />;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       {ego ? (
         <div className="shrink-0 border-b border-border bg-bg-surface px-4 py-2 text-center text-xs font-mono text-text-muted">
-          {t("neighbourGraph.neighborhoodOf")} <span className="text-text-normal">{selectedNode?.name ?? selectedId}</span> · {t("neighbourGraph.neighbors", { count: ego.nodes.length - 1 })} <InfoTip text={t("neighbourGraph.clickEmpty")} />
+          {t("neighbourGraph.neighborhoodOf")} <span className="text-text-normal"><EmojiText text={selectedNode?.name ?? selectedId ?? ""} /></span> · {t("neighbourGraph.neighbors", { count: ego.nodes.length - 1 })} <InfoTip text={t("neighbourGraph.clickEmpty")} />
         </div>
       ) : (
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-bg-surface px-4 py-2">
@@ -96,7 +102,7 @@ export function NeighbourGraphTab() {
         </div>
       )}
       <div className="min-h-0 flex-1">
-        <NeighbourGraph option={option} nodes={(ego ?? graph).nodes} search={ego ? "" : search} onSelect={handleSelect} />
+        <NeighbourGraph option={option} nodes={(ego ?? mesh).nodes} search={ego ? "" : search} onSelect={handleSelect} />
       </div>
     </div>
   );

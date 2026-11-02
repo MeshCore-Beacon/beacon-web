@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MapStyleSwitcher } from "./MapStyleSwitcher";
 import { SegmentedControl } from "./SegmentedControl";
 import { NODE_TYPE_FILTER_OPTIONS, type NeighborLinesMode } from "./types";
+import { liveNeighborLines } from "./live-map";
 import { Section } from "../../components/DetailPanel";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { useIsMobile } from "../../hooks/useMediaQuery";
@@ -46,6 +47,8 @@ function NeighborLegend() {
 }
 
 interface MapSettingsPanelProps {
+  dimNodes?: boolean;
+  onDimNodesChange?: (on: boolean) => void;
   styleId: string;
   onStyleChange: (id: string) => void;
   typeFilter: string;
@@ -56,10 +59,14 @@ interface MapSettingsPanelProps {
   onNeighborLinesChange: (mode: NeighborLinesMode) => void;
   borders: boolean;
   onBordersChange: (on: boolean) => void;
+  terrain: boolean;
+  onTerrainChange: (on: boolean) => void;
   repeaterScopes?: boolean;
   onRepeaterScopesChange?: (on: boolean) => void;
   // builds deep-link params for the current view, evaluated at copy time (reads the live camera)
   buildShareParams: () => Record<string, string | null>;
+  // Live Map forces clustering off while it runs; the saved choice comes back afterwards
+  liveMap?: boolean;
 }
 
 export function MapSettingsPanel({
@@ -73,9 +80,14 @@ export function MapSettingsPanel({
   onNeighborLinesChange,
   borders,
   onBordersChange,
+  terrain,
+  onTerrainChange,
   repeaterScopes = false,
   onRepeaterScopesChange,
   buildShareParams,
+  dimNodes = false,
+  onDimNodesChange,
+  liveMap = false,
 }: MapSettingsPanelProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -140,21 +152,28 @@ export function MapSettingsPanel({
             <SegmentedControl
               ariaLabel={t("map.clustering")}
               options={[on, off]}
-              value={clustered ? "on" : "off"}
+              value={clustered && !liveMap ? "on" : "off"}
               onChange={(v) => onClusteredChange(v === "on")}
               className="w-full"
+              disabled={liveMap}
             />
+            {liveMap && <div className="text-[9px] text-text-dim mt-1">{t("map.clusteringLiveNote")}</div>}
           </Section>
           <Section title={t("map.neighborLines")}>
             <SegmentedControl
               ariaLabel={t("map.neighborLinesLabel")}
               options={neighborOptions}
-              value={neighborLines}
+              value={liveNeighborLines(neighborLines, liveMap)}
               onChange={(v) => onNeighborLinesChange(v as NeighborLinesMode)}
               className="w-full"
+              disabledValues={liveMap ? ["on"] : undefined}
             />
-            {neighborLines === "selected" && <NeighborLegend />}
+            {liveMap && <div className="text-[9px] text-text-dim mt-1">{t("map.neighborLinesLiveNote")}</div>}
+            {liveNeighborLines(neighborLines, liveMap) === "selected" && <NeighborLegend />}
           </Section>
+          {onDimNodesChange && <Section title={t("map.liveNodes")}>
+            <label className="flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={dimNodes} onChange={event => onDimNodesChange(event.target.checked)} />{t("map.dimLiveNodes")}</label>
+          </Section>}
           <Section title={t("map.areaBorders")}>
             <SegmentedControl
               ariaLabel={t("map.areaBordersLabel")}
@@ -168,6 +187,15 @@ export function MapSettingsPanel({
               <input type="checkbox" checked={repeaterScopes} onChange={e => onRepeaterScopesChange?.(e.target.checked)} className="accent-primary" />
               {t("map.repeaterScopes")}
             </label>
+          </Section>
+          <Section title={t("map.terrain")}>
+            <SegmentedControl
+              ariaLabel={t("map.terrainLabel")}
+              options={[on, off]}
+              value={terrain ? "on" : "off"}
+              onChange={(v) => onTerrainChange(v === "on")}
+              className="w-full"
+            />
           </Section>
           <div className="px-3 py-2.5 border-t border-border-subtle flex justify-end">
             <CopyLinkButton

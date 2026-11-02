@@ -151,3 +151,8 @@
 [data-dark="true"] .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--color-bg-raised); }
 .pp-popup-name { font-weight: 600; }
 .pp-popup-coords { font-family: ui-monospace, monospace; font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* Chrome on macOS lays emoji out 1em wide but paints Apple's ~1.3em at small sizes on 1x screens */
+@media (max-resolution: 1.5dppx) {
+  .emoji-glyph { margin-right: 0.3em; }
+}

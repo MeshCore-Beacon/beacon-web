@@ -253,7 +253,7 @@ export function ChannelList({ wsManager, onAnalyze }: ChannelListProps) {
                 onSelect={handleSelect}
               />
             )}
-            {!keyedLoading && filteredChannels.length === 0 && (
+            {!keyedLoading && filteredChannels.length === 0 && !keyed.isError && !others.isError && (
               <p className="px-3 py-2 text-xs font-mono text-text-muted">{t("channels.noMatches")}</p>
             )}
             {(keyed.isError || others.isError) && <p role="alert" className="px-3 py-2 text-xs text-danger">{t("channels.loadError")}</p>}

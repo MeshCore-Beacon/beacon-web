@@ -84,6 +84,20 @@ function addTerrain(map: MapLibreMap, isDark: boolean) {
   map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration: TERRAIN_EXAGGERATION });
 }
 
+// Drops the DEM sources so no elevation tile is fetched while terrain is off; terrain and the layer
+// let go of their sources first, since maplibre won't remove a source still in use.
+function removeTerrain(map: MapLibreMap) {
+  if (map.getTerrain()) map.setTerrain(null);
+  if (map.getLayer(HILLSHADE_LAYER_ID)) map.removeLayer(HILLSHADE_LAYER_ID);
+  if (map.getSource(HILLSHADE_SOURCE_ID)) map.removeSource(HILLSHADE_SOURCE_ID);
+  if (map.getSource(TERRAIN_SOURCE_ID)) map.removeSource(TERRAIN_SOURCE_ID);
+}
+
+function syncTerrain(map: MapLibreMap, on: boolean, isDark: boolean) {
+  if (on) addTerrain(map, isDark);
+  else removeTerrain(map);
+}
+
 export function useMapLibre(
   styleId: string,
   // lng/lat pairs to fitBounds over; null/empty falls back to the configured default view
@@ -94,6 +108,8 @@ export function useMapLibre(
   initialCamera?: { center: [number, number]; zoom: number },
   // identity of the selection being framed; the deep-link camera only wins while it's unchanged
   fitScope?: string,
+  // 3D terrain + hillshade; while off no DEM source exists, so no elevation tiles are fetched
+  terrain = false,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -108,6 +124,7 @@ export function useMapLibre(
   const skipInitialFitRef = useRef(!!initialCamera); // let a deep-link camera win over the first fit
   const initialFitScopeRef = useRef(fitScope);
   const initialCameraRef = useRef(initialCamera); // read once at map creation (deep link is load-time only)
+  const terrainRef = useRef(terrain);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -154,7 +171,7 @@ export function useMapLibre(
     attrib?.classList.remove("maplibregl-compact-show");
 
     const onStyleReady = () => {
-      addTerrain(map, resolveMapStyle(styleIdRef.current).dark);
+      syncTerrain(map, terrainRef.current, resolveMapStyle(styleIdRef.current).dark);
       hasLoadedRef.current = true;
       swapPendingRef.current = false;
       lastGoodStyleIdRef.current = styleIdRef.current;
@@ -162,7 +179,7 @@ export function useMapLibre(
       setError(null); // a successful (re)load clears any earlier transient/initial error
     };
     map.on("load", onStyleReady); // first paint (style.load does not reliably fire on initial load)
-    map.on("style.load", onStyleReady); // re-add terrain after every setStyle
+    map.on("style.load", onStyleReady); // re-add terrain (if on) after every setStyle
 
     // The OpenFreeMap base styles ask for a handful of sprite icons their sprite doesn't ship (e.g.
     // "circle-11"), so maplibre warns on every load. Hand it a transparent 1x1 for anything that
@@ -218,6 +235,15 @@ export function useMapLibre(
     setIsReady(false);
     map.setStyle(resolveMapStyle(styleId).url);
   }, [styleId]);
+
+  // Apply the terrain switch. Mid-swap the ref alone carries it and style.load applies it; isReady
+  // re-runs this after a failed swap rolls back to the old style.
+  useEffect(() => {
+    terrainRef.current = terrain;
+    const map = mapRef.current;
+    if (!map || !isReady) return;
+    syncTerrain(map, terrain, resolveMapStyle(styleIdRef.current).dark);
+  }, [terrain, isReady]);
 
   // Frame the selection: fitBounds over its IATA points, or the default overview when there's none.
   // A single point gets the IATA_ZOOM terrain tilt; multiple get a flat overview. Waits for the

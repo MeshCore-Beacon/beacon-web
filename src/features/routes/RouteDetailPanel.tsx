@@ -10,6 +10,7 @@ import { getRouteEvidence, isNotFound } from "../../api/client";
 import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { ResolvedHopBlock } from "../packets/PathData";
 import type { KnownRoute, ResolvedHop } from "../../types/api";
+import { EmojiText } from "../../components/EmojiText";
 
 export interface RouteActions {
   onAnalyzePacket?: (hash: string, observationId: number) => void;
@@ -73,7 +74,7 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
                 <div key={i} className="flex items-center gap-2 font-mono text-[13px]">
                   <span className="text-text-dim w-6 shrink-0">#{i + 1}</span>
                   <ResolvedHopBlock hop={resolved} label={hop.hashBytes.toUpperCase()} onViewNode={onViewNode} />
-                  {hop.node?.name && <span className="text-text-muted truncate">{hop.node.name}</span>}
+                  {hop.node?.name && <span className="text-text-muted truncate"><EmojiText text={hop.node.name} /></span>}
                 </div>
               );
             })}
@@ -106,7 +107,7 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
                   return (
                     <li key={report.id} className="rounded border border-border bg-bg-base p-2 space-y-2">
                       <div className="flex justify-between gap-2 text-xs"><code className="text-primary">{report.packetHash.slice(0, 8).toUpperCase()}</code><span className="text-text-muted">{report.payloadTypeName}</span></div>
-                      <p className="break-words text-sm text-text-bright">{report.observerName ?? report.observerId.slice(0, 8)}</p>
+                      <p className="break-words text-sm text-text-bright"><EmojiText text={report.observerName ?? report.observerId.slice(0, 8)} /></p>
                       <p className="text-xs text-text-normal"><Timestamp value={report.heardAt} ms /> · SNR <span className={level ? SIGNAL_LEVEL_CLASSES[level] : ""}>{formatSnr(report.snr)}</span>{report.snr != null && " dB"} · RSSI {report.rssi == null ? "—" : `${report.rssi} dBm`}</p>
                       <div className="flex flex-wrap gap-2">
                         {onAnalyzePacket && <button className={ACTION_BUTTON_CLASS} onClick={() => onAnalyzePacket(report.packetHash, report.id)}>{t("routeEvidence.inspect")}</button>}

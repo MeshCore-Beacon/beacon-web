@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ATLAS_KEY, parseAtlas, type SavedAtlas } from "./atlas";
+import { ATLAS_KEY, ATLAS_LEGACY_KEY, parseAtlas, type SavedAtlas } from "./atlas";
 
 export function useSavedAtlas() {
   const [initial] = useState(() => {
     try {
-      return { value: parseAtlas(localStorage.getItem(ATLAS_KEY)), failed: false };
+      return { value: parseAtlas(localStorage.getItem(ATLAS_KEY) ?? localStorage.getItem(ATLAS_LEGACY_KEY)), failed: false };
     } catch {
       return { value: parseAtlas(null), failed: true };
     }
