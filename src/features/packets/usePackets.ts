@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getPackets } from "../../api/client";
 import { isRateLimited } from "../../api/rate-limit";
 import { fetchPage, nextPageParam } from "../../api/paging";
 import { useRegion } from "../../hooks/useRegion";
 import type { WsPacketObservation, WsLagged } from "../../types/ws";
-import type { PacketSummary, PageParam } from "../../types/api";
+import type { CursorPage, PacketSummary, PageParam } from "../../types/api";
 import type { PacketServerFilter } from "./types";
 import { LIVE_BUFFER_CAP } from "../../lib/constants";
 
@@ -41,6 +41,8 @@ class LivePacketStore {
   private snapshot: LiveSnapshot = { buffer: [], acknowledgedCount: 0, observersByHash: new Map() };
   private listeners = new Set<() => void>();
   private rafId: number | null = null;
+  // bumped by reset(), so work started for one region can tell it has been overtaken
+  generation = 0;
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -96,6 +98,10 @@ class LivePacketStore {
     this.scheduleNotify();
   }
 
+  has(packetHash: string): boolean {
+    return this.hashIndex.has(packetHash);
+  }
+
   private rebuildIndex(): void {
     this.hashIndex.clear();
     for (let i = 0; i < this.buffer.length; i++) {
@@ -114,6 +120,7 @@ class LivePacketStore {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
     }
+    this.generation++;
     this.buffer = [];
     this.hashIndex.clear();
     this.observersByHash.clear();
@@ -185,16 +192,40 @@ export function usePackets(frozen: boolean = false, serverFilter: PacketServerFi
     [store, iatas],
   );
 
-  // Reset (drop to one fresh first page) instead of invalidate: an invalidate replays every cached
-  // page sequentially — up to 20 requests per lag notice during a flood. The 2-element key matches
-  // filtered variants by prefix, so those reset too.
+  // One request per notice, never an invalidate: that replays every cached page, up to 20 requests
+  // during a flood. When the newest page overlaps the list, the missed packets go in through the
+  // live buffer, so loaded pages and the scroll position stay; otherwise it alone becomes the list.
   const handleLagged = useCallback(
-    (data: WsLagged) => {
+    async (data: WsLagged): Promise<void> => {
       setLaggedCount((prev) => prev + data.droppedCount);
       // while the API is throttling us the refetch would only 429; the next lag notice or remount heals it
-      if (!isRateLimited()) queryClient.resetQueries({ queryKey: ["packets", regionKey] });
+      if (isRateLimited()) return;
+      const key = serverFilter ? ["packets", regionKey, serverFilter] : ["packets", regionKey];
+      const cached = queryClient.getQueryData<InfiniteData<CursorPage<PacketSummary>>>(key);
+      if (!cached?.pages.length) {
+        await queryClient.resetQueries({ queryKey: ["packets", regionKey] });
+        return;
+      }
+      const generation = store.generation;
+      let newest: CursorPage<PacketSummary>;
+      try {
+        newest = await getPackets(iatas, { ...serverFilter });
+      } catch {
+        return; // keep what is shown; the next notice or remount heals the gap
+      }
+      if (store.generation !== generation) return;
+      const shown = new Set(flattenPages(cached).map((p) => p.packetHash));
+      const known = (p: PacketSummary) => shown.has(p.packetHash) || store.has(p.packetHash);
+      if (newest.items.some(known)) {
+        for (const p of [...newest.items].reverse()) if (!known(p)) store.pushOrUpdate(p);
+      } else {
+        queryClient.setQueryData<InfiniteData<CursorPage<PacketSummary>>>(key, { pages: [newest], pageParams: [undefined] });
+      }
+      // other filter variants of this region can't be patched, so they start over when next shown
+      const active = JSON.stringify(key);
+      await queryClient.resetQueries({ queryKey: ["packets", regionKey], predicate: (q) => JSON.stringify(q.queryKey) !== active });
     },
-    [queryClient, regionKey],
+    [queryClient, regionKey, serverFilter, iatas, store],
   );
 
   // The WS handler is down whenever this tab is unmounted, so cached history may hide a gap right
