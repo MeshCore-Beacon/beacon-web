@@ -7,7 +7,7 @@ import { useRegionSelection } from "../src/hooks/useRegion";
 import type { PacketDetail } from "../src/types/api";
 
 vi.mock("../src/api/ws-manager", () => ({ WsManager: class {
-  connect() {} disconnect() {} updateSubscription() {}
+  connect() {} disconnect() {} pause() {} resume() { return false; } updateSubscription() {}
 } }));
 vi.mock("../src/api/client", () => ({ getRegions: async () => [], getRegion: async () => ({ iatas: [] }), getBrokers: async () => [], getScopes: async () => [] }));
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));

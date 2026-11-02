@@ -11,6 +11,8 @@ vi.mock("../src/api/ws-manager", () => {
   class WsManager {
     connect() {}
     disconnect() {}
+    pause() {}
+    resume() { return false; }
     updateSubscription() {}
     onPacketObservation() { return () => {}; }
     onLagged() { return () => {}; }
