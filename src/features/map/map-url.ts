@@ -14,6 +14,7 @@ export interface ParsedMapView {
   styleId?: string;
   flow?: boolean;
   borders?: boolean;
+  dimNodes?: boolean;
   repeaterScopes?: boolean;
 }
 
@@ -27,6 +28,7 @@ export interface MapViewSnapshot {
   styleId: string;
   flow: boolean;
   borders: boolean;
+  dimNodes?: boolean;
   repeaterScopes?: boolean;
 }
 
@@ -88,6 +90,9 @@ export function parseMapView(params: URLSearchParams): ParsedMapView {
   const flow = parseBool(params.get("flow"));
   if (flow !== undefined) view.flow = flow;
 
+  const dimNodes = parseBool(params.get("dim_nodes"));
+  if (dimNodes !== undefined) view.dimNodes = dimNodes;
+
   const borders = parseBool(params.get("borders"));
   if (borders !== undefined) view.borders = borders;
   const scopes = parseBool(params.get("repeater_scopes"));
@@ -116,6 +121,7 @@ export function buildMapParams(view: MapViewSnapshot): Record<string, string | n
     style: view.styleId,
     flow: view.flow ? "on" : "off",
     borders: view.borders ? "on" : "off",
+    ...(view.dimNodes !== undefined ? { dim_nodes: view.dimNodes ? "on" : "off" } : {}),
     repeater_scopes: view.repeaterScopes ? "on" : "off",
   };
 }
