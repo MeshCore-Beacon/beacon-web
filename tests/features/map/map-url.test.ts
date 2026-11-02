@@ -148,6 +148,15 @@ describe("buildMapParams", () => {
     expect(parseMapView(toParams(buildMapParams({ ...snapshot, repeaterScopes: true })))).toMatchObject({ repeaterScopes: true });
     expect(parseMapView(new URLSearchParams("repeater_scopes=maybe"))).toEqual({});
   });
+
+  it("preserves the optional live-node dimming choice in shared scope views", () => {
+    for (const dimNodes of [true, false]) {
+      const params = toParams(buildMapParams({ ...snapshot, dimNodes, repeaterScopes: true }));
+      expect(parseMapView(params)).toMatchObject({ dimNodes, repeaterScopes: true });
+    }
+    expect(buildMapParams(snapshot)).not.toHaveProperty("dim_nodes");
+    expect(parseMapView(new URLSearchParams("dim_nodes=maybe"))).toEqual({});
+  });
 });
 
 describe("parseNodeType", () => {
