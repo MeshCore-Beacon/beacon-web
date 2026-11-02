@@ -275,46 +275,25 @@ it("refreshes loaded rows each minute so fetched online status does not stay gre
   } finally { vi.useRealTimers(); }
 });
 
-it("uses a fresh rolling window on periodic refresh and replaces all loaded pages atomically", async () => {
+it("stops the minute refresh once a second page is loaded, leaving status to the WebSocket", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-05T12:15:23.456Z"));
-  let generation = 0;
-  let finishSecondPage: (response: Response) => void;
-  const page = (part: string, end: number) => directoryPage([directoryRow(`${generation}-${part}`, generation ? 200 : 100)], {
-    windowStart: end - 7 * 86400000, windowEnd: end,
-    hasMore: part === "first", nextCursor: part === "first" ? 200 : undefined,
-    maxObservationCount: generation ? 200 : 100,
-  });
-  respond = url => {
-    const continuation = url.searchParams.has("cursor");
-    if (generation && continuation) return new Promise(resolve => { finishSecondPage = resolve; });
-    return reply(page(continuation ? "second" : "first", continuation ? Number(url.searchParams.get("until")) : Date.now()));
-  };
+  respond = url => url.searchParams.has("cursor")
+    ? reply(directoryPage([directoryRow("second")]))
+    : reply(directoryPage([directoryRow("first")], { hasMore: true, nextCursor: 200 }));
   try {
     const { result } = view();
     await act(async () => { await vi.advanceTimersByTimeAsync(10); });
     await act(async () => { await result.current.loadMore(); await vi.advanceTimersByTimeAsync(10); });
-    expect(result.current.observers.map(o => o.id)).toEqual(["0-first", "0-second"]);
-    const oldEnd = result.current.windowEnd;
-    generation = 1;
-    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
-    const refreshFirst = listingRequests().at(-2)!.searchParams;
-    const refreshNext = listingRequests().at(-1)!.searchParams;
-    expect(refreshFirst.has("cursor")).toBe(false);
-    expect(refreshFirst.has("since")).toBe(false);
-    expect(refreshFirst.has("until")).toBe(false);
-    expect(Number(refreshNext.get("until"))).toBeGreaterThan(oldEnd!);
-    expect(Number(refreshNext.get("until")) - Number(refreshNext.get("since"))).toBe(7 * 86400000);
-    expect(result.current.windowEnd).toBe(oldEnd);
-    expect(result.current.observers.map(o => o.id)).toEqual(["0-first", "0-second"]);
-    expect(result.current.maxObservationCount).toBe(100);
+    expect(result.current.observers.map(o => o.id)).toEqual(["first", "second"]);
+    expect(listingRequests()).toHaveLength(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60_000); });
+    expect(listingRequests()).toHaveLength(2);
     await act(async () => {
-      finishSecondPage!(reply(page("second", Number(refreshNext.get("until")))));
+      statusHandler({ observerId: "second", online: false, lastStatusAt: Date.now() } as WsObserverStatus["data"]);
       await vi.advanceTimersByTimeAsync(10);
     });
-    expect(result.current.observers.map(o => o.id)).toEqual(["1-first", "1-second"]);
-    expect(result.current.windowEnd).toBe(Number(refreshNext.get("until")));
-    expect(result.current.maxObservationCount).toBe(200);
+    expect(result.current.observers[1]?.status).toBe("offline");
   } finally { vi.useRealTimers(); }
 });
 

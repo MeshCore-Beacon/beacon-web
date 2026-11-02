@@ -328,6 +328,7 @@
       "colRadio": "Radio",
       "colAreas": "Areas",
       "colNeighbors": "Neighbors",
+      "colLastHeard": "Last heard",
       "colLocation": "Location",
       "observer": "Observer",
       "empty": "No nodes",

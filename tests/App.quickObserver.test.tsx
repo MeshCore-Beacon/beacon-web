@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { App } from "../src/App";
 import { ModalOverlay } from "../src/components/ModalOverlay";
 
-vi.mock("../src/api/ws-manager", () => ({ WsManager: class { connect() {} disconnect() {} updateSubscription() {} } }));
+vi.mock("../src/api/ws-manager", () => ({ WsManager: class { connect() {} disconnect() {} pause() {} resume() { return false; } updateSubscription() {} } }));
 vi.mock("../src/api/client", () => ({ getRegions: async () => [], getRegion: async () => ({ iatas: [] }) }));
 vi.mock("../src/components/SplashScreen", () => ({ SplashScreen: () => null }));
 vi.mock("../src/components/VersionGate", () => ({ VersionGate: () => null }));

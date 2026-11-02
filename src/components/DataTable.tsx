@@ -12,6 +12,7 @@ export interface Column<T> {
   className?: string; // extra classes applied to the <td>
   sortValue?: (row: T) => string | number | null | undefined; // column is sortable when present
   width?: string; // pinned width in a virtualized table; unpinned columns share the rest
+  firstSortDirection?: SortDirection; // the first click's direction (default "asc"); the idle arrow shows it
 }
 
 export type SortDirection = "asc" | "desc";
@@ -60,10 +61,10 @@ function DataTableView<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoad
   }));
   const sort = controlledSort ?? ownSort;
 
-  function toggleSort(id: string) {
+  function toggleSort(id: string, firstDirection: SortDirection = "asc") {
     const next: TableSort = sort.id === id
       ? { id, direction: sort.direction === "asc" ? "desc" : "asc" }
-      : { id, direction: "asc" };
+      : { id, direction: firstDirection };
     if (onSortChange) onSortChange(next);
     else setOwnSort(next);
   }
@@ -198,12 +199,12 @@ function DataTableView<T>({ columns, rows, rowKey, selectedKey, onSelect, isLoad
                   <th key={id} className="text-left px-4 py-2 font-medium">
                     <button
                       type="button"
-                      onClick={() => toggleSort(id)}
+                      onClick={() => toggleSort(id, col.firstSortDirection)}
                       className="flex items-center gap-1 cursor-pointer hover:text-text-normal transition-colors"
                     >
                       {col.header}
                       <span className={active ? "text-text-normal" : "text-text-dim/40"}>
-                        {active ? (sort.direction === "asc" ? "▲" : "▼") : "▲"}
+                        {(active ? sort.direction : col.firstSortDirection ?? "asc") === "asc" ? "▲" : "▼"}
                       </span>
                     </button>
                   </th>

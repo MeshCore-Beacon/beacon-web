@@ -52,6 +52,11 @@ async function errorFrom(res: Response): Promise<ApiError> {
   return new ApiError(res.status, body.error?.code ?? "unknown", body.error?.message ?? res.statusText, retryAfterMs);
 }
 
+// No referrer or mode options: the analyzer's scrape block lets /api calls through on their Referer or Origin.
+function apiFetch(url: URL, signal?: AbortSignal): Promise<Response> {
+  return signal ? fetch(url.toString(), { signal }) : fetch(url.toString());
+}
+
 async function request<T>(path: string, params?: Record<string, string | number | undefined>, signal?: AbortSignal): Promise<T> {
   const url = new URL(`${API_BASE}${path}`, window.location.origin);
   if (params) {
@@ -62,7 +67,7 @@ async function request<T>(path: string, params?: Record<string, string | number 
     }
   }
 
-  const res = await (signal ? fetch(url.toString(), { signal }) : fetch(url.toString()));
+  const res = await apiFetch(url, signal);
 
   if (!res.ok) throw await errorFrom(res);
   noteRequestOk();
@@ -166,7 +171,7 @@ export function getIatas(): Promise<IataCode[]> {
 // answers 204 (empty body) or a literal `null` for "no border", and request() always parses JSON.
 export async function getIataBorder(iata: string): Promise<IataBorder | null> {
   const url = new URL(`${API_BASE}/iatas/${iata}/border`, window.location.origin);
-  const res = await fetch(url.toString());
+  const res = await apiFetch(url);
   if (!res.ok) throw await errorFrom(res);
   noteRequestOk();
   if (res.status === 204) return null;

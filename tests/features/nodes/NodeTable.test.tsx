@@ -1,11 +1,12 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { act, render, screen, within, fireEvent } from "@testing-library/react";
+import { act, render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeTable } from "../../../src/features/nodes/NodeTable";
 import { getNodesPage, getTelemetryAvailability } from "../../../src/api/client";
 import i18n from "../../../src/i18n";
 import type { NodePage, NodeSummary } from "../../../src/features/nodes/types";
 import type { WsManager } from "../../../src/api/ws-manager";
+import type { WsNodeUpdate } from "../../../src/types/ws";
 import { stubVirtualLayout } from "../../virtual-layout";
 
 const region = { iatas: ["YVR"], regionKey: "YVR", isResolved: true };
@@ -172,6 +173,20 @@ describe("NodeTable IATA badge freshness", () => {
   });
 });
 
+describe("NodeTable cards", () => {
+  const desktop = window.matchMedia;
+  afterEach(() => { window.matchMedia = desktop; });
+
+  it("shows when a node was last heard, if the server says", async () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    mount([node({ id: "heard", name: "Heard node", lastSeen: Date.now() - 5 * 60_000 }), node({ id: "quiet", name: "Quiet node" })]);
+    expect((await screen.findByText("Heard node")).closest("button")).toHaveTextContent("5m ago");
+    expect(screen.getByText("Quiet node").closest("button")).not.toHaveTextContent("ago");
+  });
+});
+
 describe("NodeTable in French", () => {
   it("translates column headers and filter labels", async () => {
     await i18n.changeLanguage("fr");
@@ -203,12 +218,12 @@ describe("NodeTable server order", () => {
   const sortedPage = (items: NodeSummary[], over: Partial<NodePage> = {}): NodePage =>
     ({ items, nextCursor: null, hasMore: false, sort: "name", order: "asc", ...over });
 
-  function mountPages(answer: (params: Parameters<typeof getNodesPage>[1]) => NodePage) {
+  function mountPages(answer: (params: Parameters<typeof getNodesPage>[1]) => NodePage, wsManager = fakeWsManager) {
     vi.mocked(getNodesPage).mockImplementation(async (_iatas, params) => answer(params));
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
-        <NodeTable wsManager={fakeWsManager} selectedNodeId={null} onSelectNode={vi.fn()} />
+        <NodeTable wsManager={wsManager} selectedNodeId={null} onSelectNode={vi.fn()} />
       </QueryClientProvider>,
     );
   }
@@ -245,6 +260,51 @@ describe("NodeTable server order", () => {
     expect(header(/radio/i)).not.toBeInTheDocument();
   });
 
+  it("asks the server for the newest heard first, then the oldest", async () => {
+    mountPages((p) => sortedPage([node({ id: "a", name: `Node ${p?.sort} ${p?.order}`, lastSeen: Date.now() })], { sort: p?.sort, order: p?.order }));
+    await screen.findByText("Node name asc");
+    fireEvent.click(header(/last heard/i)!);
+    await screen.findByText("Node lastSeen desc");
+    fireEvent.click(header(/last heard/i)!);
+    await screen.findByText("Node lastSeen asc");
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "lastSeen", order: "asc" }));
+  });
+
+  it("hides Last heard when the server's rows don't carry it", async () => {
+    mountPages(() => sortedPage([node({ id: "a", name: "Older server" })]));
+    await screen.findByText("Older server");
+    expect(screen.queryByRole("columnheader", { name: /last heard/i })).not.toBeInTheDocument();
+  });
+
+  it("goes back to name order if a Last heard page comes without lastSeen", async () => {
+    mountPages((p) => p?.sort === "lastSeen"
+      ? sortedPage([node({ id: "a", name: "No time" })], { sort: "lastSeen", order: "desc" })
+      : sortedPage([node({ id: "a", name: `Node ${p?.sort}`, lastSeen: Date.now() })], { sort: p?.sort, order: p?.order }));
+    await screen.findByText("Node name");
+    fireEvent.click(header(/last heard/i)!);
+    await waitFor(() => expect(header(/last heard/i)).not.toBeInTheDocument());
+    expect(await screen.findByText("Node name")).toBeInTheDocument();
+    expect(header(/name/i)).toHaveTextContent("▲");
+  });
+
+  it("moves a row's Last heard to now when its advert arrives, leaving the row where it is", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    try {
+      let push: (data: WsNodeUpdate["data"]) => void = () => {};
+      const ws = { onNodeUpdate: (handler: typeof push) => { push = handler; return () => {}; } } as unknown as WsManager;
+      const hourAgo = Date.now() - 3_600_000;
+      mountPages(() => sortedPage([node({ id: "a", name: "Alpha", lastSeen: hourAgo }), node({ id: "b", name: "Bravo", lastSeen: hourAgo - 60_000 })]), ws);
+      const row = async (name: string) => (await screen.findByText(name)).closest("tr")!;
+      expect(await row("Bravo")).toHaveTextContent("1h ago");
+      act(() => push({ nodeId: "b", publicKey: "aabbccdd", name: "Bravo", nodeType: 2, nodeTypeName: "REPEATER", iata: "YVR", isObserver: false, iatas: [] }));
+      expect(await row("Bravo")).toHaveTextContent("0s ago");
+      expect(await row("Alpha")).toHaveTextContent("1h ago");
+      expect(names()).toEqual(["Alpha", "Bravo"]);
+      act(() => vi.advanceTimersByTime(90_000));
+      expect(await row("Bravo")).toHaveTextContent("1m ago");
+    } finally { vi.useRealTimers(); }
+  });
+
   it("sends the scope filter to the server", async () => {
     scopes = ["#bc"];
     mountPages((p) => sortedPage([node({ id: "a", name: p?.scope ? `in ${p.scope}` : "any scope" })]));
@@ -264,6 +324,7 @@ describe("NodeTable server order", () => {
     await screen.findByText("Alpha"); // the second page came without a scroll
     expect(names()).toEqual(["Alpha", "Zulu"]);
     expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: undefined }));
+    expect(header(/last heard/i)).not.toBeInTheDocument();
     fireEvent.click(header(/radio/i)!);
     expect(names()).toEqual(["Zulu", "Alpha"]);
   });

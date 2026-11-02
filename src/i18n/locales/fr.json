@@ -299,6 +299,7 @@
       "colRadio": "Radio",
       "colAreas": "Zones",
       "colNeighbors": "Voisins",
+      "colLastHeard": "Dernier contact",
       "colLocation": "Position",
       "observer": "Observateur",
       "empty": "Aucun nœud",
