@@ -1,3 +1,4 @@
+import { ObserverScopeActivity } from "../scopes/ScopeActivityPanel";
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoTip } from "../../components/InfoTip";
@@ -148,6 +149,7 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison, 
         pending={heardLoading || (!heardData && activity.isError)}
         actions={actions}
       />
+      <ObserverScopeActivity observerId={selectedObserverId}/>
       {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => {
         const nextUntil = comparison.onRefresh();
         void observer.refetch();

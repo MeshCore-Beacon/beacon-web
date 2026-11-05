@@ -5,7 +5,19 @@ export interface NodeIATA {
   lastHeard: number; // unix ms
 }
 
+export interface NodeScopeEvidence {
+  since: number; until: number; scopes: NodeScope[];
+  reportedEmpty?: boolean; conflictingReports?: boolean;
+  hourly?: NodeScopeHour[];
+}
+export interface NodeScope {
+  name: string; repeatObservations: number; repeatedAt?: number;
+  repeatObservations1h?: number; repeatObservations6h?: number; firstRepeatedAt?: number; uniqueSamples?: number; uniqueSince?: number;
+  minHashBytes?: number; reported?: boolean; reportedAt?: number; heardAt?: number;
+}
+
 export interface NodeSummary {
+  scopeEvidence?: NodeScopeEvidence;
   id: string;
   publicKey: string;
   nodeType: number;
@@ -67,6 +79,17 @@ export interface MeshMapperRepeater {
   scopes: MeshMapperScope[];
   scopesCheckedAt?: number; // set with empty scopes = it answered with none; absent = never asked
   defaultScope?: MeshMapperDefaultScope; // separate from Node.defaultScope (Beacon's own match)
+  profileUrl?: string;
+  refreshFailed?: boolean;
+  status?: "active" | "ambiguous" | "inactive" | "disabled";
+  firstSeen?: number;
+  lastHeard?: number;
+  advertBytes?: number;
+  backbone?: boolean;
+  backboneShare?: number;
+  currentPreset?: string;
+  radios?: { preset: string; lastSeen?: number; witnesses?: number }[];
+  neighbors?: { key: string; resolved: boolean; snr?: number; heardAt?: number }[];
 }
 
 export interface MeshMapperSite {
@@ -121,3 +144,5 @@ export interface NodeObservation {
   snr?: number;
   hopCount?: number;
 }
+
+export interface NodeScopeHour { name: string; hour: number; reports: number; uniqueSamples: number; firstSeen: number; lastSeen: number }

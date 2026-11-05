@@ -1,3 +1,4 @@
+import { RouteScopes } from "../scopes/RouteScopes";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { DetailPanel, Section, Field } from "../../components/DetailPanel";
@@ -66,7 +67,7 @@ export function RouteDetailPanel({ route: listed, iata, pathKey, onClose, onAnal
           </div>
         </Section>
 
-        <Section title={t("routeDetail.route")}>
+        <Section title={t("routeDetail.route")}><RouteScopes ids={route.hops.map(h=>h.nodeId)}/>
           <div className="flex flex-col gap-1.5">
             {route.hops.map((hop, i) => {
               const resolved: ResolvedHop = { confidence: "high", nodes: hop.node ? [hop.node] : [] };

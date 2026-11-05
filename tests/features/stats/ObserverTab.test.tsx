@@ -1,3 +1,4 @@
+vi.mock("../../../src/features/scopes/ScopeActivityPanel",()=>({ScopeActivityPanel:()=>null,ObserverScopeActivity:()=>null}));
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

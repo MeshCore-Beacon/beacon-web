@@ -14,6 +14,15 @@ function mount() {
 }
 
 describe("map settings", () => {
+  it("toggles repeater scopes without changing borders or neighbour lines", () => {
+    const scopes = vi.fn(), borders = vi.fn(), neighbors = vi.fn();
+    render(<MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
+      clustered onClusteredChange={() => {}} neighborLines="selected" onNeighborLinesChange={neighbors}
+      borders={false} onBordersChange={borders} terrain={false} onTerrainChange={() => {}} repeaterScopes={false} onRepeaterScopesChange={scopes} buildShareParams={() => ({})} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Repeater scopes" }));
+    expect(scopes).toHaveBeenCalledWith(true);
+    expect(borders).not.toHaveBeenCalled(); expect(neighbors).not.toHaveBeenCalled();
+  });
   it("renders in English", () => {
     mount();
     expect(screen.getByText("Map Settings")).toBeInTheDocument();

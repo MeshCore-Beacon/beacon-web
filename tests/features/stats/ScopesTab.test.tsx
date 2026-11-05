@@ -1,3 +1,4 @@
+vi.mock("../../../src/features/scopes/ScopeActivityPanel",()=>({ScopeActivityPanel:()=>null,ObserverScopeActivity:()=>null}));
 import { beforeEach, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { ScopesTab } from "../../../src/features/stats/ScopesTab";
