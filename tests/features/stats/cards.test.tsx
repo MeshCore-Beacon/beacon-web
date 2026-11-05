@@ -31,3 +31,11 @@ it("draws a presence strip with one bar per run of reporting hours", () => {
   const bars = [...container.querySelectorAll("rect")];
   expect(bars.map((b) => [b.getAttribute("x"), b.getAttribute("width")])).toEqual([["0", "48"], ["72", "24"]]);
 });
+
+
+it("draws isolated samples and dashed gap connectors without filling missing readings", () => {
+  const { container } = render(<StatCard label="History" value="0" accent="red" spark={[0, null, 2]} interpolateGaps />);
+  expect(container.querySelectorAll("[data-sample]")).toHaveLength(2);
+  expect(container.querySelectorAll("[data-gap]")).toHaveLength(1);
+  expect(container.querySelector("[data-gap]")).toHaveAttribute("stroke-dasharray", "3 3");
+});
