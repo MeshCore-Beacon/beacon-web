@@ -13,6 +13,7 @@ import type { FeatureCollection, Point } from "geojson";
 import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, SELECTION_RING_ICON_ID, nodeTypeColor } from "./node-icons";
 import type { NodeFeatureProps } from "./node-geojson";
 import { idleDotTypes } from "./live-map";
+import { scopePointImage, scopeClusterImage, type RepeaterScopeStyle } from "./repeater-scopes";
 import {
   NODES_SOURCE_ID,
   NODES_CLUSTER_LAYER_ID,
@@ -129,6 +130,8 @@ export function useMapNodes(
   resetKey = "",
   // node types drawn as idle dots while live is on
   dotTypes: string[] = ALL_DOT_TYPES,
+  dimIdleNodes = true,
+  scopes: RepeaterScopeStyle | null = null,
 ) {
   const geojsonRef = useRef(geojson);
   const spiderRef = useRef<Spiderfy | null>(null);
@@ -136,6 +139,10 @@ export function useMapNodes(
   const selectedNodeIdRef = useRef(selectedNodeId);
   const appliedClusteredRef = useRef(clustered);
   const dotTypesRef = useRef(dotTypes);
+  const scopesRef = useRef(scopes);
+  const scopeKey = scopes?.key ?? "";
+  const appliedScopeKeyRef = useRef(scopeKey);
+  const scopeImagesRef = useRef<string[]>([]);
 
   // handlers below capture map at attach time; read live state through these refs
   useEffect(() => {
@@ -143,7 +150,8 @@ export function useMapNodes(
     onSelectNodeRef.current = onSelectNode;
     selectedNodeIdRef.current = selectedNodeId;
     dotTypesRef.current = dotTypes;
-  }, [geojson, onSelectNode, selectedNodeId, dotTypes]);
+    scopesRef.current = scopes;
+  }, [geojson, onSelectNode, selectedNodeId, dotTypes, scopes]);
 
   // Track device-pixel-ratio so icons re-rasterize at full resolution across a DPR change (e.g.
   // dragging the window to another monitor). A matchMedia(dppx) query fires once then goes stale,
@@ -174,13 +182,18 @@ export function useMapNodes(
 
     // maplibre fixes `cluster` at source creation, so toggling clustering means recreating the
     // source. The spiderfy effect below also keys on `clustered` and re-applies itself around this.
-    if (appliedClusteredRef.current !== clustered && map.getSource(NODES_SOURCE_ID)) {
-      for (const id of [LIVE_DOTS_LAYER_ID, NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
+    if ((appliedClusteredRef.current !== clustered || appliedScopeKeyRef.current !== scopeKey) && map.getSource(NODES_SOURCE_ID)) {
+      for (const id of [LIVE_DOTS_LAYER_ID, "nodes-live-glow", NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
       map.removeSource(NODES_SOURCE_ID);
+      if (appliedScopeKeyRef.current !== scopeKey) {
+        for (const id of scopeImagesRef.current) if (map.hasImage(id)) map.removeImage(id);
+      }
     }
     appliedClusteredRef.current = clustered;
+    appliedScopeKeyRef.current = scopeKey;
+    scopeImagesRef.current = scopesRef.current?.imageIds ?? [];
 
     if (!map.getSource(NODES_SOURCE_ID)) {
       map.addSource(NODES_SOURCE_ID, {
@@ -192,6 +205,7 @@ export function useMapNodes(
         cluster: clustered,
         clusterRadius: CLUSTER_RADIUS,
         clusterMaxZoom: CLUSTER_MAX_ZOOM,
+        ...(scopesRef.current ? { clusterProperties: scopesRef.current.clusterProperties } : {}),
       });
     }
 
@@ -208,7 +222,7 @@ export function useMapNodes(
         source: NODES_SOURCE_ID,
         filter: ["has", "point_count"],
         layout: {
-          "icon-image": clusterIconImageExpression() as unknown as ExpressionSpecification,
+          "icon-image": scopeClusterImage(scopesRef.current, clusterIconImageExpression() as unknown as ExpressionSpecification),
           "icon-size": ["interpolate", ["linear"], ["get", "point_count"], 2, 0.9, 25, 1.1, 100, 1.4],
           "icon-allow-overlap": true,
           "text-field": ["get", "point_count_abbreviated"],
@@ -227,7 +241,7 @@ export function useMapNodes(
         source: NODES_SOURCE_ID,
         filter: ["!", ["has", "point_count"]],
         layout: {
-          "icon-image": ICON_IMAGE,
+          "icon-image": scopePointImage(scopesRef.current, ICON_IMAGE),
           "icon-size": 1,
           "icon-allow-overlap": true,
           "text-field": ["get", "name"],
@@ -249,6 +263,14 @@ export function useMapNodes(
     // Ring under the selected node's icon. Only matches an unclustered point (clusters carry no id);
     // color tracks --palette-primary.
     const primary = cssVar("--palette-primary", "#3B82F6");
+    if (!map.getLayer("nodes-live-glow")) {
+      map.addLayer({ id: "nodes-live-glow", type: "circle", source: NODES_SOURCE_ID,
+        filter: ["!", ["has", "point_count"]],
+        paint: { "circle-radius": ["+", 7, ["*", 12, ["coalesce", ["feature-state", "glow"], 0]]],
+          "circle-color": primary, "circle-opacity": ["*", 0.4, ["coalesce", ["feature-state", "glow"], 0]], "circle-blur": 0.5 }
+      }, NODES_POINT_LAYER_ID);
+    }
+    map.setPaintProperty("nodes-live-glow", "circle-color", primary);
     if (!map.getLayer(NODES_SELECTED_LAYER_ID)) {
       map.addLayer(
         {
@@ -316,7 +338,9 @@ export function useMapNodes(
         lowest,
       );
     }
-    map.setPaintProperty(LIVE_DOTS_LAYER_ID, "circle-color", dotColor);
+    map.setPaintProperty(LIVE_DOTS_LAYER_ID, "circle-color", scopesRef.current
+      ? ["case", ["==", ["get", "nodeTypeName"], "repeater"], scopesRef.current.pointColor, dotColor]
+      : dotColor);
 
     // node-label colors track the basemap dark/light flag (cluster count is white on the hexagon)
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-color", textColor);
@@ -324,7 +348,7 @@ export function useMapNodes(
 
     // seed the (possibly just-recreated) source; live updates flow through the geojson effect below
     (map.getSource(NODES_SOURCE_ID) as GeoJSONSource).setData(geojsonRef.current);
-  }, [mapRef, isReady, isDark, clustered, themeKey]);
+  }, [mapRef, isReady, isDark, clustered, themeKey, scopeKey]);
 
   // Supply and re-color the marker images. SVG glyphs rasterize async, so they're provided both
   // proactively here and lazily through the map's missing-image resolver. Re-runs on a theme/
@@ -349,7 +373,7 @@ export function useMapNodes(
     // already laid out — that's the "markers only show after I pan/zoom" bug. So once every icon
     // is ready, nudge the source to lay the markers out again (setData reloads the whole source).
     // The resolver still covers anything asked for before we get here.
-    Promise.all(MAP_ICON_IDS.map(provide)).then(() => {
+    Promise.all([...MAP_ICON_IDS, ...(scopesRef.current?.imageIds ?? [])].map(provide)).then(() => {
       if (cancelled || mapRef.current !== map) return;
       const src = map.getSource(NODES_SOURCE_ID) as GeoJSONSource | undefined;
       if (src) src.setData(geojsonRef.current);
@@ -358,7 +382,7 @@ export function useMapNodes(
       cancelled = true;
       nodeIconResolverRef.current = null;
     };
-  }, [mapRef, nodeIconResolverRef, isReady, isDark, themeKey, dpr]);
+  }, [mapRef, nodeIconResolverRef, isReady, isDark, themeKey, dpr, scopeKey]);
 
   // Reflect the shared selection as a ring (mirrors the table's row highlight). Its own effect so
   // changing the selection doesn't rebuild the source/layers.
@@ -367,7 +391,7 @@ export function useMapNodes(
     if (!map || !isReady || !map.getLayer(NODES_SELECTED_LAYER_ID)) return;
     map.setFilter(NODES_SELECTED_LAYER_ID, ["==", ["get", "id"], selectedNodeId ?? ""]);
     syncLeafSelectionRing(map, selectedNodeId);
-  }, [mapRef, isReady, selectedNodeId]);
+  }, [mapRef, isReady, selectedNodeId, scopeKey]);
 
   // What the node layers show in each mode. Single owner of the markers' filter and icon/text
   // opacity so live mode and selection focus never fight over them; re-applies after a
@@ -380,28 +404,29 @@ export function useMapNodes(
     const focusCase = (lit: ExpressionSpecification | number, dim: ExpressionSpecification | number) =>
       ["case", ["in", ["get", "id"], ["literal", focusIds ?? []]], lit, dim] as ExpressionSpecification;
 
+    const quietLive = live && dimIdleNodes;
     const iconOpacity: ExpressionSpecification | number = live ? 1 : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
-    const labelOpacity: ExpressionSpecification | number = live ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
-    const dimActive = live || Boolean(focusIds);
+    const labelOpacity: ExpressionSpecification | number = quietLive ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
+    const dimActive = quietLive || Boolean(focusIds);
     if (map.getLayer(LIVE_DOTS_LAYER_ID)) {
       map.setFilter(LIVE_DOTS_LAYER_ID, dotsFilter(dotTypes));
-      map.setLayoutProperty(LIVE_DOTS_LAYER_ID, "visibility", live ? "visible" : "none");
+      map.setLayoutProperty(LIVE_DOTS_LAYER_ID, "visibility", quietLive ? "visible" : "none");
     }
     if (map.getLayer(NODES_POINT_LAYER_ID)) {
       // filtered rather than faded, so live mode leaves no invisible click targets behind
       map.setFilter(
         NODES_POINT_LAYER_ID,
-        live ? (["all", UNCLUSTERED, ["==", ["get", "id"], selectedNodeId ?? ""]] as FilterSpecification) : UNCLUSTERED,
+        quietLive ? (["all", UNCLUSTERED, ["==", ["get", "id"], selectedNodeId ?? ""]] as FilterSpecification) : UNCLUSTERED,
       );
-      map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", iconOpacity);
-      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", labelOpacity);
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", scopesRef.current ? ["*", iconOpacity, ["case", ["boolean", ["get", "scopeFocus"], true], 1, 0.18]] : iconOpacity);
+      map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", scopesRef.current ? ["*", labelOpacity, ["case", ["boolean", ["get", "scopeFocus"], true], 1, 0.1]] : labelOpacity);
     }
     // a cluster can't tell which nodes it holds, so both modes just dim it flat (matches live mode)
     if (map.getLayer(NODES_CLUSTER_LAYER_ID)) {
-      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : 1);
+      map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : scopesRef.current ? ["case", [">", ["number",["get","scopeFocusCount"],0],0],1,0.18] : 1);
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", dimActive ? 0 : 1);
     }
-  }, [mapRef, isReady, live, focusIds, clustered, themeKey, selectedNodeId, dotTypes]);
+  }, [mapRef, isReady, live, dimIdleNodes, focusIds, clustered, themeKey, selectedNodeId, dotTypes, scopeKey]);
 
   // Push new node data into the source as it arrives; the source re-clusters automatically.
   useEffect(() => {
@@ -431,7 +456,7 @@ export function useMapNodes(
       // broken dotted sprite — 2 gives a clean line.
       spiderLegsColor: cssVar("--palette-text-dim", "#5F5F65"),
       spiderLegsWidth: 2,
-      spiderLeavesLayout: SPIDER_LEAVES_LAYOUT,
+      spiderLeavesLayout: { ...SPIDER_LEAVES_LAYOUT, "icon-image": scopePointImage(scopesRef.current, ICON_IMAGE) },
     });
     spider.applyTo(NODES_CLUSTER_LAYER_ID);
     spiderRef.current = spider;
@@ -498,5 +523,5 @@ export function useMapNodes(
     };
     // themeKey rebuilds the legs + leaf icons in the new palette; resetKey closes a fan whose leaves
     // are gone (unspiderfyAll also unbinds the cluster click, so it has to be a full rebuild)
-  }, [mapRef, isReady, clustered, themeKey, resetKey]);
+  }, [mapRef, isReady, clustered, themeKey, resetKey, scopeKey]);
 }

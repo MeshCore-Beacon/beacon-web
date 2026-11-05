@@ -257,14 +257,21 @@ describe("NodeTable server order", () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it("sends the scope filter to the server", async () => {
+  it("filters observed repeats independently of advert defaults", async () => {
     scopes = ["#bc"];
-    mountPages((p) => sortedPage([node({ id: "a", name: p?.scope ? `in ${p.scope}` : "any scope" })]));
-    await screen.findByText("any scope");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ scope: undefined }));
+    mountPages(() => sortedPage([
+      node({id:"a",name:"Carries BC",defaultScope:"#other",scopeEvidence:{since:0,until:24,scopes:[{name:"#bc",repeatObservations:12}]}}),
+      node({id:"b",name:"Advert only",defaultScope:"#bc",scopeEvidence:{since:0,until:24,scopes:[]}}),
+    ]));
+    await screen.findByText("Advert only");
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({scopeEvidence:true}));
     fireEvent.click(screen.getAllByRole("button", { name: /scope/i })[0]!);
     fireEvent.click(await screen.findByRole("option", { name: "#bc" }));
-    await screen.findByText("in #bc");
+    await waitFor(()=>expect(screen.queryByText("Advert only")).not.toBeInTheDocument());
+    expect(screen.getByText("Carries BC")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("combobox",{name:"Scope evidence"}),{target:{value:"default"}});
+    await screen.findByText("Advert only");
+    expect(screen.queryByText("Carries BC")).not.toBeInTheDocument();
   });
 
   it("loads every page and sorts here when the server doesn't sort (before 2.1)", async () => {

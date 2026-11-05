@@ -19,7 +19,7 @@ vi.mock("../../../src/api/client", () => {
   const pending = () => new Promise(() => {});
   return Object.fromEntries(
     ["getStatsSeries", "getStatsObservations", "getPayloadBreakdown", "getTopNodes", "getTopObservers", "getTopAdvertisers",
-      "getTopTalkers", "getRadioPresets", "getStatsScopes", "getStatsNodeTypes", "getClockDrift", "getSignalStats", "getPathStats"]
+      "getTopTalkers", "getRadioPresets", "getStatsScopes", "getScopeActivity", "getStatsNodeTypes", "getClockDrift", "getSignalStats", "getPathStats"]
       .map((name) => [name, vi.fn(pending)]),
   );
 });

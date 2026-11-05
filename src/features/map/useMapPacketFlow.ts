@@ -1,3 +1,4 @@
+import { observedPacketScope } from "../scopes/packet-scope";
 import { useCallback, useEffect, useRef } from "react";
 import type {
   Map as MapLibreMap,
@@ -66,6 +67,7 @@ export function useMapPacketFlow(
   // unfiltered node index: packet hops carry no type, and a filtered-out node should still light
   nodeIndex: Map<string, LiveNodeInfo>,
   onSelectNode: (id: string) => void,
+  scopeFilter = "",
 ) {
   const flowsRef = useRef<Flow[]>([]);
   const litRef = useRef<Map<string, LitEntry>>(new Map());
@@ -280,6 +282,7 @@ export function useMapPacketFlow(
     if (!enabled) return;
     const map = mapRef.current;
     const unsub = wsManager.onPacketObservation((data) => {
+      if(scopeFilter&&observedPacketScope(data.packet)!==scopeFilter)return;
       const obs = data.observation;
       // resolvedPath is opt-in and the toggle above lands a beat after connect, but the endpoints
       // always ship — bail rather than animate a bare source→destination hop that never happened.
@@ -300,7 +303,7 @@ export function useMapPacketFlow(
       unsub();
       clearFlows(map);
     };
-  }, [enabled, wsManager, mapRef, startLoop, clearFlows]);
+  }, [enabled, wsManager, mapRef, startLoop, clearFlows, scopeFilter]);
 
   // clear on region change (paths came from the old dataset)
   useEffect(() => {

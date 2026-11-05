@@ -1,3 +1,4 @@
+import { AtlasScopes } from "../nodes/NodeScopes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -198,6 +199,7 @@ export function AtlasCard({
       {pin.kind === "observer" && obs.observer.isError && !isNotFound(obs.observer.error) && retry(obs.observer.refetch)}
       {view === "analytics" && node && (
         <div ref={body} className="flex flex-1 flex-col gap-3">
+          <AtlasScopes node={node}/>
           <div className="grid flex-1 grid-cols-2 gap-3">
             <StatCard
               compact
