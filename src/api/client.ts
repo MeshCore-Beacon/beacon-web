@@ -117,8 +117,8 @@ export function getPackets(
   });
 }
 
-export function getPacketDetail(packetHash: string): Promise<PacketDetail> {
-  return request(`/packets/${packetHash}`);
+export function getPacketDetail(packetHash: string, signal?: AbortSignal): Promise<PacketDetail> {
+  return request(`/packets/${packetHash}`, undefined, signal);
 }
 
 // /info: the oldest client versions this server accepts (null = no requirement) and its own version.
@@ -317,6 +317,7 @@ export function getNodesPage(
     sort?: NodeSort;
     order?: "asc" | "desc";
   },
+  signal?: AbortSignal,
 ): Promise<NodePage> {
   if (noIatas(iatas)) return Promise.resolve(emptyPage());
   return request("/nodes", {
@@ -333,7 +334,7 @@ export function getNodesPage(
     scope: params?.scope,
     sort: params?.sort,
     order: params?.sort ? params.order : undefined,
-  });
+  }, signal);
 }
 
 export interface ObserverDirectoryRequest {
@@ -384,18 +385,19 @@ export function getObserversPage(
   });
 }
 
-export function getNode(nodeId: string): Promise<Node> {
-  return request(`/nodes/${nodeId}`);
+export function getNode(nodeId: string, signal?: AbortSignal): Promise<Node> {
+  return request(`/nodes/${nodeId}`, undefined, signal);
 }
 
 export function getNodeObservations(
   nodeId: string,
   params?: { cursor?: number; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<NodeObservation>> {
   return request(`/nodes/${nodeId}/observations`, {
     cursor: params?.cursor,
     limit: params?.limit ?? DEFAULT_PAGE_SIZE,
-  });
+  }, signal);
 }
 
 export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {

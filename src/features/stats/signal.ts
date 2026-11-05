@@ -4,6 +4,9 @@ import type { SignalBin, SignalMetric, SignalStats } from "./types";
 import { blend, tooltipStyle, withAlpha, type ChartColors } from "./chartTheme";
 
 const HOUR = 3_600_000;
+
+// One decimal with its unit, "—" when there is no sample. Shared by the Signal tab and Atlas cards.
+export const average = (value: number | null | undefined, unit = "") => (value == null ? "—" : `${value.toFixed(1)}${unit ? ` ${unit}` : ""}`);
 export function signalHours(data: SignalStats | undefined) {
   if (!data || data.until <= data.since) return [];
   const first = Math.floor(data.since / HOUR) * HOUR;

@@ -9,16 +9,18 @@ export function Card({
   right,
   children,
   className,
+  wrap,
 }: {
   title: ReactNode;
   right?: ReactNode;
   children: ReactNode;
   className?: string;
+  wrap?: boolean; // let `right` drop under the title when the card is too narrow for both
 }) {
   return (
     <div className={`rounded-lg border border-border bg-bg-surface p-3.5 ${className ?? ""}`}>
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{title}</div>
+      <div className={`mb-2.5 flex items-center justify-between gap-2 ${wrap ? "flex-wrap" : ""}`}>
+        <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{title}</div>
         {right}
       </div>
       {children}
@@ -88,6 +90,7 @@ export function StatCard({
   markPeak,
   presence,
   sublabel,
+  compact,
 }: {
   label: string;
   value: ReactNode;
@@ -96,15 +99,18 @@ export function StatCard({
   markPeak?: boolean;
   presence?: boolean[];
   sublabel?: ReactNode;
+  compact?: boolean; // narrow tiles: value stays text-xl so "-77.2 dBm" never wraps
 }) {
   return (
-    <div className="rounded-lg border border-border bg-bg-surface px-3.5 py-3">
+    <div className="flex flex-col rounded-lg border border-border bg-bg-surface px-3.5 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <span className="min-w-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
         {sublabel && <span className="min-w-0 max-w-full truncate font-mono text-[9px] text-text-dim">{sublabel}</span>}
       </div>
-      <div className="mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright sm:text-2xl">{value}</div>
-      {presence ? <PresenceStrip hours={presence} color={accent} /> : spark ? <Sparkline values={spark} color={accent} markPeak={markPeak} /> : sparkSpacer}
+      <div className={`mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright ${compact ? "" : "sm:text-2xl"}`}>{value}</div>
+      <div className="mt-auto">
+        {presence ? <PresenceStrip hours={presence} color={accent} /> : spark ? <Sparkline values={spark} color={accent} markPeak={markPeak} /> : sparkSpacer}
+      </div>
     </div>
   );
 }

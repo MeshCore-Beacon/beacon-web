@@ -5,11 +5,9 @@ import { SectionInfo } from "./SectionInfo";
 import { formatCount, formatUtc } from "../../lib/formatters";
 import { Card, ChartCard, StatCard } from "./cards";
 import { useChartColors } from "./chartTheme";
-import { signalBinLabel, signalCoverageOption, signalHistogramOption, signalHours, signalTrendOption } from "./signal";
+import { average, signalBinLabel, signalCoverageOption, signalHistogramOption, signalHours, signalTrendOption } from "./signal";
 import { useSignalStats } from "./useSignalStats";
 import type { StatsRange } from "./types";
-
-const average = (value: number | null | undefined, unit = "") => value == null ? "—" : `${value.toFixed(1)}${unit ? ` ${unit}` : ""}`;
 
 export function SignalTab({ range }: { range: StatsRange }) {
   const { t } = useTranslation();
