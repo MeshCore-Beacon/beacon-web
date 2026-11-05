@@ -36,8 +36,8 @@ export interface NodeSummary {
   observerId?: string;
   // Server verdict against its configured local border union; absence is unknown/disabled.
   possiblyForeign?: boolean;
-  stale?: boolean; // server-configured freshness threshold; absent on older servers
   lastSeen?: number; // epoch ms; servers up to 2.1.0 leave it out
+  stale?: boolean; // server-configured freshness threshold; absent on older servers
 }
 
 // /nodes orders, server 2.1.0+; lastSeen ascending only from a server whose rows carry lastSeen
