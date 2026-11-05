@@ -21,6 +21,7 @@ import { REPORT_LIMIT, resolveObserverNode, type AtlasPin, type AtlasRange } fro
 import { ATLAS_REFRESH_MS, useAtlasNode } from "./useAtlas";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
+import { CollectedNodeTelemetry } from "../nodes/CollectedNodeTelemetry";
 
 export type AtlasView = "analytics" | "heard" | "observer";
 
@@ -198,6 +199,7 @@ export function AtlasCard({
       {pin.kind === "observer" && obs.observer.isError && !isNotFound(obs.observer.error) && retry(obs.observer.refetch)}
       {view === "analytics" && node && (
         <div ref={body} className="flex flex-1 flex-col gap-3">
+          {node.nodeType === 2 && <CollectedNodeTelemetry publicKey={node.publicKey} active={active} compact />}
           <div className="grid flex-1 grid-cols-2 gap-3">
             <StatCard
               compact

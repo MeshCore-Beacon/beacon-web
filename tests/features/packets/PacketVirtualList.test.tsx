@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
 import { PacketVirtualList } from "../../../src/features/packets/PacketVirtualList";
 import i18n from "../../../src/i18n";
 import type { PacketSummary } from "../../../src/types/api";
@@ -84,8 +84,18 @@ function setScrollMetrics(el: HTMLElement, { scrollHeight, clientHeight, scrollT
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   observers.length = 0;
   usePacketDetail.mockReturnValue({ data: { packetHash: "AA11", header: { payloadType: 1 }, observations: [] } });
+});
+
+afterEach(() => {
+  // TanStack's fallback scroll-end debounce outlives its event listener. Drain
+  // it while jsdom still exists, before the test worker destroys window.
+  act(() => vi.runOnlyPendingTimers());
+  cleanup();
+  expect(vi.getTimerCount()).toBe(0);
+  vi.useRealTimers();
 });
 
 describe("PacketVirtualList expansion", () => {

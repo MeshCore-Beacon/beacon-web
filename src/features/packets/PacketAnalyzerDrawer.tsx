@@ -13,6 +13,7 @@ import { formatHex, formatPropagation } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { buildObservationFrame, computeFieldRanges, ColoredHexDump, HeaderBitBreakdown, PathLengthBitBreakdown, ColorAccentField, DrawerSection, transportCodeHex } from "./packet-structure";
 import { PayloadBreakdown } from "./payload-renderers";
+import { TraceQualityNotice } from "../traces/TraceQualityNotice";
 import { PathData } from "./PathData";
 import { buildPacketPaths } from "../map/packet-path";
 import { PacketInvestigation } from "./PacketInvestigation";
@@ -197,7 +198,7 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 )}
 
                 {/* Path length */}
-                {selectedObs && (
+                {selectedObs && detail.header.payloadType !== PayloadType.TRACE && (
                   <ColorAccentField field="pathLength">
                     <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">{t("packetAnalyzer.pathLength")}</div>
                     <div className="flex gap-x-4">
@@ -208,9 +209,13 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                   </ColorAccentField>
                 )}
 
-                {/* Path data — TRACE's pathBytes are now its trace path hashes (matching hashSize/hopCount
-                    and resolvedPath), so it resolves through PathData like every other type. */}
-                {selectedObs?.pathBytes && (
+                {selectedObs?.wirePathBytes != null && (
+                  <ColorAccentField field="pathData">
+                    <div className="text-text-dim text-xs mb-1">{t("traces.quality.snrBytes")}</div>
+                    <code className="break-all">{selectedObs.wirePathBytes.toUpperCase() || "—"}</code>
+                  </ColorAccentField>
+                )}
+                {selectedObs?.pathBytes && detail.header.payloadType !== PayloadType.TRACE && (
                   <ColorAccentField field="pathData">
                     <div className="text-text-dim text-xs font-medium uppercase tracking-wider mb-1">{t("packetAnalyzer.pathData")}</div>
                     <PathData pathBytes={selectedObs.pathBytes} hashSize={selectedObs.pathLength.hashSize} resolvedPath={selectedObs.resolvedPath} onViewNode={onViewNode} />
@@ -225,6 +230,8 @@ export function PacketAnalyzerDrawer({ detail, selectedObservationId, onClose, o
                 )}
               </div>
             </DrawerSection>
+
+            <TraceQualityNotice quality={detail.traceQuality} />
 
             {detail.parsedPayload && typeof detail.parsedPayload === "object" && Object.keys(detail.parsedPayload).length > 0 && (
               <DrawerSection title={t("packetAnalyzer.payloadBreakdown")}>

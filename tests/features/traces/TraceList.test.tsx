@@ -231,3 +231,23 @@ it("stops waiting once the region list loads without the selected region", async
 
   await waitFor(() => expect(mockGetTraces).toHaveBeenCalled());
 });
+
+it("hides suspect and ambiguous tags by default, with an explicit evidence toggle", async () => {
+ mockGetTraces.mockResolvedValue([
+  tag("11111111",1,{traceType:"PING", quality:{status:"supported",reasons:[]}}),
+  tag("a0595008",2,{quality:{status:"suspect",reasons:["unsupported_version","too_many_hops"]}}),
+  tag("33333333",1,{quality:{status:"ambiguous",reasons:["ambiguous_prefix"]}}),
+ ]);
+ renderTraces();
+ expect(await screen.findByText("11111111")).toBeInTheDocument();
+ expect(screen.queryByText("A0595008")).not.toBeInTheDocument();
+ expect(screen.queryByText("33333333")).not.toBeInTheDocument();
+ expect(screen.getByText(/2 hidden in loaded sample/)).toBeInTheDocument();
+ const toggle=screen.getByRole("checkbox",{name:"Show possible collision related observations"});
+ fireEvent.click(toggle);
+ expect(screen.getByText("A0595008")).toBeInTheDocument();
+ expect(screen.getByText("Suspect observation")).toHaveAttribute("class");
+ expect(screen.getByText("Possible prefix collision")).toBeInTheDocument();
+ fireEvent.click(toggle);
+ expect(screen.queryByText("A0595008")).not.toBeInTheDocument();
+});
