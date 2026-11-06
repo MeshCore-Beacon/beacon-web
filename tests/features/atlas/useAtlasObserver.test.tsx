@@ -47,8 +47,15 @@ describe("useAtlasObserver", () => {
     view.unmount();
     expect(signals.every(signal => signal.aborted)).toBe(true);
   });
-  it("loads the observer right away but activity and telemetry only while the view is open", async () => {
-    const { result, rerender } = renderHook(({ open }) => useAtlasObserver(id, "24h", true, open), { wrapper, initialProps: { open: false } });
+  it("leaves a node card's observer alone until its view opens", async () => {
+    renderHook(() => useAtlasObserver(id, "24h", true, false), { wrapper });
+    await tick(ATLAS_REFRESH_MS + 50);
+    expect(api.getObserver).not.toHaveBeenCalled();
+    expect(api.getObserverActivity).not.toHaveBeenCalled();
+  });
+
+  it("loads an observer pin's record right away but activity and telemetry only while the view is open", async () => {
+    const { result, rerender } = renderHook(({ open }) => useAtlasObserver(id, "24h", true, open, true), { wrapper, initialProps: { open: false } });
     await tick(10);
     expect(result.current.observer.data).toEqual(observer);
     expect(api.getObserverActivity).not.toHaveBeenCalled();

@@ -91,7 +91,10 @@ export function useCardDrag(count: number, onReorder: (from: number, to: number)
     handleProps: (index: number) => ({
       onPointerDown: (event: PointerEvent<HTMLButtonElement>) => start(index, event),
       onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
-        const to = event.key === "ArrowLeft" ? index - 1 : event.key === "ArrowRight" ? index + 1 : null;
+        // Up/Down too: on a phone the cards are one column.
+        const back = event.key === "ArrowLeft" || event.key === "ArrowUp";
+        const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
+        const to = back ? index - 1 : forward ? index + 1 : null;
         if (to === null || to < 0 || to >= count) return;
         event.preventDefault();
         onReorder(index, to);

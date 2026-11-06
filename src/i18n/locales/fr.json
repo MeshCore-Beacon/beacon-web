@@ -993,7 +993,6 @@
       "cappedHelp": "Il existe plus d’observations que cette fiche n’en charge ; les barres commencent à la plus ancienne chargée.",
       "lastSeen": "Vu pour la dernière fois",
       "meanHops": "Sauts moyens",
-      "heardBy": "Entendu par",
       "recent": "Récent",
       "stale": "Périmé",
       "observers_one": "{{count}} observateur a entendu le dernier paquet",
@@ -1019,7 +1018,7 @@
       "observerHelp": "Ce que cet observateur a reçu et signalé sur la période choisie. Les états sans mesures sont ignorés. Les lignes pleines indiquent les mesures; les pointillés relient les heures manquantes à titre indicatif. Les interruptions de disponibilité restent visibles.",
       "observerUnsupported": "Ce serveur ne fournit pas l’activité ni la télémétrie des observateurs.",
       "observerGone": "Cet observateur n’est plus connu du serveur.",
-      "dragToReorder": "Glisser pour réordonner",
+      "dragToReorder": "Glisser pour réordonner, ou utiliser les flèches",
       "remove": "Retirer",
       "observerPartialCoverage": "Historique partiel"
     }

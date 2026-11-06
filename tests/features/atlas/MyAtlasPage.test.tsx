@@ -225,6 +225,25 @@ describe("My Atlas", () => {
     expect(screen.getByRole("button", { name: "Hill listener is saved" })).toBeDisabled();
   });
 
+  it("folds an observer pin into the already pinned node and keeps its link", async () => {
+    vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+    localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 2, range: "24h", pins: [{ kind: "node", ...pin }, { kind: "observer", observerId, name: "Hill listener" }] }));
+    mount();
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toEqual([{ kind: "node", ...pin, observerId }]));
+  });
+
+  it("clears a failed observer add once the search changes", async () => {
+    vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([listener]));
+    vi.mocked(api.getObserver).mockRejectedValue(new ApiError(500, "boom", "boom"));
+    mount();
+    await pickField("Observer");
+    typeSearch("hill");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Hill listener" }));
+    expect(await screen.findByText("Failed to load")).toBeInTheDocument();
+    typeSearch("hil");
+    await waitFor(() => expect(screen.queryByText("Failed to load")).not.toBeInTheDocument());
+  });
+
   it("marks node results that are also observers", async () => {
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, isObserver: true, observerId }], hasMore: false, nextCursor: null });
     mount();
@@ -255,7 +274,7 @@ describe("My Atlas", () => {
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
     expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "false");
     expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
-    fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder" }), { key: "ArrowRight" });
+    fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder, or use the arrow keys" }), { key: "ArrowRight" });
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");

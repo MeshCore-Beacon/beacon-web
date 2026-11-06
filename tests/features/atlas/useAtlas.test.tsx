@@ -3,9 +3,9 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import * as api from "../../../src/api/client";
-import { ApiError } from "../../../src/api/client";
+import { ApiError, isNotFound } from "../../../src/api/client";
 import { noteRateLimited, noteRequestOk, shouldRetryQuery } from "../../../src/api/rate-limit";
-import { ATLAS_REFRESH_MS, useAtlasNode } from "../../../src/features/atlas/useAtlas";
+import { ATLAS_MISSING_REFRESH_MS, ATLAS_REFRESH_MS, useAtlasNode } from "../../../src/features/atlas/useAtlas";
 import type { Node } from "../../../src/features/nodes/types";
 
 vi.mock("../../../src/api/client", async (importOriginal) => ({
@@ -104,9 +104,24 @@ describe("atlas polling policy", () => {
     renderHook(() => useAtlasNode(pin, "24h", true), { wrapper });
     await tick(10);
     act(() => noteRateLimited(2 * ATLAS_REFRESH_MS));
-    await tick(2 * ATLAS_REFRESH_MS);
+    await tick(2 * ATLAS_REFRESH_MS - 1_000);
     expect(api.getNode).toHaveBeenCalledTimes(1);
-    await tick(ATLAS_REFRESH_MS);
+    // The window ends between minute ticks; the stale card refetches then, not at the next tick.
+    await tick(2_000);
+    expect(api.getNode).toHaveBeenCalledTimes(2);
+  });
+
+  it("checks a pin that is gone every ten minutes instead of every minute", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getNode).mockRejectedValue(new ApiError(404, "not_found", "gone"));
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
+    const { result } = renderHook(useProbe, { wrapper });
+    await tick(10);
+    expect(result.current.status).toBe("error");
+    expect(isNotFound(result.current.query.error)).toBe(true);
+    await tick(5 * ATLAS_REFRESH_MS);
+    expect(api.getNode).toHaveBeenCalledTimes(1);
+    await tick(ATLAS_MISSING_REFRESH_MS);
     expect(api.getNode).toHaveBeenCalledTimes(2);
   });
 });

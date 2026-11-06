@@ -149,7 +149,7 @@ describe("AtlasCard", () => {
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(api.getPacketDetail).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Move/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).toBeInTheDocument();
     const picker = screen.getByRole("group", { name: "Card view" });
     expect(within(picker).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(within(picker).getByRole("button", { name: "Heard by" }));
@@ -185,7 +185,7 @@ describe("AtlasCard", () => {
     vi.mocked(api.getNode).mockRejectedValue(new Error("down"));
     mount({ handle: { "data-grip": "yes" } as Record<string, string> });
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load");
-    expect(screen.getByRole("button", { name: "Drag to reorder" })).toHaveAttribute("data-grip", "yes");
+    expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).toHaveAttribute("data-grip", "yes");
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(handlers.onRemove).toHaveBeenCalled();
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();

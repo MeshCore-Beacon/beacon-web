@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
-import { queryRetryDelay } from "../../api/rate-limit";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { Badge } from "../../components/Badge";
 import { IataChip } from "../../components/IataChip";
@@ -65,7 +64,7 @@ export function AtlasCard({
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, capped } = useAtlasNode(nodePin, range, active);
   const observerId = pin.kind === "observer" ? pin.observerId : (node?.observerId ?? pin.observerId ?? null);
-  const obs = useAtlasObserver(observerId, range, active, view === "observer");
+  const obs = useAtlasObserver(observerId, range, active, view === "observer", pin.kind === "observer");
   const observer = obs.observer.data;
   const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : observerId ? ["analytics", "heard", "observer"] : ["analytics", "heard"];
 
@@ -102,7 +101,6 @@ export function AtlasCard({
     refetchInterval: ATLAS_REFRESH_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
-    retryDelay: queryRetryDelay,
   });
   useEffect(() => {
     if (pin.kind === "observer" && upgradeTo.data) onUpgrade(upgradeTo.data, pin.observerId);

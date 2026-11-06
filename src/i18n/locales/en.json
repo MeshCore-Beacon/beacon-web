@@ -991,7 +991,6 @@
       "cappedHelp": "More observations exist than this card loads; the bars start at the oldest loaded one.",
       "lastSeen": "Last seen",
       "meanHops": "Mean hops",
-      "heardBy": "Heard by",
       "recent": "Recent",
       "stale": "Stale",
       "observers_one": "{{count}} observer heard the latest packet",
@@ -1016,7 +1015,7 @@
       "observerHelp": "What this observer received and reported, over the selected window. Status rows with no readings are ignored. Solid lines show readings; dashed lines connect missing hours as visual estimates, not measurements. Uptime gaps remain open.",
       "observerUnsupported": "This server does not provide observer activity or telemetry.",
       "observerGone": "This observer is no longer known to the server.",
-      "dragToReorder": "Drag to reorder",
+      "dragToReorder": "Drag to reorder, or use the arrow keys",
       "remove": "Remove",
       "observerPartialCoverage": "Partial history"
     }

@@ -46,7 +46,7 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
   // Switching the field changes what the box means, so stale text must not carry over.
   const changeField = (value: string) => {
     setField(value);
-    setSearch("");
+    changeSearch("");
   };
 
   // Key on the derived params, as the Nodes table does, so a name is never sent as a hex prefix.
@@ -94,6 +94,11 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
         : parseAtlas(JSON.stringify({ ...value, pins: [...value.pins, { kind: "node", id: match.id, publicKey, name: match.name || name, observerId: row.id }] })));
     },
   });
+  // A failed add is about the search it came from; a new search clears it.
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    addObserver.reset();
+  };
   const remove = (pin: AtlasPin) =>
     update((value) => ({ ...value, pins: value.pins.filter((other) => pinKey(other) !== pinKey(pin)) }));
   const relink = (pin: AtlasPin, id: string, observerId?: string) =>
@@ -102,8 +107,11 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
   const upgrade = (pin: AtlasPin, match: NodeSummary, observerId: string) =>
     update((value) => {
       const publicKey = match.publicKey.toLowerCase();
+      // Already pinned as a node: that pin takes the observer link, as an Add from search does.
       if (value.pins.some((other) => other.kind === "node" && other.publicKey === publicKey)) {
-        return { ...value, pins: value.pins.filter((other) => pinKey(other) !== pinKey(pin)) };
+        return { ...value, pins: value.pins
+          .filter((other) => pinKey(other) !== pinKey(pin))
+          .map((other) => (other.kind === "node" && other.publicKey === publicKey ? { ...other, observerId } : other)) };
       }
       return { ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin)
         ? { kind: "node", id: match.id, publicKey, name: match.name || pin.name, observerId }
@@ -145,7 +153,7 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
       >
         <SearchBar
           value={search}
-          onChange={setSearch}
+          onChange={changeSearch}
           fields={fields}
           field={field}
           onFieldChange={changeField}

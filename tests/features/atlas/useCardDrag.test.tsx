@@ -120,4 +120,12 @@ describe("useCardDrag", () => {
     fireEvent.keyDown(screen.getByLabelText("handle 2"), { key: "ArrowRight" });
     expect(onReorder).toHaveBeenCalledTimes(1);
   });
+
+  it("also moves with Up and Down, since a phone shows one column", () => {
+    mount();
+    fireEvent.keyDown(screen.getByLabelText("handle 1"), { key: "ArrowDown" });
+    expect(onReorder).toHaveBeenLastCalledWith(1, 2);
+    fireEvent.keyDown(screen.getByLabelText("handle 1"), { key: "ArrowUp" });
+    expect(onReorder).toHaveBeenLastCalledWith(1, 0);
+  });
 });
