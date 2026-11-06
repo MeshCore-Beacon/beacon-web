@@ -244,6 +244,57 @@ describe("My Atlas", () => {
     await waitFor(() => expect(screen.queryByText("Failed to load")).not.toBeInTheDocument());
   });
 
+  describe("export and import", () => {
+    const file = (pins: unknown[]) => new File([JSON.stringify({ format: "beacon-atlas", version: 2, range: "3d", pins })], "atlas.json", { type: "application/json" });
+    const choose = (value: File) => fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [value] } });
+    const stored = () => JSON.parse(localStorage.getItem(ATLAS_KEY)!);
+
+    it("downloads the saved Atlas as a dated file, and has nothing to export when empty", async () => {
+      const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:atlas");
+      vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+      const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      save([pin, second]);
+      mount();
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      expect(click).toHaveBeenCalledTimes(1);
+      expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toMatch(/^beacon-atlas-\d{4}-\d{2}-\d{2}\.json$/);
+      const exported = JSON.parse(await createObjectURL.mock.calls[0]![0].text());
+      expect(exported).toMatchObject({ format: "beacon-atlas", range: "24h", pins: [{ kind: "node", ...pin }, { kind: "node", ...second }] });
+      localStorage.clear();
+    });
+
+    it("loads a file straight into an empty Atlas", async () => {
+      mount();
+      expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+      choose(file([{ kind: "node", ...pin }]));
+      expect(await screen.findByText("Imported 1 card.")).toBeInTheDocument();
+      expect(stored()).toEqual({ version: 2, range: "3d", pins: [{ kind: "node", ...pin }] });
+    });
+
+    it("asks before replacing saved cards, and keeps them on Cancel", async () => {
+      save([pin]);
+      mount();
+      choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
+      const prompt = await screen.findByRole("alertdialog", { name: "Replace your Atlas?" });
+      expect(prompt).toHaveTextContent("Replace your 1 saved card with the 1 in this file?");
+      fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
+      expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
+      choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
+      fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Replace" }));
+      expect(stored().pins).toEqual([{ kind: "node", ...second }]);
+      expect(screen.getByText("Imported 1 card. 1 entry skipped (duplicate, invalid or over the limit).")).toBeInTheDocument();
+    });
+
+    it("refuses a file that is not an Atlas export without touching saved cards", async () => {
+      save([pin]);
+      mount();
+      choose(new File(["{\"version\":2,\"pins\":[]}"], "other.json"));
+      expect(await screen.findByText(/not a Beacon Atlas export/)).toBeInTheDocument();
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
+    });
+  });
+
   it("marks node results that are also observers", async () => {
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, isObserver: true, observerId }], hasMore: false, nextCursor: null });
     mount();
