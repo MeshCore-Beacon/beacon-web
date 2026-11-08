@@ -18,6 +18,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getObserver: vi.fn(),
   getObserverActivity: vi.fn(),
   getObserverTelemetry: vi.fn(),
+  getCollectedNodeTelemetry: vi.fn(),
 }));
 
 const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -57,10 +58,17 @@ beforeEach(() => {
   vi.mocked(api.getNode).mockResolvedValue(node);
   vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [report], hasMore: true, nextCursor: 7 });
   vi.mocked(api.getPacketDetail).mockResolvedValue(detail);
+  vi.mocked(api.getCollectedNodeTelemetry).mockResolvedValue({items: [], limit: 500});
 });
 afterEach(() => client.clear());
 
 describe("AtlasCard", () => {
+  it("adds measured battery and channel-2 telemetry to a participating repeater", async () => {
+    vi.mocked(api.getCollectedNodeTelemetry).mockResolvedValue({items: [{nodeKey: pin.publicKey, collectorKey: "cd".repeat(32), radioKey: "ef".repeat(32), receivedAt: Date.now(), values: {batteryMv: 4120}, sensors: [{channel: 2, kind: "temperature", value: 10, unit: "C"}]}], limit: 500});
+    mount();
+    expect(await screen.findByText("4.12 V")).toBeInTheDocument();
+    expect(screen.getByText("10 C")).toBeInTheDocument();
+  });
   it("renders the Signal tab tiles for one node with its type and freshness badges", async () => {
     mount();
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();

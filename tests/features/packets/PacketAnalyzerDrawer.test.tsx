@@ -234,9 +234,7 @@ describe("PacketAnalyzerDrawer view-path button", () => {
 });
 
 describe("PacketAnalyzerDrawer TRACE path data", () => {
-  // After beacon-server's trace-path fix (7a58a07) a TRACE observation's pathBytes are the trace's
-  // own path hashes (with matching hashSize/hopCount and a real resolvedPath), not raw SNR bytes —
-  // so it must render as resolved Path Data, not under the old "Path SNR Data" label.
+  // TRACE wire path carries SNR bytes; requested hashes belong to its payload.
   function traceDetail(): PacketDetail {
     return {
       packetHash: "abcdef12",
@@ -246,21 +244,21 @@ describe("PacketAnalyzerDrawer TRACE path data", () => {
       observations: [{
         id: 1, observerId: "obs12345", iata: "YYZ", heardAt: 0, sourceBroker: "b",
         pathLength: { raw: "02", hashSize: 1, hopCount: 2 },
-        pathBytes: "abcd",
+        pathBytes: "abcd", wirePathBytes: "fc00",
         resolvedPath: [hop("a", -79, 43), hop("b", -75, 45)],
       }],
     } as unknown as PacketDetail;
   }
 
-  it("renders TRACE path bytes as resolved Path Data, not raw 'Path SNR Data'", () => {
+  it("shows trace wire SNR separately from requested payload hashes", () => {
     render(
       <MemoryRouter initialEntries={["/?tab=Packets"]}>
         <PacketAnalyzerDrawer detail={traceDetail()} selectedObservationId={null} onClose={() => {}} />
       </MemoryRouter>,
     );
     expect(screen.queryByText("Path SNR Data")).not.toBeInTheDocument();
-    expect(screen.getByText("Path Data")).toBeInTheDocument();
-    // the first trace hash renders as a resolved hop block, tinted green for high confidence
-    expect(screen.getAllByText("AB").some((el) => el.className.includes("text-green"))).toBe(true);
+    expect(screen.queryByText("Path Data")).not.toBeInTheDocument();
+    expect(screen.getByText("Recorded SNR bytes")).toBeInTheDocument();
+    expect(screen.getByText("FC00")).toBeInTheDocument();
   });
 });
