@@ -1,3 +1,4 @@
+import { observerNoiseFloor } from "../observers/observer-stats";
 import type { Observer } from "../observers/types";
 import { hasTelemetry } from "../stats/transforms";
 import type { ObserverActivity, ObserverTelemetry, TelemetryPoint } from "../stats/types";
@@ -32,10 +33,11 @@ export function summarizeObserver(
 ): ObserverSample {
   const hours = RANGE_HOURS[range];
   const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
-  // Slots count back from the tick, newest last; a bucket newer than the tick lands in the newest slot.
+  // Slots count back from the tick, newest last. The tick can trail the clock by a minute, so a bucket
+  // up to an hour past it lands in the newest slot; anything later is a bad clock and is dropped.
   const age = (t: number) => Math.max(0, Math.floor((now - t) / HOUR));
   const bin = (t: number) => hours - 1 - age(t);
-  const inWindow = (t: number) => Number.isFinite(t) && t <= now && age(t) < hours;
+  const inWindow = (t: number) => Number.isFinite(t) && t < now + HOUR && age(t) < hours;
 
   const counts = Array.from({ length: hours }, (_, i): number | null => {
     if (!activity) return null;
@@ -82,7 +84,8 @@ export function summarizeObserver(
     snrHourly,
     snr: weight ? weighted / weight : null,
     noiseHourly: series("noiseFloorDb"),
-    noise: latest("noiseFloorDb") ?? null,
+    // The status record's reading first, as the Observers page does; telemetry when it has none.
+    noise: (observer && observerNoiseFloor(observer)) ?? latest("noiseFloorDb") ?? null,
     batteryHourly: series("batteryMv").map(volts),
     battery,
     uptime: uptime ?? null,

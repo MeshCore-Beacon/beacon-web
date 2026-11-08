@@ -37,6 +37,19 @@ describe("summarizeObserver", () => {
     expect(sample.battery).toBeNull();
     expect(sample.uptimeHourly.slice(-2)).toEqual([100, 0]);
   });
+  it("keeps a bucket that starts just after a lagging tick in the newest slot", () => {
+    const sample = summarizeObserver(activity([point(-0.5, 6, 2)]), undefined, undefined, "24h", now);
+    expect(sample.counts[23]).toBe(6);
+    expect(sample.heard).toBe(6);
+  });
+
+  it("prefers the status record's noise floor over telemetry, as the Observers page does", () => {
+    const telemetry = tele([{ t: now, noiseFloorDb: -110 }]);
+    const reported = { statusMetadata: { stats: { noise_floor: -98 } } } as unknown as Observer;
+    expect(summarizeObserver(undefined, telemetry, reported, "24h", now).noise).toBe(-98);
+    expect(summarizeObserver(undefined, telemetry, {} as Observer, "24h", now).noise).toBe(-110);
+  });
+
   it("maps ranges to the server's duration strings", () => {
     expect(OBSERVER_RANGE).toEqual({ "24h": "24h", "3d": "72h" });
   });

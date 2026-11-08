@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { parseAtlas, pinKey, resolveObserverNode, summarizeReports, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
+import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeReports, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
 import type { NodeObservation } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
@@ -128,5 +128,35 @@ describe("origin report sample", () => {
     expect(sample.since).toBe(now - 24 * 3_600_000);
     expect(sample.counts).toHaveLength(24);
     expect(sample.reports.map((r) => r.id)).toEqual([1]);
+  });
+});
+
+describe("Atlas export file", () => {
+  const nodePin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Hill" };
+  const observerPin = { kind: "observer" as const, observerId: "33333333-3333-4333-8333-333333333333", name: "Roof" };
+  const saved = { version: 2 as const, range: "3d" as const, pins: [nodePin, observerPin] };
+
+  it("round-trips the pins, order and range with a format tag", () => {
+    const text = atlasFile(saved, 1_800_000_000_000);
+    expect(JSON.parse(text)).toMatchObject({ format: "beacon-atlas", version: 2, exportedAt: 1_800_000_000_000 });
+    expect(readAtlasFile(text)).toEqual({ atlas: saved, skipped: 0 });
+  });
+
+  it("names the file by UTC date", () => {
+    expect(atlasFileName(new Date(Date.UTC(2026, 10, 5, 23, 0)))).toBe("beacon-atlas-2026-11-05.json");
+  });
+
+  it("rejects text that is not an Atlas export", () => {
+    expect(readAtlasFile("not json")).toBeNull();
+    expect(readAtlasFile(JSON.stringify({ version: 2, pins: [nodePin] }))).toBeNull();
+    expect(readAtlasFile(JSON.stringify({ format: "beacon-atlas", pins: "x" }))).toBeNull();
+    expect(readAtlasFile(" ".repeat(ATLAS_FILE_MAX_BYTES + 1))).toBeNull();
+  });
+
+  it("drops invalid and duplicate pins and caps the rest, counting what it skipped", () => {
+    const many = Array.from({ length: 14 }, (_, i) => ({ ...nodePin, id: `11111111-1111-4111-8111-${String(i).padStart(12, "0")}`, publicKey: i.toString(16).padStart(2, "0").repeat(32) }));
+    const result = readAtlasFile(JSON.stringify({ format: "beacon-atlas", version: 2, range: "24h", pins: [{ kind: "node", id: "bad" }, many[0], many[0], ...many.slice(1)] }));
+    expect(result!.atlas.pins).toHaveLength(12);
+    expect(result!.skipped).toBe(4);
   });
 });
