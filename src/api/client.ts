@@ -82,6 +82,9 @@ export async function getTelemetryAvailability(signal?: AbortSignal) {
 }
 
 export interface CollectedNodeSample {
+	 source?: "companion-poll" | "observer-reply";
+	 permitId?: string;
+	 evidence?: {kind: "correlated-reply"; heardBy: string[]; packetHashes: string[]};
   nodeKey: string;
   collectorKey: string;
   radioKey: string;
@@ -98,6 +101,12 @@ export async function getCollectedNodeTelemetry(key: string, signal?: AbortSigna
       !sample || typeof sample.nodeKey !== "string" || typeof sample.collectorKey !== "string" || typeof sample.radioKey !== "string" ||
       !/^[0-9a-f]{64}$/.test(sample.nodeKey) || !/^[0-9a-f]{64}$/.test(sample.collectorKey) || !/^[0-9a-f]{64}$/.test(sample.radioKey) ||
       !Number.isSafeInteger(sample.receivedAt) || sample.receivedAt <= 0 ||
+      (sample.source != null && sample.source !== "companion-poll" && sample.source !== "observer-reply") ||
+      (sample.evidence != null && (sample.source !== "observer-reply" || sample.evidence.kind !== "correlated-reply" ||
+        !Array.isArray(sample.evidence.heardBy) || sample.evidence.heardBy.length > 128 ||
+        sample.evidence.heardBy.some(key => typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key)) ||
+        !Array.isArray(sample.evidence.packetHashes) || sample.evidence.packetHashes.length > 2 ||
+        sample.evidence.packetHashes.some(hash => typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)))) ||
       (sample.intervalHours != null && (!Number.isInteger(sample.intervalHours) || sample.intervalHours < 1 || sample.intervalHours > 72)) ||
       (sample.sensors != null && (!Array.isArray(sample.sensors) || sample.sensors.length > 32 || sample.sensors.some(sensor => !sensor || typeof sensor.kind !== "string" || typeof sensor.unit !== "string" || !Number.isInteger(sensor.channel) || !Number.isFinite(sensor.value)))) ||
       (sample.values != null && (typeof sample.values !== "object" || Array.isArray(sample.values) || Object.values(sample.values).some(reading => typeof reading !== "number" || !Number.isFinite(reading)))))) {

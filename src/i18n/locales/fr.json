@@ -1202,7 +1202,10 @@
       },
       "addCard": "Ajouter la carte de télémétrie du répéteur",
       "refreshFailed": "Échec de l’actualisation ; affichage du dernier échantillon chargé.",
-      "historyLimited": "Les {{count}} derniers relevés conservés sont affichés ; la période peut être incomplète."
+      "historyLimited": "Les {{count}} derniers relevés conservés sont affichés ; la période peut être incomplète.",
+      "sharedReply_one": "Réponse partagée · reçue par {{count}} observateur",
+      "sharedReply_other": "Réponse partagée · reçue par {{count}} observateurs",
+      "sharedReplyHelp": "Correspond à une demande de télémétrie enregistrée. Plusieurs réceptions comptent comme une seule mesure ; ce n’est pas une attestation matérielle."
     }
   }
 }

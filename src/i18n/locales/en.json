@@ -1196,7 +1196,10 @@
       },
       "addCard": "Add repeater telemetry card",
       "refreshFailed": "Refresh failed; showing the last loaded sample.",
-      "historyLimited": "Latest {{count}} retained readings shown; this may not cover the full window."
+      "historyLimited": "Latest {{count}} retained readings shown; this may not cover the full window.",
+      "sharedReply_one": "Shared reply · heard by {{count}} observer",
+      "sharedReply_other": "Shared reply · heard by {{count}} observers",
+      "sharedReplyHelp": "Matched to a registered polling request. Multiple receptions count as one reading; this is not hardware attestation."
     }
   }
 }

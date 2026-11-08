@@ -10,6 +10,13 @@ const collector = "cd".repeat(32);
 function mount() { return render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CollectedNodeTelemetry publicKey={key} active /></QueryClientProvider>); }
 
 describe("collector telemetry", () => {
+  it("labels a correlated shared reply without multiplying its reading", async () => {
+    vi.mocked(getCollectedNodeTelemetry).mockResolvedValue({limit: 500, items: [{nodeKey:key,collectorKey:collector,radioKey:"ef".repeat(32),receivedAt:Date.now(),source:"observer-reply",
+      evidence:{kind:"correlated-reply",heardBy:["12".repeat(32),"34".repeat(32)],packetHashes:["56".repeat(32)]},values:{batteryMv:4100}}]});
+    mount();
+    expect(await screen.findByText("Shared reply · heard by 2 observers")).toBeInTheDocument();
+    expect(screen.getAllByText("4.1 V")).toHaveLength(1);
+  });
   it("renders status-only and sensor-only reports with absent or null optional collections", async () => {
     vi.mocked(getCollectedNodeTelemetry).mockResolvedValue({ limit: 500, truncated: true, items: [
       { nodeKey: key, collectorKey: collector, radioKey: "ef".repeat(32), receivedAt: Date.now(), values: { batteryMv: 4120 }, sensors: null },
