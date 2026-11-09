@@ -3,6 +3,7 @@ import type { Observation } from "../../types/api";
 import { formatSnr, formatPropagation, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import { PathData } from "./PathData";
+import { EmojiText } from "../../components/EmojiText";
 
 interface Props {
   observations: Observation[];
@@ -37,7 +38,7 @@ export function ObservationTable({ observations, selectedId, onSelect }: Props) 
               onClick={() => onSelect(o.id)}
               className={`cursor-pointer border-t border-border-subtle ${o.id === selectedId ? "bg-primary/8" : "hover:bg-bg-raised/40"}`}
             >
-              <td className="py-1 px-1.5 text-text-normal">{o.observerName ?? o.observerId.slice(0, 8)}</td>
+              <td className="py-1 px-1.5 text-text-normal"><EmojiText text={o.observerName ?? o.observerId.slice(0, 8)} /></td>
               <td className="py-1 px-1.5 font-mono font-bold text-primary tracking-wider">{o.iata}</td>
               <td className="py-1 px-1.5 text-text-muted"><Timestamp value={o.heardAt} /></td>
               <td className={`py-1 px-1.5 font-mono ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-dim"}`}>

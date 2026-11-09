@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity, labelSize, nodeNameMatches } from "../../../src/features/stats/neighbour-graph";
+import { buildNeighbourGraph, buildEgoGraph, obsColor, ageOpacity, labelSize, nodeNameMatches, neighbourGraphOption, meshLayoutInput, withLayout } from "../../../src/features/stats/neighbour-graph";
 import type { NodeSummary, NodeNeighbor } from "../../../src/features/nodes/types";
+import type { ChartColors } from "../../../src/features/stats/chartTheme";
+import i18n from "../../../src/i18n";
 
 function neighbor(overrides: Partial<NodeNeighbor>): NodeNeighbor {
   return {
@@ -271,5 +273,38 @@ describe("buildEgoGraph", () => {
   it("maps a neighbour's node type to a category index", () => {
     const g = buildEgoGraph(center, [neighbor({ id: "a", nodeTypeName: "sensor" })], NOW);
     expect(g.nodes.find((n) => n.id === "a")!.category).toBe(3);
+  });
+});
+
+describe("worker-laid mesh", () => {
+  const nodes = Array.from({ length: 600 }, (_, i) => node({ id: `n${String(i).padStart(3, "0")}`, knownNeighborCount: 1, neighborIds: [`n${String((i + 1) % 600).padStart(3, "0")}`] }));
+  const graph = buildNeighbourGraph(nodes, 1000);
+  const grey = new Proxy({}, { get: () => "#888888" }) as ChartColors;
+
+  it("hands the worker the mesh's nodes and edges", () => {
+    const input = meshLayoutInput(graph);
+    expect(input.count).toBe(600);
+    expect([...input.source]).toEqual(graph.links.map((l) => l.source));
+    expect([...input.target]).toEqual(graph.links.map((l) => l.target));
+  });
+
+  it("draws placed nodes at their positions, sized 1:1, with every other option unchanged", () => {
+    const xy = Float64Array.from({ length: 1200 }, (_, i) => (i % 2 ? 50 + (i % 7) : -100 + i / 2));
+    const placed = neighbourGraphOption(withLayout(graph, xy), grey, i18n.t);
+    const force = neighbourGraphOption(graph, grey, i18n.t);
+    const [ps] = placed.series as Record<string, unknown>[];
+    const [fs] = force.series as Record<string, unknown>[];
+    expect(ps!.layout).toBe("none");
+    expect(fs!.layout).toBe("force");
+    expect((ps!.data as { x: number; y: number }[])[2]).toMatchObject({ x: xy[4], y: xy[5] });
+    expect(ps!.width).toBeCloseTo(Math.max(...xy.filter((_, i) => i % 2 === 0)) - Math.min(...xy.filter((_, i) => i % 2 === 0)));
+    expect(ps!.height).toBe(6);
+    const without = (o: Record<string, unknown>, keys: string[]) => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k)));
+    const strip = (o: Record<string, unknown>) =>
+      ({ ...without(o, ["layout", "width", "height"]), data: (o.data as Record<string, unknown>[]).map((n) => without(n, ["x", "y"])) });
+    expect(strip(ps!)).toEqual(strip(fs!));
+    // the tooltip formatter is a fresh closure per option, so compare everything else as data
+    const plain = (o: object) => JSON.parse(JSON.stringify({ ...o, series: null }));
+    expect(plain(placed)).toEqual(plain(force));
   });
 });

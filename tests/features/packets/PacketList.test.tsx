@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, within, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ const basePackets = () => ({
   isFetchingNextPage: false,
   isLoading: false,
   isError: false,
+  refetch: vi.fn(),
   observersByHash: new Map(),
   handlePacketObservation: () => {},
   handleLagged: () => {},
@@ -180,11 +181,24 @@ describe("PacketList loading feedback", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading packets… (1)");
   });
 
-  it("surfaces a failed history fetch through the pill", () => {
-    usePackets.mockImplementation(() => ({ ...basePackets(), isError: true }));
+  it("shows an error with a retry, not an empty list, when history fails with nothing loaded", () => {
+    const refetch = vi.fn();
+    usePackets.mockImplementation(() => ({ ...basePackets(), isError: true, refetch }));
     renderList();
 
-    expect(screen.getByRole("status").textContent).toContain("Failed to load packets");
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed to load packets");
+    expect(screen.queryByTestId("expanded")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps loaded packets and surfaces a later history failure through the pill", () => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("h1")], isError: true }));
+    renderList();
+
+    expect(screen.getByTestId("expanded")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Some packets failed to load (1 shown)");
   });
 
   it("renders neither pill nor skeletons when idle", () => {
@@ -260,21 +274,28 @@ describe("PacketList expanded row", () => {
 });
 
 describe("PacketList live observation invalidation", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+
   afterEach(() => {
+    vi.useRealTimers();
     usePackets.mockImplementation(basePackets);
     packetHandler = null;
   });
 
-  it("refetches the expanded row's detail when an observation arrives for it", () => {
+  it("refetches the expanded row's detail once for a burst of observations, without cancelling a fetch", () => {
     const handlePacketObservation = vi.fn();
     usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")], handlePacketObservation }));
 
     const { invalidate } = renderList("/?tab=Packets&hash=aa11");
     invalidate.mockClear();
-    packetHandler!(observation("aa11"));
+    for (let i = 0; i < 5; i++) packetHandler!(observation("aa11"));
 
-    expect(handlePacketObservation).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["packet-detail", "aa11"] });
+    // every observation still reaches the list, so the row's count keeps ticking
+    expect(handlePacketObservation).toHaveBeenCalledTimes(5);
+    expect(invalidate).not.toHaveBeenCalled();
+    act(() => { vi.advanceTimersByTime(5_000); });
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["packet-detail", "aa11"], exact: true }, { cancelRefetch: false });
   });
 
   it("leaves the detail query alone for observations on other packets", () => {
@@ -284,6 +305,7 @@ describe("PacketList live observation invalidation", () => {
     const { invalidate } = renderList("/?tab=Packets&hash=aa11");
     invalidate.mockClear();
     packetHandler!(observation("bb22"));
+    act(() => { vi.advanceTimersByTime(10_000); });
 
     expect(handlePacketObservation).toHaveBeenCalledTimes(1);
     expect(invalidate).not.toHaveBeenCalled();
@@ -296,7 +318,21 @@ describe("PacketList live observation invalidation", () => {
     const { invalidate } = renderList("/?tab=Packets");
     invalidate.mockClear();
     packetHandler!(observation("aa11"));
+    act(() => { vi.advanceTimersByTime(10_000); });
 
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it("drops the pending refetch when the row collapses", () => {
+    usePackets.mockImplementation(() => ({ ...basePackets(), allPackets: [packet("aa11")] }));
+
+    const { invalidate } = renderList("/?tab=Packets&hash=aa11");
+    invalidate.mockClear();
+    packetHandler!(observation("aa11"));
+    fireEvent.click(screen.getByRole("button", { name: "aa11" }));
+    act(() => { vi.advanceTimersByTime(10_000); });
+
+    expect(screen.getByTestId("expanded")).toHaveTextContent("null");
     expect(invalidate).not.toHaveBeenCalled();
   });
 });

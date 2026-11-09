@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
-import { queryRetryDelay } from "../../api/rate-limit";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { Badge } from "../../components/Badge";
 import { IataChip } from "../../components/IataChip";
@@ -19,7 +18,6 @@ import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
 import { REPORT_LIMIT, resolveObserverNode, type AtlasPin, type AtlasRange } from "./atlas";
 import { ATLAS_REFRESH_MS, useAtlasNode } from "./useAtlas";
-import type { PayloadShare } from "./observer-sample";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
 
@@ -45,39 +43,6 @@ interface AtlasCardProps extends AtlasActions {
 
 const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver" };
 
-const percent = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
-const MIX_SLICES = 5;
-
-// Share bar of the payload types heard, busiest first, with the top three named underneath.
-function TypeMix({ types, colors, unknown, other }: { types: PayloadShare[]; colors: string[]; unknown: string; other: string }) {
-  const total = types.reduce((sum, p) => sum + p.count, 0);
-  if (total === 0) return <div className="mt-1.5 h-[20px]" />;
-  const named = types.map((p) => ({ ...p, name: p.name.toLowerCase() === "unknown" ? unknown : p.name.toLowerCase() }));
-  const rest = named.slice(MIX_SLICES).reduce((sum, p) => sum + p.count, 0);
-  const slices = [
-    ...named.slice(0, MIX_SLICES).map((p, i) => ({ ...p, color: colors[i % colors.length]! })),
-    ...(rest ? [{ name: other, count: rest, color: "var(--color-text-dim)" }] : []),
-  ];
-  const share = (n: number) => `${Math.round((n / total) * 100)}%`;
-  return (
-    <div className="mt-1.5 flex h-[20px] flex-col justify-between">
-      <div className="flex h-1.5 overflow-hidden rounded-full" aria-hidden>
-        {slices.map((s) => (
-          <span key={s.name} title={`${s.name} ${share(s.count)}`} style={{ width: `${(s.count / total) * 100}%`, background: s.color }} />
-        ))}
-      </div>
-      {/* one line: entries that don't fit wrap out of sight rather than cut mid-word */}
-      <p className="flex h-[9px] flex-wrap gap-x-2 overflow-hidden font-mono text-[9px] leading-none text-text-muted">
-        {slices.slice(0, 3).map((s) => (
-          <span key={s.name} className="whitespace-nowrap">
-            <span style={{ color: s.color }}>■</span> {s.name} {share(s.count)}
-          </span>
-        ))}
-      </p>
-    </div>
-  );
-}
-
 // One pinned radio, laid out as the Signal tab's KPI row so Atlas and Analytics read the same way.
 // A node that also observes gets a third view; an observer-only pin has just that view.
 export function AtlasCard({
@@ -99,7 +64,7 @@ export function AtlasCard({
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, capped } = useAtlasNode(nodePin, range, active);
   const observerId = pin.kind === "observer" ? pin.observerId : (node?.observerId ?? pin.observerId ?? null);
-  const obs = useAtlasObserver(observerId, range, active, view === "observer");
+  const obs = useAtlasObserver(observerId, range, active, view === "observer", pin.kind === "observer");
   const observer = obs.observer.data;
   const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : observerId ? ["analytics", "heard", "observer"] : ["analytics", "heard"];
 
@@ -136,7 +101,6 @@ export function AtlasCard({
     refetchInterval: ATLAS_REFRESH_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
-    retryDelay: queryRetryDelay,
   });
   useEffect(() => {
     if (pin.kind === "observer" && upgradeTo.data) onUpgrade(upgradeTo.data, pin.observerId);
@@ -180,7 +144,7 @@ export function AtlasCard({
   );
 
   const actions = (
-    <div className="ml-auto flex shrink-0 items-center gap-1">
+    <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
       {views.length > 1 && (
         <Segmented
           size="xs"
@@ -323,39 +287,34 @@ export function AtlasCard({
           <div className="grid flex-1 grid-cols-2 gap-3">
             <StatCard
               compact
-              label={t("atlas.airtime")}
-              value={obs.sample.airtime === null ? dash : percent(obs.sample.airtime)}
+              label={t("atlas.packetsHeard")}
+              value={obs.sample.heard === null ? dash : formatCount(obs.sample.heard)}
               accent={c.series[0]!}
-              spark={obs.sample.airtimeHourly}
+              spark={obs.sample.counts}
               markPeak
-              sublabel={
-                obs.sample.airtimeSource === "radio"
-                  ? `TX ${percent(obs.sample.airtimeTx!)} · RX ${percent(obs.sample.airtimeRx!)}`
-                  : obs.sample.airtimeSource === "heard"
-                    ? t("atlas.airtimeHeard")
-                    : undefined
-              }
+              sublabel={obs.sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`)}
             />
-            {obs.sample.battery !== null ? (
-              <StatCard compact label={t("atlas.battery")} value={formatBattery(obs.sample.battery)} accent={c.series[3]!} spark={obs.sample.batteryHourly} />
-            ) : (
-              <StatCard compact label={t("atlas.uptime")} value={obs.sample.uptime === null ? dash : formatUptime(obs.sample.uptime)} accent={c.series[3]!} />
-            )}
             <StatCard
               compact
-              label={t("atlas.packetTypes")}
-              value={obs.sample.heard === null ? dash : formatCount(obs.sample.heard)}
+              label={t("atlas.meanSnrHeard")}
+              value={obs.sample.snr === null ? dash : `${obs.sample.snr.toFixed(1)} dB`}
               accent={c.series[2]!}
-              sublabel={t(`atlas.ranges.${range}`)}
-              visual={<TypeMix types={obs.sample.types} colors={c.series} unknown={t("observerPage.unknown")} other={t("atlas.otherTypes")} />}
+              spark={obs.sample.snrHourly}
+              interpolateGaps
             />
             <StatCard
               compact
               label={t("atlas.noiseFloor")}
-              value={obs.sample.noise === null ? dash : `${Math.round(obs.sample.noise)} dB`}
+              value={obs.sample.noise === null ? dash : `${Math.round(obs.sample.noise)} dBm`}
               accent={c.series[1]!}
               spark={obs.sample.noiseHourly}
+              interpolateGaps
             />
+            {obs.sample.battery !== null ? (
+              <StatCard compact label={t("atlas.battery")} value={formatBattery(obs.sample.battery)} accent={c.series[3]!} spark={obs.sample.batteryHourly} interpolateGaps />
+            ) : (
+              <StatCard compact label={t("atlas.uptime")} value={obs.sample.uptime === null ? dash : formatUptime(obs.sample.uptime)} accent={c.series[3]!} spark={obs.sample.uptimeHourly} />
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
             {status && <span>{t(status === "online" ? "atlas.online" : "atlas.offline")}</span>}
@@ -365,6 +324,7 @@ export function AtlasCard({
               </span>
             )}
             {radio && <span>{radio}</span>}
+            {obs.sample.battery !== null && obs.sample.uptime !== null && <span>{t("atlas.uptime")} {formatUptime(obs.sample.uptime)}</span>}
             {obs.loading && <span role="status">{t("common.loading")}</span>}
             {obs.failed && <span className="text-danger">{t("common.loadFailed")}</span>}
             <span className="whitespace-nowrap">

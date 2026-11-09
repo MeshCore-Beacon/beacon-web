@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRegions, getRegion } from "../api/client";
+import { API_BASE } from "../lib/constants";
 import {
   resolveIatas,
   emptyRegionSlug,
@@ -9,7 +10,7 @@ import {
   serializeSelection,
   type RegionSelection,
 } from "./region-selection";
-import type { Region } from "../types/api";
+import type { Region, RegionSummary } from "../types/api";
 
 // Region context: the shared geographic filter. The provider holds the raw selection (region slugs +
 // individual IATAs); useRegions() loads the slug→IATAs expansion, and useRegion() combines them into
@@ -54,22 +55,56 @@ export interface RegionsData {
   settled: boolean; // the region list has loaded
 }
 
-// Loads the region list and each region's detail (member IATAs). Regions are near-static, so this is
-// cached long and shared via React Query across every caller. The N detail fetches are fine — there
-// are only a handful of regions.
+const listsIatas = (r: RegionSummary & Partial<Region>): r is Region => Array.isArray(r.iatas);
+
+// The last region list, per server, so a returning visitor's region resolves without waiting. It is
+// only a starting point: every load fetches the list again and replaces it when anything changed.
+export const REGIONS_CACHE_KEY = `beacon-regions:${API_BASE}`;
+
+function readStoredRegions(): Region[] | undefined {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(REGIONS_CACHE_KEY) ?? "null");
+    const valid = Array.isArray(parsed) && parsed.every((r) =>
+      typeof r?.id === "number" && typeof r?.slug === "string" && Array.isArray(r?.iatas) && r.iatas.every((i: unknown) => typeof i === "string"));
+    return valid ? (parsed as Region[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function storeRegions(regions: Region[]) {
+  try {
+    localStorage.setItem(REGIONS_CACHE_KEY, JSON.stringify(regions));
+  } catch {
+    // private mode / quota: the next load just waits for the list
+  }
+}
+
+// A server that lists each region's IATAs answers in one call; an older one needs each region's detail.
+async function fetchRegions(): Promise<Region[]> {
+  const summaries = await getRegions();
+  if (summaries.every(listsIatas)) return summaries;
+  // a listed region whose detail 404s is dropped like an unknown slug; 4xx is never retried,
+  // so failing the whole query would leave the selection unresolved for good
+  const regions = await Promise.all(summaries.map((s) => getRegion(s.id).catch((err: unknown) => {
+    if ((err as { status?: unknown } | null)?.status !== 404) throw err;
+    return null;
+  })));
+  return regions.filter((r): r is Region => r !== null);
+}
+
+// Loads the region list with each region's member IATAs. Regions are near-static, so this is cached
+// long and shared via React Query across every caller.
 export function useRegions(): RegionsData {
   const { data } = useQuery({
     queryKey: ["regions"],
     queryFn: async () => {
-      const summaries = await getRegions();
-      // a listed region whose detail 404s is dropped like an unknown slug; 4xx is never retried,
-      // so failing the whole query would leave the selection unresolved for good
-      const regions = await Promise.all(summaries.map((s) => getRegion(s.id).catch((err: unknown) => {
-        if ((err as { status?: unknown } | null)?.status !== 404) throw err;
-        return null;
-      })));
-      return regions.filter((r): r is Region => r !== null);
+      const regions = await fetchRegions();
+      storeRegions(regions);
+      return regions;
     },
+    initialData: readStoredRegions,
+    initialDataUpdatedAt: 0, // stored data is always stale, so it is refetched on every load
     staleTime: 5 * 60_000,
   });
 

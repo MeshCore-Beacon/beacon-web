@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MyAtlasPage } from "../../../src/features/atlas/MyAtlasPage";
-import { ATLAS_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
+import { ATLAS_KEY, ATLAS_LEGACY_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
 import type { Node } from "../../../src/features/nodes/types";
@@ -62,6 +62,15 @@ afterEach(() => {
 });
 
 describe("My Atlas", () => {
+  it("reads legacy saved nodes and retains their original storage when saving the new model", async () => {
+    const legacy = JSON.stringify({ version: 1, nodes: [pin], range: "24h" });
+    localStorage.setItem(ATLAS_LEGACY_KEY, legacy);
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    fireEvent.click(screen.getByRole("button", { name: "3d" }));
+    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(pin.publicKey);
+    expect(localStorage.getItem(ATLAS_LEGACY_KEY)).toBe(legacy);
+  });
   it("renders saved nodes as Signal-style cards and nothing else before a search", async () => {
     save();
     mount();
@@ -216,6 +225,76 @@ describe("My Atlas", () => {
     expect(screen.getByRole("button", { name: "Hill listener is saved" })).toBeDisabled();
   });
 
+  it("folds an observer pin into the already pinned node and keeps its link", async () => {
+    vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+    localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 2, range: "24h", pins: [{ kind: "node", ...pin }, { kind: "observer", observerId, name: "Hill listener" }] }));
+    mount();
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toEqual([{ kind: "node", ...pin, observerId }]));
+  });
+
+  it("clears a failed observer add once the search changes", async () => {
+    vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([listener]));
+    vi.mocked(api.getObserver).mockRejectedValue(new ApiError(500, "boom", "boom"));
+    mount();
+    await pickField("Observer");
+    typeSearch("hill");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Hill listener" }));
+    expect(await screen.findByText("Failed to load")).toBeInTheDocument();
+    typeSearch("hil");
+    await waitFor(() => expect(screen.queryByText("Failed to load")).not.toBeInTheDocument());
+  });
+
+  describe("export and import", () => {
+    const file = (pins: unknown[]) => new File([JSON.stringify({ format: "beacon-atlas", version: 2, range: "3d", pins })], "atlas.json", { type: "application/json" });
+    const choose = (value: File) => fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [value] } });
+    const stored = () => JSON.parse(localStorage.getItem(ATLAS_KEY)!);
+
+    it("downloads the saved Atlas as a dated file, and has nothing to export when empty", async () => {
+      const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:atlas");
+      vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+      const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      save([pin, second]);
+      mount();
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      expect(click).toHaveBeenCalledTimes(1);
+      expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toMatch(/^beacon-atlas-\d{4}-\d{2}-\d{2}\.json$/);
+      const exported = JSON.parse(await createObjectURL.mock.calls[0]![0].text());
+      expect(exported).toMatchObject({ format: "beacon-atlas", range: "24h", pins: [{ kind: "node", ...pin }, { kind: "node", ...second }] });
+      localStorage.clear();
+    });
+
+    it("loads a file straight into an empty Atlas", async () => {
+      mount();
+      expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+      choose(file([{ kind: "node", ...pin }]));
+      expect(await screen.findByText("Imported 1 card.")).toBeInTheDocument();
+      expect(stored()).toEqual({ version: 2, range: "3d", pins: [{ kind: "node", ...pin }] });
+    });
+
+    it("asks before replacing saved cards, and keeps them on Cancel", async () => {
+      save([pin]);
+      mount();
+      choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
+      const prompt = await screen.findByRole("alertdialog", { name: "Replace your Atlas?" });
+      expect(prompt).toHaveTextContent("Replace your 1 saved card with the 1 in this file?");
+      fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
+      expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
+      choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
+      fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Replace" }));
+      expect(stored().pins).toEqual([{ kind: "node", ...second }]);
+      expect(screen.getByText("Imported 1 card. 1 entry skipped (duplicate, invalid or over the limit).")).toBeInTheDocument();
+    });
+
+    it("refuses a file that is not an Atlas export without touching saved cards", async () => {
+      save([pin]);
+      mount();
+      choose(new File(["{\"version\":2,\"pins\":[]}"], "other.json"));
+      expect(await screen.findByText(/not a Beacon Atlas export/)).toBeInTheDocument();
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
+    });
+  });
+
   it("marks node results that are also observers", async () => {
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, isObserver: true, observerId }], hasMore: false, nextCursor: null });
     mount();
@@ -246,7 +325,7 @@ describe("My Atlas", () => {
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
     expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "false");
     expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
-    fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder" }), { key: "ArrowRight" });
+    fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder, or use the arrow keys" }), { key: "ArrowRight" });
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");

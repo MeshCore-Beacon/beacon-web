@@ -5,6 +5,7 @@ import { useHasHover } from "../../hooks/useMediaQuery";
 import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
 import type { ResolvedHop, ResolvedNode } from "../../types/api";
 import type { PathConfidence } from "../../types/enums";
+import { EmojiText } from "../../components/EmojiText";
 
 // hash block tint by resolution confidence
 const HOP_BLOCK_CLASSES: Record<PathConfidence, string> = {
@@ -123,11 +124,11 @@ export function HopPopover({ hop, onViewNode, showSnr = true, children }: {
                   }}
                   className="cursor-pointer text-left hover:text-primary hover:underline"
                 >
-                  {nodeLabel(node)}
+                  <EmojiText text={nodeLabel(node)} />
                 </button>
               ))
             ) : (
-              nodes.map((node) => <span key={node.id}>{nodeLabel(node)}</span>)
+              nodes.map((node) => <span key={node.id}><EmojiText text={nodeLabel(node)} /></span>)
             )}
             {showSnr && hop?.snr != null && (
               <span className="text-text-dim">

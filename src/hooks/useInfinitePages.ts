@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, keepPreviousData, type QueryKey } from "@tanstack/react-query";
-import type { CursorPage } from "../types/api";
+import type { CursorPage, PageParam } from "../types/api";
+import { rateLimitWaitMs } from "../api/rate-limit";
+import { fetchPage, nextPageParam } from "../api/paging";
+import { releasePage, reservePage } from "../api/page-pacer";
+import { createPageFlattener } from "../lib/infinite-pages";
 
-interface UseInfinitePagesOptions<T, C> {
+// While a list pages itself in, its rows reach the caller at most this often: re-rendering a big
+// table for every page was most of the client's work. The first page and the last show at once.
+const COMMIT_MS = 1_000;
+
+interface UseInfinitePagesOptions<T, C, P extends CursorPage<T, C>> {
   queryKey: QueryKey;
-  // fetch one page; cursor is the previous page's nextCursor (undefined for the first page)
-  queryFn: (cursor: C | undefined) => Promise<CursorPage<T, C>>;
+  // fetch one page; page is the previous page's next cursors (undefined for the first page)
+  queryFn: (page: PageParam<C> | undefined) => Promise<P>;
   // stable id accessor for dedup — pass a module-level fn so the memo isn't rebuilt every render
   getId: (item: T) => string;
   // keep the prior key's rows on screen while a new key (e.g. a filter change) loads its first page
@@ -23,13 +31,13 @@ interface UseInfinitePagesOptions<T, C> {
 // load only the first page and pull the rest on demand via loadMore(). Loads once per key (staleTime
 // Infinity, no maxPages); dedupes by id because a non-unique cursor can repeat a row across a page
 // boundary. Shared by the map and the entity tables.
-export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T, C>) {
-  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
+export function useInfinitePages<T, C = number, P extends CursorPage<T, C> = CursorPage<T, C>>({ queryKey, queryFn, getId, keepPrevious, auto = true, enabled = true }: UseInfinitePagesOptions<T, C, P>) {
+  const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
-      queryFn: ({ pageParam }) => queryFn(pageParam as C | undefined),
-      getNextPageParam: (last) => last.nextCursor ?? undefined,
-      initialPageParam: undefined as C | undefined,
+      queryFn: ({ pageParam }) => fetchPage(pageParam, queryFn),
+      getNextPageParam: nextPageParam,
+      initialPageParam: undefined as PageParam<C> | undefined,
       staleTime: Infinity,
       enabled,
       placeholderData: keepPrevious ? keepPreviousData : undefined,
@@ -42,33 +50,75 @@ export function useInfinitePages<T, C = number>({ queryKey, queryFn, getId, keep
     if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
 
-  // In auto mode, chain to the next page once the current settles — this streams rows batch by batch.
-  // In on-demand mode the caller drives loadMore() instead.
+  // In auto mode, chain to the next page once the current settles — this streams rows batch by batch,
+  // paced by the shared page budget. In on-demand mode the caller drives loadMore() instead.
+  const canChain = auto && enabled && hasNextPage && !isFetchingNextPage && !isFetchNextPageError;
+  // the page count re-arms the chain even when a fast page lands within one render
+  const pageCount = data?.pages.length ?? 0;
   useEffect(() => {
-    if (auto && enabled) loadMore();
-  }, [auto, enabled, loadMore]);
+    if (!canChain) return;
+    let fired = false;
+    const fetchNow = () => {
+      fired = true;
+      void fetchNextPage();
+    };
+    const wait = reservePage();
+    if (wait <= 0) {
+      fetchNow();
+      return;
+    }
+    const timer = setTimeout(fetchNow, wait);
+    return () => {
+      if (fired) return;
+      clearTimeout(timer);
+      releasePage();
+    };
+  }, [canChain, pageCount, fetchNextPage]);
 
-  const items = useMemo<T[]>(() => {
-    const seen = new Set<string>();
-    return (data?.pages.flatMap((p) => p.items) ?? []).filter((it) => {
-      const id = getId(it);
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  }, [data, getId]);
+  // A 429 is a pause, not a failure: once Retry-After has passed, ask again for the page it refused.
+  const rateLimited = rateLimitWaitMs(error) !== undefined;
+  useEffect(() => {
+    const wait = rateLimitWaitMs(error);
+    if (wait === undefined || !enabled || isFetching) return;
+    const timer = setTimeout(() => void (isFetchNextPageError ? fetchNextPage() : refetch()), wait);
+    return () => clearTimeout(timer);
+  }, [error, enabled, isFetching, isFetchNextPageError, fetchNextPage, refetch]);
 
-  const errored = isError || isFetchNextPageError;
+  // Hold newly landed pages back while auto-paging, publishing them together; a held view only
+  // stands in for the same query (same first page), and errors or the last page show everything.
+  const holdBack = auto && enabled && hasNextPage && !isFetchNextPageError;
+  const [shown, setShown] = useState(data);
+  const shownAt = useRef(0);
+  const visible = holdBack && shown && data && shown.pages[0] === data.pages[0] ? shown : data;
+  useEffect(() => {
+    if (!holdBack || shown === data) return;
+    const timer = setTimeout(() => {
+      shownAt.current = Date.now();
+      setShown(data);
+    }, Math.max(0, shownAt.current + COMMIT_MS - Date.now()));
+    return () => clearTimeout(timer);
+  }, [holdBack, data, shown]);
+
+  // appends each new page instead of re-walking them all (getId is expected to be stable)
+  const [cached] = useState(() => ({ getId, flatten: createPageFlattener(getId) }));
+  const items = useMemo<T[]>(
+    () => (cached.getId === getId ? cached.flatten : createPageFlattener(getId))(visible?.pages),
+    [cached, visible, getId],
+  );
+
+  const errored = (isError || isFetchNextPageError) && !rateLimited;
   return {
     items,
     loadedCount: items.length,
     // drop the loading state on error so the pill hides instead of hanging on (hasNextPage stays true
     // after a failed page); callers surface isError separately. In auto mode hasNextPage counts as
     // "still paging" (more is coming); in on-demand mode only an in-flight fetch does.
-    isPaging: (isFetching || (auto && hasNextPage)) && !errored,
+    isPaging: (isFetching || (auto && hasNextPage) || rateLimited) && !errored,
     isError: errored,
-    isLoading,
+    isLoading: isLoading || (rateLimited && data === undefined),
     hasMore: hasNextPage && !errored,
     loadMore,
+    // the shown first page, for what a page says about the whole list (e.g. the order it is in)
+    firstPage: visible?.pages[0],
   };
 }

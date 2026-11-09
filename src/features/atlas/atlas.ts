@@ -2,7 +2,8 @@ import { ApiError, getNode, getNodeObservations, getNodesPage, isNotFound } from
 import type { Node, NodeObservation, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
-export const ATLAS_KEY = "beacon-my-atlas-v1";
+export const ATLAS_KEY = "beacon-my-atlas-v2";
+export const ATLAS_LEGACY_KEY = "beacon-my-atlas-v1";
 export const ATLAS_LIMIT = 12;
 export const REPORT_LIMIT = 200;
 export type AtlasRange = "24h" | "3d";
@@ -34,6 +35,32 @@ export function parseAtlas(raw: string | null): SavedAtlas {
     }
     return { version: 2, range: value.range === "3d" ? "3d" : "24h", pins };
   } catch { return empty; }
+}
+
+// The export file is the saved Atlas plus a format tag. Web and app read and write the same file.
+export const ATLAS_FILE_FORMAT = "beacon-atlas";
+export const ATLAS_FILE_MAX_BYTES = 256_000;
+
+export function atlasFile(saved: SavedAtlas, now = Date.now()): string {
+  return JSON.stringify({ format: ATLAS_FILE_FORMAT, version: 2, exportedAt: now, range: saved.range, pins: saved.pins }, null, 2);
+}
+
+export const atlasFileName = (now = new Date()) => `beacon-atlas-${now.toISOString().slice(0, 10)}.json`;
+
+export interface AtlasImport { atlas: SavedAtlas; skipped: number }
+
+// null when the text is not an Atlas export. Pins go through the same checks, dedupe and cap as a restore.
+export function readAtlasFile(text: string): AtlasImport | null {
+  if (text.length > ATLAS_FILE_MAX_BYTES) return null;
+  let value: { format?: unknown; pins?: unknown };
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!value || typeof value !== "object" || value.format !== ATLAS_FILE_FORMAT || !Array.isArray(value.pins)) return null;
+  const atlas = parseAtlas(JSON.stringify(value));
+  return { atlas, skipped: value.pins.length - atlas.pins.length };
 }
 
 function toPin(raw: unknown, legacy: boolean): AtlasPin | null {

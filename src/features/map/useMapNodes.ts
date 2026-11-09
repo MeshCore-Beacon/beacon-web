@@ -3,13 +3,16 @@ import type {
   Map as MapLibreMap,
   GeoJSONSource,
   ExpressionSpecification,
+  FilterSpecification,
   SymbolLayerSpecification,
+  CircleLayerSpecification,
   MapLayerMouseEvent,
 } from "maplibre-gl";
 import Spiderfy from "@nazka/map-gl-js-spiderfy";
 import type { FeatureCollection, Point } from "geojson";
-import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, SELECTION_RING_ICON_ID } from "./node-icons";
+import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, SELECTION_RING_ICON_ID, nodeTypeColor } from "./node-icons";
 import type { NodeFeatureProps } from "./node-geojson";
+import { idleDotTypes } from "./live-map";
 import {
   NODES_SOURCE_ID,
   NODES_CLUSTER_LAYER_ID,
@@ -24,6 +27,12 @@ import {
   NODE_LABEL_MIN_ZOOM,
   LIVE_DIM_OPACITY,
   LIVE_CLUSTER_DIM_OPACITY,
+  LIVE_DOTS_LAYER_ID,
+  LIVE_LIT_ICON_LAYER_ID,
+  LIT_CLICK_MIN_GLOW,
+  LIVE_DOT_OPACITY,
+  LIVE_DOT_RADIUS_STOPS,
+  NEIGHBORS_LINE_LAYER_ID,
   NODE_TYPE_NAMES,
   NODE_ICON_UNKNOWN,
   nodeIconId,
@@ -86,8 +95,12 @@ const ICON_IMAGE: ExpressionSpecification = [
 
 // Node labels fade in only past NODE_LABEL_MIN_ZOOM.
 const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
-// Live mode: dim to the idle floor, but lift a currently-flashing node to full (feature-state glow 0..1).
-const LIVE_ICON_OPACITY: ExpressionSpecification = ["max", LIVE_DIM_OPACITY, ["coalesce", ["feature-state", "glow"], 0]];
+
+const UNCLUSTERED = ["!", ["has", "point_count"]] as ExpressionSpecification;
+const ALL_DOT_TYPES = idleDotTypes("");
+const LIVE_DOT_RADIUS = ["interpolate", ["linear"], ["zoom"], ...LIVE_DOT_RADIUS_STOPS.flat()] as unknown as ExpressionSpecification;
+const dotsFilter = (types: string[]) =>
+  ["all", UNCLUSTERED, ["in", ["get", "nodeTypeName"], ["literal", types]]] as FilterSpecification;
 
 const SPIDER_LEAVES_LAYOUT: SymbolLayerSpecification["layout"] = {
   "icon-image": ICON_IMAGE,
@@ -107,26 +120,30 @@ export function useMapNodes(
   clustered: boolean,
   onSelectNode: (id: string) => void,
   selectedNodeId: string | null,
-  // live packet-flow on: fade every node (a crossed one lifts via feature-state glow)
+  // live packet-flow on: idle nodes become dots and only the selected node keeps its marker
   live: boolean,
   // selection focus: keep only these node ids lit and fade the rest; null = off
   focusIds: string[] | null,
   // identity of the dataset (region + type filter); an open spiderfy fan closes when it changes,
   // since its leaves were drawn from the previous dataset
   resetKey = "",
+  // node types drawn as idle dots while live is on
+  dotTypes: string[] = ALL_DOT_TYPES,
 ) {
   const geojsonRef = useRef(geojson);
   const spiderRef = useRef<Spiderfy | null>(null);
   const onSelectNodeRef = useRef(onSelectNode);
   const selectedNodeIdRef = useRef(selectedNodeId);
   const appliedClusteredRef = useRef(clustered);
+  const dotTypesRef = useRef(dotTypes);
 
   // handlers below capture map at attach time; read live state through these refs
   useEffect(() => {
     geojsonRef.current = geojson;
     onSelectNodeRef.current = onSelectNode;
     selectedNodeIdRef.current = selectedNodeId;
-  }, [geojson, onSelectNode, selectedNodeId]);
+    dotTypesRef.current = dotTypes;
+  }, [geojson, onSelectNode, selectedNodeId, dotTypes]);
 
   // Track device-pixel-ratio so icons re-rasterize at full resolution across a DPR change (e.g.
   // dragging the window to another monitor). A matchMedia(dppx) query fires once then goes stale,
@@ -158,7 +175,7 @@ export function useMapNodes(
     // maplibre fixes `cluster` at source creation, so toggling clustering means recreating the
     // source. The spiderfy effect below also keys on `clustered` and re-applies itself around this.
     if (appliedClusteredRef.current !== clustered && map.getSource(NODES_SOURCE_ID)) {
-      for (const id of [NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
+      for (const id of [LIVE_DOTS_LAYER_ID, NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
       map.removeSource(NODES_SOURCE_ID);
@@ -175,8 +192,6 @@ export function useMapNodes(
         cluster: clustered,
         clusterRadius: CLUSTER_RADIUS,
         clusterMaxZoom: CLUSTER_MAX_ZOOM,
-        // promote the node id so live packet-flow can flash individual nodes via feature-state
-        promoteId: "id",
       });
     }
 
@@ -277,6 +292,32 @@ export function useMapNodes(
     }
     syncLeafSelectionRing(map, selectedNodeIdRef.current);
 
+    // Live Map's idle nodes as small solid dots in their type colour, at the bottom of the node stack
+    // so neighbour lines, the selection and every packet layer draw over them. Hidden until live.
+    const dotColor = [
+      "match",
+      ["get", "nodeTypeName"],
+      ...NODE_TYPE_NAMES.flatMap((t) => [t, nodeTypeColor(t)]),
+      nodeTypeColor(""),
+    ] as unknown as ExpressionSpecification;
+    if (!map.getLayer(LIVE_DOTS_LAYER_ID)) {
+      const lowest = (map.getStyle()?.layers ?? []).find(
+        (l) => l.id === NODES_SELECTED_LAYER_ID || l.id === NEIGHBORS_LINE_LAYER_ID,
+      )?.id;
+      map.addLayer(
+        {
+          id: LIVE_DOTS_LAYER_ID,
+          type: "circle",
+          source: NODES_SOURCE_ID,
+          filter: dotsFilter(dotTypesRef.current),
+          layout: { visibility: "none" },
+          paint: { "circle-color": dotColor, "circle-radius": LIVE_DOT_RADIUS, "circle-opacity": LIVE_DOT_OPACITY },
+        } as CircleLayerSpecification,
+        lowest,
+      );
+    }
+    map.setPaintProperty(LIVE_DOTS_LAYER_ID, "circle-color", dotColor);
+
     // node-label colors track the basemap dark/light flag (cluster count is white on the hexagon)
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-color", textColor);
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-halo-color", halo);
@@ -328,10 +369,10 @@ export function useMapNodes(
     syncLeafSelectionRing(map, selectedNodeId);
   }, [mapRef, isReady, selectedNodeId]);
 
-  // Base-layer opacity for the two "fade all but a subset" dim modes. Single owner of icon/text
-  // opacity so live mode and selection focus never fight over the paint property; re-applies after a
-  // style/theme/clustering rebuild via the deps. Live wins over focus. The live-mode packet glow
-  // rides feature-state (set by useMapPacketFlow's loop), so it needs no re-run here.
+  // What the node layers show in each mode. Single owner of the markers' filter and icon/text
+  // opacity so live mode and selection focus never fight over them; re-applies after a
+  // style/theme/clustering rebuild via the deps. Live wins over focus: idle nodes become dots and
+  // only the selected node keeps its marker (lit nodes are drawn by useMapPacketFlow).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
@@ -339,10 +380,19 @@ export function useMapNodes(
     const focusCase = (lit: ExpressionSpecification | number, dim: ExpressionSpecification | number) =>
       ["case", ["in", ["get", "id"], ["literal", focusIds ?? []]], lit, dim] as ExpressionSpecification;
 
-    const iconOpacity: ExpressionSpecification | number = live ? LIVE_ICON_OPACITY : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
+    const iconOpacity: ExpressionSpecification | number = live ? 1 : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
     const labelOpacity: ExpressionSpecification | number = live ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
     const dimActive = live || Boolean(focusIds);
+    if (map.getLayer(LIVE_DOTS_LAYER_ID)) {
+      map.setFilter(LIVE_DOTS_LAYER_ID, dotsFilter(dotTypes));
+      map.setLayoutProperty(LIVE_DOTS_LAYER_ID, "visibility", live ? "visible" : "none");
+    }
     if (map.getLayer(NODES_POINT_LAYER_ID)) {
+      // filtered rather than faded, so live mode leaves no invisible click targets behind
+      map.setFilter(
+        NODES_POINT_LAYER_ID,
+        live ? (["all", UNCLUSTERED, ["==", ["get", "id"], selectedNodeId ?? ""]] as FilterSpecification) : UNCLUSTERED,
+      );
       map.setPaintProperty(NODES_POINT_LAYER_ID, "icon-opacity", iconOpacity);
       map.setPaintProperty(NODES_POINT_LAYER_ID, "text-opacity", labelOpacity);
     }
@@ -351,7 +401,7 @@ export function useMapNodes(
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "icon-opacity", dimActive ? LIVE_CLUSTER_DIM_OPACITY : 1);
       map.setPaintProperty(NODES_CLUSTER_LAYER_ID, "text-opacity", dimActive ? 0 : 1);
     }
-  }, [mapRef, isReady, live, focusIds, clustered, themeKey]);
+  }, [mapRef, isReady, live, focusIds, clustered, themeKey, selectedNodeId, dotTypes]);
 
   // Push new node data into the source as it arrives; the source re-clusters automatically.
   useEffect(() => {
@@ -397,6 +447,12 @@ export function useMapNodes(
     }
 
     const onPointClick = (e: MapLayerMouseEvent) => {
+      // a lit icon draws over the markers and dots, so a click on one belongs to that lit node
+      if (
+        map.getLayer(LIVE_LIT_ICON_LAYER_ID) &&
+        map.queryRenderedFeatures(e.point, { layers: [LIVE_LIT_ICON_LAYER_ID] }).some((f) => Number(f.properties?.["glow"]) >= LIT_CLICK_MIN_GLOW)
+      )
+        return;
       const id = e.features?.[0]?.properties?.["id"];
       if (typeof id === "string") onSelectNodeRef.current(id);
     };
@@ -407,7 +463,8 @@ export function useMapNodes(
       map.getCanvas().style.cursor = "";
     };
     map.on("click", NODES_POINT_LAYER_ID, onPointClick);
-    for (const layer of [NODES_POINT_LAYER_ID, NODES_CLUSTER_LAYER_ID]) {
+    map.on("click", LIVE_DOTS_LAYER_ID, onPointClick);
+    for (const layer of [NODES_POINT_LAYER_ID, NODES_CLUSTER_LAYER_ID, LIVE_DOTS_LAYER_ID]) {
       map.on("mouseenter", layer, setPointer);
       map.on("mouseleave", layer, clearPointer);
     }
@@ -425,9 +482,10 @@ export function useMapNodes(
 
     return () => {
       map.off("click", NODES_POINT_LAYER_ID, onPointClick);
+      map.off("click", LIVE_DOTS_LAYER_ID, onPointClick);
       map.off("click", onClickResync);
       map.off("moveend", resyncLeafRing);
-      for (const layer of [NODES_POINT_LAYER_ID, NODES_CLUSTER_LAYER_ID]) {
+      for (const layer of [NODES_POINT_LAYER_ID, NODES_CLUSTER_LAYER_ID, LIVE_DOTS_LAYER_ID]) {
         map.off("mouseenter", layer, setPointer);
         map.off("mouseleave", layer, clearPointer);
       }

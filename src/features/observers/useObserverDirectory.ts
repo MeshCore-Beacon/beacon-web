@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import { getObserverDirectoryPage, supportsObserverDirectory } from "../../api/client";
-import { queryRetryDelay } from "../../api/rate-limit";
+import { getObserverDirectoryPage, getServerInfo } from "../../api/client";
+import { isBelowVersion } from "../../lib/version";
 import { API_BASE } from "../../lib/constants";
 import { useWsObserverStatusHandler } from "../../hooks/useWsHandlers";
 import { useStatsRegion } from "../stats/useStats";
@@ -19,17 +19,24 @@ export interface ObserverDirectoryOptions {
 }
 
 type Continuation = { cursor: number; since: number; until: number } | undefined;
+const retryDelay = (attempt: number, error: Error) =>
+  (error as { retryAfterMs?: number }).retryAfterMs ?? Math.min(1000 * 2 ** attempt, 30_000);
+
 export function useObserverDirectory(wsManager: WsManager, options: ObserverDirectoryOptions) {
   const { where, regionKey, isResolved } = useStatsRegion();
   const { sort, search, status, type, broker, scope } = options;
   const queryClient = useQueryClient();
-  const capability = useQuery({
-    queryKey: ["observer-directory-support", API_BASE],
-    queryFn: ({ signal }) => supportsObserverDirectory(signal),
+  // The version gate has already loaded /info; sharing its query keeps it from delaying the list.
+  const info = useQuery({
+    queryKey: ["server-info"],
+    queryFn: getServerInfo,
     enabled: isResolved !== false,
     staleTime: 60_000,
-    retryDelay: queryRetryDelay,
+    retryDelay,
   });
+  // a server without /info predates the directory
+  const noInfo = (info.error as { status?: unknown } | null)?.status === 404;
+  const supported = noInfo ? false : info.data ? !isBelowVersion(info.data.serverVersion, "2.0.2") : undefined;
   const queryKey = useMemo(() => ["observer-directory", API_BASE, regionKey, sort, search, status, type, broker, scope],
     [regionKey, sort, search, status, type, broker, scope]);
   const list = useInfiniteQuery({
@@ -46,11 +53,12 @@ export function useObserverDirectory(wsManager: WsManager, options: ObserverDire
           params.some(p => p?.cursor === last.nextCursor)) return undefined;
       return { cursor: last.nextCursor, since: first.windowStart, until: first.windowEnd };
     },
-    enabled: isResolved !== false && capability.data === true,
+    enabled: isResolved !== false && supported === true,
     staleTime: Infinity,
-    refetchInterval: 60_000,
+    // a refetch reloads every loaded page, so past the first only the WebSocket keeps status fresh
+    refetchInterval: query => ((query.state.data?.pages.length ?? 0) > 1 ? false : 60_000),
     gcTime: 0,
-    retryDelay: queryRetryDelay,
+    retryDelay,
   });
   const first = list.data?.pages[0];
   const sortChanged = list.data?.pages.some(page => page.effectiveSort !== first?.effectiveSort) ?? false;
@@ -94,7 +102,7 @@ export function useObserverDirectory(wsManager: WsManager, options: ObserverDire
     await queryClient.resetQueries({ queryKey, exact: true });
   };
   const retry = async () => {
-    if (capability.data !== true) await capability.refetch();
+    if (supported !== true) await info.refetch();
     else if (list.isFetchNextPageError && !sortChanged) await loadMore();
     else await refresh();
   };
@@ -108,9 +116,9 @@ export function useObserverDirectory(wsManager: WsManager, options: ObserverDire
     resetKey,
     hasNextPage: list.hasNextPage,
     isFetchingNextPage: list.isFetchingNextPage,
-    isPending: !capability.isError && capability.data !== false && (capability.isPending || list.isPending),
-    isError: capability.isError || list.isError || sortChanged,
-    unsupported: capability.data === false,
+    isPending: !info.isError && supported !== false && (info.isPending || list.isPending),
+    isError: (info.isError && !noInfo) || list.isError || sortChanged,
+    unsupported: supported === false,
     loadMore,
     retry,
     refresh,

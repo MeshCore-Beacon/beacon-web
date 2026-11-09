@@ -30,11 +30,8 @@ const detail = { packetHash: report.packetHash, originPubkey: pin.publicKey, hea
 ] } as unknown as PacketDetail;
 const observerId = "33333333-3333-4333-8333-333333333333";
 const observer = { id: observerId, status: "online", lastStatusAt: Date.now() - 60_000, iata: "YKF", observerType: "repeater", radioFreqMhz: 915, radioSf: 11, radioBwKhz: 250, publicKey: pin.publicKey, firstSeen: 1, lastSeen: 2, observationCount: 5, brokers: [], uptimeSeconds: 90_000 } as Observer;
-const activity = { range: "24h", interval: "1h", radio: null, payloadTypes: [{ payloadType: 4, payloadTypeName: "ADVERT", count: 9 }, { payloadType: 5, payloadTypeName: "GRP_TXT", count: 3 }], points: [{ t: Date.now() - 3_600_000, observations: 12, snrAvg: 6.5, snrMin: null, rssiAvg: null, airtimeMs: null }] };
-const telemetry = { range: "24h", interval: "1h", points: [
-  { t: Date.now() - 2 * 3_600_000, batteryMv: 4100, noiseFloorDb: -115, airtimeTxSecs: 1000, airtimeRxSecs: 5000, uptimeSeconds: null, queueLength: null, receiveErrors: null },
-  { t: Date.now() - 3_600_000, batteryMv: 4120, noiseFloorDb: -117, airtimeTxSecs: 1036, airtimeRxSecs: 5288, uptimeSeconds: null, queueLength: null, receiveErrors: null },
-] };
+const activity = { range: "24h", interval: "1h", radio: null, payloadTypes: [], points: [{ t: Date.now() - 3_600_000, observations: 12, snrAvg: 6.5, snrMin: null, rssiAvg: null, airtimeMs: null }] };
+const telemetry = { range: "24h", interval: "1h", points: [{ t: Date.now() - 3_600_000, batteryMv: 4120, noiseFloorDb: -117, airtimeTxSecs: null, airtimeRxSecs: null, uptimeSeconds: null, queueLength: null, receiveErrors: null }] };
 const handlers = {
   onViewNode: vi.fn(),
   onViewObserver: vi.fn(),
@@ -152,7 +149,7 @@ describe("AtlasCard", () => {
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(api.getPacketDetail).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Move/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).toBeInTheDocument();
     const picker = screen.getByRole("group", { name: "Card view" });
     expect(within(picker).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(within(picker).getByRole("button", { name: "Heard by" }));
@@ -188,7 +185,7 @@ describe("AtlasCard", () => {
     vi.mocked(api.getNode).mockRejectedValue(new Error("down"));
     mount({ handle: { "data-grip": "yes" } as Record<string, string> });
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load");
-    expect(screen.getByRole("button", { name: "Drag to reorder" })).toHaveAttribute("data-grip", "yes");
+    expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).toHaveAttribute("data-grip", "yes");
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(handlers.onRemove).toHaveBeenCalled();
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
@@ -215,20 +212,15 @@ describe("AtlasCard", () => {
     vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
     vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
     mount({ view: "observer" });
-    expect(await screen.findByText("Airtime")).toBeInTheDocument();
+    expect(await screen.findByText("Packets heard")).toBeInTheDocument();
     await screen.findByText("12");
-    expect(screen.getByText("9.0%")).toBeInTheDocument();
-    expect(screen.getByText("TX 1.0% · RX 8.0%")).toBeInTheDocument();
-    expect(screen.getByText("Packet types")).toBeInTheDocument();
-    expect(screen.getByText(/advert 75%/)).toBeInTheDocument();
-    expect(screen.getByText(/grp_txt 25%/)).toBeInTheDocument();
-    expect(screen.getByText("-117 dB")).toBeInTheDocument();
+    expect(screen.getByText("6.5 dB")).toBeInTheDocument();
+    expect(screen.getByText("-117 dBm")).toBeInTheDocument();
     expect(screen.getByText("4.12V")).toBeInTheDocument();
     expect(screen.getByText("Online")).toBeInTheDocument();
     expect(screen.getByText("915 MHz · SF11 · 250 kHz").closest(".flex-wrap")).toBeInTheDocument();
-    expect(screen.getByText("Airtime").closest(".grid")).toHaveClass("flex-1", "grid-cols-2");
+    expect(screen.getByText("Packets heard").closest(".grid")).toHaveClass("flex-1", "grid-cols-2");
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
-    expect(screen.queryByText("Packets heard")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Observer" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -281,7 +273,7 @@ describe("AtlasCard", () => {
     vi.mocked(api.getObserverActivity).mockReturnValue(new Promise(() => {}));
     vi.mocked(api.getObserverTelemetry).mockReturnValue(new Promise(() => {}));
     mount({ pin: { ...pin, observerId }, view: "observer" });
-    expect(await screen.findByText("Airtime")).toBeInTheDocument();
+    expect(await screen.findByText("Packets heard")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Loading");
     await waitFor(() => expect(handlers.onResolved).toHaveBeenCalledWith("22222222-2222-4222-8222-222222222222", observerId));
   });

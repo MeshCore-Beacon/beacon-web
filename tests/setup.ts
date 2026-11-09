@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
-import i18n from "../src/i18n";
+import { afterEach, beforeAll, vi } from "vitest";
+import i18n, { languages } from "../src/i18n";
 
 // jsdom doesn't implement matchMedia. Provide a default stub so components that read media queries
 // mount as "desktop" by default — a hover-capable pointer, not below the mobile width. Individual
@@ -37,6 +37,9 @@ if (!globalThis.localStorage) {
     writable: true,
   });
 }
+
+// The app loads a non-English catalog on first use; tests may read any language without switching to it.
+beforeAll(() => i18n.loadLanguages(languages.map(({ code }) => code)));
 
 afterEach(async () => {
   cleanup();

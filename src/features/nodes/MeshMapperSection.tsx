@@ -14,7 +14,7 @@ function ScopeRow({ scope }: { scope: MeshMapperScope }) {
   const latest = Math.max(scope.observedAt ?? 0, scope.reportedAt ?? 0, scope.uploadedAt ?? 0);
   return (
     <div className="flex items-baseline gap-2 min-w-0">
-      <span className="text-text-normal truncate min-w-0" title={scope.scope}>{scope.scope}</span>
+      <span className="text-text-normal shrink-0" title={scope.scope}>{scope.scope}</span>
       {how && <span className="text-text-muted text-[11px] truncate min-w-0">{how}</span>}
       {latest > 0 && <Timestamp value={latest} className="ml-auto shrink-0 text-text-dim text-[11px]" />}
     </div>

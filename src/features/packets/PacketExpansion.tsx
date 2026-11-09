@@ -10,6 +10,7 @@ import { useIsMobile } from "../../hooks/useMediaQuery";
 import { PayloadType } from "../../types/enums";
 import { buildPacketPaths } from "../map/packet-path";
 import { traceSnrValues } from "./packet-investigation";
+import { EmojiText } from "../../components/EmojiText";
 
 // Roughly what fits the scroll cap; observations are unbounded server-side.
 const SKELETON_ROW_CAP = 12;
@@ -60,7 +61,7 @@ export function PacketExpansion({ packet, onOpenAnalyzer, onViewPath, selectedOb
         <span className="hidden md:inline">
           {t("packetRow.observer")}{" "}
           {observer
-            ? <span className="text-text-normal">{observer.displayName ?? observer.id.slice(0, 8)}</span>
+            ? <span className="text-text-normal"><EmojiText text={observer.displayName ?? observer.id.slice(0, 8)} /></span>
             : <span className="text-text-dim">{t("packetEndpoints.na")}</span>}
         </span>
         <span>{t("packetRow.first")} <Timestamp value={packet.firstHeardAt} /></span>

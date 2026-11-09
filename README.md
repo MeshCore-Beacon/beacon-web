@@ -63,6 +63,7 @@ The UI is translatable; see [docs/translations.md](docs/translations.md) to add 
   Dockerfile              # multi-stage build (Node + Caddy)
   Caddyfile               # internal Caddy config (static file serving)
   docker-entrypoint.sh    # runtime env var injection
+  compress-assets.mjs     # brotli/gzip copies of dist/assets for Caddy
 src/
   api/
     client.ts             # typed REST client (fetch wrapper)

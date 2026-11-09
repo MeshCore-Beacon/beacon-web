@@ -5,6 +5,12 @@ import {
   CLUSTER_ICON_ID,
   CLUSTER_ICON_IDS,
   CLUSTER_BUCKETS,
+  PACKET_FLOW_COLOR,
+  LIT_RING_RADIUS,
+  LIT_RING_WIDTH,
+  LIT_GLOW_RADIUS,
+  LIT_GLOW_OPACITY,
+  litIconId,
 } from "./types";
 
 // Marker icons: per-type SVG + cluster hexagon, recolored and rasterized to maplibre images (unknown
@@ -38,6 +44,12 @@ const NODE_TYPE_COLOR: Record<string, { colorVar: string; fallback: string }> = 
   sensor: { colorVar: "--palette-warn", fallback: "#EAB308" },
 };
 
+export function nodeTypeColor(typeName: string): string {
+  const c = NODE_TYPE_COLOR[typeName];
+  if (!c) return "#73737B";
+  return getComputedStyle(document.documentElement).getPropertyValue(c.colorVar).trim() || c.fallback;
+}
+
 // Observer is a ROLE pip layered on any type; keep a fixed accent so it reads consistently and
 // contrasts the (theme-tinted) node color.
 const OBSERVER_COLOR = "#c79bff";
@@ -56,7 +68,7 @@ export const SELECTION_RING_ICON_ID = "node-selection-ring";
 
 // Every image id the map layers reference, so they can be provided up front (one per cluster density).
 export const MAP_ICON_IDS: string[] = [
-  ...NODE_TYPE_NAMES.flatMap((t) => [nodeIconId(t), nodeObserverIconId(t)]),
+  ...NODE_TYPE_NAMES.flatMap((t) => [nodeIconId(t), nodeObserverIconId(t), litIconId(t)]),
   NODE_ICON_UNKNOWN,
   ...CLUSTER_ICON_IDS,
   SELECTION_RING_ICON_ID,
@@ -95,6 +107,29 @@ function styleSvg(
     out = out.replace("drop-shadow(0 0 4px currentColor)", "drop-shadow(0 0 2px rgba(0,0,0,0.55))");
   }
   return out;
+}
+
+// A Live Map lit node: the type's glyph in white on a disc of its colour, with a soft glow and the
+// packet-orange ring drawn into the same image so the ring stacks with its own marker. Uses the
+// marker's padded 88-unit box, so px values scale by 88 / MARKER_SIZE.
+export function litIconSvg(glyphSvg: string, color: string): string {
+  const unit = (px: number) => (px * 88) / MARKER_SIZE;
+  const glyph = (glyphSvg.match(/<g [^>]*stroke="currentColor"[^>]*>[\s\S]*?<\/g>/)?.[0] ?? "").replaceAll(
+    "currentColor",
+    "#ffffff",
+  );
+  const glowR = unit(LIT_GLOW_RADIUS);
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -12 88 88" width="88" height="88">` +
+    `<defs><radialGradient id="glow" cx="32" cy="32" r="${glowR}" gradientUnits="userSpaceOnUse">` +
+    `<stop offset="0" stop-color="${color}" stop-opacity="${LIT_GLOW_OPACITY}"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>` +
+    `</radialGradient></defs>` +
+    `<circle cx="32" cy="32" r="${glowR}" fill="url(#glow)"/>` +
+    `<circle cx="32" cy="32" r="${unit(LIT_RING_RADIUS)}" fill="none" stroke="${PACKET_FLOW_COLOR}" stroke-width="${unit(LIT_RING_WIDTH)}"/>` +
+    `<circle cx="32" cy="32" r="29" fill="${color}" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2"/>` +
+    glyph +
+    `</svg>`
+  );
 }
 
 async function rasterizeSvg(
@@ -220,6 +255,16 @@ export async function rasterizeNodeIcon(id: string, isDark: boolean): Promise<Ra
   if (id === SELECTION_RING_ICON_ID) {
     const primary = styles.getPropertyValue("--palette-primary").trim() || "#3B82F6";
     return { data: drawSelectionRing(primary, scale), pixelRatio: scale };
+  }
+
+  // Lit icons look the same on every basemap, so they always take the glyph from the dark set.
+  const LIT_PREFIX = litIconId("");
+  if (id.startsWith(LIT_PREFIX)) {
+    const type = id.slice(LIT_PREFIX.length);
+    const glyph = svgText(type, false, true);
+    if (!NODE_TYPE_COLOR[type] || !glyph) return null;
+    const data = await rasterizeSvg(litIconSvg(glyph, nodeTypeColor(type)), scale, MARKER_SIZE);
+    return { data, pixelRatio: scale };
   }
 
   const PREFIX = "node-";

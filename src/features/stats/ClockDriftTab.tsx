@@ -7,6 +7,7 @@ import { IataChip } from "../../components/IataChip";
 import { Timestamp } from "../../components/Timestamp";
 import { formatClockDrift } from "../../lib/formatters";
 import type { ClockDriftEntry } from "./types";
+import { EmojiText } from "../../components/EmojiText";
 
 // every row is already past the drift threshold; flag the worst (>= 1h off) more urgently
 function driftClass(seconds: number) {
@@ -26,7 +27,7 @@ export function ClockDriftTab() {
       cell: (e) => (
         <div className="flex min-w-0 items-center gap-2">
           <span className={`truncate ${e.nodeName ? "text-text-normal" : "italic text-text-dim"}`}>
-            {e.nodeName ?? e.nodeId.slice(0, 8)}
+            <EmojiText text={e.nodeName ?? e.nodeId.slice(0, 8)} />
           </span>
           <Badge variant="default">{e.nodeTypeName}</Badge>
         </div>
@@ -63,7 +64,7 @@ export function ClockDriftTab() {
   const renderCard = (e: ClockDriftEntry) => (
     <div className="flex flex-col gap-1.5 font-mono text-xs">
       <div className="flex items-center justify-between gap-2">
-        <span className={`min-w-0 flex-1 truncate ${e.nodeName ? "text-text-normal" : "italic text-text-dim"}`}>{e.nodeName ?? e.nodeId.slice(0, 8)}</span>
+        <span className={`min-w-0 flex-1 truncate ${e.nodeName ? "text-text-normal" : "italic text-text-dim"}`}><EmojiText text={e.nodeName ?? e.nodeId.slice(0, 8)} /></span>
         <span className="shrink-0"><Badge variant="default">{e.nodeTypeName}</Badge></span>
       </div>
       <div className="flex items-center justify-between gap-2">

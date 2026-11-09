@@ -12,8 +12,10 @@ this browser; an unset or empty string in a catalog falls back to English.
    native name appears in the language picker automatically. No central language
    list, plugin or translation server is needed.
 
-Missing or empty translations fall back to English. Catalogs are bundled with the
-application, so a new language requires a web build/deployment. Keep English as
+Missing or empty translations fall back to English. Catalogs are built into the
+application (English in the main bundle, each other language fetched when first
+used), so a new language requires a web build/deployment; restart a running dev
+server to see a new catalog's name in the picker. Keep English as
 the complete source catalog. Every selectable language must have a native name
 and at least one translated string. Use plain text, not HTML, in translations.
 
