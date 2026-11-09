@@ -91,6 +91,7 @@ export function StatCard({
   presence,
   sublabel,
   compact,
+  visual,
 }: {
   label: string;
   value: ReactNode;
@@ -100,6 +101,7 @@ export function StatCard({
   presence?: boolean[];
   sublabel?: ReactNode;
   compact?: boolean; // narrow tiles: value stays text-xl so "-77.2 dBm" never wraps
+  visual?: ReactNode; // replaces the sparkline; keep it near the sparkline's height
 }) {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-bg-surface px-3.5 py-3">
@@ -109,7 +111,7 @@ export function StatCard({
       </div>
       <div className={`mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright ${compact ? "" : "sm:text-2xl"}`}>{value}</div>
       <div className="mt-auto">
-        {presence ? <PresenceStrip hours={presence} color={accent} /> : spark ? <Sparkline values={spark} color={accent} markPeak={markPeak} /> : sparkSpacer}
+        {visual ?? (presence ? <PresenceStrip hours={presence} color={accent} /> : spark ? <Sparkline values={spark} color={accent} markPeak={markPeak} /> : sparkSpacer)}
       </div>
     </div>
   );
