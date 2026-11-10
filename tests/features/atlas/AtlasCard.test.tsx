@@ -46,13 +46,14 @@ const handlers = {
   onResolved: vi.fn(),
   onUpgrade: vi.fn(),
   onTilesChange: vi.fn(),
+  onPinView: vi.fn(),
 };
 let client: QueryClient;
 
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
-      <AtlasCard pin={pin} range="24h" active view="analytics" handle={{}} {...handlers} {...overrides} />
+      <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} {...handlers} {...overrides} />
     </QueryClientProvider>,
   );
 }
@@ -167,7 +168,7 @@ describe("AtlasCard", () => {
     expect(handlers.onViewChange).toHaveBeenCalledWith("heard");
     view.rerender(
       <QueryClientProvider client={client}>
-        <AtlasCard pin={pin} range="24h" active view="heard" handle={{}} {...handlers} />
+        <AtlasCard pin={pin} range="24h" active view="heard" home="analytics" handle={{}} {...handlers} />
       </QueryClientProvider>,
     );
     const summary = await screen.findByText(/2 observers heard the latest packet/);
@@ -303,7 +304,7 @@ describe("AtlasCard", () => {
     for (let i = 0; i < 3; i++) {
       view.rerender(
         <QueryClientProvider client={client}>
-          <AtlasCard pin={{ ...observerPin }} range="24h" active view="observer" handle={{}} {...handlers} onUpgrade={vi.fn()} />
+          <AtlasCard pin={{ ...observerPin }} range="24h" active view="observer" home="observer" handle={{}} {...handlers} onUpgrade={vi.fn()} />
         </QueryClientProvider>,
       );
     }
@@ -321,6 +322,48 @@ describe("AtlasCard", () => {
     expect(await screen.findByText("Airtime")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Loading");
     await waitFor(() => expect(handlers.onResolved).toHaveBeenCalledWith("22222222-2222-4222-8222-222222222222", observerId));
+  });
+
+  describe("pinned view control", () => {
+    const toggle = () => screen.getByRole("button", { name: "Open on this tab" });
+
+    it("is pressed on the tab the card opens on and does nothing there", async () => {
+      mount();
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(toggle()).toHaveAttribute("aria-pressed", "true");
+      expect(toggle()).toHaveClass("bg-primary/10");
+      fireEvent.click(toggle());
+      expect(handlers.onPinView).not.toHaveBeenCalled();
+    });
+
+    it("pins the tab being looked at when that is not where the card opens", async () => {
+      mount({ view: "heard" });
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(toggle()).toHaveAttribute("aria-pressed", "false");
+      expect(toggle()).not.toHaveClass("bg-primary/10");
+      fireEvent.click(toggle());
+      expect(handlers.onPinView).toHaveBeenCalledWith("heard");
+      expect(handlers.onViewChange).not.toHaveBeenCalled();
+    });
+
+    it("sits beside the view switch and is missing from a card with one view", async () => {
+      const first = mount({ view: "heard", home: "heard" });
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(toggle()).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("group", { name: "Card view" }).parentElement).toContainElement(toggle());
+      first.unmount();
+      vi.mocked(api.getObserver).mockResolvedValue({ ...observer, publicKey: "" });
+      mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer", home: "observer" });
+      await screen.findByText("repeater");
+      expect(screen.queryByRole("button", { name: "Open on this tab" })).not.toBeInTheDocument();
+    });
+
+    it("has a French label", async () => {
+      await act(() => i18n.changeLanguage("fr"));
+      mount();
+      expect(await screen.findByRole("button", { name: "Ouvrir sur cet onglet" })).toBeInTheDocument();
+      await act(() => i18n.changeLanguage("en"));
+    });
   });
 
   describe("observer view tiles", () => {

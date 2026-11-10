@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTiles, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
+import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTiles, withView, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
 import type { NodeActivity } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
@@ -96,6 +96,34 @@ describe("observer view tiles", () => {
     const text = atlasFile(saved, 1);
     expect(JSON.parse(text).pins[0].tiles).toEqual(tiles);
     expect("tiles" in JSON.parse(text).pins[1]).toBe(false);
+    expect(readAtlasFile(text)).toEqual({ atlas: saved, skipped: 0 });
+  });
+});
+
+describe("pinned card view", () => {
+  const observerPin = { kind: "observer", observerId: "44444444-4444-4444-8444-444444444444", name: "Listener" };
+  const parse = (pins: unknown[]) => parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins;
+
+  it("keeps a non-default view on a node pin", () => {
+    expect(parse([{ ...nodePin, view: "heard" }])).toEqual([{ ...nodePin, view: "heard" }]);
+    expect(parse([{ ...nodePin, view: "observer", tiles: ["snr", "battery", "types", "noise"] }])).toEqual([{ ...nodePin, view: "observer", tiles: ["snr", "battery", "types", "noise"] }]);
+  });
+
+  it("drops the default, unknown values and any view on an observer pin, keeping the pin", () => {
+    for (const bad of ["analytics", "map", "", 2, null, ["heard"]]) expect(parse([{ ...nodePin, view: bad }])).toEqual([nodePin]);
+    expect(parse([{ ...observerPin, view: "observer" }])).toEqual([observerPin]);
+  });
+
+  it("sets and clears the view without touching the rest of the pin", () => {
+    const linked = { ...nodePin, observerId: observerPin.observerId, tiles: ["snr", "battery", "types", "noise"] } as never;
+    expect(withView(linked, "observer")).toEqual({ ...(linked as object), view: "observer" });
+    expect(withView(withView(linked, "heard"), "analytics")).toEqual(linked);
+  });
+
+  it("round-trips the view through the export file", () => {
+    const saved = { version: 2 as const, range: "24h" as const, pins: parse([{ ...nodePin, view: "heard" }, observerPin]) };
+    const text = atlasFile(saved, 1);
+    expect(JSON.parse(text).pins[0].view).toBe("heard");
     expect(readAtlasFile(text)).toEqual({ atlas: saved, skipped: 0 });
   });
 });

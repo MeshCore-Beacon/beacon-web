@@ -1035,7 +1035,10 @@
       "remove": "Remove",
       "observerPartialCoverage": "Partial history",
       "changeTile": "Change tile: {{name}}",
-      "resetTiles": "Reset tiles"
+      "resetTiles": "Reset tiles",
+      "pinView": "Open on this tab",
+      "pinViewHelp": "Make this the tab the card opens on",
+      "viewPinned": "The card opens on this tab"
     }
   }
 }

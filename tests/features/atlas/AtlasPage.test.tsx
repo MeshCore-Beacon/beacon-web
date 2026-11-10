@@ -283,6 +283,120 @@ describe("Atlas page", () => {
     });
   });
 
+  describe("pinned card view", () => {
+    const stored = () => JSON.parse(localStorage.getItem(ATLAS_KEY)!);
+    const seed = (pins: unknown[]) => localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 2, range: "24h", pins }));
+    const tab = (within_: HTMLElement, name: string) => within(within_).getByRole("button", { name });
+    const toggle = (within_: HTMLElement) => within(within_).getByRole("button", { name: "Open on this tab" });
+    beforeEach(() => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+      vi.mocked(api.getObserverActivity).mockResolvedValue({ range: "24h", interval: "1h", radio: null, payloadTypes: [], points: [] });
+      vi.mocked(api.getObserverTelemetry).mockResolvedValue({ range: "24h", interval: "1h", points: [] });
+    });
+
+    it("opens a card on its pinned view, loading the observer series for a card pinned to Observer", async () => {
+      seed([{ kind: "node", ...pin, observerId, view: "observer" }, { kind: "node", ...second, view: "heard" }]);
+      mount();
+      const first = await card("Renamed repeater");
+      expect(tab(first, "Observer")).toHaveAttribute("aria-pressed", "true");
+      expect(toggle(first)).toHaveAttribute("aria-pressed", "true");
+      await waitFor(() => expect(api.getObserverActivity).toHaveBeenCalled());
+      expect(tab(await card("Second"), "Heard by")).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("falls back to Analytics while the pinned view does not apply, and keeps the saved value", async () => {
+      seed([{ kind: "node", ...pin, view: "observer" }]);
+      mount();
+      const first = await card("Renamed repeater");
+      expect(tab(first, "Analytics")).toHaveAttribute("aria-pressed", "true");
+      expect(within(first).queryByRole("button", { name: "Observer" })).not.toBeInTheDocument();
+      expect(stored().pins[0].view).toBe("observer");
+      expect(api.getObserverActivity).not.toHaveBeenCalled();
+    });
+
+    it("pins the tab being looked at, and a look at another tab leaves the saved view alone", async () => {
+      seed([{ kind: "node", ...pin }]);
+      const view = mount();
+      const first = await card("Renamed repeater");
+      fireEvent.click(tab(first, "Heard by"));
+      expect("view" in stored().pins[0]).toBe(false);
+      expect(toggle(first)).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(toggle(first));
+      expect(stored().pins).toEqual([{ kind: "node", ...pin, view: "heard" }]);
+      expect(toggle(first)).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(tab(first, "Analytics"));
+      expect(stored().pins[0].view).toBe("heard");
+      view.unmount();
+      mount();
+      expect(tab(await card("Renamed repeater"), "Heard by")).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("drops the field when Analytics is pinned again", async () => {
+      seed([{ kind: "node", ...pin, view: "heard" }]);
+      mount();
+      const first = await card("Renamed repeater");
+      fireEvent.click(tab(first, "Analytics"));
+      fireEvent.click(toggle(first));
+      expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
+    });
+
+    it("sends a card back to its pinned view when another card leaves its own", async () => {
+      seed([{ kind: "node", ...pin, view: "heard" }, { kind: "node", ...second }]);
+      mount();
+      const first = await card("Renamed repeater");
+      const other = await card("Second");
+      fireEvent.click(tab(first, "Analytics"));
+      expect(tab(first, "Analytics")).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(tab(other, "Heard by"));
+      expect(tab(first, "Heard by")).toHaveAttribute("aria-pressed", "true");
+      expect(tab(other, "Heard by")).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(tab(first, "Analytics"));
+      expect(tab(other, "Analytics")).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("keeps the view through a relink and an add from search", async () => {
+      vi.mocked(api.getNode).mockImplementation(async () => ({ ...node, id: second.id, observerId }));
+      seed([{ kind: "node", ...pin, view: "heard" }]);
+      mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", ...pin, id: second.id, observerId, view: "heard" }]));
+      vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, ...second, id: "55555555-5555-4555-8555-555555555555" }], hasMore: false, nextCursor: null });
+      typeSearch("second");
+      fireEvent.click(await screen.findByRole("button", { name: "Add Second" }));
+      await waitFor(() => expect(stored().pins).toHaveLength(2));
+      expect(stored().pins[0].view).toBe("heard");
+      expect("view" in stored().pins[1]).toBe(false);
+    });
+
+    it("opens an upgraded observer pin on Observer, and leaves a node pin it folds into alone", async () => {
+      seed([{ kind: "observer", observerId, name: "Hill listener" }]);
+      const first = mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", id: pin.id, publicKey: pin.publicKey, name: "Renamed repeater", observerId, view: "observer" }]));
+      expect(tab(await card("Renamed repeater"), "Observer")).toHaveAttribute("aria-pressed", "true");
+      first.unmount();
+      seed([{ kind: "node", ...pin, view: "heard" }, { kind: "observer", observerId, name: "Hill listener" }]);
+      mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", ...pin, view: "heard", observerId }]));
+    });
+
+    it("exports the view and reads it back on import", async () => {
+      const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:atlas");
+      vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      seed([{ kind: "node", ...pin, view: "heard" }]);
+      const first = mount();
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      const text = await createObjectURL.mock.calls[0]![0].text();
+      expect(JSON.parse(text).pins).toEqual([{ kind: "node", ...pin, view: "heard" }]);
+      first.unmount();
+      localStorage.clear();
+      mount();
+      fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [new File([text], "atlas.json", { type: "application/json" })] } });
+      expect(await screen.findByText("Imported 1 card.")).toBeInTheDocument();
+      expect(stored().pins).toEqual([{ kind: "node", ...pin, view: "heard" }]);
+      expect(tab(await card("Renamed repeater"), "Heard by")).toHaveAttribute("aria-pressed", "true");
+    });
+  });
+
   describe("observer view tiles", () => {
     const tiles = ["snr", "battery", "types", "noise"];
     const observerPin = { kind: "observer", observerId, name: "Hill listener" };
@@ -309,7 +423,7 @@ describe("Atlas page", () => {
       vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
       seed([{ ...observerPin, tiles }]);
       mount();
-      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", id: pin.id, publicKey: pin.publicKey, name: "Renamed repeater", observerId, tiles }]));
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", id: pin.id, publicKey: pin.publicKey, name: "Renamed repeater", observerId, tiles, view: "observer" }]));
     });
 
     it("hands an observer pin's tiles to the node pin it folds into, unless that pin has its own", async () => {

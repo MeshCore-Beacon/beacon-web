@@ -9,7 +9,9 @@ export type AtlasRange = "24h" | "3d";
 export const OBSERVER_TILES = ["airtime", "battery", "uptime", "types", "packets", "snr", "rssi", "noise", "queue", "errors"] as const;
 export type ObserverTile = (typeof OBSERVER_TILES)[number];
 export const DEFAULT_TILES: readonly ObserverTile[] = ["airtime", "battery", "types", "noise"];
-export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[] }
+export type AtlasView = "analytics" | "heard" | "observer";
+// `view` is the tab the card opens on, stored only when it is not Analytics.
+export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[]; view?: AtlasView }
 export interface ObserverPin { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
 export type AtlasPin = NodePin | ObserverPin;
 export interface SavedAtlas { version: 2; range: AtlasRange; pins: AtlasPin[] }
@@ -80,6 +82,19 @@ export function withTiles<P extends AtlasPin>(pin: P, tiles: readonly ObserverTi
   return next;
 }
 
+export function withView(pin: NodePin, view: AtlasView): NodePin {
+  const next = { ...pin };
+  if (view === "analytics") delete next.view;
+  else next.view = view;
+  return next;
+}
+
+// The tab a card opens on. A pinned Observer view waits for the observer link without being forgotten.
+export function homeView(pin: AtlasPin): AtlasView {
+  if (pin.kind === "observer") return "observer";
+  return pin.view === "observer" && !pin.observerId ? "analytics" : (pin.view ?? "analytics");
+}
+
 function toPin(raw: unknown): AtlasPin | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
@@ -91,6 +106,7 @@ function toPin(raw: unknown): AtlasPin | null {
   const pin: NodePin = { kind, id: value.id, publicKey: value.publicKey.toLowerCase(), name };
   if (isUuid(value.observerId)) pin.observerId = value.observerId;
   if (tiles) pin.tiles = tiles;
+  if (value.view === "heard" || value.view === "observer") pin.view = value.view;
   return pin;
 }
 

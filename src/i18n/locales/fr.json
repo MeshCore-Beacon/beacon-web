@@ -1041,7 +1041,10 @@
       "remove": "Retirer",
       "observerPartialCoverage": "Historique partiel",
       "changeTile": "Changer la tuile : {{name}}",
-      "resetTiles": "Réinitialiser les tuiles"
+      "resetTiles": "Réinitialiser les tuiles",
+      "pinView": "Ouvrir sur cet onglet",
+      "pinViewHelp": "Faire de cet onglet celui sur lequel la fiche s’ouvre",
+      "viewPinned": "La fiche s’ouvre sur cet onglet"
     }
   }
 }

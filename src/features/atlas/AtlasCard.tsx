@@ -7,6 +7,7 @@ import { Badge } from "../../components/Badge";
 import { IataChip } from "../../components/IataChip";
 import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
+import { Tooltip } from "../../components/Tooltip";
 import { formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
 import type { Observation } from "../../types/api";
 import type { NodeSummary } from "../nodes/types";
@@ -16,14 +17,14 @@ import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
 import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
-import { DEFAULT_TILES, OBSERVER_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type ObserverTile } from "./atlas";
+import { DEFAULT_TILES, OBSERVER_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile } from "./atlas";
 import { TilePicker } from "./TilePicker";
 import { ATLAS_REFRESH_MS, useAtlasNode } from "./useAtlas";
 import type { PayloadShare } from "./observer-sample";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
 
-export type AtlasView = "analytics" | "heard" | "observer";
+export type { AtlasView };
 
 export interface AtlasActions {
   onViewNode: (id: string) => void;
@@ -36,7 +37,9 @@ interface AtlasCardProps extends AtlasActions {
   range: AtlasRange;
   active: boolean;
   view: AtlasView;
+  home: AtlasView; // the view this card opens on
   onViewChange: (view: AtlasView) => void;
+  onPinView: (view: AtlasView) => void;
   onRemove: () => void;
   onResolved: (id: string, observerId?: string) => void;
   onUpgrade: (node: NodeSummary, observerId: string) => void;
@@ -101,7 +104,9 @@ export function AtlasCard({
   range,
   active,
   view,
+  home,
   onViewChange,
+  onPinView,
   onRemove,
   onResolved,
   onUpgrade,
@@ -205,6 +210,22 @@ export function AtlasCard({
           onChange={(next) => changeView(next as AtlasView)}
           options={views.map((value) => ({ value, label: t(VIEW_LABEL[value]) }))}
         />
+      )}
+      {views.length > 1 && (
+        <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
+          <button
+            type="button"
+            className={`${ACTION_BUTTON_CLASS} ${view === home ? "bg-primary/10" : ""}`}
+            aria-label={t("atlas.pinView")}
+            aria-pressed={view === home}
+            onClick={() => view !== home && onPinView(view)}
+          >
+            <svg width="10" height="14" viewBox="0 0 10 14" fill={view === home ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+              <path d="M2.5 1h5v1.5l-1 1V7l2 2v1h-7V9l2-2V3.5l-1-1z" />
+              <path d="M5 10v3.3" />
+            </svg>
+          </button>
+        </Tooltip>
       )}
       <button type="button" className={ACTION_BUTTON_CLASS} onClick={onRemove}>
         {t("atlas.remove")}
