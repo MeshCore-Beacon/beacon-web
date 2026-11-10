@@ -2,8 +2,7 @@ import { ApiError, getNode, getNodeObservations, getNodesPage, isNotFound } from
 import type { Node, NodeObservation, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
-export const ATLAS_KEY = "beacon-my-atlas-v2";
-export const ATLAS_LEGACY_KEY = "beacon-my-atlas-v1";
+export const ATLAS_KEY = "beacon-atlas-v2";
 export const ATLAS_LIMIT = 12;
 export const REPORT_LIMIT = 200;
 export type AtlasRange = "24h" | "3d";
@@ -18,17 +17,17 @@ const isUuid = (value: unknown): value is string => typeof value === "string" &&
 
 export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : pin.observerId);
 
-// Version 1 stored `nodes`; version 2 stores `pins` with a kind. Both load, anything else is empty.
+// Only a version 2 payload loads; anything else is empty.
 export function parseAtlas(raw: string | null): SavedAtlas {
   const empty: SavedAtlas = { version: 2, range: "24h", pins: [] };
   try {
     if (!raw || raw.length > 32_000) return empty;
     const value = JSON.parse(raw);
-    const list = value?.version === 1 ? value.nodes : value?.version === 2 ? value.pins : null;
+    const list = value?.version === 2 ? value.pins : null;
     if (!Array.isArray(list)) return empty;
     const pins: AtlasPin[] = [];
     for (const entry of list) {
-      const pin = toPin(entry, value.version === 1);
+      const pin = toPin(entry);
       if (!pin || pins.some((other) => pinKey(other) === pinKey(pin))) continue;
       pins.push(pin);
       if (pins.length === ATLAS_LIMIT) break;
@@ -63,11 +62,11 @@ export function readAtlasFile(text: string): AtlasImport | null {
   return { atlas, skipped: value.pins.length - atlas.pins.length };
 }
 
-function toPin(raw: unknown, legacy: boolean): AtlasPin | null {
+function toPin(raw: unknown): AtlasPin | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
   const name = typeof value.name === "string" ? value.name.slice(0, 160) : "";
-  const kind = legacy ? "node" : value.kind;
+  const kind = value.kind;
   if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name } : null;
   if (kind !== "node" || !isUuid(value.id) || typeof value.publicKey !== "string" || !KEY.test(value.publicKey)) return null;
   const pin: NodePin = { kind, id: value.id, publicKey: value.publicKey.toLowerCase(), name };

@@ -43,7 +43,7 @@ type Matches =
   | { kind: "observer"; items: ObserverDirectoryItem[]; hasMore: boolean };
 
 // Global by design: pins are radio identities, so the header region picker does not apply here.
-export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
+export function AtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
   const { saved, update, storageFailed } = useSavedAtlas();
   // Same single-row bar the other tabs use on a phone: the search shrinks, nothing wraps.
@@ -208,7 +208,7 @@ export function MyAtlasPage({ active = true, ...actions }: AtlasActions & { acti
   const rowClass = "flex items-center justify-between gap-2 border-t border-border-subtle py-1.5 first:border-t-0";
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("tabs.MyAtlas")}>
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("tabs.Atlas")}>
       <div
         className={`flex shrink-0 items-center gap-1.5 gap-y-1.5 border-b border-border-subtle bg-bg-base px-4 py-2 ${isMobile ? "" : "flex-wrap"}`}
         role="toolbar"

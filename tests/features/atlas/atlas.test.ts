@@ -29,24 +29,16 @@ const report = (id: number, hours: number, extra: Partial<NodeObservation> = {})
 
 describe("saved Atlas", () => {
   it("restores valid ordered full identities, normalizes keys and removes duplicates", () => {
-    expect(parseAtlas(JSON.stringify({ version: 1, range: "3d", nodes: [pin, { ...pin, publicKey: pin.publicKey.toLowerCase() }, { ...pin, publicKey: "cd".repeat(32) }] }))).toEqual({ version: 2, range: "3d", pins: [nodePin, { ...nodePin, publicKey: "cd".repeat(32) }] });
+    const pins = [{ kind: "node", ...pin }, nodePin, { ...nodePin, publicKey: "cd".repeat(32) }];
+    expect(parseAtlas(JSON.stringify({ version: 2, range: "3d", pins }))).toEqual({ version: 2, range: "3d", pins: [nodePin, { ...nodePin, publicKey: "cd".repeat(32) }] });
   });
-  it("tolerates unavailable, corrupt and future storage, rejects partial keys and caps the collection", () => {
-    for (const value of [null, "{", "[]", '{"version":3}', '{"version":1,"nodes":null}', '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
-    const nodes = [{ ...pin, publicKey: "abcd" }, { ...pin, id: "../unsafe" }, ...Array.from({ length: 20 }, (_, i) => ({ ...pin, publicKey: i.toString(16).padStart(64, "0") }))];
-    const result = parseAtlas(JSON.stringify({ version: 1, range: "30d", nodes }));
+  it("tolerates unavailable, corrupt, old and future storage, rejects partial keys and caps the collection", () => {
+    const old = JSON.stringify({ version: 1, range: "3d", nodes: [pin] });
+    for (const value of [null, "{", "[]", '{"version":3}', old, '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
+    const pins = [{ ...nodePin, publicKey: "abcd" }, { ...nodePin, id: "../unsafe" }, ...Array.from({ length: 20 }, (_, i) => ({ ...nodePin, publicKey: i.toString(16).padStart(64, "0") }))];
+    const result = parseAtlas(JSON.stringify({ version: 2, range: "30d", pins }));
     expect(result.pins).toHaveLength(ATLAS_LIMIT);
     expect(result.range).toBe("24h");
-  });
-  it("migrates a version 1 collection to node pins in order and keeps the range", () => {
-    const raw = JSON.stringify({ version: 1, range: "3d", nodes: [
-      { id: "11111111-1111-4111-8111-111111111111", publicKey: "AB".repeat(32), name: "One" },
-      { id: "22222222-2222-4222-8222-222222222222", publicKey: "cd".repeat(32), name: "Two" },
-    ] });
-    expect(parseAtlas(raw)).toEqual({ version: 2, range: "3d", pins: [
-      { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "One" },
-      { kind: "node", id: "22222222-2222-4222-8222-222222222222", publicKey: "cd".repeat(32), name: "Two" },
-    ] });
   });
   it("round-trips version 2 pins of both kinds, keeps the observer hint, and drops unknown kinds", () => {
     const pins = [

@@ -38,9 +38,9 @@ import { asStatsRange, asStatsTab } from "./features/stats/stats-url";
 import { useStatsRegion } from "./features/stats/useStats";
 import type { PacketDetail } from "./types/api";
 
-// Map (maplibre-gl, ~1MB) and My Atlas are lazy-loaded so their chunks are fetched on first visit
+// Map (maplibre-gl, ~1MB) and Atlas are lazy-loaded so their chunks are fetched on first visit
 // instead of bloating the initial bundle.
-const MyAtlasPage = lazy(() => import("./features/atlas/MyAtlasPage").then(m => ({ default: m.MyAtlasPage })));
+const AtlasPage = lazy(() => import("./features/atlas/AtlasPage").then(m => ({ default: m.AtlasPage })));
 const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ default: m.MapView })));
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
@@ -346,7 +346,7 @@ function AppInner() {
   usePauseWhenHidden(wsManager);
 
   const tabContent: Record<string, React.ReactNode> = {
-    MyAtlas: <MyAtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
+    Atlas: <AtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}

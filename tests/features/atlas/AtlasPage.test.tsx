@@ -1,8 +1,8 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MyAtlasPage } from "../../../src/features/atlas/MyAtlasPage";
-import { ATLAS_KEY, ATLAS_LEGACY_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
+import { AtlasPage } from "../../../src/features/atlas/AtlasPage";
+import { ATLAS_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
 import type { Node } from "../../../src/features/nodes/types";
@@ -37,7 +37,7 @@ const clients: QueryClient[] = [];
 function mount(active = true) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   clients.push(client);
-  return render(<QueryClientProvider client={client}><MyAtlasPage {...actions} active={active} /></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><AtlasPage {...actions} active={active} /></QueryClientProvider>);
 }
 function save(nodes = [pin], range = "24h") {
   localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 2, pins: nodes.map((n) => ({ kind: "node", ...n })), range }));
@@ -61,16 +61,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("My Atlas", () => {
-  it("reads legacy saved nodes and retains their original storage when saving the new model", async () => {
-    const legacy = JSON.stringify({ version: 1, nodes: [pin], range: "24h" });
-    localStorage.setItem(ATLAS_LEGACY_KEY, legacy);
-    mount();
-    await screen.findByRole("button", { name: "Renamed repeater" });
-    fireEvent.click(screen.getByRole("button", { name: "3d" }));
-    expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(pin.publicKey);
-    expect(localStorage.getItem(ATLAS_LEGACY_KEY)).toBe(legacy);
-  });
+describe("Atlas page", () => {
   it("renders saved nodes as Signal-style cards and nothing else before a search", async () => {
     save();
     mount();
@@ -81,12 +72,6 @@ describe("My Atlas", () => {
     expect(api.getNodesPage).not.toHaveBeenCalled();
     expect(api.getPacketDetail).not.toHaveBeenCalled();
     expect(api.getNodeObservations).toHaveBeenCalledWith(pin.id, { limit: 200 }, expect.any(AbortSignal));
-  });
-
-  it("still loads a version 1 collection", async () => {
-    localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 1, nodes: [pin], range: "24h" }));
-    mount();
-    expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
   });
 
   it("keeps the search in a toolbar with the saved count chip beside the range picker, and lists matches only while typing", async () => {
@@ -335,7 +320,7 @@ describe("My Atlas", () => {
   });
 
   it("uses French labels and keeps working when browser writes fail", async () => {
-    const store = new Map<string, string>([[ATLAS_KEY, JSON.stringify({ version: 1, nodes: [pin], range: "24h" })]]);
+    const store = new Map<string, string>([[ATLAS_KEY, JSON.stringify({ version: 2, pins: [{ kind: "node", ...pin }], range: "24h" })]]);
     vi.stubGlobal("localStorage", {
       getItem: (key: string) => store.get(key) ?? null,
       setItem: () => { throw new Error("quota"); },
@@ -355,7 +340,7 @@ describe("My Atlas", () => {
   it("honours changes made in another tab and survives corrupt storage", async () => {
     localStorage.setItem(ATLAS_KEY, "{");
     mount();
-    act(() => window.dispatchEvent(new StorageEvent("storage", { key: ATLAS_KEY, newValue: JSON.stringify({ version: 1, nodes: [pin], range: "3d" }) })));
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: ATLAS_KEY, newValue: JSON.stringify({ version: 2, pins: [{ kind: "node", ...pin }], range: "3d" }) })));
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
     act(() => window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null })));
