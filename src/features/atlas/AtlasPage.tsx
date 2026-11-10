@@ -18,7 +18,7 @@ import type { ObserverDirectoryItem } from "../observers/types";
 import { Card } from "../stats/cards";
 import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions, type AtlasView } from "./AtlasCard";
-import { ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, type AtlasImport, type AtlasPin, type AtlasRange } from "./atlas";
+import { ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTiles, type AtlasImport, type AtlasPin, type AtlasRange, type ObserverTile } from "./atlas";
 import { useCardDrag } from "./useCardDrag";
 import { useSavedAtlas } from "./useSavedAtlas";
 
@@ -115,18 +115,22 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     update((value) => ({ ...value, pins: value.pins.filter((other) => pinKey(other) !== pinKey(pin)) }));
   const relink = (pin: AtlasPin, id: string, observerId?: string) =>
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? { ...other, id, observerId } : other)) }));
+  const retile = (pin: AtlasPin, tiles: readonly ObserverTile[]) =>
+    update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) ? withTiles(other, tiles) : other)) }));
   // An observer pin whose key now resolves to a node takes that node's place in its own slot.
   const upgrade = (pin: AtlasPin, match: NodeSummary, observerId: string) =>
     update((value) => {
       const publicKey = match.publicKey.toLowerCase();
-      // Already pinned as a node: that pin takes the observer link, as an Add from search does.
+      const tiles = value.pins.find((other) => pinKey(other) === pinKey(pin))?.tiles;
+      // Already pinned as a node: that pin takes the observer link, as an Add from search does, and
+      // the observer pin's tiles unless it has its own.
       if (value.pins.some((other) => other.kind === "node" && other.publicKey === publicKey)) {
         return { ...value, pins: value.pins
           .filter((other) => pinKey(other) !== pinKey(pin))
-          .map((other) => (other.kind === "node" && other.publicKey === publicKey ? { ...other, observerId } : other)) };
+          .map((other) => (other.kind === "node" && other.publicKey === publicKey ? { ...other, observerId, ...(!other.tiles && tiles && { tiles }) } : other)) };
       }
       return { ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin)
-        ? { kind: "node", id: match.id, publicKey, name: match.name || pin.name, observerId }
+        ? { kind: "node", id: match.id, publicKey, name: match.name || pin.name, observerId, ...(tiles && { tiles }) }
         : other)) };
     });
   const reorder = (from: number, to: number) =>
@@ -344,6 +348,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                     onRemove={() => remove(pin)}
                     onResolved={(id, observerId) => relink(pin, id, observerId)}
                     onUpgrade={(match, observerId) => upgrade(pin, match, observerId)}
+                    onTilesChange={(tiles) => retile(pin, tiles)}
                     handle={drag.handleProps(index)}
                     {...actions}
                   />

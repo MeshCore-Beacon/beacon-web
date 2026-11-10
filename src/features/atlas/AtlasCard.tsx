@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
@@ -16,7 +16,8 @@ import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
 import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
-import { resolveObserverNode, type AtlasPin, type AtlasRange } from "./atlas";
+import { DEFAULT_TILES, OBSERVER_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type ObserverTile } from "./atlas";
+import { TilePicker } from "./TilePicker";
 import { ATLAS_REFRESH_MS, useAtlasNode } from "./useAtlas";
 import type { PayloadShare } from "./observer-sample";
 import { useAtlasObserver } from "./useAtlasObserver";
@@ -39,10 +40,26 @@ interface AtlasCardProps extends AtlasActions {
   onRemove: () => void;
   onResolved: (id: string, observerId?: string) => void;
   onUpgrade: (node: NodeSummary, observerId: string) => void;
+  onTilesChange: (tiles: readonly ObserverTile[]) => void;
   handle: Partial<CardHandleProps>;
 }
 
 const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver" };
+
+const TILE_LABEL: Record<ObserverTile, string> = {
+  airtime: "atlas.airtime",
+  battery: "atlas.battery",
+  uptime: "atlas.uptime",
+  types: "atlas.packetTypes",
+  packets: "observerPage.records",
+  snr: "signal.meanSnr",
+  rssi: "signal.meanRssi",
+  noise: "atlas.noiseFloor",
+  queue: "observerPage.queue",
+  errors: "observerPage.errors",
+};
+// Accents belong to the slot, so a card keeps its colours whatever its tiles show.
+const SLOT_ACCENT = [0, 3, 2, 1];
 
 const percent = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
 const MIX_SLICES = 5;
@@ -88,6 +105,7 @@ export function AtlasCard({
   onRemove,
   onResolved,
   onUpgrade,
+  onTilesChange,
   handle,
   onViewNode,
   onViewObserver,
@@ -216,6 +234,71 @@ export function AtlasCard({
   );
   const dash = "—";
 
+  const tiles = pin.tiles ?? DEFAULT_TILES;
+  const free = OBSERVER_TILES.filter((id) => !tiles.includes(id)).map((id) => ({ value: id, label: t(TILE_LABEL[id]) }));
+  const windowLabel = obs.sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`);
+  const observerTile = (id: ObserverTile, slot: number) => {
+    const sample = obs.sample;
+    // Today's stand-in for a radio with no battery, unless the card already has an uptime tile.
+    const shown = id === "battery" && sample.battery === null && !tiles.includes("uptime") ? "uptime" : id;
+    const common = {
+      compact: true,
+      accent: c.series[SLOT_ACCENT[slot]!]!,
+      label: (
+        <TilePicker
+          label={t(TILE_LABEL[shown])}
+          options={free}
+          align={slot % 2 ? "right" : "left"}
+          onPick={(next) => onTilesChange(tiles.map((old, i) => (i === slot ? (next as ObserverTile) : old)))}
+        />
+      ),
+    };
+    switch (shown) {
+      case "airtime":
+        return (
+          <StatCard
+            {...common}
+            value={sample.airtime === null ? dash : percent(sample.airtime)}
+            spark={sample.airtimeHourly}
+            markPeak
+            interpolateGaps
+            sublabel={
+              sample.airtimeSource === "radio"
+                ? `TX ${percent(sample.airtimeTx!)} · RX ${percent(sample.airtimeRx!)}`
+                : sample.airtimeSource === "heard"
+                  ? t("atlas.airtimeHeard")
+                  : undefined
+            }
+          />
+        );
+      case "battery":
+        return <StatCard {...common} value={sample.battery === null ? dash : formatBattery(sample.battery)} spark={sample.batteryHourly} interpolateGaps />;
+      case "uptime":
+        return <StatCard {...common} value={sample.uptime === null ? dash : formatUptime(sample.uptime)} spark={sample.uptimeHourly} />;
+      case "types":
+        return (
+          <StatCard
+            {...common}
+            value={sample.heard === null ? dash : formatCount(sample.heard)}
+            sublabel={windowLabel}
+            visual={<TypeMix types={sample.types} colors={c.series} unknown={t("observerPage.unknown")} other={t("atlas.otherTypes")} />}
+          />
+        );
+      case "packets":
+        return <StatCard {...common} value={sample.heard === null ? dash : formatCount(sample.heard)} spark={sample.counts} markPeak sublabel={windowLabel} />;
+      case "snr":
+        return <StatCard {...common} value={average(sample.snr, "dB")} spark={sample.snrHourly} />;
+      case "rssi":
+        return <StatCard {...common} value={average(sample.rssi, "dBm")} spark={sample.rssiHourly} />;
+      case "noise":
+        return <StatCard {...common} value={sample.noise === null ? dash : `${Math.round(sample.noise)} dBm`} spark={sample.noiseHourly} interpolateGaps />;
+      case "queue":
+        return <StatCard {...common} value={sample.queue === null ? dash : formatCount(Math.round(sample.queue))} spark={sample.queueHourly} interpolateGaps />;
+      case "errors":
+        return <StatCard {...common} value={sample.errors === null ? dash : formatCount(sample.errors)} spark={sample.errorsHourly} markPeak />;
+    }
+  };
+
   return (
     <Card title={title} right={actions} wrap className="flex h-full flex-col">
       {pin.kind === "node" && query.isPending && <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>}
@@ -322,45 +405,7 @@ export function AtlasCard({
       )}
       {view === "observer" && observerId && (pin.kind === "observer" ? observer : node) && (
         <div ref={body} className="flex flex-1 flex-col gap-3">
-          <div className="grid flex-1 grid-cols-2 gap-3">
-            <StatCard
-              compact
-              label={t("atlas.airtime")}
-              value={obs.sample.airtime === null ? dash : percent(obs.sample.airtime)}
-              accent={c.series[0]!}
-              spark={obs.sample.airtimeHourly}
-              markPeak
-              interpolateGaps
-              sublabel={
-                obs.sample.airtimeSource === "radio"
-                  ? `TX ${percent(obs.sample.airtimeTx!)} · RX ${percent(obs.sample.airtimeRx!)}`
-                  : obs.sample.airtimeSource === "heard"
-                    ? t("atlas.airtimeHeard")
-                    : undefined
-              }
-            />
-            {obs.sample.battery !== null ? (
-              <StatCard compact label={t("atlas.battery")} value={formatBattery(obs.sample.battery)} accent={c.series[3]!} spark={obs.sample.batteryHourly} interpolateGaps />
-            ) : (
-              <StatCard compact label={t("atlas.uptime")} value={obs.sample.uptime === null ? dash : formatUptime(obs.sample.uptime)} accent={c.series[3]!} spark={obs.sample.uptimeHourly} />
-            )}
-            <StatCard
-              compact
-              label={t("atlas.packetTypes")}
-              value={obs.sample.heard === null ? dash : formatCount(obs.sample.heard)}
-              accent={c.series[2]!}
-              sublabel={obs.sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`)}
-              visual={<TypeMix types={obs.sample.types} colors={c.series} unknown={t("observerPage.unknown")} other={t("atlas.otherTypes")} />}
-            />
-            <StatCard
-              compact
-              label={t("atlas.noiseFloor")}
-              value={obs.sample.noise === null ? dash : `${Math.round(obs.sample.noise)} dBm`}
-              accent={c.series[1]!}
-              spark={obs.sample.noiseHourly}
-              interpolateGaps
-            />
-          </div>
+          <div className="grid flex-1 grid-cols-2 gap-3">{tiles.map((id, slot) => <Fragment key={id}>{observerTile(id, slot)}</Fragment>)}</div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
             {status && <span>{t(status === "online" ? "atlas.online" : "atlas.offline")}</span>}
             {observer?.lastStatusAt != null && (
@@ -369,9 +414,14 @@ export function AtlasCard({
               </span>
             )}
             {radio && <span>{radio}</span>}
-            {obs.sample.battery !== null && obs.sample.uptime !== null && <span>{t("atlas.uptime")} {formatUptime(obs.sample.uptime)}</span>}
+            {obs.sample.battery !== null && obs.sample.uptime !== null && !tiles.includes("uptime") && <span>{t("atlas.uptime")} {formatUptime(obs.sample.uptime)}</span>}
             {obs.loading && <span role="status">{t("common.loading")}</span>}
             {obs.failed && <span className="text-danger">{t("common.loadFailed")}</span>}
+            {pin.tiles && (
+              <button type="button" className="text-primary hover:underline" onClick={() => onTilesChange(DEFAULT_TILES)}>
+                {t("atlas.resetTiles")}
+              </button>
+            )}
             <span className="whitespace-nowrap">
               <InfoTip text={[t("atlas.observerHelp"), obs.unsupported && t("atlas.observerUnsupported")]} />
             </span>

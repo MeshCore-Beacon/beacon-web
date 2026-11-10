@@ -97,7 +97,7 @@ export function StatCard({
   interpolateGaps,
   visual,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   accent: string; // CSS color for the sparkline, e.g. "var(--color-primary)"
   spark?: (number | null)[];

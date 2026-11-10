@@ -1033,7 +1033,9 @@
       "observerGone": "This observer is no longer known to the server.",
       "dragToReorder": "Drag to reorder, or use the arrow keys",
       "remove": "Remove",
-      "observerPartialCoverage": "Partial history"
+      "observerPartialCoverage": "Partial history",
+      "changeTile": "Change tile: {{name}}",
+      "resetTiles": "Reset tiles"
     }
   }
 }

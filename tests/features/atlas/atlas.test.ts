@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
+import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTiles, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
 import type { NodeActivity } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
@@ -64,6 +64,39 @@ describe("saved Atlas", () => {
     const observer = (n: number) => ({ kind: "observer", observerId: `${String(n).padStart(8, "0")}-0000-4000-8000-000000000000`, name: `L${n}` });
     const pins = [observer(1), observer(1), ...Array.from({ length: 14 }, (_, i) => observer(i + 2))];
     expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins).toHaveLength(ATLAS_LIMIT);
+  });
+});
+
+describe("observer view tiles", () => {
+  const observerPin = { kind: "observer", observerId: "44444444-4444-4444-8444-444444444444", name: "Listener" };
+  const tiles = ["snr", "battery", "queue", "errors"];
+  const parse = (pins: unknown[]) => parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins;
+
+  it("keeps four distinct known tiles on both kinds of pin, in slot order", () => {
+    expect(parse([{ ...nodePin, tiles }, { ...observerPin, tiles: ["packets", "rssi", "uptime", "types"] }])).toEqual([
+      { ...nodePin, tiles },
+      { ...observerPin, tiles: ["packets", "rssi", "uptime", "types"] },
+    ]);
+  });
+
+  it("drops tiles that are not four distinct known ids and keeps the pin", () => {
+    for (const bad of [["snr", "battery", "queue"], ["snr", "snr", "queue", "errors"], ["snr", "battery", "queue", "voltage"], ["snr", "battery", "queue", "errors", "noise"], "snr", null, [1, 2, 3, 4]]) {
+      expect(parse([{ ...nodePin, tiles: bad }])).toEqual([nodePin]);
+    }
+  });
+
+  it("does not store the default layout, so untouched pins stay as they were", () => {
+    expect(parse([{ ...observerPin, tiles: ["airtime", "battery", "types", "noise"] }])).toEqual([observerPin]);
+    expect(withTiles({ ...nodePin, tiles } as never, ["airtime", "battery", "types", "noise"])).toEqual(nodePin);
+    expect(withTiles(nodePin as never, ["noise", "battery", "types", "airtime"])).toEqual({ ...nodePin, tiles: ["noise", "battery", "types", "airtime"] });
+  });
+
+  it("round-trips tiles through the export file", () => {
+    const saved = { version: 2 as const, range: "24h" as const, pins: parse([{ ...nodePin, tiles }, observerPin]) };
+    const text = atlasFile(saved, 1);
+    expect(JSON.parse(text).pins[0].tiles).toEqual(tiles);
+    expect("tiles" in JSON.parse(text).pins[1]).toBe(false);
+    expect(readAtlasFile(text)).toEqual({ atlas: saved, skipped: 0 });
   });
 });
 

@@ -124,9 +124,56 @@ describe("summarizeObserver", () => {
     expect(sample.uptime).toBe(5);
   });
 
+  it("gives SNR and RSSI per hour and weights the window mean by each hour's packet count", () => {
+    const heard = activity([
+      { ...point(0, 30, 2), rssiAvg: -100 },
+      { ...point(1, 10, 10), rssiAvg: -80 },
+      { ...point(2, 5, null), rssiAvg: null },
+      { ...point(40, 99, 50), rssiAvg: -10 },
+    ]);
+    const sample = summarizeObserver(heard, undefined, undefined, "24h", now);
+    expect(sample.snrHourly.slice(-3)).toEqual([null, 10, 2]);
+    expect(sample.rssiHourly.slice(-3)).toEqual([null, -80, -100]);
+    expect(sample.snr).toBeCloseTo(4);
+    expect(sample.rssi).toBeCloseTo(-95);
+    expect(sample.snrHourly[0]).toBeNull();
+  });
+
+  it("keeps a real zero SNR and has no mean without signal readings", () => {
+    expect(summarizeObserver(activity([point(0, 4, 0)]), undefined, undefined, "24h", now).snr).toBe(0);
+    const none = summarizeObserver(activity([point(0, 4, null)]), undefined, undefined, "24h", now);
+    expect(none).toMatchObject({ snr: null, rssi: null });
+  });
+
+  it("shows the queue as its latest reading with the last reading of each hour", () => {
+    const sample = summarizeObserver(undefined, tele([
+      { t: now - 2 * HOUR, queueLength: 4, noiseFloorDb: -110 },
+      { t: now - HOUR - 60_000, queueLength: 9, noiseFloorDb: -110 },
+      { t: now - HOUR, queueLength: 1, noiseFloorDb: -110 },
+    ]), undefined, "24h", now);
+    expect(sample.queue).toBe(1);
+    expect(sample.queueHourly.slice(-3)).toEqual([4, 1, null]);
+  });
+
+  it("turns the cumulative receive-error counter into errors per hour, a reboot step as zero", () => {
+    const sample = summarizeObserver(undefined, tele([
+      { t: now - 4 * HOUR, receiveErrors: 100 },
+      { t: now - 3 * HOUR, receiveErrors: 103 },
+      { t: now - 2 * HOUR - 60_000, receiveErrors: 104 },
+      { t: now - 2 * HOUR, receiveErrors: 110 },
+      { t: now - HOUR, receiveErrors: 2 },
+      { t: now, receiveErrors: 7 },
+    ]), undefined, "24h", now);
+    expect(sample.errorsHourly.slice(-5)).toEqual([null, 3, 7, 0, 5]);
+    expect(sample.errors).toBe(15);
+    const single = summarizeObserver(undefined, tele([{ t: now, receiveErrors: 50 }]), undefined, "24h", now);
+    expect(single.errors).toBeNull();
+    expect(single.errorsHourly.every((v) => v === null)).toBe(true);
+  });
+
   it("prefers the observer record's uptime and gives nulls, not NaN, on empty input", () => {
     const empty = summarizeObserver(undefined, undefined, undefined, "3d", now);
-    expect(empty).toMatchObject({ heard: null, types: [], airtime: null, airtimeSource: null, noise: null, battery: null, uptime: null });
+    expect(empty).toMatchObject({ heard: null, types: [], airtime: null, airtimeSource: null, noise: null, battery: null, uptime: null, snr: null, rssi: null, queue: null, errors: null });
     expect(empty.counts).toHaveLength(72);
     const sample = summarizeObserver(undefined, tele([{ uptimeSeconds: 10 }]), { uptimeSeconds: 99 } as Observer, "24h", now);
     expect(sample.uptime).toBe(99);

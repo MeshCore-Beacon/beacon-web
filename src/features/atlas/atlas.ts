@@ -5,8 +5,12 @@ import type { Observer } from "../observers/types";
 export const ATLAS_KEY = "beacon-atlas-v2";
 export const ATLAS_LIMIT = 12;
 export type AtlasRange = "24h" | "3d";
-export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string }
-export interface ObserverPin { kind: "observer"; observerId: string; name: string }
+// The metrics an Observer view tile can show. A pin stores its four only when they differ from the default.
+export const OBSERVER_TILES = ["airtime", "battery", "uptime", "types", "packets", "snr", "rssi", "noise", "queue", "errors"] as const;
+export type ObserverTile = (typeof OBSERVER_TILES)[number];
+export const DEFAULT_TILES: readonly ObserverTile[] = ["airtime", "battery", "types", "noise"];
+export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[] }
+export interface ObserverPin { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
 export type AtlasPin = NodePin | ObserverPin;
 export interface SavedAtlas { version: 2; range: AtlasRange; pins: AtlasPin[] }
 
@@ -61,15 +65,32 @@ export function readAtlasFile(text: string): AtlasImport | null {
   return { atlas, skipped: value.pins.length - atlas.pins.length };
 }
 
+// Four distinct known ids in slot order; undefined for anything else and for the default layout.
+function toTiles(raw: unknown): ObserverTile[] | undefined {
+  if (!Array.isArray(raw) || raw.length !== DEFAULT_TILES.length || new Set(raw).size !== raw.length) return undefined;
+  if (!raw.every((id): id is ObserverTile => OBSERVER_TILES.includes(id))) return undefined;
+  return raw.every((id, i) => id === DEFAULT_TILES[i]) ? undefined : [...raw];
+}
+
+export function withTiles<P extends AtlasPin>(pin: P, tiles: readonly ObserverTile[]): P {
+  const next = { ...pin };
+  const kept = toTiles(tiles);
+  if (kept) next.tiles = kept;
+  else delete next.tiles;
+  return next;
+}
+
 function toPin(raw: unknown): AtlasPin | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
   const name = typeof value.name === "string" ? value.name.slice(0, 160) : "";
   const kind = value.kind;
-  if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name } : null;
+  const tiles = toTiles(value.tiles);
+  if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name, ...(tiles && { tiles }) } : null;
   if (kind !== "node" || !isUuid(value.id) || typeof value.publicKey !== "string" || !KEY.test(value.publicKey)) return null;
   const pin: NodePin = { kind, id: value.id, publicKey: value.publicKey.toLowerCase(), name };
   if (isUuid(value.observerId)) pin.observerId = value.observerId;
+  if (tiles) pin.tiles = tiles;
   return pin;
 }
 

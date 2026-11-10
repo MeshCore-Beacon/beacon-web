@@ -30,6 +30,15 @@ export interface ObserverSample {
   battery: number | null;
   uptime: number | null;
   uptimeHourly: (number | null)[];
+  // window means weighted by each hour's packet count: the response carries hourly averages, not sums
+  snr: number | null;
+  snrHourly: (number | null)[];
+  rssi: number | null;
+  rssiHourly: (number | null)[];
+  queue: number | null; // latest reading
+  queueHourly: (number | null)[];
+  errors: number | null; // receive errors counted inside the window
+  errorsHourly: (number | null)[];
 }
 
 export function summarizeObserver(
@@ -47,6 +56,7 @@ export function summarizeObserver(
   let heard: number | null = counts.some(finite) ? 0 : null;
   let heardMs = 0;
   let costed = false;
+  const signal = { snrAvg: { sum: 0, n: 0, hourly: Array<number | null>(hours).fill(null) }, rssiAvg: { sum: 0, n: 0, hourly: Array<number | null>(hours).fill(null) } };
   for (const p of activity?.points ?? []) {
     if (!inWindow(p.t)) continue;
     const i = bin(p.t);
@@ -57,6 +67,13 @@ export function summarizeObserver(
     }
     counts[i] = (counts[i] ?? 0) + p.observations;
     heard = (heard ?? 0) + p.observations;
+    for (const key of ["snrAvg", "rssiAvg"] as const) {
+      const value = p[key];
+      if (!finite(value)) continue;
+      signal[key].hourly[i] = value;
+      signal[key].sum += value * p.observations;
+      signal[key].n += p.observations;
+    }
     if (finite(p.airtimeMs)) {
       costed = true;
       heardMs += p.airtimeMs;
@@ -100,6 +117,17 @@ export function summarizeObserver(
     spanSecs += gap;
     radioAir[bin(cur.t)] = ((tx + rx) / gap) * 100;
   }
+  // The 1h points carry receive errors since boot, as the Observers tab charts them: count the steps.
+  let errors: number | null = null;
+  const errorsHourly = Array<number | null>(hours).fill(null);
+  const errored = live.filter((p) => finite(p.receiveErrors));
+  for (let i = 1; i < errored.length; i++) {
+    const step = Math.max(0, errored[i]!.receiveErrors! - errored[i - 1]!.receiveErrors!);
+    const slot = bin(errored[i]!.t);
+    errorsHourly[slot] = (errorsHourly[slot] ?? 0) + step;
+    errors = (errors ?? 0) + step;
+  }
+
   const radio = spanSecs > 0;
   const readHours = heardAir.filter((v) => v !== null).length;
   const estimated = !radio && costed && readHours > 0;
@@ -122,5 +150,13 @@ export function summarizeObserver(
     battery,
     uptime: uptime ?? null,
     uptimeHourly: series("uptimeSeconds"),
+    snr: signal.snrAvg.n ? signal.snrAvg.sum / signal.snrAvg.n : null,
+    snrHourly: signal.snrAvg.hourly,
+    rssi: signal.rssiAvg.n ? signal.rssiAvg.sum / signal.rssiAvg.n : null,
+    rssiHourly: signal.rssiAvg.hourly,
+    queue: latest("queueLength") ?? null,
+    queueHourly: series("queueLength"),
+    errors,
+    errorsHourly,
   };
 }

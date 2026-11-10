@@ -1039,7 +1039,9 @@
       "observerGone": "Cet observateur n’est plus connu du serveur.",
       "dragToReorder": "Glisser pour réordonner, ou utiliser les flèches",
       "remove": "Retirer",
-      "observerPartialCoverage": "Historique partiel"
+      "observerPartialCoverage": "Historique partiel",
+      "changeTile": "Changer la tuile : {{name}}",
+      "resetTiles": "Réinitialiser les tuiles"
     }
   }
 }

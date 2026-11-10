@@ -18,6 +18,8 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getPacketDetail: vi.fn(),
   getObserverDirectoryPage: vi.fn(),
   getObserver: vi.fn(),
+  getObserverActivity: vi.fn(),
+  getObserverTelemetry: vi.fn(),
 }));
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -278,6 +280,79 @@ describe("Atlas page", () => {
       expect(await screen.findByText(/not a Beacon Atlas export/)).toBeInTheDocument();
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
       expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
+    });
+  });
+
+  describe("observer view tiles", () => {
+    const tiles = ["snr", "battery", "types", "noise"];
+    const observerPin = { kind: "observer", observerId, name: "Hill listener" };
+    const stored = () => JSON.parse(localStorage.getItem(ATLAS_KEY)!);
+    const seed = (pins: unknown[]) => localStorage.setItem(ATLAS_KEY, JSON.stringify({ version: 2, range: "24h", pins }));
+    beforeEach(() => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: "" } as never);
+      vi.mocked(api.getObserverActivity).mockResolvedValue({ range: "24h", interval: "1h", radio: null, payloadTypes: [], points: [] });
+      vi.mocked(api.getObserverTelemetry).mockResolvedValue({ range: "24h", interval: "1h", points: [] });
+    });
+
+    it("saves a swapped tile on its pin only, and drops the field again on reset", async () => {
+      seed([observerPin, { kind: "node", ...pin }]);
+      mount();
+      fireEvent.click(await screen.findByRole("button", { name: "Change tile: Airtime" }));
+      fireEvent.click(screen.getByRole("option", { name: "Mean SNR" }));
+      expect(stored().pins).toEqual([{ ...observerPin, tiles }, { kind: "node", ...pin }]);
+      expect(await screen.findByRole("button", { name: "Change tile: Mean SNR" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Reset tiles" }));
+      expect(stored().pins).toEqual([observerPin, { kind: "node", ...pin }]);
+    });
+
+    it("keeps the tiles when an observer pin is upgraded to a node pin", async () => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+      seed([{ ...observerPin, tiles }]);
+      mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", id: pin.id, publicKey: pin.publicKey, name: "Renamed repeater", observerId, tiles }]));
+    });
+
+    it("hands an observer pin's tiles to the node pin it folds into, unless that pin has its own", async () => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
+      seed([{ kind: "node", ...pin }, { ...observerPin, tiles }]);
+      const first = mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", ...pin, observerId, tiles }]));
+      first.unmount();
+      const own = ["queue", "battery", "types", "noise"];
+      seed([{ kind: "node", ...pin, tiles: own }, { ...observerPin, tiles }]);
+      mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", ...pin, tiles: own, observerId }]));
+    });
+
+    it("keeps the tiles through a relink, an add from search and a reorder", async () => {
+      vi.mocked(api.getNode).mockImplementation(async () => ({ ...node, id: second.id, observerId }));
+      seed([{ kind: "node", ...pin, tiles }]);
+      mount();
+      await waitFor(() => expect(stored().pins).toEqual([{ kind: "node", ...pin, id: second.id, observerId, tiles }]));
+      vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, ...second, id: "55555555-5555-4555-8555-555555555555" }], hasMore: false, nextCursor: null });
+      typeSearch("second");
+      fireEvent.click(await screen.findByRole("button", { name: "Add Second" }));
+      await waitFor(() => expect(stored().pins).toHaveLength(2));
+      expect(stored().pins[0].tiles).toEqual(tiles);
+      expect("tiles" in stored().pins[1]).toBe(false);
+    });
+
+    it("exports the tiles and reads them back on import", async () => {
+      const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:atlas");
+      vi.stubGlobal("URL", Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() }));
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      seed([{ ...observerPin, tiles }, { kind: "node", ...pin }]);
+      const first = mount();
+      fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      const text = await createObjectURL.mock.calls[0]![0].text();
+      expect(JSON.parse(text).pins).toEqual([{ ...observerPin, tiles }, { kind: "node", ...pin }]);
+      first.unmount();
+      localStorage.clear();
+      mount();
+      fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [new File([text], "atlas.json", { type: "application/json" })] } });
+      expect(await screen.findByText("Imported 2 cards.")).toBeInTheDocument();
+      expect(stored().pins).toEqual([{ ...observerPin, tiles }, { kind: "node", ...pin }]);
+      expect(await screen.findByRole("button", { name: "Change tile: Mean SNR" })).toBeInTheDocument();
     });
   });
 

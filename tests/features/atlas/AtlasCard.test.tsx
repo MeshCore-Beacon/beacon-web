@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AtlasCard } from "../../../src/features/atlas/AtlasCard";
 import * as api from "../../../src/api/client";
@@ -8,6 +8,7 @@ import { formatHex } from "../../../src/lib/formatters";
 import type { Node } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 import type { PacketDetail } from "../../../src/types/api";
+import i18n from "../../../src/i18n";
 
 vi.mock("../../../src/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/api/client")>()),
@@ -44,6 +45,7 @@ const handlers = {
   onRemove: vi.fn(),
   onResolved: vi.fn(),
   onUpgrade: vi.fn(),
+  onTilesChange: vi.fn(),
 };
 let client: QueryClient;
 
@@ -319,6 +321,77 @@ describe("AtlasCard", () => {
     expect(await screen.findByText("Airtime")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Loading");
     await waitFor(() => expect(handlers.onResolved).toHaveBeenCalledWith("22222222-2222-4222-8222-222222222222", observerId));
+  });
+
+  describe("observer view tiles", () => {
+    const observerPin = { kind: "observer" as const, observerId, name: "Hill listener" };
+    const signalActivity = { ...activity, points: [{ ...activity.points[0]!, rssiAvg: -97.25 }] };
+    const queueTelemetry = { ...telemetry, points: telemetry.points.map((p, i) => ({ ...p, queueLength: 3 + i, receiveErrors: 40 + 5 * i })) };
+    const labels = () => screen.getAllByRole("button", { name: /^Change tile: / }).map((b) => b.getAttribute("aria-label")!.replace("Change tile: ", ""));
+    beforeEach(() => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...observer, publicKey: "" });
+      vi.mocked(api.getObserverActivity).mockResolvedValue(signalActivity as never);
+      vi.mocked(api.getObserverTelemetry).mockResolvedValue(queueTelemetry as never);
+    });
+
+    it("shows today's four tiles for a pin with no saved layout, and no reset", async () => {
+      mount({ pin: observerPin, view: "observer" });
+      await screen.findByText("12");
+      expect(labels()).toEqual(["Airtime", "Battery", "Packet types", "Noise floor"]);
+      expect(screen.queryByRole("button", { name: "Reset tiles" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    it("offers only the metrics not already on the card and swaps the chosen slot", async () => {
+      mount({ pin: observerPin, view: "observer" });
+      await screen.findByText("12");
+      const trigger = screen.getByRole("button", { name: "Change tile: Battery" });
+      fireEvent.click(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+      const list = screen.getByRole("listbox", { name: "Change tile: Battery" });
+      expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual(["Uptime", "Packets heard", "Mean SNR", "Mean RSSI", "Queue length", "Receive errors"]);
+      fireEvent.click(within(list).getByRole("option", { name: "Mean SNR" }));
+      expect(handlers.onTilesChange).toHaveBeenCalledWith(["airtime", "snr", "types", "noise"]);
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      expect(handlers.onRemove).not.toHaveBeenCalled();
+    });
+
+    it("renders a saved layout with the new series and resets it", async () => {
+      mount({ pin: { ...observerPin, tiles: ["snr", "rssi", "queue", "errors"] }, view: "observer" });
+      expect(await screen.findByText("6.5 dB")).toBeInTheDocument();
+      expect(labels()).toEqual(["Mean SNR", "Mean RSSI", "Queue length", "Receive errors"]);
+      expect(screen.getByText("-97.3 dBm")).toBeInTheDocument();
+      expect(screen.getByText("4")).toBeInTheDocument();
+      expect(screen.getByText("5")).toBeInTheDocument();
+      expect(screen.queryByText("Airtime")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Reset tiles" }));
+      expect(handlers.onTilesChange).toHaveBeenCalledWith(["airtime", "battery", "types", "noise"]);
+    });
+
+    it("shows packets heard per hour and uptime as their own tiles, and no second uptime for a missing battery", async () => {
+      vi.mocked(api.getObserverTelemetry).mockResolvedValue({ ...telemetry, points: telemetry.points.map((p) => ({ ...p, batteryMv: null })) } as never);
+      mount({ pin: { ...observerPin, tiles: ["packets", "uptime", "battery", "noise"] }, view: "observer" });
+      expect(await screen.findByText("12")).toBeInTheDocument();
+      expect(labels()).toEqual(["Packets heard", "Uptime", "Battery", "Noise floor"]);
+      expect(screen.getAllByText("1d 1h 0m")).toHaveLength(1);
+      expect(screen.queryByText(/advert/)).not.toBeInTheDocument();
+    });
+
+    it("leaves the node Analytics view without pickers", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+      mount({ pin: { ...pin, observerId, tiles: ["snr", "rssi", "queue", "errors"] } });
+      await screen.findByText("Mean SNR");
+      expect(screen.queryByRole("button", { name: /^Change tile: / })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Reset tiles" })).not.toBeInTheDocument();
+    });
+
+    it("uses French labels for the picker and reset", async () => {
+      await act(() => i18n.changeLanguage("fr"));
+      mount({ pin: { ...observerPin, tiles: ["snr", "battery", "types", "noise"] }, view: "observer" });
+      expect(await screen.findByRole("button", { name: "Changer la tuile : SNR moyen" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Réinitialiser les tuiles" })).toBeInTheDocument();
+      await act(() => i18n.changeLanguage("en"));
+    });
   });
 
   it("upgrades an observer-only pin to a node pin when its key now resolves to a node", async () => {
