@@ -356,6 +356,19 @@ describe("AtlasCard", () => {
       expect(handlers.onRemove).not.toHaveBeenCalled();
     });
 
+    it("opens each picker under its own label, and above it for the bottom row so it stays in the card", async () => {
+      mount({ pin: observerPin, view: "observer" });
+      await screen.findByText("12");
+      const panel = (name: string) => {
+        fireEvent.click(screen.getByRole("button", { name: `Change tile: ${name}` }));
+        return screen.getByRole("listbox", { name: `Change tile: ${name}` }).parentElement!;
+      };
+      expect(panel("Airtime")).toHaveClass("left-0", "top-full");
+      expect(panel("Battery")).toHaveClass("left-0", "top-full");
+      expect(panel("Packet types")).toHaveClass("left-0", "bottom-full");
+      expect(panel("Noise floor")).toHaveClass("left-0", "bottom-full");
+    });
+
     it("renders a saved layout with the new series and resets it", async () => {
       mount({ pin: { ...observerPin, tiles: ["snr", "rssi", "queue", "errors"] }, view: "observer" });
       expect(await screen.findByText("6.5 dB")).toBeInTheDocument();

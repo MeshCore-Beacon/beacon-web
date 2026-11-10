@@ -248,7 +248,7 @@ export function AtlasCard({
         <TilePicker
           label={t(TILE_LABEL[shown])}
           options={free}
-          align={slot % 2 ? "right" : "left"}
+          up={slot >= 2}
           onPick={(next) => onTilesChange(tiles.map((old, i) => (i === slot ? (next as ObserverTile) : old)))}
         />
       ),

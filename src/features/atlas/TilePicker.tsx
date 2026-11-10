@@ -5,17 +5,18 @@ interface TilePickerProps {
   label: string;
   options: { value: string; label: string }[];
   onPick: (value: string) => void;
-  align: "left" | "right";
+  up?: boolean;
 }
 
 // A tile's own label is the trigger and the caret hangs in the gap after it, so the picker costs the tile no room.
-export function TilePicker({ label, options, onPick, align }: TilePickerProps) {
+export function TilePicker({ label, options, onPick, up }: TilePickerProps) {
   const { t } = useTranslation();
   const name = t("atlas.changeTile", { name: label });
   return (
     <Dropdown
-      align={align}
-      width="w-40"
+      align="left"
+      up={up}
+      width="w-38"
       renderTrigger={({ open, toggle }) => (
         <button
           type="button"
