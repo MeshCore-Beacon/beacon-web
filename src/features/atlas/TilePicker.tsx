@@ -5,11 +5,12 @@ interface TilePickerProps {
   label: string;
   options: { value: string; label: string }[];
   onPick: (value: string) => void;
+  onReset?: () => void; // offered under the choices when the card is off its default layout
   up?: boolean;
 }
 
 // A tile's own label is the trigger and the caret hangs in the gap after it, so the picker costs the tile no room.
-export function TilePicker({ label, options, onPick, up }: TilePickerProps) {
+export function TilePicker({ label, options, onPick, onReset, up }: TilePickerProps) {
   const { t } = useTranslation();
   const name = t("atlas.changeTile", { name: label });
   return (
@@ -32,22 +33,38 @@ export function TilePicker({ label, options, onPick, up }: TilePickerProps) {
       )}
     >
       {(close) => (
-        <div role="listbox" aria-label={name} className="font-normal normal-case tracking-normal">
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="option"
-              aria-selected={false}
-              className="w-full px-2.5 py-1.5 text-left font-mono text-xs text-text-muted transition-colors hover:bg-text-normal/3 hover:text-text-normal"
-              onClick={() => {
-                onPick(option.value);
-                close();
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="font-normal normal-case tracking-normal">
+          <div role="listbox" aria-label={name}>
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={false}
+                className="w-full px-2.5 py-1 text-left font-mono text-xs text-text-muted transition-colors hover:bg-text-normal/3 hover:text-text-normal"
+                onClick={() => {
+                  onPick(option.value);
+                  close();
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {onReset && (
+            <div className="mt-1 border-t border-border pt-1">
+              <button
+                type="button"
+                className="w-full px-2.5 py-1 text-left font-mono text-xs text-primary transition-colors hover:bg-text-normal/3"
+                onClick={() => {
+                  onReset();
+                  close();
+                }}
+              >
+                {t("atlas.resetTiles")}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </Dropdown>

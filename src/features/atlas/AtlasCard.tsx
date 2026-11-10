@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
@@ -8,7 +8,7 @@ import { IataChip } from "../../components/IataChip";
 import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
-import { formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
+import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
 import type { Observation } from "../../types/api";
 import type { NodeSummary } from "../nodes/types";
 import { deriveObserverStatus } from "../observers/observer-status";
@@ -63,6 +63,12 @@ const TILE_LABEL: Record<ObserverTile, string> = {
 };
 // Accents belong to the slot, so a card keeps its colours whatever its tiles show.
 const SLOT_ACCENT = [0, 3, 2, 1];
+
+// Icon-only header actions share one box so the row stays even.
+const ICON_BOX = "flex h-[26px] w-7 shrink-0 items-center justify-center";
+const ICON_BUTTON = `${ACTION_BUTTON_CLASS} ${ICON_BOX}`;
+// Remove rests muted and only turns to danger under the pointer or focus, so it never reads as a primary action.
+const REMOVE_BUTTON = `${ICON_BOX} rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
 
 const percent = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
 const MIX_SLICES = 5;
@@ -170,6 +176,11 @@ export function AtlasCard({
   // The observer detail carries the radio as separate fields; the summary shape has the compact string.
   const radio = observer && (formatRadio(observer.radio) ?? formatRadioParts({ freqMhz: observer.radioFreqMhz, sf: observer.radioSf, bwKhz: observer.radioBwKhz, cr: observer.radioCr }));
 
+  const compact = observer?.radio?.split(",").map(Number);
+  const radioShort = observer && formatRadioParts(compact?.length === 3 && compact.every(Number.isFinite)
+    ? { freqMhz: compact[0], sf: compact[2] }
+    : { freqMhz: observer.radioFreqMhz, sf: observer.radioSf });
+
   // The list view is fixed to the tiles' height and scrolls inside it, so flipping never resizes the card.
   const body = useRef<HTMLDivElement>(null);
   const [held, setHeld] = useState<number>();
@@ -179,7 +190,7 @@ export function AtlasCard({
   };
 
   const title = (
-    <span className="flex min-w-0 flex-wrap items-center gap-2">
+    <span className="flex min-h-[26px] min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
       <button
         type="button"
         disabled={pin.kind === "node" && !node}
@@ -201,21 +212,12 @@ export function AtlasCard({
   );
 
   const actions = (
-    <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
-      {views.length > 1 && (
-        <Segmented
-          size="xs"
-          ariaLabel={t("atlas.view")}
-          value={view}
-          onChange={(next) => changeView(next as AtlasView)}
-          options={views.map((value) => ({ value, label: t(VIEW_LABEL[value]) }))}
-        />
-      )}
+    <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
       {views.length > 1 && (
         <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
           <button
             type="button"
-            className={`${ACTION_BUTTON_CLASS} ${view === home ? "bg-primary/10" : ""}`}
+            className={`${ICON_BUTTON} ${view === home ? "bg-primary/10" : ""}`}
             aria-label={t("atlas.pinView")}
             aria-pressed={view === home}
             onClick={() => view !== home && onPinView(view)}
@@ -227,21 +229,38 @@ export function AtlasCard({
           </button>
         </Tooltip>
       )}
-      <button type="button" className={ACTION_BUTTON_CLASS} onClick={onRemove}>
-        {t("atlas.remove")}
-      </button>
-      <button
-        type="button"
-        className={`${ACTION_BUTTON_CLASS} cursor-grab touch-none active:cursor-grabbing`}
-        aria-label={t("atlas.dragToReorder")}
-        {...handle}
-      >
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
-          <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
-          <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
-          <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
-        </svg>
-      </button>
+      <Tooltip label={t("atlas.remove")}>
+        <button type="button" className={REMOVE_BUTTON} aria-label={t("atlas.remove")} onClick={onRemove}>
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+            <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
+          </svg>
+        </button>
+      </Tooltip>
+      <Tooltip label={t("atlas.dragToReorder")} hideOnPress>
+        <button
+          type="button"
+          className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}
+          aria-label={t("atlas.dragToReorder")}
+          {...handle}
+        >
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+            <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
+            <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
+            <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
+          </svg>
+        </button>
+      </Tooltip>
+    </span>
+  );
+
+  // One line that never wraps: the right side gives way first, then the left, a failure never does,
+  // and the tip carries every fact in full.
+  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[]) => (
+    <div data-card-footer className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
+      {left}
+      {state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
+      <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>
+      <span className="flex shrink-0"><InfoTip text={tip} /></span>
     </div>
   );
 
@@ -256,6 +275,11 @@ export function AtlasCard({
   const dash = "—";
 
   const tiles = pin.tiles ?? DEFAULT_TILES;
+  // The battery tile stands in as uptime for a radio with no battery, so either tile can be showing it.
+  const uptimeOnTile = tiles.includes("uptime") || (tiles.includes("battery") && obs.sample.battery === null);
+  const statusLabel = status && t(status === "online" ? "atlas.online" : "atlas.offline");
+  const meanHops = `${t("atlas.meanHops")} ${average(sample.hops)}`;
+  const neighbors = node ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : "";
   const free = OBSERVER_TILES.filter((id) => !tiles.includes(id)).map((id) => ({ value: id, label: t(TILE_LABEL[id]) }));
   const windowLabel = obs.sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`);
   const observerTile = (id: ObserverTile, slot: number) => {
@@ -271,6 +295,7 @@ export function AtlasCard({
           options={free}
           up={slot >= 2}
           onPick={(next) => onTilesChange(tiles.map((old, i) => (i === slot ? (next as ObserverTile) : old)))}
+          onReset={pin.tiles && (() => onTilesChange(DEFAULT_TILES))}
         />
       ),
     };
@@ -321,7 +346,18 @@ export function AtlasCard({
   };
 
   return (
-    <Card title={title} right={actions} wrap className="flex h-full flex-col">
+    <Card title={title} right={actions} className="flex h-full flex-col">
+      {views.length > 1 && (
+        <Segmented
+          stretch
+          size="xs"
+          className="mb-3"
+          ariaLabel={t("atlas.view")}
+          value={view}
+          onChange={(next) => changeView(next as AtlasView)}
+          options={views.map((value) => ({ value, label: t(VIEW_LABEL[value]) }))}
+        />
+      )}
       {pin.kind === "node" && query.isPending && <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>}
       {pin.kind === "node" && query.isError && isNotFound(query.error) && (
         <p role="alert" className="text-sm text-text-muted">{t("nodeDetail.notFound")}</p>
@@ -366,22 +402,22 @@ export function AtlasCard({
               presence={sample.present}
             />
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
-            {node.lastSeen > 0 && (
-              <span>
-                {t("atlas.lastSeen")} <Timestamp value={node.lastSeen} />
+          {footer(
+            node.lastSeen > 0 && (
+              <span className="min-w-0 truncate">
+                <span>{t("atlas.lastSeen")}</span> <Timestamp value={node.lastSeen} />
               </span>
-            )}
-            <span>
-              {t("atlas.meanHops")} {average(sample.hops)}
-            </span>
-            {activity.loading && <span role="status">{t("common.loading")}</span>}
-            {activity.failed && <span className="text-danger">{t("common.loadFailed")}</span>}
-            <span className="whitespace-nowrap">
-              {t("nodeDetail.neighborsCount", { count: node.knownNeighborCount })}{" "}
-              <InfoTip text={[t("atlas.sampleHelp"), activity.unsupported && t("atlas.activityUnsupported")]} />
-            </span>
-          </div>
+            ),
+            `${meanHops} · ${neighbors}`,
+            activity,
+            [
+              node.lastSeen > 0 && `${t("atlas.lastSeen")} ${formatAbsolute(node.lastSeen)}`,
+              meanHops,
+              neighbors,
+              activity.unsupported && t("atlas.activityUnsupported"),
+              t("atlas.sampleHelp"),
+            ],
+          )}
         </div>
       )}
       {view === "heard" && node && (
@@ -427,26 +463,27 @@ export function AtlasCard({
       {view === "observer" && observerId && (pin.kind === "observer" ? observer : node) && (
         <div ref={body} className="flex flex-1 flex-col gap-3">
           <div className="grid flex-1 grid-cols-2 gap-3">{tiles.map((id, slot) => <Fragment key={id}>{observerTile(id, slot)}</Fragment>)}</div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-text-muted">
-            {status && <span>{t(status === "online" ? "atlas.online" : "atlas.offline")}</span>}
-            {observer?.lastStatusAt != null && (
-              <span>
-                {t("atlas.lastStatus")} <Timestamp value={observer.lastStatusAt} />
+          {footer(
+            (status || observer?.lastStatusAt != null) && (
+              <span className="flex min-w-0 items-center gap-1.5">
+                {status && <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status === "online" ? "bg-green" : "bg-text-dim/30"}`} />}
+                <span className="min-w-0 truncate">
+                  {statusLabel && <span>{statusLabel}</span>}
+                  {statusLabel && observer?.lastStatusAt != null && " · "}
+                  {observer?.lastStatusAt != null && <Timestamp value={observer.lastStatusAt} />}
+                </span>
               </span>
-            )}
-            {radio && <span>{radio}</span>}
-            {obs.sample.battery !== null && obs.sample.uptime !== null && !tiles.includes("uptime") && <span>{t("atlas.uptime")} {formatUptime(obs.sample.uptime)}</span>}
-            {obs.loading && <span role="status">{t("common.loading")}</span>}
-            {obs.failed && <span className="text-danger">{t("common.loadFailed")}</span>}
-            {pin.tiles && (
-              <button type="button" className="text-primary hover:underline" onClick={() => onTilesChange(DEFAULT_TILES)}>
-                {t("atlas.resetTiles")}
-              </button>
-            )}
-            <span className="whitespace-nowrap">
-              <InfoTip text={[t("atlas.observerHelp"), obs.unsupported && t("atlas.observerUnsupported")]} />
-            </span>
-          </div>
+            ),
+            radioShort ?? radio,
+            obs,
+            [
+              [statusLabel, observer?.lastStatusAt != null && `${t("atlas.lastStatus")} ${formatAbsolute(observer.lastStatusAt)}`].filter(Boolean).join(" · "),
+              radio,
+              !uptimeOnTile && obs.sample.uptime !== null && `${t("atlas.uptime")} ${formatUptime(obs.sample.uptime)}`,
+              obs.unsupported && t("atlas.observerUnsupported"),
+              t("atlas.observerHelp"),
+            ],
+          )}
         </div>
       )}
     </Card>

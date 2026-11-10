@@ -81,7 +81,7 @@ describe("AtlasCard", () => {
     expect(screen.getByText("Active hours")).toBeInTheDocument();
     expect(screen.getByText("1/24")).toBeInTheDocument();
     expect(screen.getByText("24h")).toBeInTheDocument();
-    expect(screen.getByText(/Mean hops 2\.0/)).toBeInTheDocument();
+    expect(screen.getByText("Mean hops 2.0 · Neighbors (4)")).toBeInTheDocument();
     expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
     expect(screen.queryByText(/battery|telemetry/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Renamed repeater" }));
@@ -110,12 +110,39 @@ describe("AtlasCard", () => {
     expect(handlers.onResolved).not.toHaveBeenCalled();
   });
 
-  it("lets the action buttons drop under the title instead of squeezing the name", async () => {
+  it("keeps the header to one line: the name and badges, then icon buttons pinned to the top right", async () => {
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
-    const actions = screen.getByRole("button", { name: "Remove" }).parentElement!;
-    expect(actions).toHaveClass("ml-auto");
-    expect(actions.parentElement).toHaveClass("flex-wrap");
+    const remove = screen.getByRole("button", { name: "Remove" });
+    const actions = remove.closest("[data-card-actions]")!;
+    expect(actions).toHaveClass("shrink-0", "self-start");
+    expect(actions.parentElement).not.toHaveClass("flex-wrap");
+    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
+    expect(remove).toHaveTextContent("");
+    expect(remove).toHaveClass("text-text-muted", "hover:text-danger", "focus-visible:text-danger");
+    expect(remove).not.toHaveClass("text-primary");
+  });
+
+  it("puts the view switch on its own full-width row under the header", async () => {
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const picker = screen.getByRole("group", { name: "Card view" });
+    expect(picker).toHaveClass("w-full");
+    expect(picker.closest("[data-card-actions]")).toBeNull();
+    for (const tab of within(picker).getAllByRole("button")) expect(tab).toHaveClass("flex-1");
+  });
+
+  it("gives the Analytics view a one-line footer and lists every fact in the tip", async () => {
+    mount();
+    const footer = (await screen.findByText("Last seen")).closest("[data-card-footer]") as HTMLElement;
+    expect(footer).not.toHaveClass("flex-wrap");
+    expect(within(footer).getByText("Last seen").parentElement).toHaveClass("truncate");
+    expect(await within(footer).findByText("Mean hops 2.0 · Neighbors (4)")).toHaveClass("truncate");
+    const tip = within(footer).getByText(/More information:/);
+    expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
+    expect(tip).toHaveTextContent("Mean hops 2.0");
+    expect(tip).toHaveTextContent("Neighbors (4)");
+    expect(tip).toHaveTextContent("Stored observations of packets");
   });
 
   it("fills its grid row so neighbouring cards stay the same height whatever their titles wrap to", async () => {
@@ -264,10 +291,31 @@ describe("AtlasCard", () => {
     expect(screen.getByText("-117 dBm")).toBeInTheDocument();
     expect(screen.getByText("4.12V")).toBeInTheDocument();
     expect(screen.getByText("Online")).toBeInTheDocument();
-    expect(screen.getByText("915 MHz · SF11 · 250 kHz").closest(".flex-wrap")).toBeInTheDocument();
+    const footer = screen.getByText("Online").closest("[data-card-footer]") as HTMLElement;
+    expect(footer).not.toHaveClass("flex-wrap");
+    expect(screen.getByText("Online").parentElement).toHaveClass("truncate");
+    expect(screen.getByText("Online").parentElement).toHaveTextContent(/^Online · 1m ago$/);
+    expect(within(footer).getByText("915 MHz · SF11")).toHaveClass("truncate");
+    const tip = within(footer).getByText(/More information:/);
+    expect(tip).toHaveTextContent(/Online · Last status \d{4}-\d{2}-\d{2}/);
+    expect(tip).toHaveTextContent("915 MHz · SF11 · 250 kHz");
+    expect(tip).toHaveTextContent("Uptime 1d 1h 0m");
+    expect(within(footer).queryByText(/Uptime/, { ignore: ".sr-only" })).not.toBeInTheDocument();
     expect(screen.getByText("Airtime").closest(".grid")).toHaveClass("flex-1", "grid-cols-2");
     expect(screen.queryByText("Mean SNR")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Observer" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps a failed observer series visible on the footer line", async () => {
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getObserverActivity).mockRejectedValue(new ApiError(500, "boom", "boom"));
+    vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+    mount({ view: "observer" });
+    const note = await screen.findByText("Failed to load");
+    expect(note).toHaveClass("text-danger", "shrink-0");
+    expect(note.closest("[data-card-footer]")).not.toBeNull();
+    expect(screen.getByText("915 MHz · SF11")).toBeInTheDocument();
   });
 
   it("shows dashes and explains when the server lacks the observer endpoints", async () => {
@@ -381,8 +429,10 @@ describe("AtlasCard", () => {
       mount({ pin: observerPin, view: "observer" });
       await screen.findByText("12");
       expect(labels()).toEqual(["Airtime", "Battery", "Packet types", "Noise floor"]);
-      expect(screen.queryByRole("button", { name: "Reset tiles" })).not.toBeInTheDocument();
       expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Change tile: Airtime" }));
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Reset tiles" })).not.toBeInTheDocument();
     });
 
     it("offers only the metrics not already on the card and swaps the chosen slot", async () => {
@@ -404,7 +454,7 @@ describe("AtlasCard", () => {
       await screen.findByText("12");
       const panel = (name: string) => {
         fireEvent.click(screen.getByRole("button", { name: `Change tile: ${name}` }));
-        return screen.getByRole("listbox", { name: `Change tile: ${name}` }).parentElement!;
+        return screen.getByRole("listbox", { name: `Change tile: ${name}` }).closest(".absolute")!;
       };
       expect(panel("Airtime")).toHaveClass("left-0", "top-full");
       expect(panel("Battery")).toHaveClass("left-0", "top-full");
@@ -420,8 +470,14 @@ describe("AtlasCard", () => {
       expect(screen.getByText("4")).toBeInTheDocument();
       expect(screen.getByText("5")).toBeInTheDocument();
       expect(screen.queryByText("Airtime")).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: "Reset tiles" }));
+      expect(screen.queryByRole("button", { name: "Reset tiles" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Change tile: Queue length" }));
+      const reset = screen.getByRole("button", { name: "Reset tiles" });
+      expect(reset.parentElement).toHaveClass("border-t");
+      expect(screen.getByRole("listbox")).not.toContainElement(reset);
+      fireEvent.click(reset);
       expect(handlers.onTilesChange).toHaveBeenCalledWith(["airtime", "battery", "types", "noise"]);
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     });
 
     it("shows packets heard per hour and uptime as their own tiles, and no second uptime for a missing battery", async () => {
@@ -444,7 +500,7 @@ describe("AtlasCard", () => {
     it("uses French labels for the picker and reset", async () => {
       await act(() => i18n.changeLanguage("fr"));
       mount({ pin: { ...observerPin, tiles: ["snr", "battery", "types", "noise"] }, view: "observer" });
-      expect(await screen.findByRole("button", { name: "Changer la tuile : SNR moyen" })).toBeInTheDocument();
+      fireEvent.click(await screen.findByRole("button", { name: "Changer la tuile : SNR moyen" }));
       expect(screen.getByRole("button", { name: "Réinitialiser les tuiles" })).toBeInTheDocument();
       await act(() => i18n.changeLanguage("en"));
     });

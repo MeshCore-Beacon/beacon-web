@@ -414,7 +414,7 @@ describe("Atlas page", () => {
       fireEvent.click(await screen.findByRole("button", { name: "Change tile: Airtime" }));
       fireEvent.click(screen.getByRole("option", { name: "Mean SNR" }));
       expect(stored().pins).toEqual([{ ...observerPin, tiles }, { kind: "node", ...pin }]);
-      expect(await screen.findByRole("button", { name: "Change tile: Mean SNR" })).toBeInTheDocument();
+      fireEvent.click(await screen.findByRole("button", { name: "Change tile: Mean SNR" }));
       fireEvent.click(screen.getByRole("button", { name: "Reset tiles" }));
       expect(stored().pins).toEqual([observerPin, { kind: "node", ...pin }]);
     });
