@@ -110,6 +110,28 @@ export interface NodeNeighbor {
   lastSeen: number; // epoch ms
 }
 
+export interface NodeActivityPoint {
+  t: number; // hour start, epoch ms
+  observations: number;
+  snrAvg: number | null;
+  rssiAvg: number | null;
+  hopAvg: number | null;
+}
+
+// GET /nodes/{id}/activity: hourly buckets, ascending, only hours that have rows.
+export interface NodeActivity {
+  windowStart: number;
+  windowEnd: number;
+  generatedAt: number;
+  // as on ObserverActivity: rollups cover hours before rolledUntil, raw rows from rawFrom
+  rolledUntil?: number;
+  rawFrom?: number;
+  range: string;
+  summary: { observations: number; snrAvg: number | null; rssiAvg: number | null; hopAvg: number | null };
+  points: NodeActivityPoint[];
+  latest: { packetHash: string; heardAt: number } | null;
+}
+
 export interface NodeObservation {
   id: number;
   packetHash: string;

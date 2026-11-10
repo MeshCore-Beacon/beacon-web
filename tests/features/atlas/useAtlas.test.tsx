@@ -12,12 +12,13 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/api/client")>()),
   getNode: vi.fn(),
   getNodeObservations: vi.fn(),
+  getNodeActivity: vi.fn(),
   getNodesPage: vi.fn(),
 }));
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Pinned" };
 const node = { ...pin, nodeType: 2, nodeTypeName: "REPEATER", knownNeighborCount: 1, lastSeen: Date.now(), iatas: [], lat: null, lng: null } as Node;
-const report = { id: 1, packetHash: "ef".repeat(32), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: Date.now() - 1000, snr: 4, rssi: -90, hopCount: 1 };
+const activity = { windowStart: 0, windowEnd: 0, generatedAt: 0, range: "24h", summary: { observations: 1, snrAvg: 4, rssiAvg: -90, hopAvg: 1 }, points: [], latest: { packetHash: "ef".repeat(32), heardAt: Date.now() - 1000 } };
 // The app's retry policy and back-off (1 s, then 2 s) so these tests exercise what ships.
 const RETRY_MS = 3000;
 let client: QueryClient;
@@ -36,7 +37,7 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: shouldRetryQuery } } });
   vi.clearAllMocks();
   vi.mocked(api.getNode).mockResolvedValue(node);
-  vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [report], hasMore: true, nextCursor: 1 });
+  vi.mocked(api.getNodeActivity).mockResolvedValue(activity);
 });
 afterEach(() => {
   client.clear();
@@ -68,7 +69,7 @@ describe("atlas polling policy", () => {
     await tick(ATLAS_REFRESH_MS + RETRY_MS);
     expect(result.current.status).toBe("error");
     expect(result.current.node).toBeDefined();
-    expect(result.current.sample.reports).toHaveLength(1);
+    expect(result.current.sample.total).toBe(1);
     expect(api.getNode).toHaveBeenCalledTimes(4);
     await tick(ATLAS_REFRESH_MS);
     expect(result.current.status).toBe("success");
@@ -127,20 +128,55 @@ describe("atlas polling policy", () => {
 });
 
 describe("useAtlasNode", () => {
-  it("loads the node and summarises its reports, flagging a capped page", async () => {
-    const { result } = renderHook(() => useAtlasNode(pin, "24h", true), { wrapper });
-    await waitFor(() => expect(result.current.node).toBeDefined());
-    expect(api.getNodeObservations).toHaveBeenCalledWith(pin.id, { limit: 200 }, expect.any(AbortSignal));
-    expect(result.current.sample.reports).toHaveLength(1);
+  it("loads the node, then its hourly activity for the range, without the observation rows", async () => {
+    const { result, rerender } = renderHook(({ range }: { range: "24h" | "3d" }) => useAtlasNode(pin, range, true), { wrapper, initialProps: { range: "24h" } });
+    await waitFor(() => expect(result.current.sample.total).toBe(1));
+    expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
+    expect(api.getNodeObservations).not.toHaveBeenCalled();
     expect(result.current.sample.snr).toBe(4);
-    expect(result.current.capped).toBe(true);
+    expect(result.current.sample.latest).toEqual(activity.latest);
+    expect(result.current.activity).toEqual({ loading: false, unsupported: false, failed: false });
+    rerender({ range: "3d" });
+    await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "72h", expect.any(AbortSignal)));
+    expect(api.getNode).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing while inactive and returns an empty sample", () => {
     const { result } = renderHook(() => useAtlasNode(pin, "3d", false), { wrapper });
     expect(api.getNode).not.toHaveBeenCalled();
+    expect(api.getNodeActivity).not.toHaveBeenCalled();
     expect(result.current.node).toBeUndefined();
     expect(result.current.sample.counts).toHaveLength(72);
-    expect(result.current.capped).toBe(false);
+  });
+
+  it("flags a server without the activity endpoint and stops asking it, while the node keeps polling", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getNodeActivity).mockRejectedValue(new ApiError(404, "not_found", "no"));
+    const { result } = renderHook(() => useAtlasNode(pin, "24h", true), { wrapper });
+    await tick(10);
+    expect(result.current.node).toBeDefined();
+    expect(result.current.activity).toEqual({ loading: false, unsupported: true, failed: false });
+    await tick(3 * ATLAS_REFRESH_MS);
+    expect(api.getNodeActivity).toHaveBeenCalledTimes(1);
+    expect(api.getNode).toHaveBeenCalledTimes(4);
+  });
+
+  it("reports a failed activity load and tries again on the next poll", async () => {
+    vi.useFakeTimers();
+    for (let i = 0; i < 3; i++) vi.mocked(api.getNodeActivity).mockRejectedValueOnce(new Error("down"));
+    const { result } = renderHook(() => useAtlasNode(pin, "24h", true), { wrapper });
+    await tick(10 + RETRY_MS);
+    expect(result.current.activity).toEqual({ loading: false, unsupported: false, failed: true });
+    await tick(ATLAS_REFRESH_MS);
+    expect(result.current.sample.total).toBe(1);
+  });
+
+  it("pauses the activity poll while the API is throttling", async () => {
+    vi.useFakeTimers();
+    renderHook(() => useAtlasNode(pin, "24h", true), { wrapper });
+    await tick(10);
+    act(() => noteRateLimited(5 * ATLAS_REFRESH_MS));
+    await tick(2 * ATLAS_REFRESH_MS);
+    expect(api.getNodeActivity).toHaveBeenCalledTimes(1);
   });
 });

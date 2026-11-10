@@ -4,10 +4,7 @@ import { getObserver, getObserverActivity, getObserverTelemetry, isNotFound } fr
 import { useTick } from "../../hooks/useTick";
 import type { AtlasRange } from "./atlas";
 import { OBSERVER_INTERVAL, OBSERVER_RANGE, summarizeObserver } from "./observer-sample";
-import { ATLAS_REFRESH_MS, pollUnlessGone, useThrottled } from "./useAtlas";
-
-// A 404 means this server has no such endpoint; nothing to poll for.
-const pollUnlessMissing = (error: unknown) => (isNotFound(error) ? false : ATLAS_REFRESH_MS);
+import { ATLAS_REFRESH_MS, pollUnlessGone, pollUnlessMissing, useThrottled } from "./useAtlas";
 
 // The series load only while the Observer view is open. The record does too, unless the card needs it
 // for its title (an observer pin).

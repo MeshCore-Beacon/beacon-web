@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, getObserverComparison, isNotFound } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, getNodeActivity, getObserverComparison, isNotFound } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -130,6 +130,16 @@ describe("getNodesPage", () => {
     const url = getUrl();
     expect(url).toContain("/nodes");
     expect(url).toContain("pubkeyPrefix=a1b2");
+  });
+
+  it("forwards an exact full-key lookup as pubkey", async () => {
+    const getUrl = mockFetchOnce({ items: [], nextCursor: null, hasMore: false });
+
+    await getNodesPage(undefined, { pubkey: "ab".repeat(32), limit: 2 });
+
+    const url = new URL(getUrl());
+    expect(url.searchParams.get("pubkey")).toBe("ab".repeat(32));
+    expect(url.searchParams.has("pubkeyPrefix")).toBe(false);
   });
 
   it("forwards the Nodes-table filters (type maps to typeName, multibyte flags)", async () => {
@@ -692,6 +702,18 @@ describe("getObserverActivity", () => {
     expect(url.pathname).toContain("/observers/obs-1/activity");
     expect(url.searchParams.get("range")).toBe("24h");
     expect(url.searchParams.get("interval")).toBe("15m");
+  });
+});
+
+describe("getNodeActivity", () => {
+  it("requests a node's hourly activity for a range", async () => {
+    const getUrl = mockFetchOnce({ range: "72h", summary: { observations: 0, snrAvg: null, rssiAvg: null, hopAvg: null }, points: [], latest: null });
+
+    await getNodeActivity("node-1", "72h");
+
+    const url = new URL(getUrl());
+    expect(url.pathname).toContain("/nodes/node-1/activity");
+    expect(url.searchParams.get("range")).toBe("72h");
   });
 });
 

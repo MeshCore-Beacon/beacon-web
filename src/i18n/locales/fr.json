@@ -1006,9 +1006,8 @@
         "24h": "24 h",
         "3d": "3 j"
       },
-      "sampleCapped": "{{limit}} dernières",
-      "sampleHelp": "{{limit}} dernières observations conservées de paquets provenant de ce nœud, par heure. Le signal est mesuré par les observateurs sur le dernier saut.",
-      "cappedHelp": "Il existe plus d’observations que cette fiche n’en charge ; les barres commencent à la plus ancienne chargée.",
+      "sampleHelp": "Observations conservées de paquets provenant de ce nœud, par heure sur la période choisie, avec le signal mesuré par les observateurs sur le dernier saut.",
+      "activityUnsupported": "Ce serveur ne fournit pas l’activité des nœuds.",
       "lastSeen": "Vu pour la dernière fois",
       "meanHops": "Sauts moyens",
       "recent": "Récent",

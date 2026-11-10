@@ -12,7 +12,7 @@ import type { PacketDetail } from "../../../src/types/api";
 vi.mock("../../../src/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/api/client")>()),
   getNode: vi.fn(),
-  getNodeObservations: vi.fn(),
+  getNodeActivity: vi.fn(),
   getNodesPage: vi.fn(),
   getPacketDetail: vi.fn(),
   getObserver: vi.fn(),
@@ -22,7 +22,8 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
 
 const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
 const node = { ...pin, name: "Renamed repeater", nodeType: 2, nodeTypeName: "REPEATER", knownNeighborCount: 4, stale: false, lastSeen: Date.now(), iatas: [], lat: null, lng: null } as Node;
-const report = { id: 7, packetHash: "ef".repeat(32), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: Date.now() - 1000, snr: 0, rssi: -106, hopCount: 2 };
+const report = { packetHash: "ef".repeat(32), heardAt: Date.now() - 1000 };
+const nodeActivity = { windowStart: 0, windowEnd: 0, generatedAt: 0, range: "24h", summary: { observations: 1234, snrAvg: 0, rssiAvg: -106, hopAvg: 2 }, points: [{ t: Date.now() - 3_600_000, observations: 1234, snrAvg: 0, rssiAvg: -106, hopAvg: 2 }], latest: report };
 const detail = { packetHash: report.packetHash, originPubkey: pin.publicKey, header: { payloadType: 4 }, observations: [
   { observerId: "observer-a", observerName: "Home listener", id: 1, heardAt: 1, iata: "YKF" },
   { observerId: "observer-a", observerName: "Home listener", id: 2, heardAt: 2, iata: "YKF" },
@@ -58,7 +59,7 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.clearAllMocks();
   vi.mocked(api.getNode).mockResolvedValue(node);
-  vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [report], hasMore: true, nextCursor: 7 });
+  vi.mocked(api.getNodeActivity).mockResolvedValue(nodeActivity);
   vi.mocked(api.getPacketDetail).mockResolvedValue(detail);
 });
 afterEach(() => client.clear());
@@ -71,10 +72,14 @@ describe("AtlasCard", () => {
     expect(screen.getByText("Recent")).toBeInTheDocument();
     expect(screen.getByText("Observations")).toBeInTheDocument();
     expect(screen.getByText("Mean SNR")).toBeInTheDocument();
-    expect(screen.getByText("0.0 dB")).toBeInTheDocument();
+    expect(await screen.findByText("0.0 dB")).toBeInTheDocument();
+    expect(screen.getByText("1.2k")).toBeInTheDocument();
     expect(screen.getByText("-106.0 dBm")).toBeInTheDocument();
     expect(screen.getByText("Active hours")).toBeInTheDocument();
-    expect(screen.getByText("latest 200")).toBeInTheDocument();
+    expect(screen.getByText("1/24")).toBeInTheDocument();
+    expect(screen.getByText("24h")).toBeInTheDocument();
+    expect(screen.getByText(/Mean hops 2\.0/)).toBeInTheDocument();
+    expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
     expect(screen.queryByText(/battery|telemetry/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Renamed repeater" }));
     expect(handlers.onViewNode).toHaveBeenCalledWith(pin.id);
@@ -117,7 +122,7 @@ describe("AtlasCard", () => {
     expect(tiles).toHaveClass("flex-1");
     expect(tiles.parentElement).toHaveClass("flex-1");
     expect(tiles.closest(".rounded-lg.border.p-3\\.5")).toHaveClass("flex", "h-full", "flex-col");
-    expect(screen.getByText("-106.0 dBm")).toHaveClass("text-xl");
+    expect(await screen.findByText("-106.0 dBm")).toHaveClass("text-xl");
   });
 
   it("labels an unnamed node by its ID prefix, dimmed, as the Nodes page does", async () => {
@@ -137,9 +142,10 @@ describe("AtlasCard", () => {
   });
 
   it("renders dashes for an empty sample without NaN", async () => {
-    vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
+    vi.mocked(api.getNodeActivity).mockResolvedValue({ ...nodeActivity, summary: { observations: 0, snrAvg: null, rssiAvg: null, hopAvg: null }, points: [], latest: null });
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
+    expect(await screen.findByText("0")).toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("0/24")).toBeInTheDocument();
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
@@ -173,7 +179,7 @@ describe("AtlasCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Home listener" }));
     expect(handlers.onViewObserver).toHaveBeenCalledWith("observer-a");
     fireEvent.click(screen.getByRole("button", { name: "Open packet" }));
-    expect(handlers.onAnalyzePacket).toHaveBeenCalledWith(report.packetHash, 7);
+    expect(handlers.onAnalyzePacket).toHaveBeenCalledWith(report.packetHash);
     delete (HTMLElement.prototype as { offsetHeight?: unknown }).offsetHeight;
   });
 
@@ -182,6 +188,35 @@ describe("AtlasCard", () => {
     mount({ view: "heard" });
     expect(await screen.findByText("Packet details are unavailable or expired.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open packet" })).not.toBeInTheDocument();
+  });
+
+  it("says so when the window is marked partly unread and when it holds no packet", async () => {
+    const hour = Math.floor(Date.now() / 3_600_000) * 3_600_000;
+    vi.mocked(api.getNodeActivity).mockResolvedValue({ ...nodeActivity, rawFrom: hour - 3 * 3_600_000, latest: null });
+    const view = mount();
+    expect(await screen.findByText("Partial history")).toBeInTheDocument();
+    view.unmount();
+    mount({ view: "heard" });
+    expect(await screen.findByText("No observations in this window.")).toBeInTheDocument();
+    expect(api.getPacketDetail).not.toHaveBeenCalled();
+  });
+
+  it("explains when the server lacks node activity, in both node views, and leaves the tiles as dashes", async () => {
+    vi.mocked(api.getNodeActivity).mockRejectedValue(new ApiError(404, "not_found", "no"));
+    const view = mount();
+    expect(await screen.findByText(/More information:.*does not provide node activity/)).toBeInTheDocument();
+    expect(screen.queryByText(/ dBm?$/)).not.toBeInTheDocument();
+    expect(screen.getByText("0/24")).toBeInTheDocument();
+    view.unmount();
+    mount({ view: "heard" });
+    expect(await screen.findByText("This server does not provide node activity.")).toBeInTheDocument();
+  });
+
+  it("reports a failed activity load without hiding the node", async () => {
+    vi.mocked(api.getNodeActivity).mockRejectedValue(new ApiError(500, "boom", "boom"));
+    mount();
+    expect(await screen.findByText("Failed to load")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Renamed repeater" })).toBeEnabled();
   });
 
   it("keeps an unavailable node removable and draggable", async () => {

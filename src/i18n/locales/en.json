@@ -1001,9 +1001,8 @@
         "24h": "24h",
         "3d": "3d"
       },
-      "sampleCapped": "latest {{limit}}",
-      "sampleHelp": "Latest {{limit}} stored observations of packets from this node, bucketed per hour. Signal is measured by observers on the last hop.",
-      "cappedHelp": "More observations exist than this card loads; the bars start at the oldest loaded one.",
+      "sampleHelp": "Stored observations of packets from this node per hour over the selected window, with signal as measured by observers on the last hop.",
+      "activityUnsupported": "This server does not provide node activity.",
       "lastSeen": "Last seen",
       "meanHops": "Mean hops",
       "recent": "Recent",

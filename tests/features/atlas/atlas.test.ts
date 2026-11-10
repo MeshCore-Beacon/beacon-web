@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeReports, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
-import type { NodeObservation } from "../../../src/features/nodes/types";
+import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
+import type { NodeActivity } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
 vi.mock("../../../src/api/client", async (importOriginal) => ({
@@ -15,7 +15,7 @@ describe("resolveObserverNode", () => {
     const node = { id: "11111111-1111-4111-8111-111111111111", publicKey: key.toUpperCase(), name: "R1" };
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, publicKey: "ab".repeat(31) + "ff" }, node], hasMore: false, nextCursor: null } as never);
     await expect(resolveObserverNode({ publicKey: key } as Observer)).resolves.toMatchObject({ id: node.id });
-    expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkeyPrefix: key, limit: 2 }, undefined);
+    expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkey: key, limit: 2 }, undefined);
     await expect(resolveObserverNode({ publicKey: "" } as Observer)).resolves.toBeNull();
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null } as never);
     await expect(resolveObserverNode({ publicKey: key } as Observer)).resolves.toBeNull();
@@ -25,7 +25,15 @@ describe("resolveObserverNode", () => {
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "AB".repeat(32), name: "My repeater" };
 const nodePin = { kind: "node", ...pin, publicKey: pin.publicKey.toLowerCase() };
 const now = Date.UTC(2026, 8, 29, 12);
-const report = (id: number, hours: number, extra: Partial<NodeObservation> = {}): NodeObservation => ({ id, packetHash: String(id).padStart(64, "0"), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: now - hours * 3_600_000, ...extra });
+const HOUR = 3_600_000;
+// The tick sits ten minutes into the hour; hour(n) is the bucket n hours back.
+const tick = now + 600_000;
+const hour = (n: number) => now - n * HOUR;
+const point = (n: number, observations: number, extra: Partial<NodeActivity["points"][number]> = {}) => ({ t: hour(n), observations, snrAvg: null, rssiAvg: null, hopAvg: null, ...extra });
+const activityOf = (extra: Partial<NodeActivity> = {}): NodeActivity => ({
+  windowStart: tick - 24 * HOUR, windowEnd: tick, generatedAt: tick, range: "24h",
+  summary: { observations: 0, snrAvg: null, rssiAvg: null, hopAvg: null }, points: [], latest: null, ...extra,
+});
 
 describe("saved Atlas", () => {
   it("restores valid ordered full identities, normalizes keys and removes duplicates", () => {
@@ -59,67 +67,53 @@ describe("saved Atlas", () => {
   });
 });
 
-describe("origin report sample", () => {
-  it("counts a report newer than the tick snapshot in the latest hour", () => {
-    const sample = summarizeReports([report(1, 0), report(2, -0.01)], "24h", now);
-    expect(sample.reports.map((r) => r.id)).toEqual([2, 1]);
+describe("node activity sample", () => {
+  it("bins the hourly points newest last and takes totals and means from the server summary", () => {
+    const latest = { packetHash: "ef".repeat(32), heardAt: tick - 1000 };
+    const sample = summarizeActivity(activityOf({
+      summary: { observations: 50, snrAvg: 5, rssiAvg: -100, hopAvg: 2 },
+      points: [point(24, 9, { snrAvg: 20 }), point(2, 7), point(0, 3, { snrAvg: 4, rssiAvg: -90, hopAvg: 1 })],
+      latest,
+    }), "24h", tick);
     expect(sample.counts).toHaveLength(24);
-    expect(sample.counts[23]).toBe(2);
-  });
-
-  it("bins the window inclusive of its start, drops older reports, keeps other payload types and dedupes ids", () => {
-    const rows = [report(1, 0), report(2, 23.9), report(3, 24), report(4, 24.01), report(5, 1, { payloadType: 99 }), report(1, 0)];
-    const sample = summarizeReports(rows, "24h", now);
-    expect(sample.reports.map((r) => r.id)).toEqual([1, 5, 2, 3]);
-    expect(sample.counts.reduce((a, b) => a + b, 0)).toBe(4);
-    expect(sample.counts[23]).toBe(2);
-    expect(sample.counts[0]).toBe(2);
-    expect(sample.present[0]).toBe(true);
-    expect(sample.present[12]).toBe(false);
-    expect(summarizeReports(rows, "3d", now).counts).toHaveLength(72);
-    expect(summarizeReports(rows, "3d", now).reports).toHaveLength(5);
-  });
-
-  it("gives hourly means per bin and null where the hour has no signal sample", () => {
-    const sample = summarizeReports([report(1, 0, { snr: 0, rssi: -100 }), report(2, 2, { snr: 8, rssi: -90 }), report(3, 24.01, { snr: 20, rssi: -70 })], "24h", now);
-    expect(sample.snrHourly[23]).toBe(0);
-    expect(sample.rssiHourly[23]).toBe(-100);
-    expect(sample.snrHourly[22]).toBe(8);
+    expect(sample.counts[23]).toBe(3);
+    expect(sample.counts[22]).toBe(0);
+    expect(sample.counts[21]).toBe(7);
+    expect(sample.counts.reduce<number>((a, b) => a + (b ?? 0), 0)).toBe(10);
+    expect(sample.present.filter(Boolean)).toHaveLength(2);
+    expect(sample.snrHourly[23]).toBe(4);
+    expect(sample.rssiHourly[23]).toBe(-90);
     expect(sample.snrHourly[21]).toBeNull();
     expect(sample.snrHourly[0]).toBeNull();
+    expect(sample).toMatchObject({ total: 50, snr: 5, rssi: -100, hops: 2, partial: false, latest });
   });
 
-  it("does not turn missing signal into zero and averages real zero SNR samples", () => {
-    const sample = summarizeReports([report(1, 1), report(2, 2, { rssi: 0, snr: 0 }), report(3, 3, { rssi: -110, snr: 0, hopCount: 0 }), report(4, 4, { rssi: -90, snr: 10, hopCount: 4 }), report(5, 5, { rssi: NaN, snr: Infinity })], "24h", now);
-    expect(sample.snr).toBe(5);
-    expect(sample.rssi).toBe(-100);
-    expect(sample.hops).toBe(2);
-    expect(summarizeReports([], "24h", now).snr).toBeNull();
-    expect(summarizeReports([], "24h", now).counts).toHaveLength(24);
+  it("keeps a real zero mean and turns missing or non-finite means into null", () => {
+    const sample = summarizeActivity(activityOf({ summary: { observations: 4, snrAvg: 0, rssiAvg: null, hopAvg: NaN }, points: [point(1, 4, { snrAvg: 0 })] }), "24h", tick);
+    expect(sample.snr).toBe(0);
+    expect(sample.snrHourly[22]).toBe(0);
+    expect(sample.rssi).toBeNull();
+    expect(sample.hops).toBeNull();
   });
 
-  it("starts the bins at the oldest loaded hour when the page was capped", () => {
-    const rows = [report(1, 0.5), report(2, 1.5), report(3, 5.2)];
-    const full = summarizeReports(rows, "3d", now, false);
-    expect(full.counts).toHaveLength(72);
-    expect(full.since).toBe(now - 72 * 3_600_000);
-    const capped = summarizeReports(rows, "3d", now, true);
-    expect(capped.since).toBe(Math.floor((now - 5.2 * 3_600_000) / 3_600_000) * 3_600_000);
-    expect(capped.counts).toHaveLength(6);
-    expect(capped.counts[0]).toBe(1);
-    expect(capped.counts.reduce((a, b) => a + b, 0)).toBe(3);
-    expect(capped.truncated).toBe(true);
-    expect(full.truncated).toBe(false);
-    expect(summarizeReports([], "3d", now, true).counts).toHaveLength(72);
+  it("marks hours that are neither rolled up nor in the raw tail as unknown, not quiet", () => {
+    const sample = summarizeActivity(activityOf({ rolledUntil: hour(10), rawFrom: hour(4), points: [point(12, 2), point(1, 1)] }), "24h", tick);
+    expect(sample.counts[23 - 12]).toBe(2);
+    expect(sample.counts[23 - 11]).toBe(0);
+    expect(sample.counts.slice(23 - 10, 23 - 4)).toEqual(Array(6).fill(null));
+    expect(sample.counts[23 - 4]).toBe(0);
+    expect(sample.present[23 - 7]).toBe(false);
+    expect(sample.partial).toBe(true);
+    const rawOnly = summarizeActivity(activityOf({ rawFrom: hour(4) }), "24h", tick);
+    expect(rawOnly.counts.filter((v) => v === null)).toHaveLength(19);
   });
 
-  it("is not truncated when more rows exist but the loaded page already reaches past the window", () => {
-    const rows = [report(1, 2), report(2, 30), report(3, 100)];
-    const sample = summarizeReports(rows, "24h", now, true);
-    expect(sample.truncated).toBe(false);
-    expect(sample.since).toBe(now - 24 * 3_600_000);
-    expect(sample.counts).toHaveLength(24);
-    expect(sample.reports.map((r) => r.id)).toEqual([1]);
+  it("is all unknown with dashes for totals until the activity has loaded", () => {
+    const sample = summarizeActivity(undefined, "3d", tick);
+    expect(sample.counts).toEqual(Array(72).fill(null));
+    expect(sample.present).toHaveLength(72);
+    expect(sample).toMatchObject({ total: null, snr: null, rssi: null, hops: null, latest: null, partial: false });
+    expect(summarizeActivity(activityOf(), "3d", tick).counts).toEqual(Array(72).fill(0));
   });
 });
 

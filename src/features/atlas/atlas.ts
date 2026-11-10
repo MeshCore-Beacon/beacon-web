@@ -1,10 +1,9 @@
-import { ApiError, getNode, getNodeObservations, getNodesPage, isNotFound } from "../../api/client";
-import type { Node, NodeObservation, NodeSummary } from "../nodes/types";
+import { ApiError, getNode, getNodesPage, isNotFound } from "../../api/client";
+import type { Node, NodeActivity, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
 export const ATLAS_KEY = "beacon-atlas-v2";
 export const ATLAS_LIMIT = 12;
-export const REPORT_LIMIT = 200;
 export type AtlasRange = "24h" | "3d";
 export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string }
 export interface ObserverPin { kind: "observer"; observerId: string; name: string }
@@ -78,12 +77,12 @@ function toPin(raw: unknown): AtlasPin | null {
 export async function resolveObserverNode(observer: Observer, signal?: AbortSignal): Promise<NodeSummary | null> {
   const key = observer.publicKey?.toLowerCase();
   if (!key) return null;
-  const page = await getNodesPage(undefined, { pubkeyPrefix: key, limit: 2 }, signal);
+  const page = await getNodesPage(undefined, { pubkey: key, limit: 2 }, signal);
   return page.items.find((row) => row.publicKey.toLowerCase() === key) ?? null;
 }
 
 // Resolve by full identity after a server database reset; never adopt a different node at an old ID.
-export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal) {
+export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal): Promise<Node> {
   let node: Node | undefined;
   try {
     node = await getNode(pin.id, signal);
@@ -91,89 +90,80 @@ export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal) {
     if (!isNotFound(error)) throw error;
   }
   if (node?.publicKey.toLowerCase() !== pin.publicKey) {
-    const page = await getNodesPage(undefined, { pubkeyPrefix: pin.publicKey, limit: 2 }, signal);
+    const page = await getNodesPage(undefined, { pubkey: pin.publicKey, limit: 2 }, signal);
     const match = page.items.find(row => row.publicKey.toLowerCase() === pin.publicKey);
     if (!match) throw new ApiError(404, "not_found", "Atlas identity unavailable");
     node = await getNode(match.id, signal);
   }
   if (node.publicKey.toLowerCase() !== pin.publicKey) throw new Error("Atlas identity changed");
-  const page = await getNodeObservations(node.id, { limit: REPORT_LIMIT }, signal);
-  return { node, page };
+  return node;
 }
 
-const HOUR = 3_600_000;
+export const HOUR = 3_600_000;
 const RANGE_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72 };
+const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+
+// Slots count back from the tick, newest last. The tick can trail the clock by a minute, so a bucket
+// up to an hour past it lands in the newest slot; anything later is a bad clock and is dropped.
+export function hourSlots(range: AtlasRange, now: number) {
+  const hours = RANGE_HOURS[range];
+  const age = (t: number) => Math.max(0, Math.floor((now - t) / HOUR));
+  return {
+    hours,
+    bin: (t: number) => hours - 1 - age(t),
+    inWindow: (t: number) => Number.isFinite(t) && t < now + HOUR && age(t) < hours,
+    // Zero for an hour the server read, null for one it has not: no reply yet, or between the rollups and the raw tail.
+    counts: (read: { rolledUntil?: number; rawFrom?: number } | undefined) =>
+      Array.from({ length: hours }, (_, i): number | null => {
+        if (!read) return null;
+        const hour = Math.floor((now - (hours - 1 - i) * HOUR) / HOUR) * HOUR;
+        return read.rawFrom != null && hour < read.rawFrom && (read.rolledUntil == null || hour >= read.rolledUntil) ? null : 0;
+      }),
+  };
+}
 
 export interface AtlasSample {
-  reports: NodeObservation[];
-  since: number;
-  counts: number[];
+  total: number | null;
+  partial: boolean;
+  counts: (number | null)[];
   present: boolean[];
   snrHourly: (number | null)[];
   rssiHourly: (number | null)[];
   snr: number | null;
   rssi: number | null;
   hops: number | null;
-  truncated: boolean;
+  latest: NodeActivity["latest"];
 }
 
-// Zero RSSI with zero SNR is the server's "no measurement" sentinel, not a reading.
-const hasSignal = (row: NodeObservation) => !(row.rssi === 0 && row.snr === 0);
-const finite = (value: number | undefined): value is number => typeof value === "number" && Number.isFinite(value);
-const mean = (sum: number, n: number) => (n ? sum / n : null);
-
-export function summarizeReports(rows: NodeObservation[], range: AtlasRange, now: number, hasMore = false): AtlasSample {
-  const windowSince = now - RANGE_HOURS[range] * HOUR;
-  const seen = new Set<number>();
-  const reports = rows
-    .filter((row) => {
-      if (seen.has(row.id) || !Number.isFinite(row.heardAt) || row.heardAt < windowSince) return false;
-      seen.add(row.id);
-      return true;
-    })
-    .sort((a, b) => b.heardAt - a.heardAt || b.id - a.id);
-  // hasMore alone says nothing about the window; the sample is only short when the oldest loaded row is still inside it.
-  const oldestLoaded = rows.reduce<number | undefined>(
-    (min, row) => (Number.isFinite(row.heardAt) && (min === undefined || row.heardAt < min) ? row.heardAt : min),
-    undefined,
-  );
-  const truncated = hasMore && oldestLoaded !== undefined && oldestLoaded > windowSince;
-  const since = truncated ? Math.floor(oldestLoaded / HOUR) * HOUR : windowSince;
-  const hours = Math.max(1, Math.ceil((now - since) / HOUR));
-  const counts = Array<number>(hours).fill(0);
-  const sums = { snr: Array<number>(hours).fill(0), rssi: Array<number>(hours).fill(0) };
-  const samples = { snr: Array<number>(hours).fill(0), rssi: Array<number>(hours).fill(0) };
-  const total = { snr: 0, rssi: 0, hops: 0 };
-  const n = { snr: 0, rssi: 0, hops: 0 };
-  for (const row of reports) {
-    // A report newer than `now` (the tick snapshot) lands in the latest hour.
-    const bin = Math.min(hours - 1, Math.max(0, Math.floor((row.heardAt - since) / HOUR)));
-    counts[bin]!++;
-    if (finite(row.hopCount)) {
-      total.hops += row.hopCount;
-      n.hops++;
+// Totals and means are the server's (sum over samples); averaging the hourly means here would skew them.
+export function summarizeActivity(activity: NodeActivity | undefined, range: AtlasRange, now: number): AtlasSample {
+  const slots = hourSlots(range, now);
+  const counts = slots.counts(activity);
+  const snrHourly = Array<number | null>(slots.hours).fill(null);
+  const rssiHourly = Array<number | null>(slots.hours).fill(null);
+  for (const p of activity?.points ?? []) {
+    if (!slots.inWindow(p.t)) continue;
+    const i = slots.bin(p.t);
+    if (!finite(p.observations)) {
+      counts[i] = null;
+      continue;
     }
-    if (!hasSignal(row)) continue;
-    for (const metric of ["snr", "rssi"] as const) {
-      const value = row[metric];
-      if (!finite(value)) continue;
-      sums[metric][bin]! += value;
-      samples[metric][bin]!++;
-      total[metric] += value;
-      n[metric]++;
-    }
+    counts[i] = (counts[i] ?? 0) + p.observations;
+    if (finite(p.snrAvg)) snrHourly[i] = p.snrAvg;
+    if (finite(p.rssiAvg)) rssiHourly[i] = p.rssiAvg;
   }
-  const hourly = (metric: "snr" | "rssi") => counts.map((_, i) => mean(sums[metric][i]!, samples[metric][i]!));
+  const summary = activity?.summary;
+  const mean = (value: unknown) => (finite(value) ? value : null);
   return {
-    reports,
-    since,
+    total: mean(summary?.observations),
+    partial: activity !== undefined && counts.some((value) => value === null),
     counts,
-    present: counts.map((count) => count > 0),
-    snrHourly: hourly("snr"),
-    rssiHourly: hourly("rssi"),
-    snr: mean(total.snr, n.snr),
-    rssi: mean(total.rssi, n.rssi),
-    hops: mean(total.hops, n.hops),
-    truncated,
+    present: counts.map((count) => (count ?? 0) > 0),
+    snrHourly,
+    rssiHourly,
+    snr: mean(summary?.snrAvg),
+    rssi: mean(summary?.rssiAvg),
+    hops: mean(summary?.hopAvg),
+    latest: activity?.latest?.packetHash ? activity.latest : null,
   };
 }

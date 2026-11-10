@@ -2,13 +2,11 @@ import { observerNoiseFloor } from "../observers/observer-stats";
 import type { Observer } from "../observers/types";
 import { hasTelemetry } from "../stats/transforms";
 import type { ObserverActivity, ObserverTelemetry, TelemetryPoint } from "../stats/types";
-import type { AtlasRange } from "./atlas";
+import { HOUR, hourSlots, type AtlasRange } from "./atlas";
 
 // Go duration strings the observer endpoints expect, per Atlas window; one bucket per hour for both.
 export const OBSERVER_RANGE: Record<AtlasRange, string> = { "24h": "24h", "3d": "72h" };
 export const OBSERVER_INTERVAL = "1h";
-const RANGE_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72 };
-const HOUR = 3_600_000;
 
 export interface PayloadShare {
   name: string;
@@ -41,19 +39,9 @@ export function summarizeObserver(
   range: AtlasRange,
   now: number,
 ): ObserverSample {
-  const hours = RANGE_HOURS[range];
+  const { hours, bin, inWindow, counts: readCounts } = hourSlots(range, now);
   const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
-  // Slots count back from the tick, newest last. The tick can trail the clock by a minute, so a bucket
-  // up to an hour past it lands in the newest slot; anything later is a bad clock and is dropped.
-  const age = (t: number) => Math.max(0, Math.floor((now - t) / HOUR));
-  const bin = (t: number) => hours - 1 - age(t);
-  const inWindow = (t: number) => Number.isFinite(t) && t < now + HOUR && age(t) < hours;
-
-  const counts = Array.from({ length: hours }, (_, i): number | null => {
-    if (!activity) return null;
-    const hour = Math.floor((now - (hours - 1 - i) * HOUR) / HOUR) * HOUR;
-    return activity.rawFrom != null && hour < activity.rawFrom && (activity.rolledUntil == null || hour >= activity.rolledUntil) ? null : 0;
-  });
+  const counts = readCounts(activity);
   // Hours the server read but has no bucket for were quiet: on air 0% of the time.
   const heardAir = counts.map((v): number | null => (v === null ? null : 0));
   let heard: number | null = counts.some(finite) ? 0 : null;

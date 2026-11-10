@@ -14,7 +14,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/api/client")>()),
   getNodesPage: vi.fn(),
   getNode: vi.fn(),
-  getNodeObservations: vi.fn(),
+  getNodeActivity: vi.fn(),
   getPacketDetail: vi.fn(),
   getObserverDirectoryPage: vi.fn(),
   getObserver: vi.fn(),
@@ -23,7 +23,8 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
 const second = { ...pin, id: "22222222-2222-4222-8222-222222222222", publicKey: "cd".repeat(32), name: "Second" };
 const node = { ...pin, name: "Renamed repeater", nodeType: 2, nodeTypeName: "REPEATER", knownNeighborCount: 4, stale: false, lastSeen: Date.now(), iatas: [], lat: null, lng: null } as Node;
-const report = { id: 7, packetHash: "ef".repeat(32), payloadType: 4, payloadTypeName: "ADVERT", iata: "YKF", heardAt: Date.now() - 1000, snr: 0, rssi: -106, hopCount: 2 };
+const report = { packetHash: "ef".repeat(32), heardAt: Date.now() - 1000 };
+const activity = { windowStart: 0, windowEnd: 0, generatedAt: 0, range: "24h", summary: { observations: 1, snrAvg: 0, rssiAvg: -106, hopAvg: 2 }, points: [], latest: report };
 const actions = { onViewNode: vi.fn(), onViewObserver: vi.fn(), onAnalyzePacket: vi.fn() };
 const observerId = "33333333-3333-4333-8333-333333333333";
 const listener = { id: observerId, displayName: "Hill listener", observerType: "companion", iata: "YKF", status: "online", observationCount: 7 };
@@ -50,7 +51,7 @@ beforeEach(() => {
   localStorage.clear();
   vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
   vi.mocked(api.getNode).mockImplementation(async (id) => (id === second.id ? { ...node, ...second } : node));
-  vi.mocked(api.getNodeObservations).mockResolvedValue({ items: [report], hasMore: true, nextCursor: 7 });
+  vi.mocked(api.getNodeActivity).mockResolvedValue(activity);
   vi.mocked(api.getPacketDetail).mockResolvedValue({ packetHash: report.packetHash, originPubkey: pin.publicKey, header: { payloadType: 4 }, observations: [
     { observerId: "observer-a", observerName: "Home listener", id: 1, heardAt: 1, iata: "YKF" },
   ] } as unknown as PacketDetail);
@@ -71,7 +72,7 @@ describe("Atlas page", () => {
     expect(screen.getByRole("group", { name: "Activity window" })).toBeInTheDocument();
     expect(api.getNodesPage).not.toHaveBeenCalled();
     expect(api.getPacketDetail).not.toHaveBeenCalled();
-    expect(api.getNodeObservations).toHaveBeenCalledWith(pin.id, { limit: 200 }, expect.any(AbortSignal));
+    await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal)));
   });
 
   it("keeps the search in a toolbar with the saved count chip beside the range picker, and lists matches only while typing", async () => {
@@ -351,7 +352,7 @@ describe("Atlas page", () => {
     save();
     mount(false);
     expect(api.getNode).not.toHaveBeenCalled();
-    expect(api.getNodeObservations).not.toHaveBeenCalled();
+    expect(api.getNodeActivity).not.toHaveBeenCalled();
   });
 
   it("aborts in-flight requests when leaving the page", () => {
@@ -371,8 +372,8 @@ describe("identity recovery", () => {
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, id: second.id }], nextCursor: null, hasMore: false });
     vi.mocked(api.getNode).mockResolvedValueOnce({ ...node, id: second.id });
     const result = await loadAtlasNode(pin);
-    expect(result.node.id).toBe(second.id);
-    expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkeyPrefix: pin.publicKey, limit: 2 }, undefined);
+    expect(result.id).toBe(second.id);
+    expect(api.getNodesPage).toHaveBeenCalledWith(undefined, { pubkey: pin.publicKey, limit: 2 }, undefined);
   });
   it("writes a recovered server ID back so later polls skip the lookup", async () => {
     vi.mocked(api.getNode).mockImplementation(async (id) => {
@@ -389,7 +390,6 @@ describe("identity recovery", () => {
     vi.mocked(api.getNode).mockResolvedValueOnce({ ...node, publicKey: second.publicKey });
     vi.mocked(api.getNodesPage).mockResolvedValueOnce({ items: [], nextCursor: null, hasMore: false });
     await expect(loadAtlasNode(pin)).rejects.toMatchObject({ message: "Atlas identity unavailable", status: 404 });
-    expect(api.getNodeObservations).not.toHaveBeenCalled();
     vi.mocked(api.getNodesPage).mockClear(); vi.mocked(api.getNode).mockRejectedValueOnce(new Error("network"));
     await expect(loadAtlasNode(pin)).rejects.toThrow("network");
     expect(api.getNodesPage).not.toHaveBeenCalled();

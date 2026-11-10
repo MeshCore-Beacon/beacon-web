@@ -16,7 +16,7 @@ import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
 import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
-import { REPORT_LIMIT, resolveObserverNode, type AtlasPin, type AtlasRange } from "./atlas";
+import { resolveObserverNode, type AtlasPin, type AtlasRange } from "./atlas";
 import { ATLAS_REFRESH_MS, useAtlasNode } from "./useAtlas";
 import type { PayloadShare } from "./observer-sample";
 import { useAtlasObserver } from "./useAtlasObserver";
@@ -96,13 +96,13 @@ export function AtlasCard({
   const { t } = useTranslation();
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
-  const { query, node, sample, capped } = useAtlasNode(nodePin, range, active);
+  const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
   const observerId = pin.kind === "observer" ? pin.observerId : (node?.observerId ?? pin.observerId ?? null);
   const obs = useAtlasObserver(observerId, range, active, view === "observer", pin.kind === "observer");
   const observer = obs.observer.data;
   const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : observerId ? ["analytics", "heard", "observer"] : ["analytics", "heard"];
 
-  const latest = sample.reports[0];
+  const latest = sample.latest;
   const heard = usePacketDetail(view === "heard" && latest ? latest.packetHash : null);
   const detail = heard.data;
   // Never show another node's observers if the packet record resolved to a different origin.
@@ -234,11 +234,11 @@ export function AtlasCard({
             <StatCard
               compact
               label={t("signal.receptions")}
-              value={formatCount(sample.reports.length)}
+              value={sample.total === null ? dash : formatCount(sample.total)}
               accent={c.series[0]!}
               spark={sample.counts}
               markPeak
-              sublabel={capped ? t("atlas.sampleCapped", { limit: REPORT_LIMIT }) : t(`atlas.ranges.${range}`)}
+              sublabel={sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`)}
             />
             <StatCard
               compact
@@ -271,17 +271,21 @@ export function AtlasCard({
             <span>
               {t("atlas.meanHops")} {average(sample.hops)}
             </span>
+            {activity.loading && <span role="status">{t("common.loading")}</span>}
+            {activity.failed && <span className="text-danger">{t("common.loadFailed")}</span>}
             <span className="whitespace-nowrap">
               {t("nodeDetail.neighborsCount", { count: node.knownNeighborCount })}{" "}
-              <InfoTip text={[t("atlas.sampleHelp", { limit: REPORT_LIMIT }), capped && t("atlas.cappedHelp")]} />
+              <InfoTip text={[t("atlas.sampleHelp"), activity.unsupported && t("atlas.activityUnsupported")]} />
             </span>
           </div>
         </div>
       )}
       {view === "heard" && node && (
         <div className="flex flex-col overflow-hidden font-mono text-xs" style={{ height: held }}>
-          {!latest ? (
-            <p className="text-text-muted">{t("atlas.noReports")}</p>
+          {activity.loading ? (
+            <p role="status" className="text-text-muted">{t("common.loading")}</p>
+          ) : !latest ? (
+            <p className="text-text-muted">{t(activity.unsupported ? "atlas.activityUnsupported" : activity.failed ? "common.loadFailed" : "atlas.noReports")}</p>
           ) : heard.isPending ? (
             <p role="status" className="text-text-muted">{t("common.loading")}</p>
           ) : heard.isError || !sameOrigin ? (
@@ -308,7 +312,7 @@ export function AtlasCard({
               <button
                 type="button"
                 className={`${ACTION_BUTTON_CLASS} mt-2 self-start`}
-                onClick={() => onAnalyzePacket(latest.packetHash, latest.id)}
+                onClick={() => onAnalyzePacket(latest.packetHash)}
               >
                 {t("atlas.openPacket")}
               </button>
