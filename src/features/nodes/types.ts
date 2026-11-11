@@ -25,6 +25,7 @@ export interface NodeSummary {
   // Server verdict against its configured local border union; absence is unknown/disabled.
   possiblyForeign?: boolean;
   lastSeen?: number; // epoch ms; servers up to 2.1.0 leave it out
+  stale?: boolean; // server-configured freshness threshold; absent on older servers
 }
 
 // /nodes orders, server 2.1.0+; lastSeen ascending only from a server whose rows carry lastSeen
@@ -107,6 +108,28 @@ export interface NodeNeighbor {
   observationCount: number;
   firstSeen: number; // epoch ms
   lastSeen: number; // epoch ms
+}
+
+export interface NodeActivityPoint {
+  t: number; // hour start, epoch ms
+  observations: number;
+  snrAvg: number | null;
+  rssiAvg: number | null;
+  hopAvg: number | null;
+}
+
+// GET /nodes/{id}/activity: hourly buckets, ascending, only hours that have rows.
+export interface NodeActivity {
+  windowStart: number;
+  windowEnd: number;
+  generatedAt: number;
+  // as on ObserverActivity: rollups cover hours before rolledUntil, raw rows from rawFrom
+  rolledUntil?: number;
+  rawFrom?: number;
+  range: string;
+  summary: { observations: number; snrAvg: number | null; rssiAvg: number | null; hopAvg: number | null };
+  points: NodeActivityPoint[];
+  latest: { packetHash: string; heardAt: number } | null;
 }
 
 export interface NodeObservation {

@@ -93,6 +93,17 @@ it.each(["partial", "unavailable"] as const)("renders available traffic and zero
   expect(rows[2].querySelector('[style]')).toHaveStyle({ width: "0%" });
   expect(screen.queryByText(/counts unavailable/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/Name order/)).not.toBeInTheDocument();
-  expect(screen.getByText(/coverage is incomplete/)).toBeInTheDocument();
-  expect(screen.getByText(/Available history, up to 7 days/)).toBeInTheDocument();
+  expect(screen.getByText(/More information: Counts use available history; coverage is incomplete\. Available history, up to 7 days Counts through 2026-10-0\d \d\d:00 UTC/)).toBeInTheDocument();
+  expect(screen.queryByText("Available history, up to 7 days")).not.toBeInTheDocument();
+});
+
+it("keeps the history notes in the info tip and the panel title off the phone layout", () => {
+  render(<ObserverSidebar {...props} onRefresh={vi.fn()} windowEnd={1791162000000} />);
+  expect(screen.getByText(/^More information: Available history, up to 7 days Counts through/)).toBeInTheDocument();
+  expect(screen.queryByText(/coverage is incomplete/)).not.toBeInTheDocument();
+  expect(screen.getByText("Observers")).toHaveClass("hidden", "md:block");
+  const controls = screen.getByRole("button", { name: "Refresh" }).parentElement!;
+  expect(controls).toContainElement(screen.getByRole("button", { name: "Name" }));
+  expect(controls).toHaveClass("ml-auto");
+  expect(controls.parentElement).toHaveClass("flex-wrap");
 });

@@ -5,7 +5,8 @@ import { useHasHover } from "../hooks/useMediaQuery";
 // Portals to <body> with fixed positioning so overflow parents (the data tables) can't clip it.
 // Hover reveals with a mouse; on touch it toggles on tap and dismisses on an outside tap.
 // `focusable` makes a non-interactive trigger a tab stop whose label is exposed to screen readers.
-export function Tooltip({ label, children, className = "", wrap = false, focusable = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean; focusable?: boolean }) {
+// `hideOnPress` drops the tip when the trigger is pressed, for one that then moves (a drag handle).
+export function Tooltip({ label, children, className = "", wrap = false, focusable = false, hideOnPress = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean; focusable?: boolean; hideOnPress?: boolean }) {
   const hasHover = useHasHover();
   const descId = useId();
   const ref = useRef<HTMLSpanElement>(null);
@@ -64,6 +65,7 @@ export function Tooltip({ label, children, className = "", wrap = false, focusab
       onClick={hasHover ? undefined : toggle}
       onFocus={hasHover ? show : undefined}
       onBlur={hasHover ? hide : undefined}
+      onPointerDown={hasHover && hideOnPress ? hide : undefined}
       tabIndex={focusable ? 0 : undefined}
       aria-describedby={focusable ? descId : undefined}
       className={`inline-flex ${className}`}

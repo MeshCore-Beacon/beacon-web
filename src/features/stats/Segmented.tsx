@@ -12,20 +12,21 @@ interface SegmentedProps {
   onChange: (value: string) => void;
   ariaLabel: string;
   size?: "xs" | "sm" | "md";
+  stretch?: boolean; // fill the container, every option the same width
   className?: string;
 }
 
 // A contained "pill group" segmented control bound to the palette: the active pill gets a primary
 // tint + inset ring, inactive pills are muted. Used for the Stats sub-tabs (md, with icons) and the
 // time-range selector (sm). Active state is conveyed with aria-pressed, not color alone.
-export function Segmented({ options, value, onChange, ariaLabel, size = "sm", className }: SegmentedProps) {
+export function Segmented({ options, value, onChange, ariaLabel, size = "sm", stretch = false, className }: SegmentedProps) {
   // xs matches the 28px filter-bar controls it sits beside
   const pad = size === "md" ? "px-3 py-1.5 text-xs" : size === "xs" ? "px-2.5 py-[3px] text-[11px] leading-4" : "px-2.5 py-1 text-[11px]";
   return (
     <div
       role="group"
       aria-label={ariaLabel}
-      className={`inline-flex items-center gap-0.5 rounded-md border border-border bg-bg-raised p-0.5 ${className ?? ""}`}
+      className={`${stretch ? "flex w-full" : "inline-flex"} items-center gap-0.5 rounded-md border border-border bg-bg-raised p-0.5 ${className ?? ""}`}
     >
       {options.map((o) => {
         const active = o.value === value;
@@ -35,7 +36,7 @@ export function Segmented({ options, value, onChange, ariaLabel, size = "sm", cl
             type="button"
             aria-pressed={active}
             onClick={() => onChange(o.value)}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded font-mono font-semibold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${pad} ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded font-mono font-semibold tracking-wide transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${pad} ${stretch ? "flex-1 justify-center" : ""} ${
               active
                 ? "bg-primary/15 text-text-bright ring-1 ring-inset ring-primary/30"
                 : "text-text-muted hover:text-text-normal"

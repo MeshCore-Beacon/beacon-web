@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { InfoTip } from "../../components/InfoTip";
 import { formatCount, formatUtc } from "../../lib/formatters";
 import { SCROLL_BOTTOM_THRESHOLD_PX } from "../../lib/constants";
 import { Segmented } from "../stats/Segmented";
@@ -36,24 +37,30 @@ export function ObserverSidebar({ observers, filtered, isPending, isError, unsup
   }, [loadNearEnd, observers.length]);
   const messageClass = "px-3 py-3 text-center font-mono text-[11px] text-text-dim";
   const retry = <button type="button" onClick={onRetry} className={`${messageClass} w-full text-danger`}>{t("common.loadFailed")} · {t("observerPage.retry")}</button>;
+  const partial = coverage != null && coverage.status !== "complete";
+  // Incomplete coverage is a footnote in the tip; counts missing altogether changes the list, so that stays visible.
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-bg-base md:rounded-lg md:border md:border-border md:bg-bg-surface md:p-3.5">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-subtle px-4 py-2 md:mb-2.5 md:border-0 md:p-0">
-        <div className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{t("tabs.Observers")}</div>
-        <Segmented size="sm" ariaLabel={t("observerPage.sort")} value={sort} onChange={v => onSortChange(v as ObserverDirectorySort)}
-          options={[{ value: "traffic", label: t("observerPage.sortActivity") }, { value: "name", label: t("observerPage.sortName") }]} />
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border-subtle px-4 py-2 md:mb-2.5 md:border-0 md:p-0">
+        <div className="flex items-center gap-1.5">
+          <div className="hidden font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal md:block">{t("tabs.Observers")}</div>
+          {windowEnd != null && <InfoTip text={[
+            partial && t("observerPage.countsPartial"),
+            t("observerPage.directoryPeriod"),
+            t("observerPage.countsThrough", { time: formatUtc(windowEnd) }),
+          ]} />}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {onRefresh && !unsupported && <button type="button" onClick={onRefresh} disabled={isPending || isFetchingNextPage}
+            className="font-mono text-[10px] text-primary disabled:opacity-50">{t("observerPage.refresh")}</button>}
+          <Segmented size="sm" ariaLabel={t("observerPage.sort")} value={sort} onChange={v => onSortChange(v as ObserverDirectorySort)}
+            options={[{ value: "traffic", label: t("observerPage.sortActivity") }, { value: "name", label: t("observerPage.sortName") }]} />
+        </div>
       </div>
-      {onRefresh && !unsupported && <button type="button" onClick={onRefresh} disabled={isPending || isFetchingNextPage}
-        className="mb-2 self-end px-3 font-mono text-[10px] text-primary disabled:opacity-50">{t("observerPage.refresh")}</button>}
-      {coverage && coverage.status !== "complete" && <p className={messageClass}>
-        {t(maxObservationCount != null ? "observerPage.countsPartial"
-          : effectiveSort === "name" ? "observerPage.countsUnavailableName" : "observerPage.countsUnavailable")}
+      {partial && maxObservationCount == null && <p className={messageClass}>
+        {t(effectiveSort === "name" ? "observerPage.countsUnavailableName" : "observerPage.countsUnavailable")}
       </p>}
-      {windowEnd != null && <div className="shrink-0 px-3 pb-2 font-mono text-[10px] text-text-dim">
-        <p>{t("observerPage.directoryPeriod")}</p>
-        <p>{t("observerPage.countsThrough", { time: formatUtc(windowEnd) })}</p>
-      </div>}
       {unsupported ? <div className={messageClass}><p>{t("observerPage.upgradeRequired")}</p>
         <button type="button" onClick={onRetry} className="mt-2 text-primary">{t("observerPage.retry")}</button></div>
         : isPending ? <div className={messageClass}>{t("common.loading")}</div>
