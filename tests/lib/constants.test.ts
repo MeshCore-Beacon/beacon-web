@@ -28,6 +28,10 @@ describe("filterEnabledTabs", () => {
     ]);
   });
 
+  it("honors the previous Atlas disabled-tab setting after the rename", () => {
+    expect(filterEnabledTabs(TABS, "MyAtlas")).not.toContain("Atlas");
+  });
+
   it("ignores unknown tab names", () => {
     expect(filterEnabledTabs(TABS, "bogus")).toEqual([...TABS]);
   });

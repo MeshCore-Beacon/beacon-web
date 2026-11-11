@@ -200,7 +200,7 @@ function AppInner() {
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
-  const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab");
+  const tabParam = searchParams.get("tab") === "Stats" ? "Analytics" : searchParams.get("tab") === "MyAtlas" ? "Atlas" : searchParams.get("tab");
   const activeTab = ENABLED_TABS.includes(tabParam ?? "") ? (tabParam as string) : (ENABLED_TABS.includes("Packets") ? "Packets" : ENABLED_TABS[0] ?? "Packets");
   // Resolve the starting selection once from URL → storage → legacy key (see computeInitialSelection).
   const [initialSelection] = useState(() => computeInitialSelection(searchParams));
