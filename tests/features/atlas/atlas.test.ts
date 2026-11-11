@@ -42,7 +42,8 @@ describe("saved Atlas", () => {
   });
   it("tolerates unavailable, corrupt, old and future storage, rejects partial keys and caps the collection", () => {
     const old = JSON.stringify({ version: 1, range: "3d", nodes: [pin] });
-    for (const value of [null, "{", "[]", '{"version":3}', old, '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
+    for (const value of [null, "{", "[]", '{"version":3}', '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
+    expect(parseAtlas(old).pins).toEqual([nodePin]);
     const pins = [{ ...nodePin, publicKey: "abcd" }, { ...nodePin, id: "../unsafe" }, ...Array.from({ length: 20 }, (_, i) => ({ ...nodePin, publicKey: i.toString(16).padStart(64, "0") }))];
     const result = parseAtlas(JSON.stringify({ version: 2, range: "30d", pins }));
     expect(result.pins).toHaveLength(ATLAS_LIMIT);

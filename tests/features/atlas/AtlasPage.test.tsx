@@ -65,6 +65,24 @@ afterEach(() => {
 });
 
 describe("Atlas page", () => {
+  it("loads cards saved before the Atlas rename without overwriting their recovery copy", async () => {
+    const old = JSON.stringify({ version: 2, range: "3d", pins: [{ kind: "node", ...pin }] });
+    localStorage.setItem("beacon-my-atlas-v2", old);
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    expect(screen.getByText("1 / 12 saved")).toBeInTheDocument();
+    await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "72h", expect.any(AbortSignal)));
+    expect(localStorage.getItem("beacon-my-atlas-v2")).toBe(old);
+  });
+
+  it("does not resurrect old cards over an intentionally empty current Atlas", () => {
+    localStorage.setItem("beacon-my-atlas-v2", JSON.stringify({ version: 2, pins: [{ kind: "node", ...pin }] }));
+    save([]);
+    mount();
+    expect(screen.getByText("0 / 12 saved")).toBeInTheDocument();
+    expect(api.getNode).not.toHaveBeenCalled();
+  });
+
   it("renders saved nodes as Signal-style cards and nothing else before a search", async () => {
     save();
     mount();

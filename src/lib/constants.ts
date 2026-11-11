@@ -46,7 +46,7 @@ export function parseEnvList(raw: string | undefined): string[] {
 
 // Tabs left after removing the disabled ones (case-insensitive), keeping display order.
 export function filterEnabledTabs(tabs: readonly string[], disabledRaw: string | undefined): string[] {
-  const disabled = new Set(parseEnvList(disabledRaw).map((t) => t.toLowerCase()));
+  const disabled = new Set(parseEnvList(disabledRaw).map((t) => t.toLowerCase() === "myatlas" ? "atlas" : t.toLowerCase()));
   return tabs.filter((t) => !disabled.has(t.toLowerCase()));
 }
 
