@@ -22,17 +22,17 @@ const isUuid = (value: unknown): value is string => typeof value === "string" &&
 
 export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : pin.observerId);
 
-// Only a version 2 payload loads; anything else is empty.
+// Earlier releases stored version 1 nodes; preserve them across the Atlas rename.
 export function parseAtlas(raw: string | null): SavedAtlas {
   const empty: SavedAtlas = { version: 2, range: "24h", pins: [] };
   try {
     if (!raw || raw.length > 32_000) return empty;
     const value = JSON.parse(raw);
-    const list = value?.version === 2 ? value.pins : null;
+    const list = value?.version === 1 ? value.nodes : value?.version === 2 ? value.pins : null;
     if (!Array.isArray(list)) return empty;
     const pins: AtlasPin[] = [];
     for (const entry of list) {
-      const pin = toPin(entry);
+      const pin = toPin(entry, value.version === 1);
       if (!pin || pins.some((other) => pinKey(other) === pinKey(pin))) continue;
       pins.push(pin);
       if (pins.length === ATLAS_LIMIT) break;
@@ -95,11 +95,11 @@ export function homeView(pin: AtlasPin): AtlasView {
   return pin.view === "observer" && !pin.observerId ? "analytics" : (pin.view ?? "analytics");
 }
 
-function toPin(raw: unknown): AtlasPin | null {
+function toPin(raw: unknown, legacy = false): AtlasPin | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
   const name = typeof value.name === "string" ? value.name.slice(0, 160) : "";
-  const kind = value.kind;
+  const kind = legacy ? "node" : value.kind;
   const tiles = toTiles(value.tiles);
   if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name, ...(tiles && { tiles }) } : null;
   if (kind !== "node" || !isUuid(value.id) || typeof value.publicKey !== "string" || !KEY.test(value.publicKey)) return null;
