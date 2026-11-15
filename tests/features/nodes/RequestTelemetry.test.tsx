@@ -79,6 +79,14 @@ describe("RequestTelemetry", () => {
     expect(screen.queryByLabelText("Guest password (optional)")).not.toBeInTheDocument();
   });
 
+  it("shows what the observer reports in the request block", async () => {
+    const poller = { observerId: "o1", name: "North", state: "not_direct" };
+    vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ poller })] });
+    mount();
+    const line = await screen.findByText("Assigned to North, which cannot hear this repeater directly right now.");
+    expect(line.previousElementSibling).toHaveAttribute("data-tone", "wait");
+  });
+
   it("matches an existing request by public key when the node id differs", async () => {
     vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ node: { id: null, publicKey: "AABBCC", name: "Hilltop" } })] });
     mount();
