@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { AccountViews } from "../../../src/features/account/AccountViews";
+import i18n from "../../../src/i18n";
 import { alerts, me } from "../../../src/api/auth";
 import { authError, mocks, renderAt, resetMocks, user } from "./helpers";
 import type { AlertRule, AlertTarget, AlertsResponse } from "../../../src/features/account/types";
@@ -27,11 +28,14 @@ const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
   state: "ok", stateChangedAt: 1_700_000_000_000, lastSentAt: null, ...over,
 });
 const repeater = (over: Partial<AlertTarget> = {}): AlertTarget => ({
-  kind: "node", publicKey: "aabb", name: "Hilltop",
+  id: "11111111-1111-1111-1111-111111111111", kind: "node", publicKey: "aabb", name: "Hilltop", polled: true,
   available: ["gone_quiet", "back_online", "clock", "battery_low", "battery_falling", "rebooted", "temperature", "noise_high"],
-  unavailable: {}, rules: [], ...over,
+  unavailable: {}, unavailableCodes: {}, rules: [], ...over,
 });
-const plain = (): AlertTarget => repeater({ publicKey: "ccdd", name: "Ridge", available: ["gone_quiet", "back_online"], unavailable: { temperature: "This repeater does not report a temperature." } });
+const plain = (): AlertTarget => repeater({
+  id: null, publicKey: "ccdd", name: "Ridge", polled: false, available: ["gone_quiet", "back_online"],
+  unavailable: { temperature: "This repeater does not report a temperature." }, unavailableCodes: { temperature: "no_data" },
+});
 const response = (over: Partial<AlertsResponse> = {}): AlertsResponse => ({ delivery: "email", hasDevice: true, targets: [repeater(), plain()], ...over });
 
 beforeEach(() => {
@@ -102,6 +106,30 @@ describe("alerts section", () => {
     expect(within(note.closest("li") as HTMLElement).getByText("Temperature")).toBeInTheDocument();
   });
 
+  it("translates an unavailable reason by its code and falls back to the sentence", async () => {
+    const odd = repeater({
+      publicKey: "eeff", name: "Odd", available: ["gone_quiet"],
+      unavailable: { clock: "Server sentence one.", noise_high: "Server sentence two.", battery_low: "Server sentence three." },
+      unavailableCodes: { clock: "brand_new_code", noise_high: "not_polled" },
+    });
+    await open(response({ targets: [plain(), odd] }));
+    expect(block("Ridge").getByText("This repeater does not report a temperature.")).toBeInTheDocument();
+    expect(block("Odd").getByText("Server sentence one.")).toBeInTheDocument();
+    expect(block("Odd").getByText("Beacon is not polling this repeater. Request telemetry for it first.")).toBeInTheDocument();
+    expect(block("Odd").getByText("Server sentence three.")).toBeInTheDocument();
+  });
+
+  it("shows the sentence in the user's language when the server's is English", async () => {
+    await open(response({ targets: [{ ...plain(), unavailable: { temperature: "ENGLISH" } }] }));
+    try {
+      await act(() => i18n.changeLanguage("fr"));
+      expect(screen.queryByText("ENGLISH")).toBeNull();
+      expect(screen.getByText(/Ce répéteur ne remonte pas la température/)).toBeInTheDocument();
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
+  });
+
   it("shows each rule state in words", async () => {
     const rules = [
       rule({ id: "a", kind: "gone_quiet", threshold: 24, state: "ok" }),
@@ -122,6 +150,14 @@ describe("alerts section", () => {
     it("offers 3 and 6 when the target reports telemetry", async () => {
       await open();
       expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["3", "6", "12", "24", "48"]);
+    });
+    it("offers 3 and 6 for a polled repeater that reports none of the telemetry kinds", async () => {
+      await open(response({ targets: [repeater({ polled: true, available: ["gone_quiet", "clock"] })] }));
+      expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["3", "6", "12", "24", "48"]);
+    });
+    it("offers only 12, 24, 48 for a repeater that is not polled, whatever it lists", async () => {
+      await open(response({ targets: [repeater({ polled: false })] }));
+      expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["12", "24", "48"]);
     });
     it("offers 3 and 6 for an observer", async () => {
       await open(response({ targets: [repeater({ kind: "observer", available: ["gone_quiet"] })] }));
@@ -276,15 +312,16 @@ describe("alerts section", () => {
   });
 
   describe("server errors", () => {
-    const cases: [string, number, string, RegExp][] = [
+    const cases: [string, number, string, RegExp, string?][] = [
       ["kind_unavailable", 422, "This repeater does not report a temperature.", /does not report a temperature/],
+      ["kind_unavailable", 422, "English sentence.", /Turn on the gone-quiet alert/, "needs_gone_quiet"],
       ["invalid_threshold", 422, "bad", /not an allowed value/],
       ["not_on_atlas", 409, "x", /no longer in your Atlas/],
       ["alerts_disabled", 404, "x", /turned off on this server/],
     ];
-    it.each(cases)("%s shows inline text on its row only", async (code, status, message, text) => {
+    it.each(cases)("%s shows inline text on its row only", async (code, status, message, text, reasonCode) => {
       await open();
-      put().mockRejectedValue(authError(code, status, message));
+      put().mockRejectedValue(authError(code, status, message, undefined, reasonCode));
       fireEvent.click(row("Hilltop", "rebooted").getByRole("switch"));
       expect(await row("Hilltop", "rebooted").findByRole("alert")).toHaveTextContent(text);
       expect(within(block("Hilltop").getByTestId("alert-clock")).queryByRole("alert")).toBeNull();

@@ -1280,6 +1280,22 @@
           "clock": { "name": "Dérive d'horloge", "when": "Quand l'horloge de la radio s'écarte de plus que cela." },
           "observer_offline": { "name": "Observateur hors ligne", "when": "Quand l'observateur n'envoie aucun rapport d'état depuis ce délai." }
         },
+        "reason": {
+          "observerNoData": "Cet observateur ne remonte pas {{what}}.",
+          "repeatersOnly": "Seuls les répéteurs remontent {{what}}.",
+          "notPolled": "Beacon ne sonde pas ce répéteur. Demandez d'abord sa télémétrie.",
+          "noData": "Ce répéteur ne remonte pas {{what}}.",
+          "observerNoClock": "Les observateurs n'ont pas de dérive d'horloge.",
+          "clockRepeatersOnly": "Seuls les répéteurs et les serveurs de salle remontent leur horloge.",
+          "needsGoneQuiet": "Activez d'abord l'alerte de silence pour cette radio.",
+          "notApplicable": "Cette alerte ne s'applique pas à cette radio."
+        },
+        "reasonWhat": {
+          "battery": "le niveau de batterie",
+          "uptime": "la durée de fonctionnement",
+          "temperature": "la température",
+          "noise": "le niveau de bruit"
+        },
         "errors": {
           "battery_low": "Entrez une tension entre 2,50 et 5,00.",
           "noise_high": "Entrez un niveau entre -130 et -50 dBm.",

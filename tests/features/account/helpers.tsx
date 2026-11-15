@@ -23,8 +23,9 @@ export function renderAt(search: string, ui: ReactElement, strict = false) {
 
 export const searchOf = (el: HTMLElement) => new URLSearchParams(el.textContent ?? "");
 
-export function authError(code: string, status = 400, message = code, retryAfterMs?: number) {
-  const err = new Error(message) as Error & { status: number; code: string; retryAfterMs?: number };
+export function authError(code: string, status = 400, message = code, retryAfterMs?: number, reasonCode?: string) {
+  const err = new Error(message) as Error & { status: number; code: string; retryAfterMs?: number; body?: unknown };
+  if (reasonCode) err.body = { error: { code, message, reasonCode } };
   err.name = "AuthError";
   err.status = status;
   err.code = code;

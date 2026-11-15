@@ -6,6 +6,7 @@ import { useAlerts } from "../../../hooks/useAlerts";
 import { useFeatures } from "../../../hooks/useFeatures";
 import { authErrorText } from "../errors";
 import { ALERT_KINDS } from "../alertRules";
+import { unavailableText } from "../unavailableReason";
 import type { AlertKind, AlertTarget, User } from "../types";
 import { AlertRow } from "./AlertRow";
 import { ProfileSection } from "./ProfileSection";
@@ -26,7 +27,7 @@ function TargetBlock({ target }: { target: AlertTarget }) {
         {off.map((k) => (
           <li key={k} className="flex flex-col gap-1 py-3 opacity-60">
             <span className="font-mono text-sm text-text-bright">{t(`account.alerts.kinds.${k}.name`)}</span>
-            <p className="text-xs text-text-muted">{target.unavailable[k]}</p>
+            <p className="text-xs text-text-muted">{unavailableText(t, k, target.unavailableCodes?.[k], target.unavailable[k] ?? "")}</p>
           </li>
         ))}
       </ul>

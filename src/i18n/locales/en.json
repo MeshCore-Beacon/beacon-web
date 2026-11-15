@@ -1268,6 +1268,22 @@
           "clock": { "name": "Clock drift", "when": "When the radio's clock is off by more than this." },
           "observer_offline": { "name": "Observer offline", "when": "When the observer sends no status report for this long." }
         },
+        "reason": {
+          "observerNoData": "This observer does not report {{what}}.",
+          "repeatersOnly": "Only repeaters report {{what}}.",
+          "notPolled": "Beacon is not polling this repeater. Request telemetry for it first.",
+          "noData": "This repeater does not report {{what}}.",
+          "observerNoClock": "Observers have no clock drift value.",
+          "clockRepeatersOnly": "Only repeaters and room servers report their clock.",
+          "needsGoneQuiet": "Turn on the gone-quiet alert for this radio first.",
+          "notApplicable": "This alert does not apply to this radio."
+        },
+        "reasonWhat": {
+          "battery": "a battery level",
+          "uptime": "its uptime",
+          "temperature": "a temperature",
+          "noise": "a noise floor"
+        },
         "errors": {
           "battery_low": "Enter a voltage between 2.50 and 5.00.",
           "noise_high": "Enter a level between -130 and -50 dBm.",

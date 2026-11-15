@@ -69,11 +69,14 @@ export interface AlertRule {
 }
 
 export interface AlertTarget {
+  id: string | null; // the node's or observer's id, null when the radio no longer exists
   kind: "node" | "observer";
   publicKey: string;
   name: string;
+  polled: boolean; // Beacon has trusted telemetry for this radio now
   available: string[];
-  unavailable: Record<string, string>;
+  unavailable: Record<string, string>; // English sentences, the fallback
+  unavailableCodes: Record<string, string>; // stable code per kind in unavailable
   rules: AlertRule[];
 }
 

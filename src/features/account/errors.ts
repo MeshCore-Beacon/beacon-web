@@ -1,4 +1,5 @@
 import type { TFunction } from "i18next";
+import { unavailableText } from "./unavailableReason";
 
 const KNOWN = new Set([
   "invalid_credentials", "email_unverified", "token_invalid", "username_taken", "weak_password",
@@ -41,12 +42,16 @@ export function requestErrorText(t: TFunction, err: unknown): string {
 
 const ALERT_CODES = new Set(["invalid_threshold", "not_on_atlas", "alerts_disabled", "not_found", "app_session_required"]);
 
-// Alert rule errors; kind_unavailable carries the server's own reason, anything else falls back to the shared mapping.
-export function alertErrorText(t: TFunction, err: unknown): string {
+// Alert rule errors; kind_unavailable is translated by the reasonCode in its body (kind names the rule's kind) and
+// falls back to the server's own sentence, anything else falls back to the shared mapping.
+export function alertErrorText(t: TFunction, err: unknown, kind = ""): string {
   const code = errorCode(err);
   if (code === "kind_unavailable") {
-    const message = (err as { message?: unknown }).message;
-    return typeof message === "string" && message !== "" ? message : t("account.alerts.errors.kind_unavailable");
+    const { message, body } = err as { message?: unknown; body?: { error?: { reasonCode?: unknown } } };
+    const sentence = typeof message === "string" ? message : "";
+    const reason = body?.error?.reasonCode;
+    const text = unavailableText(t, kind, typeof reason === "string" ? reason : undefined, sentence);
+    return text !== "" ? text : t("account.alerts.errors.kind_unavailable");
   }
   return code && ALERT_CODES.has(code) ? t(`account.alerts.errors.${code}`) : authErrorText(t, err);
 }

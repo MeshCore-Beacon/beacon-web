@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import i18n from "../../../src/i18n";
 import { alertErrorText, authErrorText, requestErrorText } from "../../../src/features/account/errors";
 import { fromServer, toPut, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
+import type { AlertsResponse } from "../../../src/features/account/types";
 import { requestReasonText } from "../../../src/features/account/requestReason";
+import { unavailableText } from "../../../src/features/account/unavailableReason";
 
 // Every statusReasonCode beacon-server puts on a telemetry request (reason-codes.md), with its English sentence.
 const REASON_CODES: Array<[string, string, number?]> = [
@@ -18,7 +20,67 @@ const reasonOf = (code: string, statusReason: string, days?: number) => ({
   statusReasonCode: code, statusReason, ...(days === undefined ? {} : { statusReasonDays: days }),
 });
 
+// Every unavailableCodes value beacon-server emits (alerts.md), with a sentence and the kind that carries it.
+const UNAVAILABLE_CODES: Array<[string, string, string]> = [
+  ["observer_no_data", "This observer does not report a battery level.", "battery_low"],
+  ["repeaters_only", "Only repeaters report its uptime.", "rebooted"],
+  ["not_polled", "Beacon is not polling this repeater. Request telemetry for it first.", "temperature"],
+  ["no_data", "This repeater does not report a noise floor.", "noise_high"],
+  ["observer_no_clock", "Observers have no clock drift value.", "clock"],
+  ["clock_repeaters_only", "Only repeaters and room servers report their clock.", "clock"],
+  ["needs_gone_quiet", "Turn on the gone-quiet alert for this radio first.", "back_online"],
+  ["not_applicable", "This alert does not apply to this radio.", "observer_offline"],
+];
+
 afterEach(() => i18n.changeLanguage("en"));
+
+// GET /me/alerts as beacon-server sends it (api-contract.md, Alerts).
+const SERVER_ALERTS: AlertsResponse = {
+  delivery: "push", hasDevice: true,
+  targets: [
+    { id: "9b0a5f0e-5d0e-4a39-9a43-6a3c1f2f0001", kind: "node", publicKey: "ab".repeat(32), name: "Hilltop", polled: true,
+      available: ["gone_quiet", "back_online"], unavailable: { temperature: "This repeater does not report a temperature." },
+      unavailableCodes: { temperature: "no_data" }, rules: [] },
+    { id: null, kind: "observer", publicKey: "cd".repeat(32), name: "North", polled: false, available: [], unavailable: {}, unavailableCodes: {}, rules: [] },
+  ],
+};
+
+describe("alert targets", () => {
+  it("carry an id (or null), polled and a code for every reason", () => {
+    for (const target of SERVER_ALERTS.targets) {
+      expect(Object.keys(target).sort()).toEqual(["available", "id", "kind", "name", "polled", "publicKey", "rules", "unavailable", "unavailableCodes"]);
+      expect(target.id === null || /^[0-9a-f-]{36}$/.test(target.id)).toBe(true);
+      expect(Object.keys(target.unavailableCodes).sort()).toEqual(Object.keys(target.unavailable).sort());
+    }
+  });
+});
+
+describe("alert unavailable reason codes", () => {
+  it.each(["en", "fr", "sv"])("translates every code in %s without reading the sentence", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const english = i18n.getFixedT("en");
+    for (const [code, sentence, kind] of UNAVAILABLE_CODES) {
+      const text = unavailableText(i18n.t, kind, code, "x");
+      expect(text, code).not.toMatch(/^account\./);
+      expect(text, code).not.toBe("x");
+      if (lang === "en") expect(text, code).toBe(sentence);
+      else expect(text, code).not.toBe(unavailableText(english, kind, code, "x"));
+    }
+  });
+
+  it("shows the server sentence for an unknown or missing code", () => {
+    expect(unavailableText(i18n.t, "clock", "brand_new", "As sent.")).toBe("As sent.");
+    expect(unavailableText(i18n.t, "clock", undefined, "As sent.")).toBe("As sent.");
+    // A data code for a kind with no value name also falls back.
+    expect(unavailableText(i18n.t, "clock", "no_data", "As sent.")).toBe("As sent.");
+  });
+
+  it("reads the code of a kind_unavailable error from its body", () => {
+    const err = { code: "kind_unavailable", message: "Sentence.", body: { error: { code: "kind_unavailable", message: "Sentence.", reasonCode: "needs_gone_quiet" } } };
+    expect(alertErrorText(i18n.t, err, "back_online")).toBe("Turn on the gone-quiet alert for this radio first.");
+    expect(alertErrorText(i18n.t, { ...err, body: undefined }, "back_online")).toBe("Sentence.");
+  });
+});
 
 describe("telemetry request reasons", () => {
   it.each(["en", "fr", "sv"])("translates every reason code in %s without reading the sentence", async (lang) => {

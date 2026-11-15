@@ -6,11 +6,8 @@ export const ALERT_KINDS: AlertKind[] = [
   "gone_quiet", "back_online", "battery_low", "battery_falling", "rebooted", "temperature", "noise_high", "clock", "observer_offline",
 ];
 
-// A kind that needs a polled repeater or an observer reporting telemetry.
-const TELEMETRY_KINDS = new Set(["battery_low", "battery_falling", "rebooted", "temperature", "noise_high"]);
-
 export function goneQuietHours(target: AlertTarget, current: number | null): number[] {
-  const short = target.kind === "observer" || target.available.some((k) => TELEMETRY_KINDS.has(k));
+  const short = target.kind === "observer" || target.polled;
   const hours = short ? [3, 6, 12, 24, 48] : [12, 24, 48];
   if (current != null && !hours.includes(current)) hours.push(current);
   return hours.sort((a, b) => a - b);

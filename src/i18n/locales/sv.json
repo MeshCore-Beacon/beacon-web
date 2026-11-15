@@ -1155,6 +1155,22 @@
           "clock": { "name": "Klockavvikelse", "when": "När radions klocka avviker mer än så här." },
           "observer_offline": { "name": "Observatör offline", "when": "När observatören inte skickar någon statusrapport på så här länge." }
         },
+        "reason": {
+          "observerNoData": "Den här observatören rapporterar inte {{what}}.",
+          "repeatersOnly": "Bara repeatrar rapporterar {{what}}.",
+          "notPolled": "Beacon hämtar inte data från den här repeatern. Begär telemetri för den först.",
+          "noData": "Den här repeatern rapporterar inte {{what}}.",
+          "observerNoClock": "Observatörer har inget klockavvikelsevärde.",
+          "clockRepeatersOnly": "Bara repeatrar och rumsservrar rapporterar sin klocka.",
+          "needsGoneQuiet": "Slå först på tystnadsaviseringen för den här radion.",
+          "notApplicable": "Den här aviseringen gäller inte den här radion."
+        },
+        "reasonWhat": {
+          "battery": "batterinivå",
+          "uptime": "drifttid",
+          "temperature": "temperatur",
+          "noise": "brusnivå"
+        },
         "errors": {
           "battery_low": "Ange en spänning mellan 2,50 och 5,00.",
           "noise_high": "Ange en nivå mellan -130 och -50 dBm.",

@@ -95,7 +95,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   }
 
   const name = t(`account.alerts.kinds.${kind}.name`);
-  const error = local ? t(`account.alerts.errors.${local}`) : save.isError ? alertErrorText(t, save.error) : null;
+  const error = local ? t(`account.alerts.errors.${local}`) : save.isError ? alertErrorText(t, save.error, kind) : null;
 
   return (
     <li data-testid={`alert-${kind}`} className="flex flex-col gap-2 py-3">
