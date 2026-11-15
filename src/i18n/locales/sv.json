@@ -993,7 +993,7 @@
         "submit": "Skapa konto",
         "submitting": "Skapar…",
         "usernameHint": "3 till 30 bokstäver, siffror, punkter, bindestreck eller understreck.",
-        "passwordHint": "Minst 12 tecken.",
+        "passwordHint": "Minst 12 tecken, högst 128 byte.",
         "haveAccount": "Har du redan ett konto? Logga in",
         "closed": "Registreringen är stängd på den här servern.",
         "sent": "Om adressen kan användas är en bekräftelselänk på väg. Följ den för att slutföra kontot."

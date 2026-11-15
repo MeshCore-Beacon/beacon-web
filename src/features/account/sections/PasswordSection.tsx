@@ -6,6 +6,7 @@ import { useSecretSubmit } from "../../../hooks/useSessionMutation";
 import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
+import { newPasswordOk } from "../passwordRule";
 import { ProfileSection } from "./ProfileSection";
 import { profileErrorText, SESSIONS_KEY, useSessionEnded } from "./useSessionEnded";
 
@@ -35,7 +36,7 @@ export function PasswordSection() {
       >
         <PasswordField label={t("account.profile.currentPassword")} name="currentPassword" autoComplete="current-password" value={current} onChange={setCurrent} disabled={change.isPending} />
         <PasswordField label={t("account.fields.newPassword")} name="newPassword" autoComplete="new-password" hint={t("account.register.passwordHint")} value={next} onChange={setNext} disabled={change.isPending} />
-        <FormButton busy={change.isPending} busyLabel={t("account.profile.password.submitting")} disabled={!current || !next} className="self-start">
+        <FormButton busy={change.isPending} busyLabel={t("account.profile.password.submitting")} disabled={!current || !newPasswordOk(next)} className="self-start">
           {t("account.profile.password.submit")}
         </FormButton>
         {change.isSuccess && <FormStatus>{t("account.profile.password.done")}</FormStatus>}

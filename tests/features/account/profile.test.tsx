@@ -285,3 +285,50 @@ describe("app sign-in confirmation hardening", () => {
     expect(warning.compareDocumentPosition(cont) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+describe("a busy server (503 service_unavailable)", () => {
+  const busy = () => authError("service_unavailable", 503, "The server is busy. Try again in a moment.", 5000);
+  const BUSY = "The server is busy. Try again in a moment.";
+
+  it("change password says busy, keeps both fields, stays signed in and can be sent again", async () => {
+    vi.mocked(me.changePassword).mockRejectedValue(busy());
+    const { client } = await open();
+    const pwSection = section("Password");
+    fireEvent.change(pwSection.getByLabelText("Current password"), { target: { value: "correct horse battery" } });
+    fireEvent.change(pwSection.getByLabelText("New password"), { target: { value: "another long passphrase" } });
+    click("Change password");
+    expect(await pwSection.findByRole("alert")).toHaveTextContent(BUSY);
+    expect(pwSection.queryByText(/not right/)).not.toBeInTheDocument();
+    expect(pwSection.getByLabelText("Current password")).toHaveValue("correct horse battery");
+    expect(pwSection.getByLabelText("New password")).toHaveValue("another long passphrase");
+    expect(pwSection.getByRole("button", { name: "Change password" })).toBeEnabled();
+    expect(client.getQueryData(["me"])).not.toBeNull();
+  });
+
+  it("change email says busy and keeps what was typed", async () => {
+    vi.mocked(me.changeEmail).mockRejectedValue(busy());
+    const { client } = await open();
+    type("New email", "new@example.org");
+    fireEvent.change(section("Account").getAllByLabelText("Current password")[0], { target: { value: "correct horse battery" } });
+    click("Change email");
+    expect(await section("Account").findByText(BUSY)).toBeInTheDocument();
+    expect(screen.getByLabelText("New email")).toHaveValue("new@example.org");
+    expect(section("Account").getAllByLabelText("Current password")[0]).toHaveValue("correct horse battery");
+    expect(section("Account").getByRole("button", { name: "Change email" })).toBeEnabled();
+    expect(client.getQueryData(["me"])).not.toBeNull();
+  });
+
+  it("delete account says busy, keeps the password and the confirm step, stays signed in", async () => {
+    vi.mocked(me.deleteAccount).mockRejectedValue(busy());
+    const { client } = await open();
+    const del = section("Delete account");
+    fireEvent.change(del.getByLabelText("Current password"), { target: { value: "correct horse battery" } });
+    fireEvent.click(del.getByRole("button", { name: "Delete account" }));
+    fireEvent.change(del.getByLabelText(/Type ridge to confirm/), { target: { value: "ridge" } });
+    fireEvent.click(del.getByRole("button", { name: "Delete my account" }));
+    expect(await del.findByRole("alert")).toHaveTextContent(BUSY);
+    expect(del.getByLabelText("Current password")).toHaveValue("correct horse battery");
+    expect(del.getByRole("button", { name: "Delete my account" })).toBeEnabled();
+    expect(client.getQueryData(["me"])).not.toBeNull();
+  });
+});

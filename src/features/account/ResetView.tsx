@@ -10,6 +10,7 @@ import { PasswordField } from "../../components/form/PasswordField";
 import { TextField } from "../../components/form/TextField";
 import { AccountLayout, LinkButton } from "./AccountLayout";
 import { authErrorText, errorCode } from "./errors";
+import { newPasswordOk } from "./passwordRule";
 import { linkToken, useClearToken, useView } from "./useView";
 
 export function ResetView() {
@@ -83,7 +84,7 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
           }}
         >
           <PasswordField label={t("account.fields.newPassword")} name="new-password" autoComplete="new-password" value={password} onChange={setPassword} error={code === "weak_password" ? message : undefined} hint={t("account.register.passwordHint")} disabled={confirm.isPending} />
-          <FormButton busy={confirm.isPending} busyLabel={t("account.reset.setting")} disabled={!password}>{t("account.reset.set")}</FormButton>
+          <FormButton busy={confirm.isPending} busyLabel={t("account.reset.setting")} disabled={!newPasswordOk(password)}>{t("account.reset.set")}</FormButton>
           {confirm.isError && code !== "weak_password" && <FormStatus kind="error">{message}</FormStatus>}
         </form>
       )}

@@ -1106,7 +1106,7 @@
         "submit": "Create account",
         "submitting": "Creating…",
         "usernameHint": "3 to 30 letters, numbers, dots, dashes or underscores.",
-        "passwordHint": "At least 12 characters.",
+        "passwordHint": "At least 12 characters, at most 128 bytes.",
         "haveAccount": "Already have an account? Sign in",
         "closed": "Registration is closed on this server.",
         "sent": "If this address can be used, a link to confirm it is on its way. Follow it to finish creating your account."

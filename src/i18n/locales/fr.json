@@ -1113,7 +1113,7 @@
         "submit": "Créer le compte",
         "submitting": "Création…",
         "usernameHint": "De 3 à 30 lettres, chiffres, points, tirets ou tirets bas.",
-        "passwordHint": "Au moins 12 caractères.",
+        "passwordHint": "Au moins 12 caractères, au plus 128 octets.",
         "haveAccount": "Vous avez déjà un compte ? Se connecter",
         "closed": "Les inscriptions sont fermées sur ce serveur.",
         "sent": "Si cette adresse peut être utilisée, un lien de confirmation est en route. Suivez-le pour terminer la création du compte."

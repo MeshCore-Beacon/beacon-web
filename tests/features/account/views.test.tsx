@@ -351,3 +351,59 @@ describe("app sign-in bridge", () => {
     expect(auth.appCode).not.toHaveBeenCalled();
   });
 });
+
+describe("a busy server (503 service_unavailable)", () => {
+  const busy = () => authError("service_unavailable", 503, "The server is busy. Try again in a moment.", 5000);
+  const BUSY = "The server is busy. Try again in a moment.";
+
+  it("sign in says busy, not wrong password, keeps the typed values and can be sent again", async () => {
+    vi.mocked(auth.login).mockRejectedValue(busy());
+    renderAt("?view=signin", <AccountViews />);
+    await screen.findByRole("heading", { name: "Sign in" });
+    type("Username or email", "ridge");
+    type("Password", "correct horse battery");
+    click("Sign in");
+    expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
+    expect(screen.queryByText(/Wrong username/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Username or email")).toHaveValue("ridge");
+    expect(screen.getByLabelText("Password")).toHaveValue("correct horse battery");
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
+  });
+
+  it("register says busy and keeps the typed values", async () => {
+    vi.mocked(auth.register).mockRejectedValue(busy());
+    renderAt("?view=register", <AccountViews />);
+    await screen.findByRole("heading", { name: "Create an account" });
+    type("Username", "ridge");
+    type("Email", "a@example.org");
+    type("Password", "correct horse battery");
+    click("Create account");
+    expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
+    expect(screen.getByLabelText("Username")).toHaveValue("ridge");
+    expect(screen.getByLabelText("Password")).toHaveValue("correct horse battery");
+    expect(screen.getByRole("button", { name: "Create account" })).toBeEnabled();
+  });
+
+  it("reset confirm says busy, keeps the password and the form", async () => {
+    vi.mocked(auth.confirmReset).mockRejectedValue(busy());
+    renderAt("?view=reset&token=rt", <AccountViews />);
+    await screen.findByRole("heading", { name: "Reset your password" });
+    type("New password", "another long passphrase");
+    click("Set password");
+    expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
+    expect(screen.getByLabelText("New password")).toHaveValue("another long passphrase");
+    expect(screen.getByRole("button", { name: "Set password" })).toBeEnabled();
+  });
+
+  it("the app code exchange says busy, stays signed in and can be tried again", async () => {
+    mocks.signedIn = user;
+    vi.mocked(auth.appCode).mockRejectedValue(busy());
+    const { client } = renderAt("?view=signin&app=1&code_challenge=chal&state=st", <AccountViews />);
+    await screen.findByRole("button", { name: "Continue" });
+    click("Continue");
+    expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
+    expect(navigateTo).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(client.getQueryData(["me"])).not.toBeNull();
+  });
+});

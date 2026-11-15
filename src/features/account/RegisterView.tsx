@@ -9,6 +9,7 @@ import { PasswordField } from "../../components/form/PasswordField";
 import { TextField } from "../../components/form/TextField";
 import { AccountLayout, LinkButton } from "./AccountLayout";
 import { authErrorText, errorCode } from "./errors";
+import { newPasswordOk } from "./passwordRule";
 import { useView } from "./useView";
 
 type Field = "username" | "email" | "password";
@@ -70,7 +71,7 @@ export function RegisterView() {
         <TextField label={t("account.fields.username")} name="username" autoComplete="username" value={username} onChange={setUsername} error={fieldError("username")} hint={t("account.register.usernameHint")} disabled={submit.isPending} />
         <TextField label={t("account.fields.email")} name="email" type="email" autoComplete="email" value={email} onChange={setEmail} error={fieldError("email")} disabled={submit.isPending} />
         <PasswordField label={t("account.fields.password")} name="password" autoComplete="new-password" value={password} onChange={setPassword} error={fieldError("password")} hint={t("account.register.passwordHint")} disabled={submit.isPending} />
-        <FormButton busy={submit.isPending} busyLabel={t("account.register.submitting")} disabled={!username.trim() || !email.trim() || !password}>{t("account.register.submit")}</FormButton>
+        <FormButton busy={submit.isPending} busyLabel={t("account.register.submitting")} disabled={!username.trim() || !email.trim() || !newPasswordOk(password)}>{t("account.register.submit")}</FormButton>
         {submit.isError && !failedField && <FormStatus kind="error">{message}</FormStatus>}
       </form>
     </AccountLayout>
