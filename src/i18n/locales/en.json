@@ -1290,6 +1290,7 @@
           "temperature_one": "Enter a low or a high limit.",
           "temperature_number": "Enter the limits as numbers in degrees C.",
           "temperature_order": "The low limit must be below the high limit.",
+          "temperature_width": "The high limit must be at least 2 degrees above the low limit.",
           "temperature_range": "Enter limits between -50 and 150 degrees C.",
           "kind_unavailable": "This alert is not available for this radio.",
           "invalid_threshold": "That is not an allowed value for this alert.",

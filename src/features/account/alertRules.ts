@@ -65,8 +65,11 @@ export function parseInputs(kind: AlertKind, { a, b }: Inputs): Parsed {
       if (low == null && high == null) return { ok: false, error: "temperature_one" };
       if (low != null && high != null && low >= high) return { ok: false, error: "temperature_order" };
       const tenths = (v: number | null) => (v == null ? null : Math.round(v * 10));
-      if ([tenths(low), tenths(high)].some((v) => v != null && (v < -500 || v > 1500))) return { ok: false, error: "temperature_range" };
-      return { ok: true, threshold: tenths(low), thresholdHigh: tenths(high) };
+      const [lo, hi] = [tenths(low), tenths(high)];
+      if ([lo, hi].some((v) => v != null && (v < -500 || v > 1500))) return { ok: false, error: "temperature_range" };
+      // The server refuses a range under 2.0 degrees (20 tenths) with invalid_threshold.
+      if (lo != null && hi != null && hi - lo < 20) return { ok: false, error: "temperature_width" };
+      return { ok: true, threshold: lo, thresholdHigh: hi };
     }
     default:
       return { ok: true, threshold: null, thresholdHigh: null };

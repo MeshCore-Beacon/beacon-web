@@ -247,6 +247,32 @@ describe("alerts section", () => {
       fireEvent.click(r.getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: -50, thresholdHigh: 402 })));
     });
+
+    it("temperature limits under 2 degrees apart are refused before sending", async () => {
+      await open();
+      const r = row("Hilltop", "temperature");
+      fireEvent.change(r.getByLabelText("Low (°C)"), { target: { value: "10" } });
+      fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "11.9" } });
+      fireEvent.click(r.getByRole("switch"));
+      expect(await r.findByRole("alert")).toHaveTextContent("The high limit must be at least 2 degrees above the low limit.");
+      expect(put()).not.toHaveBeenCalled();
+      fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "12" } });
+      fireEvent.click(r.getByRole("switch"));
+      await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 100, thresholdHigh: 120 })));
+    });
+
+    it("the width message is translated in fr and sv", async () => {
+      const key = "account.alerts.errors.temperature_width";
+      try {
+        for (const lng of ["fr", "sv"]) {
+          await act(() => i18n.changeLanguage(lng));
+          expect(i18n.t(key)).not.toBe(key);
+          expect(i18n.t(key)).not.toBe(i18n.t(key, { lng: "en" }));
+        }
+      } finally {
+        await act(() => i18n.changeLanguage("en"));
+      }
+    });
   });
 
   describe("editing a threshold", () => {

@@ -1302,6 +1302,7 @@
           "temperature_one": "Entrez une limite basse ou haute.",
           "temperature_number": "Entrez les limites en degrés C, sous forme de nombres.",
           "temperature_order": "La limite basse doit être inférieure à la limite haute.",
+          "temperature_width": "La limite haute doit être au moins 2 degrés au-dessus de la limite basse.",
           "temperature_range": "Entrez des limites entre -50 et 150 degrés C.",
           "kind_unavailable": "Cette alerte n'est pas disponible pour cette radio.",
           "invalid_threshold": "Cette valeur n'est pas permise pour cette alerte.",

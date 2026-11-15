@@ -1177,6 +1177,7 @@
           "temperature_one": "Ange en låg eller en hög gräns.",
           "temperature_number": "Ange gränserna som tal i grader C.",
           "temperature_order": "Den låga gränsen måste vara under den höga.",
+          "temperature_width": "Den höga gränsen måste vara minst 2 grader över den låga.",
           "temperature_range": "Ange gränser mellan -50 och 150 grader C.",
           "kind_unavailable": "Den här aviseringen finns inte för den här radion.",
           "invalid_threshold": "Det är inget tillåtet värde för den här aviseringen.",
