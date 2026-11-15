@@ -410,3 +410,71 @@ describe("the conflict answer", () => {
     await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N8"]));
   });
 });
+
+describe("a failed first load", () => {
+  const userB = { id: "user-2" } as User;
+
+  it("never sends the previous account's pins: the retry runs the full load first", async () => {
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1), serverNode(2)], 3));
+    const { result, rerender } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    current = null;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(false));
+    vi.mocked(me.atlas).mockRejectedValueOnce(new AuthError(503, "unavailable", "down"));
+    current = userB;
+    rerender();
+    await waitFor(() => expect(result.current.notice).toMatch(/Could not load/));
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(7)], 1));
+    act(() => result.current.update((v) => ({ ...v, range: "3d" })));
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalled());
+    for (const body of putBodies()) expect(JSON.stringify(body)).not.toContain(key(1));
+    expect(putBodies()[0]).toMatchObject({ baseRevision: 1, range: "3d" });
+    expect(putBodies()[0]!.pins.map((p) => (p as { publicKey: string }).publicKey)).toEqual([key(7)]);
+    await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N7"]));
+  });
+});
+
+describe("an action that outlives its sign-in", () => {
+  const userB = { id: "user-2" } as User;
+
+  it("drops the update when another account signed in meanwhile", async () => {
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 3));
+    const { result, rerender } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    // A's page started an add and holds this callback while the lookup is pending.
+    const stale = result.current.update;
+    const staleAdjust = result.current.adjust;
+    current = null;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(false));
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(7)], 1));
+    current = userB;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    act(() => stale((v) => ({ ...v, pins: [...v.pins, nodePin(2)] })));
+    act(() => staleAdjust((v) => ({ ...v, pins: [...v.pins, nodePin(3)] })));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(me.putAtlas).not.toHaveBeenCalled();
+    expect(names(result.current.saved.pins)).toEqual(["N7"]);
+    expect(names(JSON.parse(cached()!).pins)).toEqual(["N7"]);
+  });
+});
+
+describe("a failed write followed by a reload", () => {
+  it("adopts the newer server copy and never re-bases the old edit onto it", async () => {
+    localStorage.setItem(syncedMarker("user-1"), "1");
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 4));
+    const first = mount();
+    await waitFor(() => expect(first.result.current.synced).toBe(true));
+    vi.mocked(me.putAtlas).mockRejectedValueOnce(new AuthError(503, "read_only", "no"));
+    act(() => first.result.current.update((v) => ({ ...v, pins: [...v.pins, nodePin(2)] })));
+    await waitFor(() => expect(first.result.current.notice).toMatch(/Could not save/));
+    first.unmount();
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1), serverNode(3)], 5));
+    const second = mount();
+    await waitFor(() => expect(second.result.current.synced).toBe(true));
+    expect(names(second.result.current.saved.pins)).toEqual(["N1", "N3"]);
+    expect(me.putAtlas).toHaveBeenCalledTimes(1);
+  });
+});
