@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { AuthError, me } from "../../../src/api/auth";
 import { ATLAS_KEY, type SavedAtlas } from "../../../src/features/atlas/atlas";
-import { placeholderObserverId, syncedMarker, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
+import { OWNER_KEY, placeholderObserverId, syncedMarker, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
 import { useSyncedAtlas } from "../../../src/features/atlas/useSyncedAtlas";
 import { useSavedAtlas } from "../../../src/features/atlas/useSavedAtlas";
 import * as session from "../../../src/hooks/useSession";
@@ -260,5 +260,138 @@ describe("signed in", () => {
     rerender();
     await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N1"]));
     expect(me.putAtlas).not.toHaveBeenCalled();
+  });
+});
+
+describe("another account on the same browser", () => {
+  const userB = { id: "user-2" } as User;
+
+  it("never uploads the previous account's pins and shows the new account's Atlas", async () => {
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1), serverNode(2)], 3));
+    const { result, rerender } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    expect(localStorage.getItem(OWNER_KEY)).toBe("user-1");
+    current = null;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(false));
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(7)], 1));
+    current = userB;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    expect(me.putAtlas).not.toHaveBeenCalled();
+    expect(names(result.current.saved.pins)).toEqual(["N7"]);
+    expect(names(JSON.parse(cached()!).pins)).toEqual(["N7"]);
+    expect(localStorage.getItem(OWNER_KEY)).toBe("user-2");
+  });
+
+  it("does not upload the previous account's pins to an empty account either", async () => {
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 3));
+    const { result, rerender } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    current = null;
+    rerender();
+    vi.mocked(me.atlas).mockResolvedValue(document([], 0));
+    current = userB;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    expect(me.putAtlas).not.toHaveBeenCalled();
+    expect(result.current.saved.pins).toEqual([]);
+  });
+
+  it("the first account signing back in still gets its own Atlas", async () => {
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 3));
+    const { result, rerender } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    current = null;
+    rerender();
+    act(() => result.current.update((v) => ({ ...v, pins: [...v.pins, nodePin(2)] })));
+    expect(localStorage.getItem(OWNER_KEY)).toBe("user-1");
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 3));
+    current = user;
+    rerender();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    expect(names(result.current.saved.pins)).toEqual(["N1"]);
+    expect(me.putAtlas).not.toHaveBeenCalled();
+  });
+
+  it("a never-synced local Atlas still merges and then belongs to the account", async () => {
+    localStorage.setItem(ATLAS_KEY, JSON.stringify(saved([nodePin(1)])));
+    const { result } = mount();
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(localStorage.getItem(OWNER_KEY)).toBe("user-1"));
+    expect(result.current.saved.pins).toHaveLength(1);
+  });
+});
+
+describe("a change made while the first load is in flight", () => {
+  const slowLoad = () => {
+    let release!: (d: ServerAtlas) => void;
+    vi.mocked(me.atlas).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    return (d: ServerAtlas) => act(async () => release(d));
+  };
+
+  it("holds an added card, then sends one write on the loaded and merged revision", async () => {
+    localStorage.setItem(ATLAS_KEY, JSON.stringify(saved([nodePin(1)])));
+    const release = slowLoad();
+    const { result } = mount();
+    act(() => result.current.update((v) => ({ ...v, pins: [...v.pins, nodePin(3)] })));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(me.putAtlas).not.toHaveBeenCalled();
+    await release(document([serverNode(2)], 8));
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(1));
+    expect(putBodies()[0]!.baseRevision).toBe(8);
+    expect(putBodies()[0]!.pins.map((p) => (p as { publicKey: string }).publicKey)).toEqual([key(2), key(1), key(3)]);
+  });
+
+  it("holds a removed card: it stays removed and the loaded cards stay", async () => {
+    localStorage.setItem(syncedMarker("user-1"), "1");
+    localStorage.setItem(OWNER_KEY, "user-1");
+    localStorage.setItem(ATLAS_KEY, JSON.stringify(saved([nodePin(1), nodePin(2)])));
+    const release = slowLoad();
+    const { result } = mount();
+    act(() => result.current.update((v) => ({ ...v, pins: v.pins.filter((p) => p.name !== "N1") })));
+    await release(document([serverNode(1), serverNode(2), serverNode(3)], 4));
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(1));
+    expect(putBodies()[0]!.baseRevision).toBe(4);
+    expect(putBodies()[0]!.pins.map((p) => (p as { publicKey: string }).publicKey)).toEqual([key(2), key(3)]);
+    await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N2", "N3"]));
+  });
+
+  it("a removal on a first sign-in is not undone by the merge", async () => {
+    localStorage.setItem(ATLAS_KEY, JSON.stringify(saved([nodePin(1), nodePin(2)])));
+    const release = slowLoad();
+    const { result } = mount();
+    act(() => result.current.update((v) => ({ ...v, pins: v.pins.filter((p) => p.name !== "N1") })));
+    await release(document([serverNode(1)], 2));
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(1));
+    expect(putBodies()[0]!.pins.map((p) => (p as { publicKey: string }).publicKey)).toEqual([key(2)]);
+  });
+});
+
+describe("the conflict answer", () => {
+  it("reads current from the top level of the body without refetching", async () => {
+    localStorage.setItem(syncedMarker("user-1"), "1");
+    localStorage.setItem(OWNER_KEY, "user-1");
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 5));
+    const { result } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    vi.mocked(me.putAtlas).mockRejectedValueOnce(new AuthError(409, "atlas_conflict", "changed", undefined, {
+      error: { code: "atlas_conflict", message: "changed" }, current: document([serverNode(7)], 9),
+    }));
+    act(() => result.current.update((v) => ({ ...v, range: "3d" })));
+    await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N7"]));
+    expect(me.atlas).toHaveBeenCalledTimes(1);
+  });
+
+  it("refetches when the body carries no document", async () => {
+    localStorage.setItem(syncedMarker("user-1"), "1");
+    localStorage.setItem(OWNER_KEY, "user-1");
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 5));
+    const { result } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(8)], 9));
+    vi.mocked(me.putAtlas).mockRejectedValueOnce(new AuthError(409, "atlas_conflict", "changed", undefined, { error: { code: "atlas_conflict", message: "changed" } }));
+    act(() => result.current.update((v) => ({ ...v, range: "3d" })));
+    await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N8"]));
   });
 });

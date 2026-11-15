@@ -88,3 +88,6 @@ export function mergeAtlas(server: SavedAtlas, local: SavedAtlas, keys: Observer
 }
 
 export const syncedMarker = (userId: string) => `beacon-atlas-synced:${userId}`;
+
+// The user id the local copy was last synced to, so another account never inherits it.
+export const OWNER_KEY = "beacon-atlas-owner";

@@ -3,14 +3,16 @@ import { useTranslation } from "react-i18next";
 import { me } from "../../api/auth";
 import { useSession } from "../../hooks/useSession";
 import type { SavedAtlas } from "./atlas";
-import { fromServer, mergeAtlas, syncedMarker, toPut, type ObserverKeys, type ServerAtlas } from "./atlasSync";
+import { fromServer, mergeAtlas, OWNER_KEY, syncedMarker, toPut, type ObserverKeys, type ServerAtlas } from "./atlasSync";
 import { useSavedAtlas } from "./useSavedAtlas";
 
 type Change = (value: SavedAtlas) => SavedAtlas;
 
-const asDocument = (error: unknown): ServerAtlas | null => {
-  const body = (error as { body?: { current?: ServerAtlas; error?: { current?: ServerAtlas } } } | null)?.body;
-  return body?.current ?? body?.error?.current ?? null;
+// The 409 body is {"error":{…},"current":{document}}.
+const asDocument = (error: unknown): ServerAtlas | null =>
+  (error as { body?: { current?: ServerAtlas } } | null)?.body?.current ?? null;
+const setOwner = (userId: string) => {
+  try { localStorage.setItem(OWNER_KEY, userId); } catch { /* storage blocked */ }
 };
 const markSynced = (userId: string) => {
   try { localStorage.setItem(syncedMarker(userId), String(Date.now())); } catch { /* storage blocked */ }
@@ -31,7 +33,8 @@ export function useSyncedAtlas() {
   const keys = useRef<ObserverKeys>({});
   const generation = useRef(0);
   const loading = useRef(false);
-  const changedWhileLoading = useRef(false);
+  const pending = useRef<Change[]>([]);
+  const owner = useRef<string | null>(null);
   const queued = useRef(false);
   const running = useRef(false);
   const baseRef = useRef(base);
@@ -47,6 +50,7 @@ export function useSyncedAtlas() {
     keys.current = next;
     revision.current = doc.revision;
     baseRef.current.update(() => atlas);
+    if (owner.current) setOwner(owner.current);
   }, []);
 
   const flush = useCallback(async (): Promise<void> => {
@@ -94,37 +98,43 @@ export function useSyncedAtlas() {
     keys.current = {};
     queued.current = false;
     markWhenSent.current = null;
-    changedWhileLoading.current = false;
+    pending.current = [];
+    owner.current = userId;
     if (!userId) return;
+    const baseline = baseRef.current.latest();
     loading.current = true;
     void (async () => {
       try {
         const doc = await me.atlas();
         if (generation.current !== mine) return;
-        const local = baseRef.current.latest();
-        const server = fromServer(doc, local, {});
+        const server = fromServer(doc, baseline, {});
         keys.current = server.keys;
         revision.current = doc.revision;
         let marked = true;
         try { marked = localStorage.getItem(syncedMarker(userId)) !== null; } catch { /* storage blocked */ }
+        let previous: string | null = null;
+        try { previous = localStorage.getItem(OWNER_KEY); } catch { /* storage blocked */ }
+        // A copy last synced to someone else is theirs: never merge it into this account.
+        const foreign = previous !== null && previous !== userId;
         let next = server.atlas;
         let upload = false;
-        if (!marked) {
-          const merged = mergeAtlas(server.atlas, local, server.keys);
+        if (!marked && !foreign) {
+          const merged = mergeAtlas(server.atlas, baseline, server.keys);
           if (merged.dropped > 0) setNotice(tRef.current("atlas.mergeDropped", { count: merged.dropped }));
           next = merged.atlas;
           upload = merged.upload;
-        } else if (changedWhileLoading.current) {
-          // Edits made before the load answered are the user's latest word; send them on the fetched revision.
-          next = local;
-          upload = true;
         }
+        // Changes made before the load answered go on top of what it loaded, as one write.
+        for (const change of pending.current) next = change(next);
+        if (pending.current.length > 0) upload = true;
+        pending.current = [];
         baseRef.current.update(() => next);
+        setOwner(userId);
         // The marker waits for the upload, so a failed first upload is merged again next time.
         if (upload) {
           queued.current = true;
           markWhenSent.current = userId;
-        } else if (!marked) markSynced(userId);
+        } else if (!marked || foreign) markSynced(userId);
         setSyncedFor(userId);
       } catch {
         if (generation.current === mine) setNotice(tRef.current("atlas.loadFailed"));
@@ -142,7 +152,7 @@ export function useSyncedAtlas() {
     base.update(change);
     if (!userId) return;
     setNotice(null);
-    if (loading.current) changedWhileLoading.current = true;
+    if (loading.current) pending.current.push(change);
     queued.current = true;
     void flush();
   };
