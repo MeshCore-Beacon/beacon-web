@@ -128,7 +128,7 @@ export interface ServerInfo {
   minWebVersion: string | null;
   serverVersion: string;
   // absent on servers that predate the flags
-  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean };
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; portalUrl?: string };
 }
 
 export function getServerInfo(): Promise<ServerInfo> {

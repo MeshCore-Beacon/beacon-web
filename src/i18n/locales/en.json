@@ -1211,6 +1211,11 @@
           "confirm": "Delete my account",
           "deleting": "Deleting…",
           "cancel": "Cancel"
+        },
+        "portal": {
+          "title": "Sign-in",
+          "managed": "Your sign-in is managed at the MeshMapper portal.",
+          "open": "Open the MeshMapper portal"
         }
       },
       "requests": {
@@ -1255,6 +1260,11 @@
           "no_password_blocked": "This repeater gives admin access without a password, so it cannot be polled this way",
           "requests_disabled": "Telemetry requests are not enabled on this server."
         }
+      },
+      "portal": {
+        "intro": "Beacon signs you in through your MeshMapper account.",
+        "button": "Sign in with MeshMapper",
+        "failed": "Sign-in did not complete. Try again."
       }
     }
   }

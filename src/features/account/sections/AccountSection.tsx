@@ -81,7 +81,7 @@ function ChangeEmailForm({ user }: { user: User }) {
   );
 }
 
-export function AccountSection({ user }: { user: User }) {
+export function AccountSection({ user, portal }: { user: User; portal?: boolean }) {
   const { t } = useTranslation();
   return (
     <ProfileSection id="profile-account" title={t("account.profile.account.title")}>
@@ -90,7 +90,7 @@ export function AccountSection({ user }: { user: User }) {
           <dt className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{t("account.profile.account.username")}</dt>
           <dd className="text-text-normal">@{user.username}</dd>
         </div>
-        <div className="flex flex-col gap-0.5">
+        {!portal && <div className="flex flex-col gap-0.5">
           <dt className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{t("account.profile.account.email")}</dt>
           <dd className="flex flex-wrap items-center gap-2 text-text-normal">
             <span className="break-all">{user.email}</span>
@@ -98,10 +98,10 @@ export function AccountSection({ user }: { user: User }) {
               {user.emailVerified ? t("account.profile.account.verified") : t("account.profile.account.unverified")}
             </span>
           </dd>
-        </div>
+        </div>}
       </dl>
       <DisplayNameForm user={user} />
-      <ChangeEmailForm user={user} />
+      {!portal && <ChangeEmailForm user={user} />}
     </ProfileSection>
   );
 }

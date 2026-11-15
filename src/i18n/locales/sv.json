@@ -1098,6 +1098,11 @@
           "confirm": "Radera mitt konto",
           "deleting": "Raderar…",
           "cancel": "Avbryt"
+        },
+        "portal": {
+          "title": "Inloggning",
+          "managed": "Din inloggning hanteras i MeshMapper-portalen.",
+          "open": "Öppna MeshMapper-portalen"
         }
       },
       "requests": {
@@ -1142,6 +1147,11 @@
           "no_password_blocked": "Den här repeatern ger administratörsåtkomst utan lösenord, så den kan inte avläsas på det här sättet",
           "requests_disabled": "Telemetribegäran är inte aktiverade på den här servern."
         }
+      },
+      "portal": {
+        "intro": "Beacon loggar in dig med ditt MeshMapper-konto.",
+        "button": "Logga in med MeshMapper",
+        "failed": "Inloggningen slutfördes inte. Försök igen."
       }
     }
   }

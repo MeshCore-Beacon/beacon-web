@@ -1220,6 +1220,11 @@
           "confirm": "Supprimer mon compte",
           "deleting": "Suppression…",
           "cancel": "Annuler"
+        },
+        "portal": {
+          "title": "Connexion",
+          "managed": "Votre connexion est gérée sur le portail MeshMapper.",
+          "open": "Ouvrir le portail MeshMapper"
         }
       },
       "requests": {
@@ -1264,6 +1269,11 @@
           "no_password_blocked": "Ce répéteur donne un accès administrateur sans mot de passe, il ne peut donc pas être interrogé de cette façon",
           "requests_disabled": "Les demandes de télémétrie ne sont pas activées sur ce serveur."
         }
+      },
+      "portal": {
+        "intro": "Beacon vous connecte avec votre compte MeshMapper.",
+        "button": "Se connecter avec MeshMapper",
+        "failed": "La connexion n'a pas abouti. Réessayez."
       }
     }
   }

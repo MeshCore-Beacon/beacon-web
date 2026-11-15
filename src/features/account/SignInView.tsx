@@ -11,6 +11,7 @@ import { TextField } from "../../components/form/TextField";
 import { AccountLayout, LinkButton } from "./AccountLayout";
 import { AppBridge } from "./AppBridge";
 import { authErrorText, errorCode } from "./errors";
+import { PortalSignIn } from "./PortalSignIn";
 import { ResendForm } from "./ResendForm";
 import { useView } from "./useView";
 import { useSearchParams } from "react-router-dom";
@@ -54,6 +55,8 @@ export function SignInView() {
   if (bridge && user && challenge && state) {
     return <AppBridge user={user} codeChallenge={challenge} state={state} />;
   }
+
+  if (features.accounts === "portal") return <PortalSignIn />;
 
   const unverified = submit.isError && errorCode(submit.error) === "email_unverified";
   const typedEmail = login.includes("@") ? login.trim() : undefined;

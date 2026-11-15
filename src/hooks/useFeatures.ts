@@ -7,6 +7,7 @@ export interface Features {
   registration: boolean;
   telemetryRequests: boolean;
   alerts: boolean;
+  portalUrl?: string;
 }
 
 const OFF: Features = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false };
@@ -36,5 +37,6 @@ export function useFeatures(): Features {
     registration: f.registration === true,
     telemetryRequests: f.telemetryRequests === true,
     alerts: f.alerts === true,
+    portalUrl: typeof f.portalUrl === "string" && f.portalUrl !== "" ? f.portalUrl : undefined,
   };
 }
