@@ -126,7 +126,7 @@ export function AtlasCard({
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
-  const readings = useAtlasReadings(node?.id ?? null, node?.nodeTypeName, active);
+  const readings = useAtlasReadings(node?.id ?? null, node?.nodeTypeName, active && view === "analytics");
   const observerId = pin.kind === "observer" ? pin.observerId : (node?.observerId ?? pin.observerId ?? null);
   const obs = useAtlasObserver(observerId, range, active, view === "observer", pin.kind === "observer");
   const observer = obs.observer.data;

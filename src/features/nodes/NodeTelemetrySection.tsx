@@ -8,7 +8,7 @@ import { Segmented } from "../stats/Segmented";
 import { buildNodeCharts } from "./nodeTelemetryOptions";
 import { hasNodeTelemetry } from "./telemetry";
 import { useNodePolling, useNodeTelemetry, type NodeTelemetryRange } from "./useNodeTelemetry";
-import type { Node } from "./types";
+import type { Node, NodeTelemetry } from "./types";
 
 const CHART_HEIGHT = 130;
 const RANGES: { value: NodeTelemetryRange; key: "24h" | "7d" | "30d" }[] = [
@@ -23,25 +23,32 @@ export default function NodeTelemetrySection({ node, onViewObserver }: { node: N
   const { t } = useTranslation();
   const colors = useChartColors();
   const [range, setRange] = useState<NodeTelemetryRange>("168h");
-  const [seenData, setSeenData] = useState(false);
+  // The charts last drawn. Kept so a failed range change leaves them on screen, and so the
+  // section knows it has shown a chart since it mounted.
+  const [shown, setShown] = useState<NodeTelemetry | null>(null);
   const telemetry = useNodeTelemetry(node.id, range, true);
   const polling = useNodePolling(node.id, true);
 
   const data = telemetry.data;
   const hasData = hasNodeTelemetry(data);
-  // Switching range clears the data while it loads; remember there was some so the control stays.
-  if (hasData && !seenData) setSeenData(true);
+  const source = hasData ? data : telemetry.isError ? shown : null;
 
   const charts = useMemo(
-    () => (hasData && data
-      ? buildNodeCharts(data, colors, {
+    () => (source
+      ? buildNodeCharts(source, colors, {
           battery: t("nodeDetail.telemetry.battery"),
           temperature: t("nodeDetail.telemetry.temperature"),
           noise: t("nodeDetail.telemetry.noise"),
         })
       : {}),
-    [hasData, data, colors, t],
+    [source, colors, t],
   );
+  const drawn = Object.values(charts).some(Boolean);
+  if (hasData && drawn && data !== shown) setShown(data!);
+  const seenData = shown !== null;
+
+  // No route on this server, or the first load failed: nothing to show and nothing to apologise for.
+  if (telemetry.unsupported || (telemetry.isError && !seenData)) return null;
 
   const poller = polling.data?.poller ?? null;
   if (!hasData && !poller && !seenData) return null;
@@ -72,7 +79,7 @@ export default function NodeTelemetrySection({ node, onViewObserver }: { node: N
         onChange={(v) => setRange(v as NodeTelemetryRange)}
         options={RANGES.map((r) => ({ value: r.value, label: t(`stats.ranges.${r.key}`) }))}
       />
-      {hasData ? (
+      {drawn ? (
         <div className="mt-2 flex flex-col gap-2">
           {cards.map(([id, key, title]) => {
             const option = charts[key];
@@ -81,9 +88,10 @@ export default function NodeTelemetrySection({ node, onViewObserver }: { node: N
         </div>
       ) : (
         <div className="mt-2 font-mono text-[13px] text-text-dim">
-          {telemetry.isError ? t("common.loadFailed") : telemetry.isLoading ? t("common.loading") : t("nodeDetail.telemetry.noReadings")}
+          {telemetry.isLoading ? t("common.loading") : t("nodeDetail.telemetry.noReadings")}
         </div>
       )}
+      {telemetry.isError && drawn && <div className="mt-1 font-mono text-[11px] text-text-muted">{t("common.loadFailed")}</div>}
       <div className="mt-2 flex flex-col gap-0.5 font-mono text-[11px] text-text-muted">
         {poller && (
           <div>

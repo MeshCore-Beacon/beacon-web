@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { getNodePolling, getNodeTelemetry, isNotFound } from "../../api/client";
 
-import type { NodeTelemetryRange } from "./types";
+import type { NodeTelemetry, NodeTelemetryRange } from "./types";
 
 export type { NodeTelemetryRange };
 
-// A 404 means this server has no such route. A query can't hold undefined, so cache null and
-// let `select` hand callers undefined, which they read as "not supported".
+// Polling: a 404 is cached as null and `select` hands callers undefined.
 async function orNull<T>(load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
@@ -17,18 +16,37 @@ async function orNull<T>(load: () => Promise<T>): Promise<T | null> {
 }
 const toUndefined = <T,>(data: T | null): T | undefined => data ?? undefined;
 
-// `refetchMs` is for a caller that keeps the reading on screen, such as an Atlas card.
+// A 404 means this server has no such route. It is cached as an explicit result because a query
+// function may not return undefined.
+export type NodeTelemetryResult = { unsupported: true } | { unsupported: false; telemetry: NodeTelemetry };
+
+async function loadTelemetry(id: string, range: NodeTelemetryRange, signal: AbortSignal): Promise<NodeTelemetryResult> {
+  try {
+    return { unsupported: false, telemetry: await getNodeTelemetry(id, range, signal) };
+  } catch (err) {
+    if (isNotFound(err)) return { unsupported: true };
+    throw err;
+  }
+}
+
+// `refetchMs` is for a caller that keeps the reading on screen, such as an Atlas card. It stops
+// once the server has said it has no such route.
 export function useNodeTelemetry(id: string | undefined, range: NodeTelemetryRange, enabled: boolean, refetchMs?: number) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["node-telemetry", id, range],
-    queryFn: ({ signal }) => orNull(() => getNodeTelemetry(id!, range, signal)),
+    queryFn: ({ signal }) => loadTelemetry(id!, range, signal),
     enabled: enabled && !!id,
-    select: toUndefined,
     staleTime: 60_000,
-    refetchInterval: refetchMs,
+    refetchInterval: (q) => (q.state.data?.unsupported ? false : (refetchMs ?? false)),
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
+  const result = query.data;
+  return {
+    ...query,
+    data: result && !result.unsupported ? result.telemetry : undefined,
+    unsupported: result?.unsupported === true,
+  };
 }
 
 export function useNodePolling(id: string | undefined, enabled: boolean) {

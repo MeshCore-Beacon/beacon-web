@@ -11,7 +11,7 @@ import type { Node, NodePolling, NodeTelemetry } from "../../../src/features/nod
 vi.mock("../../../src/api/client", () => ({
   getNodeTelemetry: vi.fn(),
   getNodePolling: vi.fn(),
-  isNotFound: () => false,
+  isNotFound: (e: unknown) => (e as { status?: number } | null)?.status === 404,
 }));
 // ECharts needs a real canvas; the section's behaviour is in which cards it draws
 vi.mock("../../../src/features/stats/EChart", () => ({
@@ -49,6 +49,37 @@ describe("NodeTelemetrySection", () => {
     await waitFor(() => expect(mockPolling).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 20));
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing when telemetry is unsupported, even if polling answers", async () => {
+    mockTelemetry.mockRejectedValue({ status: 404 });
+    mockPolling.mockResolvedValue(polling());
+    const { container } = renderSection();
+    await waitFor(() => expect(mockPolling).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mockTelemetry).toHaveBeenCalledTimes(1);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing, with no error text, when the first load fails", async () => {
+    mockTelemetry.mockRejectedValue({ status: 500 });
+    mockPolling.mockResolvedValue(polling());
+    const { container } = renderSection();
+    await waitFor(() => expect(mockTelemetry).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("keeps the charts and shows one quiet line when a later load fails", async () => {
+    mockTelemetry.mockResolvedValue(tele([point]));
+    mockPolling.mockResolvedValue(polling());
+    renderSection();
+    await screen.findAllByTestId("chart");
+    mockTelemetry.mockRejectedValue({ status: 500 });
+    fireEvent.click(screen.getByRole("button", { name: "24h" }));
+    expect(await screen.findByText("Failed to load")).toBeInTheDocument();
+    expect(screen.getAllByTestId("chart")).toHaveLength(4);
+    expect(screen.getAllByText("Failed to load")).toHaveLength(1);
   });
 
   it("shows one waiting line when a poller is assigned but nothing has arrived", async () => {

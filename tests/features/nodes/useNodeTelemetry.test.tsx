@@ -22,7 +22,8 @@ describe("useNodeTelemetry", () => {
     const { result } = renderHook(() => useNodeTelemetry("n1", "24h", true), { wrapper });
     await waitFor(() => expect(result.current.data).toEqual(telemetry));
     expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("/nodes/n1/telemetry?range=24h&interval=1h");
-    expect(client.getQueryData(["node-telemetry", "n1", "24h"])).toEqual(telemetry);
+    expect(result.current.unsupported).toBe(false);
+    expect(client.getQueryData(["node-telemetry", "n1", "24h"])).toEqual({ unsupported: false, telemetry });
   });
 
   it("does not fetch when disabled or without an id", async () => {
@@ -34,13 +35,29 @@ describe("useNodeTelemetry", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("resolves a 404 to undefined without retrying", async () => {
+  it("reports a 404 as unsupported without retrying", async () => {
     const fetchSpy = respond(404, { error: { code: "not_found", message: "no" } });
     vi.stubGlobal("fetch", fetchSpy);
     const { result } = renderHook(() => useNodeTelemetry("n1", "168h", true), { wrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.unsupported).toBe(true));
     expect(result.current.data).toBeUndefined();
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes no second request after a 404 even with a refetch interval", async () => {
+    const fetchSpy = respond(404, { error: { code: "not_found", message: "no" } });
+    vi.stubGlobal("fetch", fetchSpy);
+    const { result } = renderHook(() => useNodeTelemetry("n1", "24h", true, 10), { wrapper });
+    await waitFor(() => expect(result.current.unsupported).toBe(true));
+    await new Promise((r) => setTimeout(r, 80));
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps refetching on the interval while supported", async () => {
+    const fetchSpy = respond(200, telemetry);
+    vi.stubGlobal("fetch", fetchSpy);
+    renderHook(() => useNodeTelemetry("n1", "24h", true, 10), { wrapper });
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBeGreaterThan(1));
   });
 
   it("still surfaces other errors", async () => {
