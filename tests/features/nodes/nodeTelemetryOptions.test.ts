@@ -86,6 +86,27 @@ describe("buildNodeCharts", () => {
     expect(air(pts).data).toEqual([[0, null], [H, 100]]);
   });
 
+  it("checks the unrounded value against 100", () => {
+    // 100.000463 percent rounds to 100 but is over the ceiling
+    expect(air([{ t: 0, readings: 1, airtimeTxSecs: 216001, airtimeRxSecs: 0, counterSpanSecs: 216000 }]).data).toEqual([[0, null]]);
+  });
+
+  it("draws small markers on every series so an isolated value between gaps shows", () => {
+    const c = buildNodeCharts(tele([
+      { t: 0, readings: 1, batteryMv: 4200, temperatureC: 16, noiseFloorDb: -97, airtimeTxSecs: 1, airtimeRxSecs: 1, counterSpanSecs: 3600 },
+      { t: 3 * H, readings: 1, batteryMv: 4100, temperatureC: 17, noiseFloorDb: -96, airtimeTxSecs: 1, airtimeRxSecs: 1, counterSpanSecs: 3600 },
+    ]), colors, labels);
+    for (const key of ["battery", "temperature", "noise", "airtime"] as const) {
+      for (const s of (c[key] as any).series) {
+        expect(s.data[1][1]).toBeNull();
+        expect(s.connectNulls).toBe(false);
+        expect(s.symbol).not.toBe("none");
+        expect(s.symbolSize).toBeGreaterThanOrEqual(3);
+        expect(s.symbolSize).toBeLessThanOrEqual(4);
+      }
+    }
+  });
+
   it("draws point markers so an isolated value shows", () => {
     expect(air(full.points).symbol).not.toBe("none");
     expect(air(full.points, "RX").symbol).not.toBe("none");

@@ -37,8 +37,18 @@ const has = (points: NodeTelemetryPoint[], pick: (p: NodeTelemetryPoint) => numb
 // a result over 100, means the data is unusable: leave a gap rather than stretch the axis.
 function airtimePct(secs: number | undefined, span: number | undefined): number | null {
   if (secs == null || !span) return null;
-  const v = Math.round(((secs * 100) / span) * 1000) / 1000;
-  return v > 100 ? null : v;
+  const raw = (secs * 100) / span;
+  return raw > 100 ? null : Math.round(raw * 1000) / 1000;
+}
+
+// Status polls are sparse, so every series gets small markers or a lone value between gaps would not draw.
+const MARKER_SIZE = 3;
+function withMarkers(option: EChartsOption): EChartsOption {
+  for (const s of option.series as { symbol: string; symbolSize: number }[]) {
+    s.symbol = "circle";
+    s.symbolSize = MARKER_SIZE;
+  }
+  return option;
 }
 
 // A chart is built only when some point carries its field.
@@ -46,19 +56,17 @@ export function buildNodeCharts(data: NodeTelemetry, c: ChartColors, labels: Nod
   const bucketMs = intervalToMs(data.interval);
   const points = fillGaps(data.points, bucketMs);
   const line = (name: string, color: string, accessor: (p: NodeTelemetryPoint) => number | null) =>
-    metricLineOption(points, c, { name, color, accessor, connectNulls: false });
+    withMarkers(metricLineOption(points, c, { name, color, accessor, connectNulls: false }));
   const out: NodeCharts = {};
   if (has(data.points, (p) => p.batteryMv)) out.battery = line(labels.battery, c.primary, (p) => mvToVolts(p.batteryMv));
   if (has(data.points, (p) => p.temperatureC)) out.temperature = line(labels.temperature, c.green, (p) => p.temperatureC ?? null);
   if (has(data.points, (p) => p.noiseFloorDb)) out.noise = line(labels.noise, c.warn, (p) => p.noiseFloorDb ?? null);
   if (bucketMs != null && (has(data.points, (p) => p.airtimeTxSecs) || has(data.points, (p) => p.airtimeRxSecs))) {
     out.airtime = airtimeOption([], c, bucketMs, false);
-    // Status polls are sparse, so mark each point or a lone value would not draw.
-    for (const s of out.airtime.series as { name: string; data: unknown; symbol: string; symbolSize: number }[]) {
+    for (const s of out.airtime.series as { name: string; data: unknown }[]) {
       s.data = points.map((p) => [p.t, airtimePct(s.name === "TX" ? p.airtimeTxSecs : p.airtimeRxSecs, p.counterSpanSecs)]);
-      s.symbol = "circle";
-      s.symbolSize = 4;
     }
+    withMarkers(out.airtime);
   }
   return out;
 }
