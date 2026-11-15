@@ -943,6 +943,96 @@
     },
     "atlas": {
       "readingsLabel": "Batteri och temperatur från senaste avfrågningen"
+    },
+    "account": {
+      "back": "Tillbaka",
+      "entry": {
+        "signIn": "Logga in",
+        "profile": "Profil",
+        "signOut": "Logga ut"
+      },
+      "fields": {
+        "login": "Användarnamn eller e-post",
+        "username": "Användarnamn",
+        "email": "E-post",
+        "password": "Lösenord",
+        "newPassword": "Nytt lösenord"
+      },
+      "signin": {
+        "title": "Logga in",
+        "submit": "Logga in",
+        "submitting": "Loggar in…",
+        "register": "Skapa ett konto",
+        "forgot": "Glömt lösenordet"
+      },
+      "resend": {
+        "button": "Skicka länken igen",
+        "sent": "Kolla din e-post. Om adressen kan användas är en ny länk på väg."
+      },
+      "checkEmail": {
+        "title": "Kolla din e-post"
+      },
+      "register": {
+        "title": "Skapa ett konto",
+        "submit": "Skapa konto",
+        "submitting": "Skapar…",
+        "usernameHint": "3 till 30 bokstäver, siffror, punkter, bindestreck eller understreck.",
+        "passwordHint": "Minst 12 tecken.",
+        "haveAccount": "Har du redan ett konto? Logga in",
+        "closed": "Registreringen är stängd på den här servern.",
+        "sent": "Om adressen kan användas är en bekräftelselänk på väg. Följ den för att slutföra kontot."
+      },
+      "verify": {
+        "title": "Verifiera din e-post",
+        "checking": "Kontrollerar länken…",
+        "success": "Din e-post är verifierad. Du kan logga in nu.",
+        "signIn": "Logga in",
+        "newLinkHelp": "Ange din e-post så skickar vi en ny länk.",
+        "newLink": "Skicka en ny länk"
+      },
+      "reset": {
+        "title": "Återställ lösenordet",
+        "intro": "Ange kontots e-postadress så skickar vi en återställningslänk.",
+        "send": "Skicka länk",
+        "sending": "Skickar…",
+        "sent": "Om adressen har ett konto är en återställningslänk på väg.",
+        "set": "Ange lösenord",
+        "setting": "Sparar…",
+        "done": "Ditt lösenord är ändrat. Du kan logga in med det nu.",
+        "signIn": "Logga in",
+        "newLink": "Begär en ny länk",
+        "toSignIn": "Tillbaka till inloggning"
+      },
+      "bridge": {
+        "title": "Logga in i Beacon-appen",
+        "notice": "Beacon-appen ber dig logga in. Logga in här för att fortsätta.",
+        "confirm": "Beacon-appen ber om att få logga in som {{name}} (@{{username}}).",
+        "continue": "Fortsätt",
+        "continuing": "Fortsätter…",
+        "cancel": "Avbryt",
+        "done": "Öppnar Beacon-appen. Du kan stänga den här sidan efteråt.",
+        "incomplete": "Inloggningsbegäran från appen är ofullständig. Gå tillbaka till appen och försök igen.",
+        "badRedirect": "Inloggningen kunde inte återvända till appen. Inget delades."
+      },
+      "errors": {
+        "generic": "Något gick fel. Försök igen.",
+        "invalid_credentials": "Fel användarnamn, e-post eller lösenord.",
+        "email_unverified": "Bekräfta din e-post först. Kolla inkorgen eller skicka länken igen nedan.",
+        "tooMany": "För många försök. Försök igen {{when}}.",
+        "whenLater": "senare",
+        "whenSeconds_one": "om {{count}} sekund",
+        "whenSeconds_other": "om {{count}} sekunder",
+        "whenMinutes_one": "om {{count}} minut",
+        "whenMinutes_other": "om {{count}} minuter",
+        "weak_password": "Lösenordet godtas inte: {{reason}}",
+        "username_taken": "Användarnamnet är upptaget.",
+        "invalid_input": "Kontrollera det du skrev och försök igen.",
+        "registration_closed": "Registreringen är stängd på den här servern.",
+        "token_invalid": "Länken är inte längre giltig.",
+        "not_signed_in": "Du är inte inloggad. Logga in och försök igen.",
+        "csrf_rejected": "Begäran avvisades. Ladda om sidan och försök igen.",
+        "accounts_disabled": "Konton är inte aktiverade på den här servern."
+      }
     }
   }
 }

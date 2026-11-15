@@ -1056,6 +1056,96 @@
       "pinView": "Open on this tab",
       "pinViewHelp": "Make this the tab the card opens on",
       "viewPinned": "The card opens on this tab"
+    },
+    "account": {
+      "back": "Back",
+      "entry": {
+        "signIn": "Sign in",
+        "profile": "Profile",
+        "signOut": "Sign out"
+      },
+      "fields": {
+        "login": "Username or email",
+        "username": "Username",
+        "email": "Email",
+        "password": "Password",
+        "newPassword": "New password"
+      },
+      "signin": {
+        "title": "Sign in",
+        "submit": "Sign in",
+        "submitting": "Signing in…",
+        "register": "Create an account",
+        "forgot": "Forgot password"
+      },
+      "resend": {
+        "button": "Send the link again",
+        "sent": "Check your email. If that address can be used, a new link is on its way."
+      },
+      "checkEmail": {
+        "title": "Check your email"
+      },
+      "register": {
+        "title": "Create an account",
+        "submit": "Create account",
+        "submitting": "Creating…",
+        "usernameHint": "3 to 30 letters, numbers, dots, dashes or underscores.",
+        "passwordHint": "At least 12 characters.",
+        "haveAccount": "Already have an account? Sign in",
+        "closed": "Registration is closed on this server.",
+        "sent": "If this address can be used, a link to confirm it is on its way. Follow it to finish creating your account."
+      },
+      "verify": {
+        "title": "Verify your email",
+        "checking": "Checking your link…",
+        "success": "Your email is verified. You can sign in now.",
+        "signIn": "Sign in",
+        "newLinkHelp": "Enter your email and we will send a new link.",
+        "newLink": "Send a new link"
+      },
+      "reset": {
+        "title": "Reset your password",
+        "intro": "Enter your account email and we will send a reset link.",
+        "send": "Send reset link",
+        "sending": "Sending…",
+        "sent": "If that address has an account, a reset link is on its way.",
+        "set": "Set password",
+        "setting": "Saving…",
+        "done": "Your password is changed. You can sign in with it now.",
+        "signIn": "Sign in",
+        "newLink": "Request a new link",
+        "toSignIn": "Back to sign in"
+      },
+      "bridge": {
+        "title": "Sign in to the Beacon app",
+        "notice": "The Beacon app is asking you to sign in. Sign in here to continue.",
+        "confirm": "The Beacon app is asking to sign in as {{name}} (@{{username}}).",
+        "continue": "Continue",
+        "continuing": "Continuing…",
+        "cancel": "Cancel",
+        "done": "Opening the Beacon app. You can close this page afterwards.",
+        "incomplete": "This sign-in request from the app is incomplete. Go back to the app and try again.",
+        "badRedirect": "The sign-in could not return to the app. Nothing was shared."
+      },
+      "errors": {
+        "generic": "Something went wrong. Try again.",
+        "invalid_credentials": "Wrong username, email or password.",
+        "email_unverified": "Confirm your email first. Check your inbox for the link, or send it again below.",
+        "tooMany": "Too many attempts. Try again {{when}}.",
+        "whenLater": "later",
+        "whenSeconds_one": "in {{count}} second",
+        "whenSeconds_other": "in {{count}} seconds",
+        "whenMinutes_one": "in {{count}} minute",
+        "whenMinutes_other": "in {{count}} minutes",
+        "weak_password": "That password is not accepted: {{reason}}",
+        "username_taken": "That username is taken.",
+        "invalid_input": "Check what you entered and try again.",
+        "registration_closed": "Registration is closed on this server.",
+        "token_invalid": "This link is no longer valid.",
+        "not_signed_in": "You are not signed in. Sign in and try again.",
+        "csrf_rejected": "The request was rejected. Reload the page and try again.",
+        "accounts_disabled": "Accounts are not enabled on this server."
+      }
     }
   }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { AppShell } from "../../src/components/AppShell";
 import { RegionProvider } from "../../src/hooks/useRegion";
 import { ALL_REGIONS } from "../../src/hooks/region-selection";
@@ -26,11 +27,13 @@ function renderShell(onTabChange: (tab: string) => void = () => {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <RegionProvider defaultSelection={ALL_REGIONS}>
-        <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={wsManager}>
-          <div />
-        </AppShell>
-      </RegionProvider>
+      <MemoryRouter>
+        <RegionProvider defaultSelection={ALL_REGIONS}>
+          <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={wsManager}>
+            <div />
+          </AppShell>
+        </RegionProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }

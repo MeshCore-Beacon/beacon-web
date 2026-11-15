@@ -1062,6 +1062,98 @@
       "pinView": "Ouvrir sur cet onglet",
       "pinViewHelp": "Faire de cet onglet celui sur lequel la fiche s’ouvre",
       "viewPinned": "La fiche s’ouvre sur cet onglet"
+    },
+    "account": {
+      "back": "Retour",
+      "entry": {
+        "signIn": "Se connecter",
+        "profile": "Profil",
+        "signOut": "Se déconnecter"
+      },
+      "fields": {
+        "login": "Nom d’utilisateur ou courriel",
+        "username": "Nom d’utilisateur",
+        "email": "Courriel",
+        "password": "Mot de passe",
+        "newPassword": "Nouveau mot de passe"
+      },
+      "signin": {
+        "title": "Connexion",
+        "submit": "Se connecter",
+        "submitting": "Connexion…",
+        "register": "Créer un compte",
+        "forgot": "Mot de passe oublié"
+      },
+      "resend": {
+        "button": "Renvoyer le lien",
+        "sent": "Vérifiez vos courriels. Si cette adresse peut être utilisée, un nouveau lien est en route."
+      },
+      "checkEmail": {
+        "title": "Vérifiez vos courriels"
+      },
+      "register": {
+        "title": "Créer un compte",
+        "submit": "Créer le compte",
+        "submitting": "Création…",
+        "usernameHint": "De 3 à 30 lettres, chiffres, points, tirets ou tirets bas.",
+        "passwordHint": "Au moins 12 caractères.",
+        "haveAccount": "Vous avez déjà un compte ? Se connecter",
+        "closed": "Les inscriptions sont fermées sur ce serveur.",
+        "sent": "Si cette adresse peut être utilisée, un lien de confirmation est en route. Suivez-le pour terminer la création du compte."
+      },
+      "verify": {
+        "title": "Vérifier votre courriel",
+        "checking": "Vérification du lien…",
+        "success": "Votre courriel est vérifié. Vous pouvez vous connecter.",
+        "signIn": "Se connecter",
+        "newLinkHelp": "Entrez votre courriel et nous enverrons un nouveau lien.",
+        "newLink": "Envoyer un nouveau lien"
+      },
+      "reset": {
+        "title": "Réinitialiser le mot de passe",
+        "intro": "Entrez le courriel de votre compte et nous enverrons un lien de réinitialisation.",
+        "send": "Envoyer le lien",
+        "sending": "Envoi…",
+        "sent": "Si cette adresse a un compte, un lien de réinitialisation est en route.",
+        "set": "Définir le mot de passe",
+        "setting": "Enregistrement…",
+        "done": "Votre mot de passe est modifié. Vous pouvez vous connecter avec.",
+        "signIn": "Se connecter",
+        "newLink": "Demander un nouveau lien",
+        "toSignIn": "Retour à la connexion"
+      },
+      "bridge": {
+        "title": "Connexion à l’app Beacon",
+        "notice": "L’app Beacon demande de se connecter. Connectez-vous ici pour continuer.",
+        "confirm": "L’app Beacon demande à se connecter en tant que {{name}} (@{{username}}).",
+        "continue": "Continuer",
+        "continuing": "En cours…",
+        "cancel": "Annuler",
+        "done": "Ouverture de l’app Beacon. Vous pourrez ensuite fermer cette page.",
+        "incomplete": "Cette demande de connexion de l’app est incomplète. Retournez dans l’app et réessayez.",
+        "badRedirect": "La connexion n’a pas pu revenir à l’app. Rien n’a été partagé."
+      },
+      "errors": {
+        "generic": "Une erreur s’est produite. Réessayez.",
+        "invalid_credentials": "Nom d’utilisateur, courriel ou mot de passe incorrect.",
+        "email_unverified": "Confirmez d’abord votre courriel. Vérifiez votre boîte de réception ou renvoyez le lien ci-dessous.",
+        "tooMany": "Trop de tentatives. Réessayez {{when}}.",
+        "whenLater": "plus tard",
+        "whenSeconds_one": "dans {{count}} seconde",
+        "whenSeconds_many": "dans {{count}} secondes",
+        "whenSeconds_other": "dans {{count}} secondes",
+        "whenMinutes_one": "dans {{count}} minute",
+        "whenMinutes_many": "dans {{count}} minutes",
+        "whenMinutes_other": "dans {{count}} minutes",
+        "weak_password": "Ce mot de passe n’est pas accepté : {{reason}}",
+        "username_taken": "Ce nom d’utilisateur est déjà pris.",
+        "invalid_input": "Vérifiez votre saisie et réessayez.",
+        "registration_closed": "Les inscriptions sont fermées sur ce serveur.",
+        "token_invalid": "Ce lien n’est plus valide.",
+        "not_signed_in": "Vous n’êtes pas connecté. Connectez-vous et réessayez.",
+        "csrf_rejected": "La requête a été refusée. Rechargez la page et réessayez.",
+        "accounts_disabled": "Les comptes ne sont pas activés sur ce serveur."
+      }
     }
   }
 }

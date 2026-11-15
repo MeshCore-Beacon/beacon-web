@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useFeatures } from "../../src/hooks/useFeatures";
+import { useFeatures, useFeaturesLoading } from "../../src/hooks/useFeatures";
 
 const OFF = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false };
 let client: QueryClient;
@@ -47,5 +47,14 @@ describe("useFeatures", () => {
     const { result } = renderHook(() => useFeatures(), { wrapper });
     await waitFor(() => expect(result.current.polling).toBe(true));
     expect(result.current).toEqual({ ...OFF, polling: true });
+  });
+});
+
+describe("useFeaturesLoading", () => {
+  it("is true until info settles, then false, also on failure", async () => {
+    stubInfo({ error: { code: "boom", message: "boom" } }, false);
+    const { result } = renderHook(() => useFeaturesLoading(), { wrapper });
+    expect(result.current).toBe(true);
+    await waitFor(() => expect(result.current).toBe(false));
   });
 });
