@@ -3,18 +3,21 @@ import { parseRetryAfter } from "./rate-limit";
 import type {
   AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, UserResponse, VerifyStatus,
 } from "../features/account/types";
+import type { PutAtlas, ServerAtlas } from "../features/atlas/atlasSync";
 
 export class AuthError extends Error {
   status: number;
   code: string;
   retryAfterMs?: number;
+  body?: unknown; // the parsed error body, for answers that carry data (the Atlas conflict)
 
-  constructor(status: number, code: string, message: string, retryAfterMs?: number) {
+  constructor(status: number, code: string, message: string, retryAfterMs?: number, body?: unknown) {
     super(message);
     this.name = "AuthError";
     this.status = status;
     this.code = code;
     this.retryAfterMs = retryAfterMs;
+    this.body = body;
   }
 }
 
@@ -41,6 +44,7 @@ export async function authRequest<T>(
       parsed?.error?.code ?? "unknown",
       parsed?.error?.message ?? res.statusText,
       parseRetryAfter(res.headers.get("Retry-After")),
+      parsed,
     );
   }
   if (res.status === 204) return undefined as T;
@@ -67,4 +71,6 @@ export const me = {
   sessions: () => authRequest<{ sessions: Session[] }>("GET", "/me/sessions"),
   endSession: (id: string) => authRequest<void>("DELETE", `/me/sessions/${encodeURIComponent(id)}`),
   endOtherSessions: () => authRequest<void>("DELETE", "/me/sessions"),
+  atlas: (signal?: AbortSignal) => authRequest<ServerAtlas>("GET", "/me/atlas", undefined, signal),
+  putAtlas: (body: PutAtlas) => authRequest<ServerAtlas>("PUT", "/me/atlas", body),
 };

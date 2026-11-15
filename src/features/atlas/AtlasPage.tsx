@@ -20,7 +20,7 @@ import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions } from "./AtlasCard";
 import { ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, atlasFile, atlasFileName, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile } from "./atlas";
 import { useCardDrag } from "./useCardDrag";
-import { useSavedAtlas } from "./useSavedAtlas";
+import { useSyncedAtlas } from "./useSyncedAtlas";
 
 const RANGES: AtlasRange[] = ["24h", "3d"];
 const SEARCH_LIMIT = 8;
@@ -45,7 +45,7 @@ type Matches =
 // Global by design: pins are radio identities, so the header region picker does not apply here.
 export function AtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
-  const { saved, update, storageFailed } = useSavedAtlas();
+  const { saved, update, adjust, storageFailed, synced, notice: syncNotice, clearNotice } = useSyncedAtlas();
   // Same single-row bar the other tabs use on a phone: the search shrinks, nothing wraps.
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
@@ -113,7 +113,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const remove = (pin: AtlasPin) =>
     update((value) => ({ ...value, pins: value.pins.filter((other) => pinKey(other) !== pinKey(pin)) }));
   const relink = (pin: AtlasPin, id: string, observerId?: string) =>
-    update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? { ...other, id, observerId } : other)) }));
+    adjust((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? { ...other, id, observerId } : other)) }));
   const retile = (pin: AtlasPin, tiles: readonly ObserverTile[]) =>
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) ? withTiles(other, tiles) : other)) }));
   const pinView = (pin: AtlasPin, view: AtlasView) => {
@@ -123,7 +123,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   // An observer pin whose key now resolves to a node takes that node's place in its own slot, and
   // keeps opening on the Observer view it had.
   const upgrade = (pin: AtlasPin, match: NodeSummary, observerId: string) =>
-    update((value) => {
+    adjust((value) => {
       const publicKey = match.publicKey.toLowerCase();
       const tiles = value.pins.find((other) => pinKey(other) === pinKey(pin))?.tiles;
       // Already pinned as a node: that pin takes the observer link, as an Add from search does, and
@@ -232,7 +232,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
         />
         {!isMobile && <InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: ATLAS_LIMIT })} />}
         <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] text-text-muted">
-          <Tooltip label={t("atlas.localOnly")}>
+          <Tooltip label={t(synced ? "atlas.syncedToAccount" : "atlas.localOnly")}>
             <span className={`rounded-sm border px-2.5 py-1 ${full ? "border-warn/15 bg-warn/7 text-warn" : "border-border bg-bg-surface"}`}>
               {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.pins.length, limit: ATLAS_LIMIT })}
             </span>
@@ -263,6 +263,14 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                 {t("atlas.importCancel")}
               </button>
             </div>
+          )}
+          {syncNotice && (
+            <p role="status" className="flex items-center gap-2 font-mono text-xs text-text-muted">
+              <span>{syncNotice}</span>
+              <button type="button" className={ACTION_BUTTON_CLASS} onClick={clearNotice}>
+                {t("common.close")}
+              </button>
+            </p>
           )}
           {notice && (
             <p role="status" className={`flex items-center gap-2 font-mono text-xs ${notice.kind === "invalid" ? "text-danger" : "text-text-muted"}`}>

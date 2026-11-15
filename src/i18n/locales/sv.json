@@ -942,6 +942,12 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
+      "syncedToAccount": "Synkad med ditt konto",
+      "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",
+      "syncFailed": "Det gick inte att spara Atlas på ditt konto. Din ändring finns kvar på den här enheten.",
+      "loadFailed": "Det gick inte att läsa in Atlas från ditt konto. Visar den här enhetens kopia.",
+      "mergeDropped_one": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
+      "mergeDropped_other": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
       "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet"
     },
     "account": {
