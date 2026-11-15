@@ -1356,8 +1356,8 @@
         "status": {
           "waiting": "En attente d’un observateur qui puisse l’atteindre",
           "active": "Interrogé",
-          "login_failed": "Le répéteur a refusé le mot de passe",
-          "admin_stopped": "Arrêté : ce mot de passe donnait un accès administrateur et a été supprimé",
+          "login_failed": "Arrêté : mot de passe refusé",
+          "admin_stopped": "Arrêté : mot de passe administrateur",
           "disabled": "En pause : le répéteur n’a pas été entendu récemment"
         },
         "reason": {
@@ -1378,7 +1378,8 @@
         "passwordSet": "Mot de passe défini",
         "noPassword": "Pas de mot de passe",
         "changePassword": "Changer le mot de passe",
-        "adminStoppedHelp": "Le mot de passe saisi était un mot de passe administrateur. Beacon l'a supprimé. Seul un mot de passe invité relancera la demande.",
+        "adminStoppedHelp": "Le mot de passe saisi était un mot de passe administrateur, donc Beacon l’a supprimé. Saisissez le mot de passe invité du répéteur pour relancer.",
+        "loginFailedHelp": "Le répéteur a refusé ce mot de passe. Saisissez le bon mot de passe invité pour réessayer.",
         "enterNewPassword": "Saisir un nouveau mot de passe",
         "enterNewPasswordNamed": "Saisir un nouveau mot de passe pour {{name}}",
         "changePasswordNamed": "Changer le mot de passe de {{name}}",

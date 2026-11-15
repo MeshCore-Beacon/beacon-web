@@ -45,6 +45,14 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
   const busy = savePassword.isPending || enable.isPending || remove.isPending;
 
   const line = requestLine(t, request);
+  // Each stopped status says its reason once, in its own words; the others show the translated reason code.
+  const explanation = stopped
+    ? t("account.requests.adminStoppedHelp")
+    : failed
+      ? t("account.requests.loginFailedHelp")
+      : request.status !== "active" && request.statusReason
+        ? requestReasonText(t, request)
+        : "";
 
   return (
     <li className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-bg-base p-3 sm:p-4">
@@ -60,14 +68,15 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
           <StatusDot tone={line.tone} />
           <span>{line.text}</span>
         </div>
-        {request.statusReason && <div className="text-xs text-text-muted">{requestReasonText(t, request)}</div>}
-        {stopped && <div className="text-xs text-text-normal">{t("account.requests.adminStoppedHelp")}</div>}
+        {explanation && <div className="text-xs text-text-muted">{explanation}</div>}
         <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-xs text-text-muted">
-          {!line.names && <span>{t("account.requests.polledBy")} {request.poller ? request.poller.name : t("account.requests.noObserver")}</span>}
-          <span>
-            {t("account.requests.lastReading")} {request.latestReadingAt != null ? <Timestamp value={request.latestReadingAt} /> : t("account.requests.never")}
-          </span>
-          <span>{request.hasPassword ? t("account.requests.passwordSet") : t("account.requests.noPassword")}</span>
+          {!line.names && request.poller && <span>{t("account.requests.polledBy")} {request.poller.name}</span>}
+          {(request.latestReadingAt != null || !needsNew) && (
+            <span>
+              {t("account.requests.lastReading")} {request.latestReadingAt != null ? <Timestamp value={request.latestReadingAt} /> : t("account.requests.never")}
+            </span>
+          )}
+          {!stopped && <span>{request.hasPassword ? t("account.requests.passwordSet") : t("account.requests.noPassword")}</span>}
         </div>
       </div>
 

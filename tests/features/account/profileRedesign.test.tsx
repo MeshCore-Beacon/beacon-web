@@ -132,7 +132,7 @@ describe("what the observer reports on a request", () => {
 
   it("does not let the poller state hide a stopped status", async () => {
     const region = await openRequests([req({ status: "login_failed", poller: poller("ok") })]);
-    expect(region.getByText("The repeater refused the password")).toBeInTheDocument();
+    expect(region.getByText("Stopped: password refused")).toBeInTheDocument();
     expect(region.queryByText("Being polled by North")).not.toBeInTheDocument();
   });
 
