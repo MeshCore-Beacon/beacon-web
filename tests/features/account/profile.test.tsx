@@ -48,13 +48,14 @@ async function open() {
 }
 
 describe("account section", () => {
-  it("shows username read only, display name, email and its verified state", async () => {
+  it("shows the display name, username, email and its verified state in the header", async () => {
     await open();
-    const acct = section("Account");
-    expect(acct.getByText("@ridge")).toBeInTheDocument();
-    expect(acct.getByLabelText("Display name")).toHaveValue("Ridge Walker");
-    expect(acct.getByText("a@example.org")).toBeInTheDocument();
-    expect(acct.getByText("Verified")).toBeInTheDocument();
+    const header = within(screen.getByTestId("profile-header"));
+    expect(header.getByText("Ridge Walker")).toBeInTheDocument();
+    expect(header.getByText("@ridge")).toBeInTheDocument();
+    expect(header.getByText("a@example.org")).toBeInTheDocument();
+    expect(header.getByText("Verified")).toBeInTheDocument();
+    expect(section("Account").getByLabelText("Display name")).toHaveValue("Ridge Walker");
   });
 
   it("saves the display name and updates the cached user", async () => {
@@ -150,6 +151,9 @@ describe("devices section", () => {
     await screen.findByText("Pixel 8");
     vi.mocked(me.sessions).mockResolvedValue({ sessions: [here] });
     click("Sign out Pixel 8");
+    expect(me.endSession).not.toHaveBeenCalled();
+    expect(screen.getByText("Sign out Pixel 8?")).toBeInTheDocument();
+    click("Yes, sign out");
     await waitFor(() => expect(screen.queryByText("Pixel 8")).not.toBeInTheDocument());
     expect(me.endSession).toHaveBeenCalledWith("s2");
   });
@@ -161,6 +165,9 @@ describe("devices section", () => {
     await screen.findByText("Pixel 8");
     vi.mocked(me.sessions).mockResolvedValue({ sessions: [here] });
     click("Sign out everywhere else");
+    expect(me.endOtherSessions).not.toHaveBeenCalled();
+    expect(screen.getByText("Sign out every other device?")).toBeInTheDocument();
+    click("Yes, sign out");
     await waitFor(() => expect(screen.queryByText("Chrome on Windows")).not.toBeInTheDocument());
     expect(me.endOtherSessions).toHaveBeenCalledTimes(1);
   });
@@ -170,6 +177,7 @@ describe("devices section", () => {
     await open();
     await screen.findByText("Pixel 8");
     click("Sign out Pixel 8");
+    click("Yes, sign out");
     expect(await section("Devices").findByRole("alert")).toHaveTextContent("Too many attempts");
     expect(screen.getByText("Pixel 8")).toBeInTheDocument();
   });

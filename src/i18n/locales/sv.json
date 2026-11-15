@@ -1070,6 +1070,10 @@
       "profile": {
         "title": "Profil",
         "account": {
+          "about": "Hur du visas i Beacon och adressen ditt konto använder.",
+          "aboutPortal": "Hur du visas i Beacon.",
+          "displayNameHint": "Visas i menyn och i din Atlas.",
+          "passwordHint": "Vi frågar så att ingen annan kan ändra den från en öppen session.",
           "title": "Konto",
           "username": "Användarnamn",
           "displayName": "Visningsnamn",
@@ -1089,12 +1093,17 @@
         "currentPassword": "Nuvarande lösenord",
         "wrongPassword": "Lösenordet stämmer inte.",
         "password": {
+          "about": "När du ändrar det loggas du ut från dina andra enheter.",
           "title": "Lösenord",
           "submit": "Byt lösenord",
           "submitting": "Sparar…",
           "done": "Lösenordet är bytt. Dina andra enheter har loggats ut."
         },
         "devices": {
+          "about": "Var du är inloggad just nu.",
+          "signOutAsk": "Logga ut {{label}}?",
+          "signOutYes": "Ja, logga ut",
+          "signOutOthersAsk": "Logga ut alla andra enheter?",
           "title": "Enheter",
           "loading": "Laddar enheter…",
           "thisDevice": "Den här enheten",
@@ -1125,6 +1134,9 @@
         }
       },
       "alerts": {
+        "about": "Få besked när en radio i din Atlas behöver uppmärksamhet.",
+        "on": "På",
+        "off": "Av",
         "title": "Aviseringar",
         "loading": "Läser in aviseringar…",
         "toEmail": "Aviseringar skickas till {{email}}",
@@ -1202,6 +1214,16 @@
         }
       },
       "requests": {
+        "poll": {
+          "ok": "Avläses av {{name}}",
+          "pending": "Tilldelad {{name}}. Första avläsningen är på väg.",
+          "not_direct": "Tilldelad {{name}}, som inte kan höra repeatern direkt just nu.",
+          "no_reply": "{{name}} frågar, men repeatern svarar inte.",
+          "not_claimed": "Tilldelad {{name}}. Väntar på att den tar över.",
+          "password": "{{name}} rapporterade ett lösenordsproblem. Kontrollerar."
+        },
+        "about": "Be Beacon läsa en repeaters statistik med ett gästlösenord.",
+        "openNodes": "Öppna fliken Noder",
         "title": "Telemetribegäran",
         "count": "{{used}} av {{limit}}",
         "loading": "Laddar begäran…",

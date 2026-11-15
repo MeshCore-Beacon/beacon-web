@@ -1192,6 +1192,10 @@
       "profile": {
         "title": "Profil",
         "account": {
+          "about": "Comment vous apparaissez dans Beacon et l'adresse utilisée par votre compte.",
+          "aboutPortal": "Comment vous apparaissez dans Beacon.",
+          "displayNameHint": "Affiché dans le menu et sur votre Atlas.",
+          "passwordHint": "Nous le demandons pour que personne d'autre ne puisse la changer depuis une session ouverte.",
           "title": "Compte",
           "username": "Nom d’utilisateur",
           "displayName": "Nom affiché",
@@ -1211,12 +1215,17 @@
         "currentPassword": "Mot de passe actuel",
         "wrongPassword": "Ce mot de passe n’est pas le bon.",
         "password": {
+          "about": "La changer vous déconnecte de vos autres appareils.",
           "title": "Mot de passe",
           "submit": "Changer le mot de passe",
           "submitting": "Enregistrement…",
           "done": "Mot de passe changé. Vos autres appareils ont été déconnectés."
         },
         "devices": {
+          "about": "Là où vous êtes connecté en ce moment.",
+          "signOutAsk": "Déconnecter {{label}} ?",
+          "signOutYes": "Oui, déconnecter",
+          "signOutOthersAsk": "Déconnecter tous les autres appareils ?",
           "title": "Appareils",
           "loading": "Chargement des appareils…",
           "thisDevice": "Cet appareil",
@@ -1247,6 +1256,9 @@
         }
       },
       "alerts": {
+        "about": "Soyez prévenu quand une radio de votre Atlas demande de l'attention.",
+        "on": "Oui",
+        "off": "Non",
         "title": "Alertes",
         "loading": "Chargement des alertes…",
         "toEmail": "Les alertes sont envoyées à {{email}}",
@@ -1327,6 +1339,16 @@
         }
       },
       "requests": {
+        "poll": {
+          "ok": "Interrogé par {{name}}",
+          "pending": "Attribué à {{name}}. La première lecture arrive.",
+          "not_direct": "Attribué à {{name}}, qui n'entend pas ce répéteur directement pour le moment.",
+          "no_reply": "{{name}} interroge, mais le répéteur ne répond pas.",
+          "not_claimed": "Attribué à {{name}}. En attente qu'il le prenne en charge.",
+          "password": "{{name}} signale un problème de mot de passe. Vérification en cours."
+        },
+        "about": "Demandez à Beacon de lire les statistiques d'un répéteur avec un mot de passe invité.",
+        "openNodes": "Ouvrir l'onglet Nœuds",
         "title": "Demandes de télémétrie",
         "count": "{{used}} sur {{limit}}",
         "loading": "Chargement des demandes…",

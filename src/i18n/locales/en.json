@@ -1183,6 +1183,10 @@
       "profile": {
         "title": "Profile",
         "account": {
+          "about": "How you appear in Beacon and the address your account uses.",
+          "aboutPortal": "How you appear in Beacon.",
+          "displayNameHint": "Shown in the menu and on your Atlas.",
+          "passwordHint": "We ask so nobody else can change it from an open session.",
           "title": "Account",
           "username": "Username",
           "displayName": "Display name",
@@ -1202,12 +1206,17 @@
         "currentPassword": "Current password",
         "wrongPassword": "That password is not right.",
         "password": {
+          "about": "Changing it signs you out of your other devices.",
           "title": "Password",
           "submit": "Change password",
           "submitting": "Saving…",
           "done": "Password changed. Your other devices were signed out."
         },
         "devices": {
+          "about": "Where you are signed in right now.",
+          "signOutAsk": "Sign out {{label}}?",
+          "signOutYes": "Yes, sign out",
+          "signOutOthersAsk": "Sign out every other device?",
           "title": "Devices",
           "loading": "Loading devices…",
           "thisDevice": "This device",
@@ -1238,6 +1247,9 @@
         }
       },
       "alerts": {
+        "about": "Get told when a radio in your Atlas needs attention.",
+        "on": "On",
+        "off": "Off",
         "title": "Alerts",
         "loading": "Loading alerts…",
         "toEmail": "Alerts are sent to {{email}}",
@@ -1315,6 +1327,16 @@
         }
       },
       "requests": {
+        "poll": {
+          "ok": "Being polled by {{name}}",
+          "pending": "Assigned to {{name}}. First poll is on its way.",
+          "not_direct": "Assigned to {{name}}, which cannot hear this repeater directly right now.",
+          "no_reply": "{{name}} is asking, but the repeater is not answering.",
+          "not_claimed": "Assigned to {{name}}. Waiting for it to pick this up.",
+          "password": "{{name}} reported a password problem. Checking."
+        },
+        "about": "Ask Beacon to read a repeater's stats with a guest password.",
+        "openNodes": "Open the Nodes tab",
         "title": "Telemetry requests",
         "count": "{{used}} of {{limit}}",
         "loading": "Loading requests…",
