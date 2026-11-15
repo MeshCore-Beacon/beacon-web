@@ -437,8 +437,8 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
       <InstanceBanner text={BANNER} />
       {isMobile ? (
         <header className="flex items-center gap-2 px-3 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
-          <BeaconWordmark iconSize={20} textClassName="text-sm" className="shrink-0" />
-          <div className="min-w-0">
+          <BeaconWordmark iconSize={20} textClassName="text-sm" className="min-w-0" />
+          <div className="shrink-0">
             <RegionSelector />
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
