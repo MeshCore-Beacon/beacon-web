@@ -60,6 +60,8 @@
       "copyFailed": "Copy failed",
       "showPassword": "Show password",
       "hidePassword": "Hide password",
+      "show": "Show",
+      "hide": "Hide",
       "filters": "Filters",
       "closeFilters": "Close filters",
       "clearAll": "Clear all",
@@ -1073,7 +1075,6 @@
       "viewPinned": "The card opens on this tab"
     },
     "account": {
-      "back": "Back",
       "entry": {
         "signIn": "Sign in",
         "profile": "Profile",
@@ -1092,14 +1093,26 @@
         "submit": "Sign in",
         "submitting": "Signing in…",
         "register": "Create an account",
-        "forgot": "Forgot password"
+        "forgot": "Forgot password?",
+        "description": {
+          "atlas": "Sync your Atlas.",
+          "telemetry": "Sync your Atlas and request repeater telemetry.",
+          "alerts": "Sync your Atlas and get alerts.",
+          "all": "Sync your Atlas, request repeater telemetry and get alerts."
+        }
       },
       "resend": {
-        "button": "Send the link again",
-        "sent": "Check your email. If that address can be used, a new link is on its way."
+        "button": "Send the link again"
       },
       "checkEmail": {
-        "title": "Check your email"
+        "title": "Check your email",
+        "verifySent": "If {{email}} can be used, a confirmation link is on its way. It can take a minute. Check your spam folder too.",
+        "resetSent": "If {{email}} has an account, a reset link is on its way. It can take a minute. Check your spam folder too.",
+        "resend": "Send it again",
+        "resendIn": "Send it again in {{seconds}}s",
+        "resent": "Sent again.",
+        "different": "Use a different email",
+        "signIn": "Sign in"
       },
       "register": {
         "title": "Create an account",
@@ -1107,9 +1120,9 @@
         "submitting": "Creating…",
         "usernameHint": "3 to 30 letters, numbers, dots, dashes or underscores.",
         "passwordHint": "At least 12 characters, at most 128 bytes.",
-        "haveAccount": "Already have an account? Sign in",
-        "closed": "Registration is closed on this server.",
-        "sent": "If this address can be used, a link to confirm it is on its way. Follow it to finish creating your account."
+        "havePrompt": "Already have an account?",
+        "signInLink": "Sign in",
+        "closed": "Registration is closed on this server."
       },
       "verify": {
         "title": "Verify your email",
@@ -1124,7 +1137,7 @@
         "intro": "Enter your account email and we will send a reset link.",
         "send": "Send reset link",
         "sending": "Sending…",
-        "sent": "If that address has an account, a reset link is on its way.",
+        "setIntro": "Choose a new password for your account.",
         "set": "Set password",
         "setting": "Saving…",
         "done": "Your password is changed. You can sign in with it now.",

@@ -120,14 +120,14 @@ describe("sign in", () => {
     renderAt("?view=signin", <AccountViews />);
     await screen.findByRole("heading", { name: "Sign in" });
     expect(screen.queryByRole("button", { name: "Create an account" })).not.toBeInTheDocument();
-    click("Forgot password");
+    click("Forgot password?");
     expect(search().get("view")).toBe("reset");
   });
 
-  it("Back closes the view", async () => {
+  it("Close closes the view", async () => {
     renderAt("?tab=Map&view=signin", <AccountViews />);
     await screen.findByRole("heading", { name: "Sign in" });
-    click("Back");
+    click("Close");
     expect(search().has("view")).toBe(false);
     expect(search().get("tab")).toBe("Map");
   });
@@ -239,7 +239,7 @@ describe("reset", () => {
     await screen.findByRole("heading", { name: "Reset your password" });
     type("Email", "a@example.org");
     click("Send reset link");
-    expect(await screen.findByText(/If that address has an account/)).toBeInTheDocument();
+    expect(await screen.findByText(/If a@example.org has an account/)).toBeInTheDocument();
     expect(auth.requestReset).toHaveBeenCalledWith("a@example.org");
   });
 

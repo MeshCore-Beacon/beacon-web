@@ -9,6 +9,7 @@ import { FormStatus } from "../../components/form/FormStatus";
 import { PasswordField } from "../../components/form/PasswordField";
 import { TextField } from "../../components/form/TextField";
 import { AccountLayout, LinkButton } from "./AccountLayout";
+import { CheckEmail } from "./CheckEmail";
 import { authErrorText, errorCode } from "./errors";
 import { newPasswordOk } from "./passwordRule";
 import { linkToken, useClearToken, useView } from "./useView";
@@ -30,24 +31,21 @@ function RequestReset() {
   const { open } = useView();
   const [email, setEmail] = useState("");
   const request = useMutation({ mutationFn: () => auth.requestReset(email.trim()) });
+  if (request.isSuccess) return <CheckEmail email={email.trim()} kind="reset" onDifferent={request.reset} onSignIn={() => open("signin")} />;
   return (
-    <AccountLayout title={t("account.reset.title")} links={<LinkButton onClick={() => open("signin")}>{t("account.reset.toSignIn")}</LinkButton>}>
-      {request.isSuccess ? (
-        <FormStatus>{t("account.reset.sent")}</FormStatus>
-      ) : (
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            request.mutate();
-          }}
-        >
-          <p className="text-sm text-text-muted">{t("account.reset.intro")}</p>
-          <TextField label={t("account.fields.email")} name="email" type="email" autoComplete="email" value={email} onChange={setEmail} disabled={request.isPending} />
-          <FormButton busy={request.isPending} busyLabel={t("account.reset.sending")} disabled={!email.trim()}>{t("account.reset.send")}</FormButton>
-          {request.isError && <FormStatus kind="error">{authErrorText(t, request.error)}</FormStatus>}
-        </form>
-      )}
+    <AccountLayout title={t("account.reset.title")} description={t("account.reset.intro")}>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          request.mutate();
+        }}
+      >
+        <TextField roomy label={t("account.fields.email")} name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="send" value={email} onChange={setEmail} disabled={request.isPending} />
+        <div className="-my-1.5 min-h-5">{request.isError && <FormStatus kind="error">{authErrorText(t, request.error)}</FormStatus>}</div>
+        <FormButton variant="solid" size="lg" busy={request.isPending} busyLabel={t("account.reset.sending")} disabled={!email.trim()}>{t("account.reset.send")}</FormButton>
+      </form>
+      <LinkButton onClick={() => open("signin")}>{t("account.reset.toSignIn")}</LinkButton>
     </AccountLayout>
   );
 }
@@ -64,16 +62,16 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
   const message = confirm.isError ? authErrorText(t, confirm.error) : undefined;
 
   return (
-    <AccountLayout title={t("account.reset.title")}>
+    <AccountLayout title={t("account.reset.title")} description={confirm.isSuccess || code === "token_invalid" ? undefined : t("account.reset.setIntro")}>
       {confirm.isSuccess ? (
         <>
           <FormStatus>{t("account.reset.done")}</FormStatus>
-          <FormButton type="button" className="self-start" onClick={() => open("signin")}>{t("account.reset.signIn")}</FormButton>
+          <FormButton type="button" variant="solid" size="lg" onClick={() => open("signin")}>{t("account.reset.signIn")}</FormButton>
         </>
       ) : code === "token_invalid" ? (
         <>
           <FormStatus kind="error">{message}</FormStatus>
-          <LinkButton onClick={onNewLink}>{t("account.reset.newLink")}</LinkButton>
+          <FormButton type="button" variant="outline" size="lg" onClick={onNewLink}>{t("account.reset.newLink")}</FormButton>
         </>
       ) : (
         <form
@@ -83,9 +81,9 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
             confirm.mutate();
           }}
         >
-          <PasswordField label={t("account.fields.newPassword")} name="new-password" autoComplete="new-password" value={password} onChange={setPassword} error={code === "weak_password" ? message : undefined} hint={t("account.register.passwordHint")} disabled={confirm.isPending} />
-          <FormButton busy={confirm.isPending} busyLabel={t("account.reset.setting")} disabled={!newPasswordOk(password)}>{t("account.reset.set")}</FormButton>
-          {confirm.isError && code !== "weak_password" && <FormStatus kind="error">{message}</FormStatus>}
+          <PasswordField roomy label={t("account.fields.newPassword")} name="new-password" autoComplete="new-password" enterKeyHint="go" value={password} onChange={setPassword} error={code === "weak_password" ? message : undefined} hint={t("account.register.passwordHint")} disabled={confirm.isPending} />
+          <div className="-my-1.5 min-h-5">{confirm.isError && code !== "weak_password" && <FormStatus kind="error">{message}</FormStatus>}</div>
+          <FormButton variant="solid" size="lg" busy={confirm.isPending} busyLabel={t("account.reset.setting")} disabled={!newPasswordOk(password)}>{t("account.reset.set")}</FormButton>
         </form>
       )}
     </AccountLayout>

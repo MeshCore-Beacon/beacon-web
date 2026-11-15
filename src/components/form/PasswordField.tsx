@@ -19,9 +19,10 @@ export function PasswordField(props: PasswordFieldProps) {
           onClick={() => setShown((s) => !s)}
           aria-pressed={shown}
           disabled={props.disabled}
-          className="absolute right-1.5 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-primary"
+          aria-label={shown ? t("common.hidePassword") : t("common.showPassword")}
+          className={`absolute rounded font-mono text-xs font-semibold text-primary hover:text-text-bright ${props.roomy ? "right-0 h-11 min-w-11 px-3" : "right-1.5 px-1.5 py-0.5"}`}
         >
-          {shown ? t("common.hidePassword") : t("common.showPassword")}
+          {shown ? t("common.hide") : t("common.show")}
         </button>
       }
     />

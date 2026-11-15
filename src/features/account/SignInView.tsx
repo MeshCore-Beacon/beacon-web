@@ -9,7 +9,8 @@ import { FormButton } from "../../components/form/FormButton";
 import { FormStatus } from "../../components/form/FormStatus";
 import { PasswordField } from "../../components/form/PasswordField";
 import { TextField } from "../../components/form/TextField";
-import { AccountLayout, LinkButton } from "./AccountLayout";
+import { AccountLayout, Divider, LinkButton } from "./AccountLayout";
+import { CheckEmail } from "./CheckEmail";
 import { AppBridge } from "./AppBridge";
 import { authErrorText, errorCode } from "./errors";
 import { PortalSignIn } from "./PortalSignIn";
@@ -26,6 +27,7 @@ export function SignInView() {
   const [params] = useSearchParams();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const bridge = params.get("app") === "1";
   const challenge = params.get("code_challenge");
@@ -61,17 +63,12 @@ export function SignInView() {
   const unverified = submit.isError && errorCode(submit.error) === "email_unverified";
   const typedEmail = login.includes("@") ? login.trim() : undefined;
 
+  if (sentTo) return <CheckEmail email={sentTo} kind="verify" onDifferent={() => setSentTo(null)} onSignIn={() => setSentTo(null)} />;
+
+  const description = bridge ? t("account.bridge.notice") : t(descriptionKey(features));
+
   return (
-    <AccountLayout
-      title={t("account.signin.title")}
-      links={
-        <>
-          {features.registration && <LinkButton onClick={() => open("register")}>{t("account.signin.register")}</LinkButton>}
-          <LinkButton onClick={() => open("reset")}>{t("account.signin.forgot")}</LinkButton>
-        </>
-      }
-    >
-      {bridge && <FormStatus>{t("account.bridge.notice")}</FormStatus>}
+    <AccountLayout title={t("account.signin.title")} description={description}>
       <form
         className="flex flex-col gap-4"
         onSubmit={(e) => {
@@ -79,12 +76,29 @@ export function SignInView() {
           submit.mutate();
         }}
       >
-        <TextField label={t("account.fields.login")} name="login" autoComplete="username" value={login} onChange={setLogin} disabled={submit.isPending} />
-        <PasswordField label={t("account.fields.password")} name="password" autoComplete="current-password" value={password} onChange={setPassword} disabled={submit.isPending} />
-        <FormButton busy={submit.isPending} busyLabel={t("account.signin.submitting")} disabled={!login.trim() || !password}>{t("account.signin.submit")}</FormButton>
-        {submit.isError && <FormStatus kind="error">{authErrorText(t, submit.error)}</FormStatus>}
+        <TextField roomy label={t("account.fields.login")} name="login" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} enterKeyHint="next" value={login} onChange={setLogin} disabled={submit.isPending} />
+        <div className="flex flex-col">
+          <PasswordField roomy label={t("account.fields.password")} name="password" autoComplete="current-password" enterKeyHint="go" value={password} onChange={setPassword} disabled={submit.isPending} />
+          <LinkButton onClick={() => open("reset")}>{t("account.signin.forgot")}</LinkButton>
+        </div>
+        <div className="-my-1.5 min-h-5">{submit.isError && <FormStatus kind="error">{authErrorText(t, submit.error)}</FormStatus>}</div>
+        <FormButton variant="solid" size="lg" busy={submit.isPending} busyLabel={t("account.signin.submitting")} disabled={!login.trim() || !password}>{t("account.signin.submit")}</FormButton>
       </form>
-      {unverified && <ResendForm email={typedEmail} label={t("account.resend.button")} />}
+      {unverified && <ResendForm email={typedEmail} label={t("account.resend.button")} onSent={setSentTo} />}
+      {features.registration && (
+        <>
+          <Divider />
+          <FormButton type="button" variant="outline" size="lg" onClick={() => open("register")}>{t("account.signin.register")}</FormButton>
+        </>
+      )}
     </AccountLayout>
   );
+}
+
+// The line lists only what this server has switched on.
+function descriptionKey(f: { telemetryRequests: boolean; alerts: boolean }): string {
+  if (f.telemetryRequests && f.alerts) return "account.signin.description.all";
+  if (f.telemetryRequests) return "account.signin.description.telemetry";
+  if (f.alerts) return "account.signin.description.alerts";
+  return "account.signin.description.atlas";
 }

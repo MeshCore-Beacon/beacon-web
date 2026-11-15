@@ -6,6 +6,7 @@ import { FormButton } from "../../components/form/FormButton";
 import { FormStatus } from "../../components/form/FormStatus";
 import { AccountLayout } from "./AccountLayout";
 import { authErrorText, errorCode } from "./errors";
+import { CheckEmail } from "./CheckEmail";
 import { ResendForm } from "./ResendForm";
 import { linkToken, useClearToken, useView } from "./useView";
 
@@ -19,6 +20,7 @@ export function VerifyView() {
   // Held in state: the URL copy is removed at once.
   const [token] = useState(() => linkToken(location));
   const [state, setState] = useState<State>({ kind: "pending" });
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const started = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
@@ -40,18 +42,20 @@ export function VerifyView() {
 
   const invalid = !token || (state.kind === "failed" && errorCode(state.error) === "token_invalid");
 
+  if (sentTo) return <CheckEmail email={sentTo} kind="verify" onDifferent={() => setSentTo(null)} onSignIn={() => open("signin")} />;
+
   return (
     <AccountLayout title={t("account.verify.title")}>
       {state.kind === "verified" ? (
         <>
           <FormStatus>{t("account.verify.success")}</FormStatus>
-          <FormButton type="button" className="self-start" onClick={() => open("signin")}>{t("account.verify.signIn")}</FormButton>
+          <FormButton type="button" variant="solid" size="lg" onClick={() => open("signin")}>{t("account.verify.signIn")}</FormButton>
         </>
       ) : invalid ? (
         <>
           <FormStatus kind="error">{t("account.errors.token_invalid")}</FormStatus>
           <p className="text-sm text-text-muted">{t("account.verify.newLinkHelp")}</p>
-          <ResendForm label={t("account.verify.newLink")} />
+          <ResendForm variant="solid" label={t("account.verify.newLink")} onSent={setSentTo} />
         </>
       ) : state.kind === "failed" ? (
         <FormStatus kind="error">{authErrorText(t, state.error)}</FormStatus>

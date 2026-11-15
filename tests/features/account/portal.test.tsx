@@ -45,7 +45,7 @@ describe("portal sign-in view", () => {
     expect(screen.queryByLabelText("Password")).toBeNull();
     expect(screen.queryByLabelText("Username or email")).toBeNull();
     expect(screen.queryByRole("button", { name: "Create an account" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Forgot password" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Forgot password?" })).toBeNull();
   });
 
   it("navigates to the start route with the current path and query, view removed", async () => {
@@ -96,7 +96,7 @@ describe("local sign-in view", () => {
     expect(await screen.findByLabelText("Username or email")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create an account" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Forgot password" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sign in with MeshMapper" })).toBeNull();
   });
 });

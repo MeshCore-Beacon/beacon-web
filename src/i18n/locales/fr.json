@@ -62,6 +62,8 @@
       "copyFailed": "Échec de la copie",
       "showPassword": "Afficher le mot de passe",
       "hidePassword": "Masquer le mot de passe",
+      "show": "Afficher",
+      "hide": "Masquer",
       "filters": "Filtres",
       "closeFilters": "Fermer les filtres",
       "clearAll": "Tout effacer",
@@ -1080,7 +1082,6 @@
       "viewPinned": "La fiche s’ouvre sur cet onglet"
     },
     "account": {
-      "back": "Retour",
       "entry": {
         "signIn": "Se connecter",
         "profile": "Profil",
@@ -1099,14 +1100,26 @@
         "submit": "Se connecter",
         "submitting": "Connexion…",
         "register": "Créer un compte",
-        "forgot": "Mot de passe oublié"
+        "forgot": "Mot de passe oublié ?",
+        "description": {
+          "atlas": "Synchronisez votre Atlas.",
+          "telemetry": "Synchronisez votre Atlas et demandez la télémétrie des répéteurs.",
+          "alerts": "Synchronisez votre Atlas et recevez des alertes.",
+          "all": "Synchronisez votre Atlas, demandez la télémétrie des répéteurs et recevez des alertes."
+        }
       },
       "resend": {
-        "button": "Renvoyer le lien",
-        "sent": "Vérifiez vos courriels. Si cette adresse peut être utilisée, un nouveau lien est en route."
+        "button": "Renvoyer le lien"
       },
       "checkEmail": {
-        "title": "Vérifiez vos courriels"
+        "title": "Vérifiez vos courriels",
+        "verifySent": "Si {{email}} peut être utilisée, un lien de confirmation est en route. Cela peut prendre une minute. Vérifiez aussi vos pourriels.",
+        "resetSent": "Si {{email}} a un compte, un lien de réinitialisation est en route. Cela peut prendre une minute. Vérifiez aussi vos pourriels.",
+        "resend": "Renvoyer",
+        "resendIn": "Renvoyer dans {{seconds}} s",
+        "resent": "Renvoyé.",
+        "different": "Utiliser un autre courriel",
+        "signIn": "Se connecter"
       },
       "register": {
         "title": "Créer un compte",
@@ -1114,9 +1127,9 @@
         "submitting": "Création…",
         "usernameHint": "De 3 à 30 lettres, chiffres, points, tirets ou tirets bas.",
         "passwordHint": "Au moins 12 caractères, au plus 128 octets.",
-        "haveAccount": "Vous avez déjà un compte ? Se connecter",
-        "closed": "Les inscriptions sont fermées sur ce serveur.",
-        "sent": "Si cette adresse peut être utilisée, un lien de confirmation est en route. Suivez-le pour terminer la création du compte."
+        "havePrompt": "Vous avez déjà un compte ?",
+        "signInLink": "Se connecter",
+        "closed": "Les inscriptions sont fermées sur ce serveur."
       },
       "verify": {
         "title": "Vérifier votre courriel",
@@ -1131,7 +1144,7 @@
         "intro": "Entrez le courriel de votre compte et nous enverrons un lien de réinitialisation.",
         "send": "Envoyer le lien",
         "sending": "Envoi…",
-        "sent": "Si cette adresse a un compte, un lien de réinitialisation est en route.",
+        "setIntro": "Choisissez un nouveau mot de passe pour votre compte.",
         "set": "Définir le mot de passe",
         "setting": "Enregistrement…",
         "done": "Votre mot de passe est modifié. Vous pouvez vous connecter avec.",

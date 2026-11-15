@@ -67,7 +67,7 @@ it('does not reopen verify after the user leaves while verification is pending',
  const pending=defer<{status:'verified'}>(); vi.mocked(auth.verify).mockReturnValue(pending.promise);
  renderAt('?tab=Map&view=verify&token=abc', <AccountViews/>);
  await waitFor(()=>expect(auth.verify).toHaveBeenCalled());
- fireEvent.click(screen.getByRole('button',{name:"Back"}));
+ fireEvent.click(screen.getByRole('button',{name:"Close"}));
  expect(searchOf(screen.getByTestId('search')).has('view')).toBe(false);
  await act(async()=>pending.resolve({status:'verified'}));
  expect(searchOf(screen.getByTestId('search')).has('view')).toBe(false);

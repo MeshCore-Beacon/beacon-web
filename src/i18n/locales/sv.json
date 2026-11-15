@@ -59,6 +59,8 @@
       "copyFailed": "Kopieringen misslyckades",
       "showPassword": "Visa lösenord",
       "hidePassword": "Dölj lösenord",
+      "show": "Visa",
+      "hide": "Dölj",
       "filters": "Filter",
       "closeFilters": "Stäng filter",
       "clearAll": "Rensa alla",
@@ -960,7 +962,6 @@
       "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet"
     },
     "account": {
-      "back": "Tillbaka",
       "entry": {
         "signIn": "Logga in",
         "profile": "Profil",
@@ -979,14 +980,26 @@
         "submit": "Logga in",
         "submitting": "Loggar in…",
         "register": "Skapa ett konto",
-        "forgot": "Glömt lösenordet"
+        "forgot": "Glömt lösenordet?",
+        "description": {
+          "atlas": "Synkronisera din Atlas.",
+          "telemetry": "Synkronisera din Atlas och begär telemetri från repeatrar.",
+          "alerts": "Synkronisera din Atlas och få aviseringar.",
+          "all": "Synkronisera din Atlas, begär telemetri från repeatrar och få aviseringar."
+        }
       },
       "resend": {
-        "button": "Skicka länken igen",
-        "sent": "Kolla din e-post. Om adressen kan användas är en ny länk på väg."
+        "button": "Skicka länken igen"
       },
       "checkEmail": {
-        "title": "Kolla din e-post"
+        "title": "Kolla din e-post",
+        "verifySent": "Om {{email}} kan användas är en bekräftelselänk på väg. Det kan ta en minut. Kolla skräpposten också.",
+        "resetSent": "Om {{email}} har ett konto är en återställningslänk på väg. Det kan ta en minut. Kolla skräpposten också.",
+        "resend": "Skicka igen",
+        "resendIn": "Skicka igen om {{seconds}} s",
+        "resent": "Skickat igen.",
+        "different": "Använd en annan e-postadress",
+        "signIn": "Logga in"
       },
       "register": {
         "title": "Skapa ett konto",
@@ -994,9 +1007,9 @@
         "submitting": "Skapar…",
         "usernameHint": "3 till 30 bokstäver, siffror, punkter, bindestreck eller understreck.",
         "passwordHint": "Minst 12 tecken, högst 128 byte.",
-        "haveAccount": "Har du redan ett konto? Logga in",
-        "closed": "Registreringen är stängd på den här servern.",
-        "sent": "Om adressen kan användas är en bekräftelselänk på väg. Följ den för att slutföra kontot."
+        "havePrompt": "Har du redan ett konto?",
+        "signInLink": "Logga in",
+        "closed": "Registreringen är stängd på den här servern."
       },
       "verify": {
         "title": "Verifiera din e-post",
@@ -1011,7 +1024,7 @@
         "intro": "Ange kontots e-postadress så skickar vi en återställningslänk.",
         "send": "Skicka länk",
         "sending": "Skickar…",
-        "sent": "Om adressen har ett konto är en återställningslänk på väg.",
+        "setIntro": "Välj ett nytt lösenord för ditt konto.",
         "set": "Ange lösenord",
         "setting": "Sparar…",
         "done": "Ditt lösenord är ändrat. Du kan logga in med det nu.",

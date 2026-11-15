@@ -1,5 +1,5 @@
 import { useId, type InputHTMLAttributes, type ReactNode } from "react";
-import { fieldClass, labelClass } from "./fieldStyles";
+import { fieldClass, fieldClassRoomy, labelClass, labelClassRoomy } from "./fieldStyles";
 
 export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "value" | "name" | "autoComplete"> {
   label: ReactNode;
@@ -10,16 +10,17 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   error?: string;
   hint?: string;
   trailing?: ReactNode;
+  roomy?: boolean;
 }
 
-export function TextField({ label, value, onChange, error, hint, trailing, className, ...input }: TextFieldProps) {
+export function TextField({ label, value, onChange, error, hint, trailing, roomy, className, ...input }: TextFieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ");
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <label htmlFor={id} className={labelClass}>{label}</label>
+      <label htmlFor={id} className={roomy ? labelClassRoomy : labelClass}>{label}</label>
       <div className="relative flex min-w-0 items-center">
         <input
           {...input}
@@ -28,7 +29,7 @@ export function TextField({ label, value, onChange, error, hint, trailing, class
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy || undefined}
-          className={`${fieldClass}${trailing ? " pr-16" : ""}${className ? ` ${className}` : ""}`}
+          className={`${roomy ? fieldClassRoomy : fieldClass}${trailing ? " pr-16" : ""}${className ? ` ${className}` : ""}`}
         />
         {trailing}
       </div>

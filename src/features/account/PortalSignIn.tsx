@@ -24,10 +24,9 @@ export function PortalSignIn() {
   const [params] = useSearchParams();
   const start = () => navigateTo(`${API_BASE}/auth/portal/start?return=${encodeURIComponent(returnPath(pathname, search))}`);
   return (
-    <AccountLayout title={t("account.signin.title")}>
+    <AccountLayout title={t("account.signin.title")} description={t("account.portal.intro")}>
       {params.get("error") === "portal" && <FormStatus kind="error">{t("account.portal.failed")}</FormStatus>}
-      <p className="text-sm text-text-muted">{t("account.portal.intro")}</p>
-      <FormButton type="button" className="self-start" onClick={start}>{t("account.portal.button")}</FormButton>
+      <FormButton type="button" variant="solid" size="lg" onClick={start}>{t("account.portal.button")}</FormButton>
     </AccountLayout>
   );
 }
