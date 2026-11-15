@@ -18,8 +18,8 @@ import { EmojiText } from "../../components/EmojiText";
 import { useFeatures } from "../../hooks/useFeatures";
 
 // Pulls in ECharts, so it stays out of the main bundle; mounted only for polled node types.
+import { isPolledNodeType } from "./polledType";
 const NodeTelemetrySection = lazy(() => import("./NodeTelemetrySection"));
-const POLLED_TYPES = ["repeater", "room_server"];
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   const { t } = useTranslation();
@@ -111,7 +111,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
 
   const hasLocation = hasMapLocation(node);
   const features = useFeatures();
-  const showTelemetry = features.polling && !!node && POLLED_TYPES.includes(node.nodeTypeName);
+  const showTelemetry = features.polling && !!node && isPolledNodeType(node.nodeTypeName);
 
   return (
     <DetailPanel
@@ -183,7 +183,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
 
             {showTelemetry && (
               <Suspense fallback={null}>
-                <NodeTelemetrySection node={node} onViewObserver={onViewObserver} />
+                <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} />
               </Suspense>
             )}
 

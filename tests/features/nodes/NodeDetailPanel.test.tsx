@@ -94,6 +94,24 @@ describe("NodeDetailPanel telemetry section", () => {
     expect(await screen.findByText("Polled by")).toBeInTheDocument();
   });
 
+  it("resets the range when the panel switches to another node", async () => {
+    setPolling(true);
+    // The next node is already cached, so the panel never unmounts the section while it loads.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["node", "node-other"], { ...node, id: "node-other", nodeTypeName: "repeater" });
+    mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "repeater" });
+    const ui = (id: string) => (
+      <QueryClientProvider client={client}>
+        <NodeDetailPanel nodeId={id} onClose={vi.fn()} onViewObserver={vi.fn()} />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(ui("node-self"));
+    fireEvent.click(await screen.findByRole("button", { name: "24h" }));
+    expect(screen.getByRole("button", { name: "24h" })).toHaveAttribute("aria-pressed", "true");
+    rerender(ui("node-other"));
+    expect(await screen.findByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("is absent and fetches nothing when polling is off", async () => {
     mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "repeater" });
     renderPanel();

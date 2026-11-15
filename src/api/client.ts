@@ -3,8 +3,8 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodePage, NodeSort, NodeTelemetry, NodePolling } from "../features/nodes/types";
-import type { NodeTelemetryRange } from "../features/nodes/useNodeTelemetry";
+import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling } from "../features/nodes/types";
+
 import type {
   StatsSeries,
   SignalStats,

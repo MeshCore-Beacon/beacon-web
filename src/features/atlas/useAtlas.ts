@@ -6,6 +6,7 @@ import { useFeatures } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
 import { mvToVolts } from "../stats/chartOptions";
 import type { NodeTelemetryPoint } from "../nodes/types";
+import { isPolledNodeType } from "../nodes/polledType";
 import { useNodeTelemetry } from "../nodes/useNodeTelemetry";
 import { loadAtlasNode, summarizeActivity, type NodePin, type AtlasRange } from "./atlas";
 import { OBSERVER_RANGE } from "./observer-sample";
@@ -70,8 +71,6 @@ export function useAtlasNode(pin: NodePin | null, range: AtlasRange, active: boo
   };
 }
 
-const POLLED_TYPES = ["repeater", "room_server"];
-
 // Newest value of a field is the last point that carries it, so battery and temperature may come from different polls.
 function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC"): number | null {
   for (let i = points.length - 1; i >= 0; i--) {
@@ -86,7 +85,7 @@ function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC")
 export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | undefined, active: boolean): string | null {
   const { polling } = useFeatures();
   const throttled = useThrottled();
-  const polled = polling && !!nodeTypeName && POLLED_TYPES.includes(nodeTypeName.toLowerCase());
+  const polled = polling && isPolledNodeType(nodeTypeName);
   const { data } = useNodeTelemetry(nodeId ?? undefined, "24h", polled && active && !throttled, ATLAS_REFRESH_MS);
   if (!polled || !data) return null;
   const volts = mvToVolts(newest(data.points, "batteryMv"));

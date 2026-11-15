@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { getNodePolling, getNodeTelemetry, isNotFound } from "../../api/client";
 
-export type NodeTelemetryRange = "24h" | "168h" | "720h";
+import type { NodeTelemetryRange } from "./types";
+
+export type { NodeTelemetryRange };
 
 // A 404 means this server has no such route. A query can't hold undefined, so cache null and
 // let `select` hand callers undefined, which they read as "not supported".
