@@ -314,6 +314,21 @@ describe("another account on the same browser", () => {
     expect(me.putAtlas).not.toHaveBeenCalled();
   });
 
+  it("is not synced again until the new sign-in has loaded", async () => {
+    const { result, rerender } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    current = null;
+    rerender();
+    let release!: (d: ServerAtlas) => void;
+    vi.mocked(me.atlas).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    current = user;
+    rerender();
+    expect(result.current.synced).toBe(false);
+    await act(async () => release(document([serverNode(1)], 3)));
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    expect(names(result.current.saved.pins)).toEqual(["N1"]);
+  });
+
   it("a never-synced local Atlas still merges and then belongs to the account", async () => {
     localStorage.setItem(ATLAS_KEY, JSON.stringify(saved([nodePin(1)])));
     const { result } = mount();

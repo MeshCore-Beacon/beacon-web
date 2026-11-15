@@ -145,7 +145,8 @@ export function useSyncedAtlas() {
         }
       }
     })();
-    return () => { generation.current += 1; loading.current = false; };
+    // Leaving a sign-in ends its synced state, so the same account signing back in is not "synced" before its load.
+    return () => { generation.current += 1; loading.current = false; setSyncedFor(null); };
   }, [userId, flush]);
 
   const update = (change: Change) => {
