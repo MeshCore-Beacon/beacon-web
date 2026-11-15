@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { auth } from "../../api/auth";
 import { FormButton } from "../../components/form/FormButton";
@@ -7,7 +7,7 @@ import { FormStatus } from "../../components/form/FormStatus";
 import { AccountLayout } from "./AccountLayout";
 import { authErrorText, errorCode } from "./errors";
 import { ResendForm } from "./ResendForm";
-import { useClearToken, useView } from "./useView";
+import { linkToken, useClearToken, useView } from "./useView";
 
 type State = { kind: "pending" } | { kind: "verified" } | { kind: "failed"; error: unknown };
 
@@ -15,22 +15,26 @@ export function VerifyView() {
   const { t } = useTranslation();
   const { open } = useView();
   const clearToken = useClearToken();
-  const [params] = useSearchParams();
-  // Held in state: the URL copy is removed once used.
-  const [token] = useState(() => params.get("token"));
+  const location = useLocation();
+  // Held in state: the URL copy is removed at once.
+  const [token] = useState(() => linkToken(location));
   const [state, setState] = useState<State>({ kind: "pending" });
   const started = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   // A ref guards the post: strict mode runs this effect twice, and a one-time token must be sent once.
   useEffect(() => {
     if (!token || started.current) return;
     started.current = true;
+    clearToken();
+    // A view that was left meanwhile has nothing to show and must not touch the URL.
     auth.verify(token).then(
-      () => {
-        setState({ kind: "verified" });
-        clearToken();
-      },
-      (error: unknown) => setState({ kind: "failed", error }),
+      () => { if (mounted.current) setState({ kind: "verified" }); },
+      (error: unknown) => { if (mounted.current) setState({ kind: "failed", error }); },
     );
   }, [token, clearToken]);
 

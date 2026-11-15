@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useRef } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 export const VIEWS = ["signin", "register", "verify", "reset", "profile"] as const;
 export type AccountView = (typeof VIEWS)[number];
@@ -40,14 +40,26 @@ export function useView(): {
   return { view, open, close };
 }
 
-// Drops just the token (kept out of history once it is used), leaving the view open.
+// Mailed links carry the token in the fragment (`#token=…`); links sent earlier carry `?token=`.
+export function linkToken(location: { search: string; hash: string }): string | null {
+  const fromHash = new URLSearchParams(location.hash.replace(/^#/, "")).get("token");
+  return fromHash || new URLSearchParams(location.search).get("token");
+}
+
+// Drops the token from both places (kept out of history once it is used), leaving the view open.
 export function useClearToken(): () => void {
-  const [, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // A ref keeps the callback stable, so effects that call it do not re-run on every navigation.
+  const current = useRef(location);
+  useEffect(() => {
+    current.current = location;
+  });
   return useCallback(() => {
-    setSearchParams((prev) => {
-      const out = new URLSearchParams(prev);
-      out.delete("token");
-      return out;
-    }, { replace: true });
-  }, [setSearchParams]);
+    const { pathname, search } = current.current;
+    const out = new URLSearchParams(search);
+    out.delete("token");
+    const query = out.toString();
+    navigate({ pathname, search: query ? `?${query}` : "", hash: "" }, { replace: true });
+  }, [navigate]);
 }

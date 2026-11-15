@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
+import { useSecretSubmit } from "../../hooks/useSessionMutation";
 import { auth } from "../../api/auth";
 import { FormButton } from "../../components/form/FormButton";
 import { FormStatus } from "../../components/form/FormStatus";
@@ -9,12 +10,12 @@ import { PasswordField } from "../../components/form/PasswordField";
 import { TextField } from "../../components/form/TextField";
 import { AccountLayout, LinkButton } from "./AccountLayout";
 import { authErrorText, errorCode } from "./errors";
-import { useClearToken, useView } from "./useView";
+import { linkToken, useClearToken, useView } from "./useView";
 
 export function ResetView() {
-  const [params] = useSearchParams();
+  const location = useLocation();
   // Held in state so removing it from the URL does not flip the view into request mode.
-  const [token, setToken] = useState(() => params.get("token"));
+  const [token, setToken] = useState(() => linkToken(location));
   const clearToken = useClearToken();
   // The live token leaves the URL (and so history) at once; retries use the copy in memory.
   useEffect(() => {
@@ -54,8 +55,7 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
   const { t } = useTranslation();
   const { open } = useView();
   const [password, setPassword] = useState("");
-  const confirm = useMutation({
-    mutationFn: () => auth.confirmReset(token, password),
+  const confirm = useSecretSubmit(() => auth.confirmReset(token, password), {
     onSuccess: () => setPassword(""),
   });
 
