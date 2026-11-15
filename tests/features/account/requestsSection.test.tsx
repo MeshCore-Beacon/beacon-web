@@ -31,7 +31,7 @@ beforeEach(() => {
     limit: 3,
     requests: [
       req(),
-      req({ id: "r2", node: { id: null, publicKey: "ee", name: "Ridge" }, status: "disabled", statusReason: "not heard for 7 days", hasPassword: true, poller: null, latestReadingAt: null }),
+      req({ id: "r2", node: { id: null, publicKey: "ee", name: "Ridge" }, status: "disabled", statusReason: "Not heard by any observer for 7 days.", hasPassword: true, poller: null, latestReadingAt: null }),
     ],
   });
 });
@@ -66,7 +66,7 @@ describe("telemetry requests section", () => {
     const b = row("Ridge");
     expect(b.queryByRole("link")).not.toBeInTheDocument();
     expect(b.getByText("Paused: the repeater has not been heard recently")).toBeInTheDocument();
-    expect(b.getByText("not heard for 7 days")).toBeInTheDocument();
+    expect(b.getByText("Not heard by any observer for 7 days.")).toBeInTheDocument();
     expect(b.getByText("Password set")).toBeInTheDocument();
   });
 

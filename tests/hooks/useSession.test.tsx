@@ -52,6 +52,16 @@ describe("useSession", () => {
     expect(meCalls()).toHaveLength(1);
   });
 
+  it("keeps the user when a later /me answers 503 service_unavailable", async () => {
+    stub("local", 200, { user });
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.user).toEqual(user));
+    stub("local", 503, { error: { code: "service_unavailable", message: "Try again in a moment." } });
+    await act(async () => { await client.refetchQueries({ queryKey: ["me"], exact: true }); });
+    expect(client.getQueryState(["me"])?.status).toBe("error");
+    expect(result.current.user).toEqual(user);
+  });
+
   it("makes no /me request when accounts are off", async () => {
     stub("off", 200, { user });
     const { result } = renderHook(() => useSession(), { wrapper });

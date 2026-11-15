@@ -1048,7 +1048,9 @@
         "token_invalid": "Länken är inte längre giltig.",
         "not_signed_in": "Du är inte inloggad. Logga in och försök igen.",
         "csrf_rejected": "Begäran avvisades. Ladda om sidan och försök igen.",
-        "accounts_disabled": "Konton är inte aktiverade på den här servern."
+        "accounts_disabled": "Konton är inte aktiverade på den här servern.",
+        "service_unavailable": "Servern är upptagen. Försök igen om en stund.",
+        "read_only": "Servern är skrivskyddad just nu. Försök igen senare."
       },
       "profile": {
         "title": "Profil",
@@ -1175,6 +1177,16 @@
           "admin_stopped": "Stoppad: lösenordet gav administratörsåtkomst och raderades",
           "disabled": "Pausad: repeatern har inte hörts på sistone"
         },
+        "reason": {
+          "noObserver": "Ingen observatör kan nå den här repeatern ännu.",
+          "noSeat": "Alla observatörer som kan nå den här repeatern avläser redan sitt max.",
+          "loginFailed": "Repeatern godtog inte det här gästlösenordet. Ange ett nytt.",
+          "blankFailed": "Repeatern godtog inte en tom eller hello-inloggning. Ange ett gästlösenord.",
+          "adminStopped": "Repeatern gav administratörsåtkomst med det här lösenordet, så Beacon raderade det. Ange ett gästlösenord, aldrig ett administratörslösenord.",
+          "blankBlocked": "Den här repeatern ger administratörsåtkomst med en tom inloggning, så Beacon avläser den inte utan gästlösenord.",
+          "offline_one": "Ingen observatör har hört den på {{count}} dag.",
+          "offline_other": "Ingen observatör har hört den på {{count}} dagar."
+        },
         "polledBy": "Avläses av",
         "noObserver": "ingen observatör ännu",
         "lastReading": "Senaste värde",
@@ -1203,7 +1215,8 @@
           "not_a_repeater": "Bara repeatrar och rumsservrar kan avläsas.",
           "password_invalid": "Lösenordet måste vara 1 till 15 tecken.",
           "no_password_blocked": "Den här repeatern ger administratörsåtkomst utan lösenord, så den kan inte avläsas på det här sättet",
-          "requests_disabled": "Telemetribegäran är inte aktiverade på den här servern."
+          "requests_disabled": "Telemetribegäran är inte aktiverade på den här servern.",
+          "not_found": "Den begäran finns inte längre."
         }
       },
       "portal": {

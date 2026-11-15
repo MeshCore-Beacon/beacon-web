@@ -1161,7 +1161,9 @@
         "token_invalid": "This link is no longer valid.",
         "not_signed_in": "You are not signed in. Sign in and try again.",
         "csrf_rejected": "The request was rejected. Reload the page and try again.",
-        "accounts_disabled": "Accounts are not enabled on this server."
+        "accounts_disabled": "Accounts are not enabled on this server.",
+        "service_unavailable": "The server is busy. Try again in a moment.",
+        "read_only": "This server is read-only right now. Try again later."
       },
       "profile": {
         "title": "Profile",
@@ -1288,6 +1290,16 @@
           "admin_stopped": "Stopped: that password gave admin access and was deleted",
           "disabled": "Paused: the repeater has not been heard recently"
         },
+        "reason": {
+          "noObserver": "No observer can reach this repeater yet.",
+          "noSeat": "Every observer that can reach this repeater is already polling its maximum.",
+          "loginFailed": "The repeater did not accept this guest password. Enter a new one.",
+          "blankFailed": "The repeater did not accept a blank or hello login. Enter a guest password.",
+          "adminStopped": "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.",
+          "blankBlocked": "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password.",
+          "offline_one": "Not heard by any observer for {{count}} day.",
+          "offline_other": "Not heard by any observer for {{count}} days."
+        },
         "polledBy": "Polled by",
         "noObserver": "no observer yet",
         "lastReading": "Last reading",
@@ -1316,7 +1328,8 @@
           "not_a_repeater": "Only repeaters and room servers can be polled.",
           "password_invalid": "The password must be 1 to 15 characters.",
           "no_password_blocked": "This repeater gives admin access without a password, so it cannot be polled this way",
-          "requests_disabled": "Telemetry requests are not enabled on this server."
+          "requests_disabled": "Telemetry requests are not enabled on this server.",
+          "not_found": "That request no longer exists."
         }
       },
       "portal": {

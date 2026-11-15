@@ -9,6 +9,7 @@ import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
 import { GUEST_PASSWORD_MAX, TELEMETRY_REQUESTS_KEY, useTelemetryRequests } from "../../../hooks/useTelemetryRequests";
 import { requestErrorText } from "../errors";
+import { requestReasonText } from "../requestReason";
 import type { TelemetryRequest } from "../types";
 import { ProfileSection } from "./ProfileSection";
 import { useSessionEnded } from "./useSessionEnded";
@@ -48,7 +49,7 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
           )}
           <span className="text-xs text-text-normal">{t(`account.requests.status.${request.status}`)}</span>
         </div>
-        {request.statusReason && <div className="font-mono text-xs text-text-muted">{request.statusReason}</div>}
+        {request.statusReason && <div className="font-mono text-xs text-text-muted">{requestReasonText(t, request.statusReason)}</div>}
         <div className="flex flex-wrap gap-x-4 font-mono text-xs text-text-muted">
           <span>{t("account.requests.polledBy")} {request.poller ? request.poller.name : t("account.requests.noObserver")}</span>
           <span>

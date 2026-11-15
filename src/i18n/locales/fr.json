@@ -1170,7 +1170,9 @@
         "token_invalid": "Ce lien n’est plus valide.",
         "not_signed_in": "Vous n’êtes pas connecté. Connectez-vous et réessayez.",
         "csrf_rejected": "La requête a été refusée. Rechargez la page et réessayez.",
-        "accounts_disabled": "Les comptes ne sont pas activés sur ce serveur."
+        "accounts_disabled": "Les comptes ne sont pas activés sur ce serveur.",
+        "service_unavailable": "Le serveur est occupé. Réessayez dans un instant.",
+        "read_only": "Ce serveur est en lecture seule pour le moment. Réessayez plus tard."
       },
       "profile": {
         "title": "Profil",
@@ -1300,6 +1302,17 @@
           "admin_stopped": "Arrêté : ce mot de passe donnait un accès administrateur et a été supprimé",
           "disabled": "En pause : le répéteur n’a pas été entendu récemment"
         },
+        "reason": {
+          "noObserver": "Aucun observateur ne peut encore atteindre ce répéteur.",
+          "noSeat": "Tous les observateurs qui peuvent atteindre ce répéteur interrogent déjà leur maximum.",
+          "loginFailed": "Le répéteur n’a pas accepté ce mot de passe invité. Saisissez-en un nouveau.",
+          "blankFailed": "Le répéteur n’a pas accepté une connexion vide ou « hello ». Saisissez un mot de passe invité.",
+          "adminStopped": "Le répéteur a donné un accès administrateur avec ce mot de passe, donc Beacon l’a supprimé. Saisissez un mot de passe invité, jamais celui d’un administrateur.",
+          "blankBlocked": "Ce répéteur donne un accès administrateur avec une connexion vide, donc Beacon ne l’interrogera pas sans mot de passe invité.",
+          "offline_one": "Aucun observateur ne l’a entendu depuis {{count}} jour.",
+          "offline_many": "Aucun observateur ne l’a entendu depuis {{count}} jours.",
+          "offline_other": "Aucun observateur ne l’a entendu depuis {{count}} jours."
+        },
         "polledBy": "Interrogé par",
         "noObserver": "aucun observateur pour l’instant",
         "lastReading": "Dernière mesure",
@@ -1328,7 +1341,8 @@
           "not_a_repeater": "Seuls les répéteurs et les serveurs de salon peuvent être interrogés.",
           "password_invalid": "Le mot de passe doit comporter de 1 à 15 caractères.",
           "no_password_blocked": "Ce répéteur donne un accès administrateur sans mot de passe, il ne peut donc pas être interrogé de cette façon",
-          "requests_disabled": "Les demandes de télémétrie ne sont pas activées sur ce serveur."
+          "requests_disabled": "Les demandes de télémétrie ne sont pas activées sur ce serveur.",
+          "not_found": "Cette demande n’existe plus."
         }
       },
       "portal": {

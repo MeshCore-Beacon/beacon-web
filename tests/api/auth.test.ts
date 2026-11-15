@@ -118,3 +118,28 @@ describe("requests", () => {
     expect(init.body).toBe(body === undefined ? undefined : JSON.stringify(body));
   });
 });
+
+describe("answers beacon-server really sends", () => {
+  it("keeps the stored Atlas under current on a 409", async () => {
+    const current = { revision: 9, range: "24h", limit: 12, pins: [] };
+    stub(409, { error: { code: "atlas_conflict", message: "The Atlas was changed elsewhere." }, current });
+    const err = await me.putAtlas({ baseRevision: 7, range: "24h", pins: [] }).catch((e) => e as AuthError);
+    expect(err).toBeInstanceOf(AuthError);
+    expect(err).toMatchObject({ status: 409, code: "atlas_conflict" });
+    expect((err as AuthError).body).toMatchObject({ current });
+  });
+
+  it("carries Retry-After and the code of a 503 service_unavailable", async () => {
+    stub(503, { error: { code: "service_unavailable", message: "Try again in a moment." } }, { "Retry-After": "5" });
+    const err = await me.get().catch((e) => e as AuthError);
+    expect(err).toMatchObject({ status: 503, code: "service_unavailable", retryAfterMs: 5000 });
+  });
+
+  it("sends enabled true and null passwords the way the server reads them", async () => {
+    const fn = stub(200, {});
+    await requests.update("r1", { enabled: true });
+    await requests.update("r1", { password: null });
+    const bodies = fn.mock.calls.map((c) => (c as unknown as [string, RequestInit])[1].body);
+    expect(bodies).toEqual(['{"enabled":true}', '{"password":null}']);
+  });
+});

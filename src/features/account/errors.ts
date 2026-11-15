@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 const KNOWN = new Set([
   "invalid_credentials", "email_unverified", "token_invalid", "username_taken", "weak_password",
   "invalid_input", "registration_closed", "not_signed_in", "csrf_rejected", "accounts_disabled",
+  "service_unavailable", "read_only",
 ]);
 
 function when(t: TFunction, ms?: number): string {
@@ -29,7 +30,7 @@ export function authErrorText(t: TFunction, err: unknown): string {
 export const errorCode = (err: unknown): string | undefined => (err as { code?: string } | null)?.code;
 
 const REQUEST_CODES = new Set([
-  "request_limit", "already_requested", "not_a_repeater", "password_invalid", "no_password_blocked", "requests_disabled",
+  "request_limit", "already_requested", "not_a_repeater", "password_invalid", "no_password_blocked", "requests_disabled", "not_found",
 ]);
 
 // Telemetry request errors; any other code falls back to the shared mapping. Never echoes the request.
