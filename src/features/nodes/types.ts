@@ -143,3 +143,36 @@ export interface NodeObservation {
   snr?: number;
   hopCount?: number;
 }
+
+// Polled repeater readings, bucketed by the server; every field after `readings` is absent when no reading carried it.
+export interface NodeTelemetryPoint {
+  t: number; // epoch ms
+  readings: number;
+  batteryMv?: number;
+  temperatureC?: number;
+  noiseFloorDb?: number;
+  lastRssiDb?: number;
+  lastSnrDb?: number;
+  uptimeSeconds?: number;
+  queueLength?: number;
+  airtimeTxSecs?: number;
+  airtimeRxSecs?: number;
+  packetsReceived?: number;
+  packetsSent?: number;
+  receiveErrors?: number;
+}
+
+export interface NodeTelemetry {
+  range: string;
+  interval: string;
+  polled: boolean;
+  untrustedReadings: number;
+  points: NodeTelemetryPoint[];
+}
+
+export interface NodePolling {
+  polled: boolean;
+  latestReadingAt: number | null; // epoch ms
+  poller: { observerId: string; name: string } | null;
+  standbys: { observerId: string; name: string; rank: number }[];
+}

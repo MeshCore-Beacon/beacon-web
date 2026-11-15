@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, getNodeActivity, getObserverComparison, isNotFound } from "../../src/api/client";
+import { getPackets, getNodesPage, getObserversPage, getScopes, getKnownRoutesPage, searchKnownRoutes, searchCrossIATARoutes, getChannels, getChannelMessagesPage, getTraces, getTraceDetail, getStatsSeries, getTopObservers, getTopAdvertisers, getTopTalkers, getStatsNodeTypes, getClockDrift, getIataBorder, getObserverActivity, getNodeActivity, getObserverComparison, isNotFound, getNodeTelemetry, getNodePolling, getServerInfo } from "../../src/api/client";
 import type { Feature, Polygon } from "geojson";
 import type { NodeSummary } from "../../src/features/nodes/types";
 import type { ObserverSummary } from "../../src/features/observers/types";
@@ -772,5 +772,31 @@ describe("API fetches keep the browser's referrer", () => {
 
     expect(inits).toHaveLength(3);
     for (const init of inits) expect(Object.keys(init ?? {}).filter((k) => k !== "signal")).toEqual([]);
+  });
+});
+
+describe("getNodeTelemetry and getNodePolling", () => {
+  it("sends the server's default interval for each range", async () => {
+    for (const [range, interval] of [["24h", "1h"], ["168h", "6h"], ["720h", "24h"]] as const) {
+      const url = mockFetchOnce({ points: [] });
+      await getNodeTelemetry("n 1", range);
+      const u = new URL(url());
+      expect(u.pathname).toBe("/api/v1/nodes/n%201/telemetry");
+      expect(u.searchParams.get("range")).toBe(range);
+      expect(u.searchParams.get("interval")).toBe(interval);
+      expect(u.searchParams.has("include")).toBe(false);
+    }
+  });
+
+  it("asks for the polling answer by node id", async () => {
+    const url = mockFetchOnce({ polled: false });
+    await getNodePolling("abc");
+    expect(new URL(url()).pathname).toBe("/api/v1/nodes/abc/polling");
+  });
+
+  it("reads features from /info when present", async () => {
+    mockFetchOnce({ serverVersion: "2.3.0", features: { polling: true } });
+    const info = await getServerInfo();
+    expect(info.features?.polling).toBe(true);
   });
 });
