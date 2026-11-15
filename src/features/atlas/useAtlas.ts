@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNodeActivity, isNotFound } from "../../api/client";
 import { useRateLimit } from "../../hooks/useRateLimit";
+import { useFeatures } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
+import { mvToVolts } from "../stats/chartOptions";
+import type { NodeTelemetryPoint } from "../nodes/types";
+import { useNodeTelemetry } from "../nodes/useNodeTelemetry";
 import { loadAtlasNode, summarizeActivity, type NodePin, type AtlasRange } from "./atlas";
 import { OBSERVER_RANGE } from "./observer-sample";
 
@@ -64,4 +68,29 @@ export function useAtlasNode(pin: NodePin | null, range: AtlasRange, active: boo
       failed: activity.isError && !isNotFound(activity.error),
     },
   };
+}
+
+const POLLED_TYPES = ["repeater", "room_server"];
+
+// Newest value of a field is the last point that carries it, so battery and temperature may come from different polls.
+function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC"): number | null {
+  for (let i = points.length - 1; i >= 0; i--) {
+    const v = points[i]![key];
+    if (typeof v === "number") return v;
+  }
+  return null;
+}
+
+// "4.23 V · 16.5 °C" for a polled repeater or room server, or null when there is nothing to show.
+// Reads only; the card's saved shape is untouched.
+export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | undefined, active: boolean): string | null {
+  const { polling } = useFeatures();
+  const throttled = useThrottled();
+  const polled = polling && !!nodeTypeName && POLLED_TYPES.includes(nodeTypeName.toLowerCase());
+  const { data } = useNodeTelemetry(nodeId ?? undefined, "24h", polled && active && !throttled, ATLAS_REFRESH_MS);
+  if (!polled || !data) return null;
+  const volts = mvToVolts(newest(data.points, "batteryMv"));
+  const temp = newest(data.points, "temperatureC");
+  const parts = [volts != null && `${volts.toFixed(2)} V`, temp != null && `${temp.toFixed(1)} °C`].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
 }

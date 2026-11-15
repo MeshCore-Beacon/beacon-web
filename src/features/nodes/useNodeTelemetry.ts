@@ -15,13 +15,16 @@ async function orNull<T>(load: () => Promise<T>): Promise<T | null> {
 }
 const toUndefined = <T,>(data: T | null): T | undefined => data ?? undefined;
 
-export function useNodeTelemetry(id: string | undefined, range: NodeTelemetryRange, enabled: boolean) {
+// `refetchMs` is for a caller that keeps the reading on screen, such as an Atlas card.
+export function useNodeTelemetry(id: string | undefined, range: NodeTelemetryRange, enabled: boolean, refetchMs?: number) {
   return useQuery({
     queryKey: ["node-telemetry", id, range],
     queryFn: ({ signal }) => orNull(() => getNodeTelemetry(id!, range, signal)),
     enabled: enabled && !!id,
     select: toUndefined,
     staleTime: 60_000,
+    refetchInterval: refetchMs,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
 }

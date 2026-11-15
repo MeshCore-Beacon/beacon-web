@@ -19,7 +19,7 @@ import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
 import { DEFAULT_TILES, OBSERVER_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile } from "./atlas";
 import { TilePicker } from "./TilePicker";
-import { ATLAS_REFRESH_MS, useAtlasNode } from "./useAtlas";
+import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings } from "./useAtlas";
 import type { PayloadShare } from "./observer-sample";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
@@ -126,6 +126,7 @@ export function AtlasCard({
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
+  const readings = useAtlasReadings(node?.id ?? null, node?.nodeTypeName, active);
   const observerId = pin.kind === "observer" ? pin.observerId : (node?.observerId ?? pin.observerId ?? null);
   const obs = useAtlasObserver(observerId, range, active, view === "observer", pin.kind === "observer");
   const observer = obs.observer.data;
@@ -402,6 +403,9 @@ export function AtlasCard({
               presence={sample.present}
             />
           </div>
+          {readings && (
+            <p aria-label={t("atlas.readingsLabel")} className="font-mono text-[11px] leading-4 text-text-muted">{readings}</p>
+          )}
           {footer(
             node.lastSeen > 0 && (
               <span className="min-w-0 truncate">
