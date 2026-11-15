@@ -1329,6 +1329,9 @@
         "passwordSet": "Password set",
         "noPassword": "No password",
         "changePassword": "Change password",
+        "adminStoppedHelp": "The password you entered was an admin password. Beacon deleted it. Only a guest password will start it again.",
+        "enterNewPassword": "Enter a new password",
+        "enterNewPasswordNamed": "Enter a new password for {{name}}",
         "changePasswordNamed": "Change password for {{name}}",
         "newPassword": "New guest password",
         "passwordHint": "Leave empty to remove the password.",
@@ -1349,6 +1352,7 @@
           "already_requested": "You already asked for this repeater.",
           "not_a_repeater": "Only repeaters and room servers can be polled.",
           "password_invalid": "The password must be 1 to 15 characters.",
+          "password_invalid_stopped": "This request needs a guest password of 1 to 15 characters. It cannot be restarted with a blank login.",
           "no_password_blocked": "This repeater gives admin access without a password, so it cannot be polled this way",
           "requests_disabled": "Telemetry requests are not enabled on this server.",
           "not_found": "That request no longer exists."

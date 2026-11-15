@@ -9,7 +9,7 @@ import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
 import { GUEST_PASSWORD_MAX, TELEMETRY_REQUESTS_KEY, useTelemetryRequests } from "../../../hooks/useTelemetryRequests";
-import { requestErrorText } from "../errors";
+import { errorCode, requestErrorText } from "../errors";
 import { requestReasonText } from "../requestReason";
 import type { TelemetryRequest } from "../types";
 import { ProfileSection } from "./ProfileSection";
@@ -36,6 +36,10 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
   const enable = useSessionMutation({ mutationFn: () => requests.update(request.id, { enabled: true }), onSuccess: refetch, onError: ended });
   const remove = useSessionMutation({ mutationFn: () => requests.remove(request.id), onSuccess: refetch, onError: ended });
   const error = savePassword.error ?? enable.error ?? remove.error;
+  // Only a new password restarts these; the server ignores enable and refuses a blank login on a stopped one.
+  const stopped = request.status === "admin_stopped";
+  const failed = request.status === "login_failed";
+  const needsNew = stopped || failed;
   const busy = savePassword.isPending || enable.isPending || remove.isPending;
 
   return (
@@ -50,6 +54,7 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
           <span className="text-xs text-text-normal">{t(`account.requests.status.${request.status}`)}</span>
         </div>
         {request.statusReason && <div className="font-mono text-xs text-text-muted">{requestReasonText(t, request)}</div>}
+        {stopped && <div className="font-mono text-xs text-text-normal">{t("account.requests.adminStoppedHelp")}</div>}
         <div className="flex flex-wrap gap-x-4 font-mono text-xs text-text-muted">
           <span>{t("account.requests.polledBy")} {request.poller ? request.poller.name : t("account.requests.noObserver")}</span>
           <span>
@@ -74,14 +79,14 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
             name="guestPassword"
             autoComplete="off"
             maxLength={GUEST_PASSWORD_MAX}
-            hint={t("account.requests.passwordHint")}
+            hint={stopped ? undefined : t("account.requests.passwordHint")}
             value={password}
             onChange={setPassword}
             disabled={busy}
           />
           <p className="text-xs text-text-muted">{t("account.requests.notice")}</p>
           <div className="flex gap-2">
-            <FormButton busy={savePassword.isPending} busyLabel={t("account.requests.saving")}>{t("account.requests.savePassword")}</FormButton>
+            <FormButton busy={savePassword.isPending} busyLabel={t("account.requests.saving")} disabled={stopped && password === ""}>{t("account.requests.savePassword")}</FormButton>
             <FormButton type="button" variant="quiet" disabled={busy} onClick={() => { setMode(null); setPassword(""); }}>{t("account.requests.cancel")}</FormButton>
           </div>
         </form>
@@ -97,8 +102,8 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
 
       {mode === null && (
         <div className="flex flex-wrap gap-2">
-          <FormButton type="button" variant="quiet" disabled={busy} aria-label={t("account.requests.changePasswordNamed", { name })} onClick={() => setMode("password")}>
-            {t("account.requests.changePassword")}
+          <FormButton type="button" variant="quiet" disabled={busy} aria-label={t(needsNew ? "account.requests.enterNewPasswordNamed" : "account.requests.changePasswordNamed", { name })} onClick={() => setMode("password")}>
+            {t(needsNew ? "account.requests.enterNewPassword" : "account.requests.changePassword")}
           </FormButton>
           {request.status === "disabled" && (
             <FormButton type="button" variant="quiet" busy={enable.isPending} busyLabel={t("account.requests.enabling")} aria-label={t("account.requests.reenableNamed", { name })} onClick={() => enable.mutate()}>
@@ -110,7 +115,7 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
           </FormButton>
         </div>
       )}
-      {error != null && <FormStatus kind="error">{requestErrorText(t, error)}</FormStatus>}
+      {error != null && <FormStatus kind="error">{stopped && errorCode(error) === "password_invalid" ? t("account.requests.errors.password_invalid_stopped") : requestErrorText(t, error)}</FormStatus>}
     </li>
   );
 }

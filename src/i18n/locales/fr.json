@@ -1342,6 +1342,9 @@
         "passwordSet": "Mot de passe défini",
         "noPassword": "Pas de mot de passe",
         "changePassword": "Changer le mot de passe",
+        "adminStoppedHelp": "Le mot de passe saisi était un mot de passe administrateur. Beacon l'a supprimé. Seul un mot de passe invité relancera la demande.",
+        "enterNewPassword": "Saisir un nouveau mot de passe",
+        "enterNewPasswordNamed": "Saisir un nouveau mot de passe pour {{name}}",
         "changePasswordNamed": "Changer le mot de passe de {{name}}",
         "newPassword": "Nouveau mot de passe invité",
         "passwordHint": "Laissez vide pour supprimer le mot de passe.",
@@ -1362,6 +1365,7 @@
           "already_requested": "Vous avez déjà fait une demande pour ce répéteur.",
           "not_a_repeater": "Seuls les répéteurs et les serveurs de salon peuvent être interrogés.",
           "password_invalid": "Le mot de passe doit comporter de 1 à 15 caractères.",
+          "password_invalid_stopped": "Cette demande exige un mot de passe invité de 1 à 15 caractères. Elle ne peut pas repartir avec une connexion sans mot de passe.",
           "no_password_blocked": "Ce répéteur donne un accès administrateur sans mot de passe, il ne peut donc pas être interrogé de cette façon",
           "requests_disabled": "Les demandes de télémétrie ne sont pas activées sur ce serveur.",
           "not_found": "Cette demande n’existe plus."

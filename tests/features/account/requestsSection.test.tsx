@@ -136,3 +136,56 @@ describe("telemetry requests section", () => {
     expect(screen.getByText("0 of 3")).toBeInTheDocument();
   });
 });
+
+describe("stopped requests", () => {
+  const stopped = req({
+    id: "r3", node: { id: "n3", publicKey: "cc", name: "Cliff" }, status: "admin_stopped", statusReasonCode: "admin_stopped",
+    statusReason: "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.", poller: null,
+  });
+  const failed = req({
+    id: "r4", node: { id: "n4", publicKey: "dd", name: "Marsh" }, status: "login_failed", statusReasonCode: "login_failed",
+    statusReason: "The repeater did not accept this guest password. Enter a new one.", hasPassword: true, poller: null,
+  });
+  async function openStopped() {
+    vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [stopped, failed] });
+    renderAt("?tab=Map&view=profile", <AccountViews />);
+    await screen.findByText("Cliff");
+  }
+
+  it("offers only a new password and delete on an admin-stopped request, and says why", async () => {
+    await openStopped();
+    const r = row("Cliff");
+    expect(r.getByText(/The password you entered was an admin password\. Beacon deleted it\. Only a guest password will start it again\./)).toBeInTheDocument();
+    expect(r.getByRole("button", { name: /Enter a new password/ })).toBeInTheDocument();
+    expect(r.getByRole("button", { name: /^Remove/ })).toBeInTheDocument();
+    expect(r.queryByRole("button", { name: /Re-enable|Change password/ })).not.toBeInTheDocument();
+  });
+
+  it("offers a new password and delete on a failed login, with no enable control", async () => {
+    await openStopped();
+    const r = row("Marsh");
+    expect(r.getByRole("button", { name: /Enter a new password/ })).toBeInTheDocument();
+    expect(r.getByRole("button", { name: /^Remove/ })).toBeInTheDocument();
+    expect(r.queryByRole("button", { name: /Re-enable/ })).not.toBeInTheDocument();
+  });
+
+  it("never offers to remove the password of an admin-stopped request", async () => {
+    vi.mocked(requests.update).mockResolvedValue(req());
+    await openStopped();
+    fireEvent.click(row("Cliff").getByRole("button", { name: /Enter a new password/ }));
+    expect(screen.queryByText("Leave empty to remove the password.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save password" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("New guest password"), { target: { value: "guest1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save password" }));
+    await waitFor(() => expect(requests.update).toHaveBeenCalledWith("r3", { password: "guest1" }));
+  });
+
+  it("explains a refused password on an admin-stopped request", async () => {
+    vi.mocked(requests.update).mockRejectedValue(authError("password_invalid", 422, "bad"));
+    await openStopped();
+    fireEvent.click(row("Cliff").getByRole("button", { name: /Enter a new password/ }));
+    fireEvent.change(screen.getByLabelText("New guest password"), { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save password" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This request needs a guest password of 1 to 15 characters. It cannot be restarted with a blank login.");
+  });
+});
