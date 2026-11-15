@@ -289,7 +289,21 @@
       "observations_one": "{{formatted}} obs.",
       "observations_other": "{{formatted}} obs.",
       "observations_many": "{{formatted}} obs.",
-      "hops": "Sauts"
+      "hops": "Sauts",
+      "telemetry": {
+        "title": "Télémétrie",
+        "range": "Période de télémétrie",
+        "battery": "Batterie (V)",
+        "temperature": "Température (°C)",
+        "noise": "Bruit de fond (dBm)",
+        "airtime": "Temps d'antenne TX / RX (% de l'intervalle)",
+        "waiting": "Interrogé par {{name}}, en attente de la première mesure",
+        "noReadings": "Aucune mesure sur cette période",
+        "polledBy": "Interrogé par",
+        "lastReading": "Dernière mesure",
+        "standby_one": "{{count}} en réserve",
+        "standby_other": "{{count}} en réserve"
+      }
     },
     "nodes": {
       "lastHeard": "dernier contact {{ago}}",

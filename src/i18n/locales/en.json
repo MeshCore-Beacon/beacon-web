@@ -318,7 +318,21 @@
       "fromMeshMapper": "From MeshMapper",
       "updated": "updated",
       "carpeater": "CARpeater",
-      "carpeaterHint": "Mobile repeater in a vehicle: its position moves."
+      "carpeaterHint": "Mobile repeater in a vehicle: its position moves.",
+      "telemetry": {
+        "title": "Telemetry",
+        "range": "Telemetry range",
+        "battery": "Battery (V)",
+        "temperature": "Temperature (°C)",
+        "noise": "Noise floor (dBm)",
+        "airtime": "Airtime TX / RX (% of bucket)",
+        "waiting": "Polled by {{name}}, waiting for the first reading",
+        "noReadings": "No readings in this range",
+        "polledBy": "Polled by",
+        "lastReading": "Last reading",
+        "standby_one": "{{count}} standby",
+        "standby_other": "{{count}} standby"
+      }
     },
     "nodes": {
       "lastHeard": "last heard {{ago}}",

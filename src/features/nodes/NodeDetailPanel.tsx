@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
@@ -14,6 +15,11 @@ import { ForeignNodeBadge } from "./ForeignNodeBadge";
 import { MeshMapperSection } from "./MeshMapperSection";
 import { Tooltip } from "../../components/Tooltip";
 import { EmojiText } from "../../components/EmojiText";
+import { useFeatures } from "../../hooks/useFeatures";
+
+// Pulls in ECharts, so it stays out of the main bundle; mounted only for polled node types.
+const NodeTelemetrySection = lazy(() => import("./NodeTelemetrySection"));
+const POLLED_TYPES = ["repeater", "room_server"];
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   const { t } = useTranslation();
@@ -104,6 +110,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
   });
 
   const hasLocation = hasMapLocation(node);
+  const features = useFeatures();
+  const showTelemetry = features.polling && !!node && POLLED_TYPES.includes(node.nodeTypeName);
 
   return (
     <DetailPanel
@@ -172,6 +180,12 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             )}
 
             {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
+
+            {showTelemetry && (
+              <Suspense fallback={null}>
+                <NodeTelemetrySection node={node} onViewObserver={onViewObserver} />
+              </Suspense>
+            )}
 
             <Section title={t("nodeDetail.capabilities")}>
               <div className="flex flex-col gap-0.5 font-mono text-[13px]">

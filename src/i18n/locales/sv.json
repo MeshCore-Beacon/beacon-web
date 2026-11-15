@@ -282,7 +282,21 @@
       "noRecentPackets": "Inga senaste paket",
       "observations_one": "{{formatted}} obs",
       "observations_other": "{{formatted}} obs",
-      "hops": "Hopp"
+      "hops": "Hopp",
+      "telemetry": {
+        "title": "Telemetri",
+        "range": "Telemetriperiod",
+        "battery": "Batteri (V)",
+        "temperature": "Temperatur (°C)",
+        "noise": "Brusgolv (dBm)",
+        "airtime": "Sändtid TX / RX (% av intervallet)",
+        "waiting": "Avläses av {{name}}, väntar på första värdet",
+        "noReadings": "Inga värden i den här perioden",
+        "polledBy": "Avläses av",
+        "lastReading": "Senaste värde",
+        "standby_one": "{{count}} reserv",
+        "standby_other": "{{count}} reserv"
+      }
     },
     "nodes": {
       "lastHeard": "senast mottagen {{ago}}",
