@@ -27,3 +27,13 @@ export function authErrorText(t: TFunction, err: unknown): string {
 }
 
 export const errorCode = (err: unknown): string | undefined => (err as { code?: string } | null)?.code;
+
+const REQUEST_CODES = new Set([
+  "request_limit", "already_requested", "not_a_repeater", "password_invalid", "no_password_blocked", "requests_disabled",
+]);
+
+// Telemetry request errors; any other code falls back to the shared mapping. Never echoes the request.
+export function requestErrorText(t: TFunction, err: unknown): string {
+  const code = errorCode(err);
+  return code && REQUEST_CODES.has(code) ? t(`account.requests.errors.${code}`) : authErrorText(t, err);
+}

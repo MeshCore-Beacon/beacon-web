@@ -26,3 +26,25 @@ export type UserResponse = { user: User };
 export type AppCodeRequest = { codeChallenge: string; state: string; deviceLabel: string };
 export type AppCodeResponse = { code: string; redirectUri: string };
 export type RegisterRequest = { username: string; email: string; password: string };
+
+export type RequestStatus = "waiting" | "active" | "login_failed" | "admin_stopped" | "disabled";
+
+export interface TelemetryRequest {
+  id: string;
+  node: { id: string | null; publicKey: string; name: string };
+  status: RequestStatus;
+  statusReason: string;
+  hasPassword: boolean;
+  createdAt: number;
+  updatedAt: number;
+  poller: { observerId: string; name: string } | null;
+  latestReadingAt: number | null;
+}
+
+export interface TelemetryRequestList {
+  limit: number;
+  requests: TelemetryRequest[];
+}
+
+// password: omitted or null clears it on PATCH; enabled:true re-enables a paused request.
+export type TelemetryRequestPatch = { password?: string | null; enabled?: true };

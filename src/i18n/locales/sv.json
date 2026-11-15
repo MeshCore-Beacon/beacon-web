@@ -297,7 +297,16 @@
         "polledBy": "Avläses av",
         "lastReading": "Senaste värde",
         "standby_one": "{{count}} reserv",
-        "standby_other": "{{count}} reserv"
+        "standby_other": "{{count}} reserv",
+        "request": "Begär telemetri",
+        "requesting": "Begär…",
+        "requestIntro": "Be Beacon låta en frivillig observatör som hör den här repeatern avläsa dess batteri och radiostatistik.",
+        "guestPassword": "Gästlösenord (valfritt)",
+        "passwordNotice": "Gästlösenordet delas med frivilliga observatörer så att de kan be repeatern om dess statistik. Ange aldrig ett administratörslösenord.",
+        "used": "{{used}} av {{limit}} begäran använda",
+        "limitReached": "Du har använt alla dina begäran. Ta bort en i din profil för att begära en till.",
+        "requested": "Telemetri begärd",
+        "manage": "Hantera i profilen"
       }
     },
     "nodes": {
@@ -1089,6 +1098,49 @@
           "confirm": "Radera mitt konto",
           "deleting": "Raderar…",
           "cancel": "Avbryt"
+        }
+      },
+      "requests": {
+        "title": "Telemetribegäran",
+        "count": "{{used}} av {{limit}}",
+        "loading": "Laddar begäran…",
+        "empty": "Du har inte begärt någon telemetri ännu. Öppna en repeater på fliken Noder och välj Begär telemetri.",
+        "status": {
+          "waiting": "Väntar på en observatör som kan nå den",
+          "active": "Avläses",
+          "login_failed": "Repeatern avvisade lösenordet",
+          "admin_stopped": "Stoppad: lösenordet gav administratörsåtkomst och raderades",
+          "disabled": "Pausad: repeatern har inte hörts på sistone"
+        },
+        "polledBy": "Avläses av",
+        "noObserver": "ingen observatör ännu",
+        "lastReading": "Senaste värde",
+        "never": "inget ännu",
+        "passwordSet": "Lösenord satt",
+        "noPassword": "Inget lösenord",
+        "changePassword": "Ändra lösenord",
+        "changePasswordNamed": "Ändra lösenord för {{name}}",
+        "newPassword": "Nytt gästlösenord",
+        "passwordHint": "Lämna tomt för att ta bort lösenordet.",
+        "notice": "Gästlösenordet delas med frivilliga observatörer så att de kan be repeatern om dess statistik. Ange aldrig ett administratörslösenord.",
+        "savePassword": "Spara lösenord",
+        "saving": "Sparar…",
+        "cancel": "Avbryt",
+        "reenable": "Aktivera igen",
+        "reenableNamed": "Aktivera {{name}} igen",
+        "enabling": "Aktiverar…",
+        "remove": "Ta bort",
+        "removeNamed": "Ta bort {{name}}",
+        "removeAsk": "Sluta begära telemetri för {{name}}?",
+        "removeYes": "Ja, ta bort",
+        "removing": "Tar bort…",
+        "errors": {
+          "request_limit": "Du har använt alla dina telemetribegäran.",
+          "already_requested": "Du har redan begärt den här repeatern.",
+          "not_a_repeater": "Bara repeatrar och rumsservrar kan avläsas.",
+          "password_invalid": "Lösenordet måste vara 1 till 15 tecken.",
+          "no_password_blocked": "Den här repeatern ger administratörsåtkomst utan lösenord, så den kan inte avläsas på det här sättet",
+          "requests_disabled": "Telemetribegäran är inte aktiverade på den här servern."
         }
       }
     }

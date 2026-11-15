@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API_BASE } from "../../src/lib/constants";
-import { AuthError, auth, authRequest, me } from "../../src/api/auth";
+import { AuthError, auth, authRequest, me, requests } from "../../src/api/auth";
 
 function stub(status: number, body?: unknown, headers: Record<string, string> = {}) {
   const fn = vi.fn(async () => ({
@@ -89,6 +89,25 @@ describe("route functions", () => {
     ["sessions", () => me.sessions(), "GET", "/me/sessions"],
     ["endSession", () => me.endSession("a/b"), "DELETE", "/me/sessions/a%2Fb"],
     ["endOtherSessions", () => me.endOtherSessions(), "DELETE", "/me/sessions"],
+  ];
+  it.each(cases)("%s", async (_n, call, method, path, body) => {
+    const fn = stub(200, {});
+    await call();
+    const [url, init] = fn.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${API_BASE}${path}`);
+    expect(init.method).toBe(method);
+    expect(init.body).toBe(body === undefined ? undefined : JSON.stringify(body));
+  });
+});
+
+describe("requests", () => {
+  const cases: [string, () => Promise<unknown>, string, string, unknown?][] = [
+    ["list", () => requests.list(), "GET", "/me/telemetry-requests"],
+    ["create with a password", () => requests.create("n1", "guest"), "POST", "/me/telemetry-requests", { nodeId: "n1", password: "guest" }],
+    ["create without one", () => requests.create("n1", ""), "POST", "/me/telemetry-requests", { nodeId: "n1" }],
+    ["clear the password", () => requests.update("r/1", { password: null }), "PATCH", "/me/telemetry-requests/r%2F1", { password: null }],
+    ["re-enable", () => requests.update("r1", { enabled: true }), "PATCH", "/me/telemetry-requests/r1", { enabled: true }],
+    ["remove", () => requests.remove("r1"), "DELETE", "/me/telemetry-requests/r1"],
   ];
   it.each(cases)("%s", async (_n, call, method, path, body) => {
     const fn = stub(200, {});

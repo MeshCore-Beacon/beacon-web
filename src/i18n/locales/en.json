@@ -333,7 +333,16 @@
         "polledBy": "Polled by",
         "lastReading": "Last reading",
         "standby_one": "{{count}} standby",
-        "standby_other": "{{count}} standby"
+        "standby_other": "{{count}} standby",
+        "request": "Request telemetry",
+        "requesting": "Requesting…",
+        "requestIntro": "Ask Beacon to have this repeater polled for battery and radio stats by a volunteer observer that can hear it.",
+        "guestPassword": "Guest password (optional)",
+        "passwordNotice": "The guest password is shared with volunteer observers so they can ask this repeater for its stats. Never enter an admin password.",
+        "used": "{{used}} of {{limit}} requests used",
+        "limitReached": "You have used all of your requests. Remove one in your profile to ask for another.",
+        "requested": "Telemetry requested",
+        "manage": "Manage in profile"
       }
     },
     "nodes": {
@@ -1202,6 +1211,49 @@
           "confirm": "Delete my account",
           "deleting": "Deleting…",
           "cancel": "Cancel"
+        }
+      },
+      "requests": {
+        "title": "Telemetry requests",
+        "count": "{{used}} of {{limit}}",
+        "loading": "Loading requests…",
+        "empty": "You have not asked for any telemetry yet. Open a repeater in the Nodes tab and choose Request telemetry.",
+        "status": {
+          "waiting": "Waiting for an observer that can reach it",
+          "active": "Being polled",
+          "login_failed": "The repeater refused the password",
+          "admin_stopped": "Stopped: that password gave admin access and was deleted",
+          "disabled": "Paused: the repeater has not been heard recently"
+        },
+        "polledBy": "Polled by",
+        "noObserver": "no observer yet",
+        "lastReading": "Last reading",
+        "never": "none yet",
+        "passwordSet": "Password set",
+        "noPassword": "No password",
+        "changePassword": "Change password",
+        "changePasswordNamed": "Change password for {{name}}",
+        "newPassword": "New guest password",
+        "passwordHint": "Leave empty to remove the password.",
+        "notice": "The guest password is shared with volunteer observers so they can ask this repeater for its stats. Never enter an admin password.",
+        "savePassword": "Save password",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "reenable": "Re-enable",
+        "reenableNamed": "Re-enable {{name}}",
+        "enabling": "Enabling…",
+        "remove": "Remove",
+        "removeNamed": "Remove {{name}}",
+        "removeAsk": "Stop requesting telemetry for {{name}}?",
+        "removeYes": "Yes, remove",
+        "removing": "Removing…",
+        "errors": {
+          "request_limit": "You have used all of your telemetry requests.",
+          "already_requested": "You already asked for this repeater.",
+          "not_a_repeater": "Only repeaters and room servers can be polled.",
+          "password_invalid": "The password must be 1 to 15 characters.",
+          "no_password_blocked": "This repeater gives admin access without a password, so it cannot be polled this way",
+          "requests_disabled": "Telemetry requests are not enabled on this server."
         }
       }
     }

@@ -24,3 +24,14 @@ describe("account views stay out of the eager bundle", () => {
     }
   });
 });
+
+describe("the request block stays eager-safe", () => {
+  const imports = (p: string) => read(p).split("\n").filter((l) => /^\s*(import|export)\b.*\bfrom\b/.test(l));
+  it("RequestTelemetry imports no chart code", () => {
+    expect(imports("features/nodes/RequestTelemetry.tsx").filter((l) => /echarts|stats\/|NodeTelemetrySection/.test(l))).toEqual([]);
+  });
+  it("the lazy chart section does not import the block, the panel hands it in", () => {
+    expect(imports("features/nodes/NodeTelemetrySection.tsx").filter((l) => /RequestTelemetry/.test(l))).toEqual([]);
+    expect(read("features/nodes/NodeDetailPanel.tsx")).toMatch(/import \{ RequestTelemetry \}/);
+  });
+});

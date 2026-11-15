@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TextField, type TextFieldProps } from "./TextField";
 
 export type PasswordFieldProps = Omit<TextFieldProps, "type" | "trailing" | "autoComplete"> & {
-  autoComplete: "current-password" | "new-password";
+  autoComplete: "current-password" | "new-password" | "off";
 };
 
 export function PasswordField(props: PasswordFieldProps) {

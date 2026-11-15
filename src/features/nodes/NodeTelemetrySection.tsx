@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Section } from "../../components/DetailPanel";
 import { Timestamp } from "../../components/Timestamp";
@@ -19,7 +19,7 @@ const RANGES: { value: NodeTelemetryRange; key: "24h" | "7d" | "30d" }[] = [
 
 // Lazy chunk: the only node-panel code that pulls in ECharts. The panel mounts it only for a
 // repeater or room server on a server with polling on.
-export default function NodeTelemetrySection({ node, onViewObserver }: { node: Node; onViewObserver?: (observerId: string) => void }) {
+export default function NodeTelemetrySection({ node, onViewObserver, extra }: { node: Node; onViewObserver?: (observerId: string) => void; extra?: ReactNode }) {
   const { t } = useTranslation();
   const colors = useChartColors();
   const [range, setRange] = useState<NodeTelemetryRange>("168h");
@@ -47,17 +47,22 @@ export default function NodeTelemetrySection({ node, onViewObserver }: { node: N
   if (hasData && drawn && data !== shown) setShown(data!);
   const seenData = shown !== null;
 
+  // The request block lives here so it shares the Telemetry heading; with nothing else to show it stands alone.
+  const extraBlock = extra ? <div className="mt-3 border-t border-border-subtle pt-2">{extra}</div> : null;
+  const bare = extra ? <Section title={t("nodeDetail.telemetry.title")}>{extra}</Section> : null;
+
   // No route on this server, or the first load failed: nothing to show and nothing to apologise for.
-  if (telemetry.unsupported || (telemetry.isError && !seenData)) return null;
+  if (telemetry.unsupported || (telemetry.isError && !seenData)) return bare;
 
   const poller = polling.data?.poller ?? null;
-  if (!hasData && !poller && !seenData) return null;
+  if (!hasData && !poller && !seenData) return bare;
 
   const polled = !!(data?.polled || polling.data?.polled || seenData);
   if (!hasData && !polled) {
     return (
       <Section title={t("nodeDetail.telemetry.title")}>
         <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.telemetry.waiting", { name: poller!.name })}</div>
+        {extraBlock}
       </Section>
     );
   }
@@ -113,6 +118,7 @@ export default function NodeTelemetrySection({ node, onViewObserver }: { node: N
         )}
         {standbys > 0 && <div>{t("nodeDetail.telemetry.standby", { count: standbys })}</div>}
       </div>
+      {extraBlock}
     </Section>
   );
 }

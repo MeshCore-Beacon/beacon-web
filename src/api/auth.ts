@@ -1,7 +1,7 @@
 import { API_BASE } from "../lib/constants";
 import { parseRetryAfter } from "./rate-limit";
 import type {
-  AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, UserResponse, VerifyStatus,
+  AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, TelemetryRequest, TelemetryRequestList, TelemetryRequestPatch, UserResponse, VerifyStatus,
 } from "../features/account/types";
 import type { PutAtlas, ServerAtlas } from "../features/atlas/atlasSync";
 
@@ -73,4 +73,13 @@ export const me = {
   endOtherSessions: () => authRequest<void>("DELETE", "/me/sessions"),
   atlas: (signal?: AbortSignal) => authRequest<ServerAtlas>("GET", "/me/atlas", undefined, signal),
   putAtlas: (body: PutAtlas) => authRequest<ServerAtlas>("PUT", "/me/atlas", body),
+};
+
+export const requests = {
+  list: (signal?: AbortSignal) => authRequest<TelemetryRequestList>("GET", "/me/telemetry-requests", undefined, signal),
+  create: (nodeId: string, password?: string) =>
+    authRequest<TelemetryRequest>("POST", "/me/telemetry-requests", password ? { nodeId, password } : { nodeId }),
+  update: (id: string, patch: TelemetryRequestPatch) =>
+    authRequest<TelemetryRequest>("PATCH", `/me/telemetry-requests/${encodeURIComponent(id)}`, patch),
+  remove: (id: string) => authRequest<void>("DELETE", `/me/telemetry-requests/${encodeURIComponent(id)}`),
 };

@@ -304,7 +304,16 @@
         "polledBy": "Interrogé par",
         "lastReading": "Dernière mesure",
         "standby_one": "{{count}} en réserve",
-        "standby_other": "{{count}} en réserve"
+        "standby_other": "{{count}} en réserve",
+        "request": "Demander la télémétrie",
+        "requesting": "Envoi…",
+        "requestIntro": "Demandez à Beacon de faire interroger ce répéteur pour sa batterie et ses statistiques radio par un observateur bénévole qui l’entend.",
+        "guestPassword": "Mot de passe invité (facultatif)",
+        "passwordNotice": "Le mot de passe invité est partagé avec des observateurs bénévoles pour qu’ils puissent demander ses statistiques à ce répéteur. Ne saisissez jamais un mot de passe administrateur.",
+        "used": "{{used}} demandes utilisées sur {{limit}}",
+        "limitReached": "Vous avez utilisé toutes vos demandes. Retirez-en une dans votre profil pour en faire une autre.",
+        "requested": "Télémétrie demandée",
+        "manage": "Gérer dans le profil"
       }
     },
     "nodes": {
@@ -1211,6 +1220,49 @@
           "confirm": "Supprimer mon compte",
           "deleting": "Suppression…",
           "cancel": "Annuler"
+        }
+      },
+      "requests": {
+        "title": "Demandes de télémétrie",
+        "count": "{{used}} sur {{limit}}",
+        "loading": "Chargement des demandes…",
+        "empty": "Vous n’avez encore demandé aucune télémétrie. Ouvrez un répéteur dans l’onglet Nœuds et choisissez Demander la télémétrie.",
+        "status": {
+          "waiting": "En attente d’un observateur qui puisse l’atteindre",
+          "active": "Interrogé",
+          "login_failed": "Le répéteur a refusé le mot de passe",
+          "admin_stopped": "Arrêté : ce mot de passe donnait un accès administrateur et a été supprimé",
+          "disabled": "En pause : le répéteur n’a pas été entendu récemment"
+        },
+        "polledBy": "Interrogé par",
+        "noObserver": "aucun observateur pour l’instant",
+        "lastReading": "Dernière mesure",
+        "never": "aucune pour l’instant",
+        "passwordSet": "Mot de passe défini",
+        "noPassword": "Pas de mot de passe",
+        "changePassword": "Changer le mot de passe",
+        "changePasswordNamed": "Changer le mot de passe de {{name}}",
+        "newPassword": "Nouveau mot de passe invité",
+        "passwordHint": "Laissez vide pour supprimer le mot de passe.",
+        "notice": "Le mot de passe invité est partagé avec des observateurs bénévoles pour qu’ils puissent demander ses statistiques à ce répéteur. Ne saisissez jamais un mot de passe administrateur.",
+        "savePassword": "Enregistrer le mot de passe",
+        "saving": "Enregistrement…",
+        "cancel": "Annuler",
+        "reenable": "Réactiver",
+        "reenableNamed": "Réactiver {{name}}",
+        "enabling": "Réactivation…",
+        "remove": "Retirer",
+        "removeNamed": "Retirer {{name}}",
+        "removeAsk": "Arrêter de demander la télémétrie de {{name}} ?",
+        "removeYes": "Oui, retirer",
+        "removing": "Retrait…",
+        "errors": {
+          "request_limit": "Vous avez utilisé toutes vos demandes de télémétrie.",
+          "already_requested": "Vous avez déjà fait une demande pour ce répéteur.",
+          "not_a_repeater": "Seuls les répéteurs et les serveurs de salon peuvent être interrogés.",
+          "password_invalid": "Le mot de passe doit comporter de 1 à 15 caractères.",
+          "no_password_blocked": "Ce répéteur donne un accès administrateur sans mot de passe, il ne peut donc pas être interrogé de cette façon",
+          "requests_disabled": "Les demandes de télémétrie ne sont pas activées sur ce serveur."
         }
       }
     }
