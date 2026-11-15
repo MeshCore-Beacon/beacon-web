@@ -46,6 +46,17 @@ describe("sign in", () => {
     expect(search().get("tab")).toBe("Nodes");
   });
 
+  it("keeps the profile open when signing in from it", async () => {
+    vi.mocked(auth.login).mockResolvedValue({ user });
+    renderAt("?tab=Nodes&view=profile", <AccountViews />);
+    await screen.findByRole("heading", { name: "Sign in" });
+    type("Username or email", "ridge");
+    type("Password", "correct horse battery");
+    click("Sign in");
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull());
+    expect(search().get("view")).toBe("profile");
+  });
+
   it("shows one generic line for invalid_credentials", async () => {
     vi.mocked(auth.login).mockRejectedValue(authError("invalid_credentials", 401));
     renderAt("?view=signin", <AccountViews />);
@@ -252,7 +263,17 @@ describe("reset", () => {
     type("New password", "another long passphrase");
     click("Set password");
     await waitFor(() => expect(screen.getByLabelText("New password")).toHaveAttribute("aria-invalid", "true"));
-    expect(search().get("token")).toBe("rt");
+    expect(search().has("token")).toBe(false);
+    type("New password", "a better long passphrase");
+    click("Set password");
+    await waitFor(() => expect(auth.confirmReset).toHaveBeenLastCalledWith("rt", "a better long passphrase"));
+  });
+
+  it("moves the token out of the URL as soon as the view opens", async () => {
+    renderAt("?view=reset&token=rt", <AccountViews />);
+    await screen.findByRole("heading", { name: "Reset your password" });
+    expect(search().has("token")).toBe(false);
+    expect(search().get("view")).toBe("reset");
   });
 
   it("token_invalid offers a new link", async () => {

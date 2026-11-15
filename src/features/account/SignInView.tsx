@@ -21,7 +21,7 @@ export function SignInView() {
   const queryClient = useQueryClient();
   const features = useFeatures();
   const { user, loading } = useSession();
-  const { open, close } = useView();
+  const { view, open, close } = useView();
   const [params] = useSearchParams();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -38,10 +38,10 @@ export function SignInView() {
     },
   });
 
-  // Covers a login here and a visit while already signed in; the bridge keeps the view for its confirmation.
+  // Covers a login here and a visit while already signed in; embedded in the profile it stays there; the bridge keeps the view for its confirmation.
   useEffect(() => {
-    if (user && !bridge) close();
-  }, [user, bridge, close]);
+    if (user && !bridge && view === "signin") close();
+  }, [user, bridge, view, close]);
 
   if (loading) return <div className="mx-auto w-full max-w-[420px] px-4 py-8"><FormStatus>{t("common.loading")}</FormStatus></div>;
 

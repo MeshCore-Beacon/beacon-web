@@ -50,6 +50,28 @@ describe("AccountEntry", () => {
     expect(search().has("view")).toBe(false);
   });
 
+  it("keeps the account and shows an error when sign out fails", async () => {
+    mocks.signedIn = user;
+    vi.mocked(auth.logout).mockRejectedValue(authError("generic", 503));
+    const { client } = renderAt("?view=profile", <AccountEntry />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ridge Walker/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/sign out/i);
+    expect(client.getQueryData(["me"])).toEqual(user);
+    expect(screen.getByRole("button", { name: /Ridge Walker/ })).toBeInTheDocument();
+    expect(search().get("view")).toBe("profile");
+  });
+
+  it("counts a 401 from logout as signed out", async () => {
+    mocks.signedIn = user;
+    vi.mocked(auth.logout).mockRejectedValue(authError("not_signed_in", 401));
+    const { client } = renderAt("?view=profile", <AccountEntry />);
+    fireEvent.click(await screen.findByRole("button", { name: /Ridge Walker/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    await waitFor(() => expect(client.getQueryData(["me"])).toBeNull());
+    expect(search().has("view")).toBe(false);
+  });
+
   it("renders nothing when accounts are off", () => {
     mocks.features = { ...mocks.features, accounts: "off" };
     const { container } = renderAt("", <AccountEntry />);

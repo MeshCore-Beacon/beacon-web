@@ -1077,7 +1077,8 @@
       "entry": {
         "signIn": "Sign in",
         "profile": "Profile",
-        "signOut": "Sign out"
+        "signOut": "Sign out",
+        "signOutFailed": "Could not sign out. Try again."
       },
       "fields": {
         "login": "Username or email",

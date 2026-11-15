@@ -1084,7 +1084,8 @@
       "entry": {
         "signIn": "Se connecter",
         "profile": "Profil",
-        "signOut": "Se déconnecter"
+        "signOut": "Se déconnecter",
+        "signOutFailed": "Impossible de se déconnecter. Réessayez."
       },
       "fields": {
         "login": "Nom d’utilisateur ou courriel",

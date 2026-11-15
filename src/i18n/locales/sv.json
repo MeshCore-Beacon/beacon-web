@@ -964,7 +964,8 @@
       "entry": {
         "signIn": "Logga in",
         "profile": "Profil",
-        "signOut": "Logga ut"
+        "signOut": "Logga ut",
+        "signOutFailed": "Det gick inte att logga ut. Försök igen."
       },
       "fields": {
         "login": "Användarnamn eller e-post",

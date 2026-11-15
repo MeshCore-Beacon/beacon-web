@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMutation } from "@tanstack/react-query";
@@ -13,8 +13,13 @@ import { useClearToken, useView } from "./useView";
 
 export function ResetView() {
   const [params] = useSearchParams();
-  // Held in state so removing it from the URL after use does not flip the view into request mode.
+  // Held in state so removing it from the URL does not flip the view into request mode.
   const [token, setToken] = useState(() => params.get("token"));
+  const clearToken = useClearToken();
+  // The live token leaves the URL (and so history) at once; retries use the copy in memory.
+  useEffect(() => {
+    if (token) clearToken();
+  }, [token, clearToken]);
   return token ? <ConfirmReset token={token} onNewLink={() => setToken(null)} /> : <RequestReset />;
 }
 
@@ -48,14 +53,10 @@ function RequestReset() {
 function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => void }) {
   const { t } = useTranslation();
   const { open } = useView();
-  const clearToken = useClearToken();
   const [password, setPassword] = useState("");
   const confirm = useMutation({
     mutationFn: () => auth.confirmReset(token, password),
-    onSuccess: () => {
-      setPassword("");
-      clearToken();
-    },
+    onSuccess: () => setPassword(""),
   });
 
   const code = confirm.isError ? errorCode(confirm.error) : undefined;
@@ -71,7 +72,7 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
       ) : code === "token_invalid" ? (
         <>
           <FormStatus kind="error">{message}</FormStatus>
-          <LinkButton onClick={() => { clearToken(); onNewLink(); }}>{t("account.reset.newLink")}</LinkButton>
+          <LinkButton onClick={onNewLink}>{t("account.reset.newLink")}</LinkButton>
         </>
       ) : (
         <form

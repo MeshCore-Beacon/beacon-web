@@ -6,13 +6,27 @@ import type { User } from "../features/account/types";
 
 export const SESSION_KEY = ["me"] as const;
 
+// Private account queries all sit under ["me", ...]; the session itself is exactly ["me"].
+const isPrivate = (key: readonly unknown[]) => key[0] === "me" && key.length > 1;
+
+// A session change wipes what the last account cached and cancels the old /me, so a late answer cannot undo it.
+function replaceSession(queryClient: QueryClient, value: User | null): void {
+  void queryClient.cancelQueries({ queryKey: SESSION_KEY, exact: true });
+  void queryClient.cancelQueries({ predicate: (q) => isPrivate(q.queryKey) });
+  queryClient.removeQueries({ predicate: (q) => isPrivate(q.queryKey) });
+  queryClient.setQueryData(SESSION_KEY, value);
+}
+
+// The same user (a display name edit) keeps their cached data.
 export function setSessionUser(queryClient: QueryClient, user: User): void {
-  queryClient.setQueryData(SESSION_KEY, user);
+  const current = queryClient.getQueryData<User | null>(SESSION_KEY);
+  if (current?.id === user.id) queryClient.setQueryData(SESSION_KEY, user);
+  else replaceSession(queryClient, user);
 }
 
 // null (not removal) so a signed-out page does not refetch /me.
 export function clearSession(queryClient: QueryClient): void {
-  queryClient.setQueryData(SESSION_KEY, null);
+  replaceSession(queryClient, null);
 }
 
 export function useSession(): { user: User | null; loading: boolean; enabled: boolean; refresh(): void } {

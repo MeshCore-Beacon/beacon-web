@@ -78,4 +78,56 @@ describe("useSession", () => {
     act(() => result.current.refresh());
     await waitFor(() => expect(meCalls()).toHaveLength(2));
   });
+
+  it("keeps a logout when an older /me answers afterwards", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    calls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/info")) return res(200, { serverVersion: "2.3.0", features: { accounts: "local" } });
+      await gate;
+      return res(200, { user });
+    }));
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(client.getQueryState(["me"])?.fetchStatus).toBe("fetching"));
+    act(() => clearSession(client));
+    release();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(client.getQueryData(["me"])).toBeNull();
+    expect(result.current.user).toBeNull();
+  });
+
+  it("keeps a login when an older signed-out /me answers afterwards", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.endsWith("/info")) return res(200, { serverVersion: "2.3.0", features: { accounts: "local" } });
+      await gate;
+      return res(401, { error: { code: "not_signed_in", message: "no" } });
+    }));
+    renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(client.getQueryState(["me"])?.fetchStatus).toBe("fetching"));
+    act(() => setSessionUser(client, user));
+    release();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(client.getQueryData(["me"])).toEqual(user);
+  });
+
+  it("drops every private query when the session changes, but not public ones", async () => {
+    stub("local", 200, { user });
+    client.setQueryData(["me", "sessions"], { sessions: [{ id: "a" }] });
+    client.setQueryData(["me", "alerts"], []);
+    client.setQueryData(["me", "telemetry-requests"], []);
+    client.setQueryData(["nodes"], [1]);
+    act(() => setSessionUser(client, { ...user, id: "2" }));
+    expect(client.getQueryData(["me", "sessions"])).toBeUndefined();
+    expect(client.getQueryData(["me", "alerts"])).toBeUndefined();
+    expect(client.getQueryData(["me", "telemetry-requests"])).toBeUndefined();
+    expect(client.getQueryData(["nodes"])).toEqual([1]);
+    expect(client.getQueryData(["me"])).toEqual({ ...user, id: "2" });
+    client.setQueryData(["me", "sessions"], { sessions: [] });
+    act(() => clearSession(client));
+    expect(client.getQueryData(["me", "sessions"])).toBeUndefined();
+    expect(client.getQueryData(["me"])).toBeNull();
+  });
 });
