@@ -478,3 +478,35 @@ describe("a failed write followed by a reload", () => {
     expect(me.putAtlas).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("a save response while an edit is queued", () => {
+  async function scenario(responseRevision: number) {
+    localStorage.setItem(syncedMarker("user-1"), "1");
+    vi.mocked(me.atlas).mockResolvedValue(document([serverNode(1)], 4));
+    const { result } = mount();
+    await waitFor(() => expect(result.current.synced).toBe(true));
+    let release!: (d: ServerAtlas) => void;
+    vi.mocked(me.putAtlas).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+    act(() => result.current.update((v) => ({ ...v, pins: [...v.pins, nodePin(2)] })));
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(1));
+    act(() => result.current.update((v) => ({ ...v, range: "3d" })));
+    // Another device adds N3 after our save committed revision 5.
+    const other = document([serverNode(1), serverNode(2), serverNode(3)], 6);
+    vi.mocked(me.putAtlas).mockRejectedValueOnce(new AuthError(409, "atlas_conflict", "stale", undefined, { current: other }));
+    await act(async () => release(document([serverNode(1), serverNode(2)], responseRevision)));
+    await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(2));
+    return result;
+  }
+
+  it("sends the committed revision next, so another device's pin meets a conflict", async () => {
+    const result = await scenario(5);
+    expect(putBodies()[1]!.baseRevision).toBe(5);
+    await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N1", "N2", "N3"]));
+  });
+
+  it("does not trust a response revision that is not the next one", async () => {
+    const result = await scenario(6);
+    expect(putBodies()[1]!.baseRevision).toBe(5);
+    await waitFor(() => expect(names(result.current.saved.pins)).toEqual(["N1", "N2", "N3"]));
+  });
+});

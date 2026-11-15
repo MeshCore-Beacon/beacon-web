@@ -79,7 +79,9 @@ export function useSyncedAtlas() {
           if (rev === null) { queued.current = true; return; }
           const doc = await me.putAtlas(toPut(baseRef.current.latest(), keys.current, rev));
           if (generation.current !== mine) return;
-          if (queued.current) revision.current = doc.revision;
+          // A save commits exactly rev + 1. Whatever the answer says, the next save builds on that, so a
+          // newer copy from another device meets a conflict instead of being overwritten.
+          if (queued.current) revision.current = rev + 1;
           else adopt(doc);
           if (markWhenSent.current) {
             markSynced(markWhenSent.current);
