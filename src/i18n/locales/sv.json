@@ -57,6 +57,8 @@
       "copyLink": "Kopiera länk",
       "copied": "Kopierad",
       "copyFailed": "Kopieringen misslyckades",
+      "showPassword": "Visa lösenord",
+      "hidePassword": "Dölj lösenord",
       "filters": "Filter",
       "closeFilters": "Stäng filter",
       "clearAll": "Rensa alla",

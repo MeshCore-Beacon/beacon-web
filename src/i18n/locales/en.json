@@ -58,6 +58,8 @@
       "copyLink": "Copy link",
       "copied": "Copied",
       "copyFailed": "Copy failed",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
       "filters": "Filters",
       "closeFilters": "Close filters",
       "clearAll": "Clear all",

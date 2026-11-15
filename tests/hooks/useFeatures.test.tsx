@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useFeatures } from "../../src/hooks/useFeatures";
 
-const OFF = { polling: false, accounts: "off", telemetryRequests: false, alerts: false };
+const OFF = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false };
 let client: QueryClient;
 const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 const stubInfo = (body: unknown, ok = true) =>
@@ -35,7 +35,7 @@ describe("useFeatures", () => {
   });
 
   it("returns the server's values when present", async () => {
-    const features = { polling: true, accounts: "local", telemetryRequests: true, alerts: false };
+    const features = { polling: true, accounts: "local", registration: true, telemetryRequests: true, alerts: false };
     stubInfo({ serverVersion: "2.3.0", features });
     const { result } = renderHook(() => useFeatures(), { wrapper });
     await waitFor(() => expect(result.current.polling).toBe(true));
