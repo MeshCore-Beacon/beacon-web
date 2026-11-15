@@ -16,7 +16,7 @@ export function ResendForm({ email, label, variant = "outline", onSent }: { emai
 
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (address) resend.mutate();
@@ -25,8 +25,8 @@ export function ResendForm({ email, label, variant = "outline", onSent }: { emai
       {email === undefined && (
         <TextField roomy label={t("account.fields.email")} name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="send" value={typed} onChange={setTyped} />
       )}
+      {resend.isError && <FormStatus kind="error">{authErrorText(t, resend.error)}</FormStatus>}
       <FormButton size="lg" variant={variant} busy={resend.isPending} disabled={!address}>{label}</FormButton>
-      <div className="min-h-5">{resend.isError && <FormStatus kind="error">{authErrorText(t, resend.error)}</FormStatus>}</div>
     </form>
   );
 }

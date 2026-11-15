@@ -47,16 +47,18 @@ export function VerifyView() {
   return (
     <AccountLayout title={t("account.verify.title")}>
       {state.kind === "verified" ? (
-        <>
+        <div className="flex flex-col gap-4">
           <FormStatus>{t("account.verify.success")}</FormStatus>
           <FormButton type="button" variant="solid" size="lg" onClick={() => open("signin")}>{t("account.verify.signIn")}</FormButton>
-        </>
+        </div>
       ) : invalid ? (
-        <>
-          <FormStatus kind="error">{t("account.errors.token_invalid")}</FormStatus>
-          <p className="text-sm text-text-muted">{t("account.verify.newLinkHelp")}</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <FormStatus kind="error">{t("account.errors.token_invalid")}</FormStatus>
+            <p className="text-sm text-text-muted">{t("account.verify.newLinkHelp")}</p>
+          </div>
           <ResendForm variant="solid" label={t("account.verify.newLink")} onSent={setSentTo} />
-        </>
+        </div>
       ) : state.kind === "failed" ? (
         <FormStatus kind="error">{authErrorText(t, state.error)}</FormStatus>
       ) : (

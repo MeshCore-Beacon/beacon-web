@@ -1006,7 +1006,7 @@
         "submit": "Skapa konto",
         "submitting": "Skapar…",
         "usernameHint": "3 till 30 bokstäver, siffror, punkter, bindestreck eller understreck.",
-        "passwordHint": "Minst 12 tecken, högst 128 byte.",
+        "passwordHint": "Minst 12 tecken.",
         "havePrompt": "Har du redan ett konto?",
         "signInLink": "Logga in",
         "closed": "Registreringen är stängd på den här servern."
@@ -1054,6 +1054,7 @@
         "whenSeconds_other": "om {{count}} sekunder",
         "whenMinutes_one": "om {{count}} minut",
         "whenMinutes_other": "om {{count}} minuter",
+        "passwordTooLong": "Lösenordet är för långt.",
         "weak_password": "Lösenordet godtas inte: {{reason}}",
         "username_taken": "Användarnamnet är upptaget.",
         "invalid_input": "Kontrollera det du skrev och försök igen.",

@@ -1126,7 +1126,7 @@
         "submit": "Créer le compte",
         "submitting": "Création…",
         "usernameHint": "De 3 à 30 lettres, chiffres, points, tirets ou tirets bas.",
-        "passwordHint": "Au moins 12 caractères, au plus 128 octets.",
+        "passwordHint": "Au moins 12 caractères.",
         "havePrompt": "Vous avez déjà un compte ?",
         "signInLink": "Se connecter",
         "closed": "Les inscriptions sont fermées sur ce serveur."
@@ -1176,6 +1176,7 @@
         "whenMinutes_one": "dans {{count}} minute",
         "whenMinutes_many": "dans {{count}} minutes",
         "whenMinutes_other": "dans {{count}} minutes",
+        "passwordTooLong": "Ce mot de passe est trop long.",
         "weak_password": "Ce mot de passe n’est pas accepté : {{reason}}",
         "username_taken": "Ce nom d’utilisateur est déjà pris.",
         "invalid_input": "Vérifiez votre saisie et réessayez.",

@@ -25,8 +25,10 @@ export function PortalSignIn() {
   const start = () => navigateTo(`${API_BASE}/auth/portal/start?return=${encodeURIComponent(returnPath(pathname, search))}`);
   return (
     <AccountLayout title={t("account.signin.title")} description={t("account.portal.intro")}>
-      {params.get("error") === "portal" && <FormStatus kind="error">{t("account.portal.failed")}</FormStatus>}
-      <FormButton type="button" variant="solid" size="lg" onClick={start}>{t("account.portal.button")}</FormButton>
+      <div className="flex flex-col gap-4">
+        {params.get("error") === "portal" && <FormStatus kind="error">{t("account.portal.failed")}</FormStatus>}
+        <FormButton type="button" variant="solid" size="lg" onClick={start}>{t("account.portal.button")}</FormButton>
+      </div>
     </AccountLayout>
   );
 }

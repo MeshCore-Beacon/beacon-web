@@ -30,8 +30,7 @@ export function AppBridge({ user, codeChallenge, state }: { user: User; codeChal
   });
 
   return (
-    <AccountLayout title={t("account.bridge.title")}>
-      <p className="text-sm text-text-normal">{t("account.bridge.confirm")}</p>
+    <AccountLayout title={t("account.bridge.title")} description={t("account.bridge.confirm")}>
       <div className="flex flex-col gap-0.5 rounded border border-border bg-bg-base px-3 py-2 font-mono">
         <span className="text-sm font-semibold text-text-bright">{user.displayName}</span>
         <span className="text-xs text-text-muted">@{user.username}</span>
@@ -39,19 +38,19 @@ export function AppBridge({ user, codeChallenge, state }: { user: User; codeChal
       {go.isSuccess ? (
         <FormStatus>{t("account.bridge.done")}</FormStatus>
       ) : (
-        <>
+        <div className="flex flex-col gap-4">
           <p className="text-sm font-semibold text-text-bright">{t("account.bridge.warning")}</p>
+          {go.isError && (
+            <FormStatus kind="error">
+              {go.error instanceof BadRedirectError ? t("account.bridge.badRedirect") : authErrorText(t, go.error)}
+            </FormStatus>
+          )}
           {/* Cancel is the default focus and the primary action; Continue is never focused on load. */}
           <div className="flex flex-col gap-3 sm:flex-row">
             <FormButton type="button" variant="solid" size="lg" autoFocus disabled={go.isPending} onClick={close}>{t("account.bridge.cancel")}</FormButton>
             <FormButton type="button" variant="outline" size="lg" busy={go.isPending} busyLabel={t("account.bridge.continuing")} onClick={() => go.mutate()}>{t("account.bridge.continue")}</FormButton>
           </div>
-        </>
-      )}
-      {go.isError && (
-        <FormStatus kind="error">
-          {go.error instanceof BadRedirectError ? t("account.bridge.badRedirect") : authErrorText(t, go.error)}
-        </FormStatus>
+        </div>
       )}
     </AccountLayout>
   );

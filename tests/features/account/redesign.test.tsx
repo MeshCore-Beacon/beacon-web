@@ -168,3 +168,37 @@ describe("check your email", () => {
     expect(auth.resendVerification).not.toHaveBeenCalled();
   });
 });
+
+describe("no reserved error space", () => {
+  it("sign in has no alert element until it fails", async () => {
+    renderAt("?view=signin", <AccountViews />);
+    await screen.findByLabelText("Username or email");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector(".min-h-5")).toBeNull();
+  });
+
+  it("Check your email has no status or alert before a resend", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter><CheckEmail email="a@example.org" kind="verify" onDifferent={() => {}} onSignIn={() => {}} /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(document.querySelector(".min-h-5")).toBeNull();
+  });
+});
+
+describe("password hint and length error", () => {
+  it("shows the short hint, then a too-long error in place of it", async () => {
+    renderAt("?view=register", <AccountViews />);
+    const field = await screen.findByLabelText("Password");
+    expect(screen.getByText("At least 12 characters.")).toBeInTheDocument();
+    fireEvent.change(field, { target: { value: "a".repeat(129) } });
+    expect(screen.getByRole("alert")).toHaveTextContent("That password is too long.");
+    expect(screen.queryByText("At least 12 characters.")).toBeNull();
+    fireEvent.change(field, { target: { value: "a".repeat(128) } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("At least 12 characters.")).toBeInTheDocument();
+  });
+});

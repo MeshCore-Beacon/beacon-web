@@ -1119,7 +1119,7 @@
         "submit": "Create account",
         "submitting": "Creating…",
         "usernameHint": "3 to 30 letters, numbers, dots, dashes or underscores.",
-        "passwordHint": "At least 12 characters, at most 128 bytes.",
+        "passwordHint": "At least 12 characters.",
         "havePrompt": "Already have an account?",
         "signInLink": "Sign in",
         "closed": "Registration is closed on this server."
@@ -1167,6 +1167,7 @@
         "whenSeconds_other": "in {{count}} seconds",
         "whenMinutes_one": "in {{count}} minute",
         "whenMinutes_other": "in {{count}} minutes",
+        "passwordTooLong": "That password is too long.",
         "weak_password": "That password is not accepted: {{reason}}",
         "username_taken": "That username is taken.",
         "invalid_input": "Check what you entered and try again.",

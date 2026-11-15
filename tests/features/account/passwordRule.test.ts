@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newPasswordOk } from "../../../src/features/account/passwordRule";
+import { newPasswordOk, passwordTooLong } from "../../../src/features/account/passwordRule";
 
 describe("newPasswordOk", () => {
   it("needs 12 characters, counted as characters and after NFC", () => {
@@ -17,5 +17,13 @@ describe("newPasswordOk", () => {
     expect(newPasswordOk("a".repeat(129))).toBe(false);
     expect(newPasswordOk("é".repeat(64))).toBe(true); // 128 bytes
     expect(newPasswordOk("é".repeat(65))).toBe(false);
+  });
+});
+
+describe("passwordTooLong", () => {
+  it("is true only past 128 bytes", () => {
+    expect(passwordTooLong("a".repeat(128))).toBe(false);
+    expect(passwordTooLong("a".repeat(129))).toBe(true);
+    expect(passwordTooLong("é".repeat(65))).toBe(true);
   });
 });

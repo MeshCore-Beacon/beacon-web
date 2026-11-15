@@ -77,11 +77,11 @@ export function SignInView() {
         }}
       >
         <TextField roomy label={t("account.fields.login")} name="login" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} enterKeyHint="next" value={login} onChange={setLogin} disabled={submit.isPending} />
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-1">
           <PasswordField roomy label={t("account.fields.password")} name="password" autoComplete="current-password" enterKeyHint="go" value={password} onChange={setPassword} disabled={submit.isPending} />
           <LinkButton onClick={() => open("reset")}>{t("account.signin.forgot")}</LinkButton>
         </div>
-        <div className="-my-1.5 min-h-5">{submit.isError && <FormStatus kind="error">{authErrorText(t, submit.error)}</FormStatus>}</div>
+        {submit.isError && <FormStatus kind="error">{authErrorText(t, submit.error)}</FormStatus>}
         <FormButton variant="solid" size="lg" busy={submit.isPending} busyLabel={t("account.signin.submitting")} disabled={!login.trim() || !password}>{t("account.signin.submit")}</FormButton>
       </form>
       {unverified && <ResendForm email={typedEmail} label={t("account.resend.button")} onSent={setSentTo} />}

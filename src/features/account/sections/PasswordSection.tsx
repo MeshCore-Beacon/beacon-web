@@ -6,7 +6,7 @@ import { useSecretSubmit } from "../../../hooks/useSessionMutation";
 import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
-import { newPasswordOk } from "../passwordRule";
+import { newPasswordOk, passwordTooLong } from "../passwordRule";
 import { ProfileSection } from "./ProfileSection";
 import { profileErrorText, SESSIONS_KEY, useSessionEnded } from "./useSessionEnded";
 
@@ -25,6 +25,7 @@ export function PasswordSection() {
     },
     onError: ended,
   });
+  const tooLong = passwordTooLong(next);
   return (
     <ProfileSection id="profile-password" title={t("account.profile.password.title")}>
       <form
@@ -35,7 +36,7 @@ export function PasswordSection() {
         }}
       >
         <PasswordField label={t("account.profile.currentPassword")} name="currentPassword" autoComplete="current-password" value={current} onChange={setCurrent} disabled={change.isPending} />
-        <PasswordField label={t("account.fields.newPassword")} name="newPassword" autoComplete="new-password" hint={t("account.register.passwordHint")} value={next} onChange={setNext} disabled={change.isPending} />
+        <PasswordField label={t("account.fields.newPassword")} name="newPassword" autoComplete="new-password" hint={tooLong ? undefined : t("account.register.passwordHint")} error={tooLong ? t("account.errors.passwordTooLong") : undefined} value={next} onChange={setNext} disabled={change.isPending} />
         <FormButton busy={change.isPending} busyLabel={t("account.profile.password.submitting")} disabled={!current || !newPasswordOk(next)} className="self-start">
           {t("account.profile.password.submit")}
         </FormButton>

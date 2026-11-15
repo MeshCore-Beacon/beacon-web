@@ -11,7 +11,7 @@ import { TextField } from "../../components/form/TextField";
 import { AccountLayout, LinkButton } from "./AccountLayout";
 import { CheckEmail } from "./CheckEmail";
 import { authErrorText, errorCode } from "./errors";
-import { newPasswordOk } from "./passwordRule";
+import { newPasswordOk, passwordTooLong } from "./passwordRule";
 import { linkToken, useClearToken, useView } from "./useView";
 
 export function ResetView() {
@@ -42,7 +42,7 @@ function RequestReset() {
         }}
       >
         <TextField roomy label={t("account.fields.email")} name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="send" value={email} onChange={setEmail} disabled={request.isPending} />
-        <div className="-my-1.5 min-h-5">{request.isError && <FormStatus kind="error">{authErrorText(t, request.error)}</FormStatus>}</div>
+        {request.isError && <FormStatus kind="error">{authErrorText(t, request.error)}</FormStatus>}
         <FormButton variant="solid" size="lg" busy={request.isPending} busyLabel={t("account.reset.sending")} disabled={!email.trim()}>{t("account.reset.send")}</FormButton>
       </form>
       <LinkButton onClick={() => open("signin")}>{t("account.reset.toSignIn")}</LinkButton>
@@ -58,21 +58,22 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
     onSuccess: () => setPassword(""),
   });
 
+  const tooLong = passwordTooLong(password);
   const code = confirm.isError ? errorCode(confirm.error) : undefined;
   const message = confirm.isError ? authErrorText(t, confirm.error) : undefined;
 
   return (
     <AccountLayout title={t("account.reset.title")} description={confirm.isSuccess || code === "token_invalid" ? undefined : t("account.reset.setIntro")}>
       {confirm.isSuccess ? (
-        <>
+        <div className="flex flex-col gap-4">
           <FormStatus>{t("account.reset.done")}</FormStatus>
           <FormButton type="button" variant="solid" size="lg" onClick={() => open("signin")}>{t("account.reset.signIn")}</FormButton>
-        </>
+        </div>
       ) : code === "token_invalid" ? (
-        <>
+        <div className="flex flex-col gap-4">
           <FormStatus kind="error">{message}</FormStatus>
           <FormButton type="button" variant="outline" size="lg" onClick={onNewLink}>{t("account.reset.newLink")}</FormButton>
-        </>
+        </div>
       ) : (
         <form
           className="flex flex-col gap-4"
@@ -81,8 +82,8 @@ function ConfirmReset({ token, onNewLink }: { token: string; onNewLink: () => vo
             confirm.mutate();
           }}
         >
-          <PasswordField roomy label={t("account.fields.newPassword")} name="new-password" autoComplete="new-password" enterKeyHint="go" value={password} onChange={setPassword} error={code === "weak_password" ? message : undefined} hint={t("account.register.passwordHint")} disabled={confirm.isPending} />
-          <div className="-my-1.5 min-h-5">{confirm.isError && code !== "weak_password" && <FormStatus kind="error">{message}</FormStatus>}</div>
+          <PasswordField roomy label={t("account.fields.newPassword")} name="new-password" autoComplete="new-password" enterKeyHint="go" value={password} onChange={setPassword} error={tooLong ? t("account.errors.passwordTooLong") : code === "weak_password" ? message : undefined} hint={tooLong ? undefined : t("account.register.passwordHint")} disabled={confirm.isPending} />
+          {confirm.isError && code !== "weak_password" && <FormStatus kind="error">{message}</FormStatus>}
           <FormButton variant="solid" size="lg" busy={confirm.isPending} busyLabel={t("account.reset.setting")} disabled={!newPasswordOk(password)}>{t("account.reset.set")}</FormButton>
         </form>
       )}

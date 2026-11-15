@@ -8,7 +8,7 @@ export function LinkButton({ onClick, children, inline }: { onClick: () => void;
     <button
       type="button"
       onClick={onClick}
-      className={`text-primary underline-offset-2 hover:text-text-bright hover:underline ${inline ? "inline" : "inline-flex min-h-11 items-center self-start text-sm"}`}
+      className={`text-primary underline-offset-2 hover:text-text-bright hover:underline ${inline ? "inline" : "-my-2 inline-flex min-h-11 items-center self-start text-sm"}`}
     >
       {children}
     </button>

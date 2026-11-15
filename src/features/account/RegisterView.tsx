@@ -10,7 +10,7 @@ import { TextField } from "../../components/form/TextField";
 import { AccountLayout, Divider, QuietLine } from "./AccountLayout";
 import { CheckEmail } from "./CheckEmail";
 import { authErrorText, errorCode } from "./errors";
-import { newPasswordOk } from "./passwordRule";
+import { newPasswordOk, passwordTooLong } from "./passwordRule";
 import { useView } from "./useView";
 
 type Field = "username" | "email" | "password";
@@ -54,6 +54,7 @@ export function RegisterView() {
     return <CheckEmail email={email.trim()} kind="verify" onDifferent={submit.reset} onSignIn={() => open("signin")} />;
   }
 
+  const tooLong = passwordTooLong(password);
   const failedField = submit.isError ? fieldFor(submit.error) : null;
   const message = submit.isError ? authErrorText(t, submit.error) : undefined;
   const fieldError = (f: Field) => (failedField === f ? message : undefined);
@@ -69,8 +70,8 @@ export function RegisterView() {
       >
         <TextField roomy label={t("account.fields.username")} name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} enterKeyHint="next" value={username} onChange={setUsername} error={fieldError("username")} hint={t("account.register.usernameHint")} disabled={submit.isPending} />
         <TextField roomy label={t("account.fields.email")} name="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} enterKeyHint="next" value={email} onChange={setEmail} error={fieldError("email")} disabled={submit.isPending} />
-        <PasswordField roomy label={t("account.fields.password")} name="password" autoComplete="new-password" enterKeyHint="go" value={password} onChange={setPassword} error={fieldError("password")} hint={t("account.register.passwordHint")} disabled={submit.isPending} />
-        <div className="-my-1.5 min-h-5">{submit.isError && !failedField && <FormStatus kind="error">{message}</FormStatus>}</div>
+        <PasswordField roomy label={t("account.fields.password")} name="password" autoComplete="new-password" enterKeyHint="go" value={password} onChange={setPassword} error={tooLong ? t("account.errors.passwordTooLong") : fieldError("password")} hint={tooLong ? undefined : t("account.register.passwordHint")} disabled={submit.isPending} />
+        {submit.isError && !failedField && <FormStatus kind="error">{message}</FormStatus>}
         <FormButton variant="solid" size="lg" busy={submit.isPending} busyLabel={t("account.register.submitting")} disabled={!username.trim() || !email.trim() || !newPasswordOk(password)}>{t("account.register.submit")}</FormButton>
       </form>
       {toSignIn}

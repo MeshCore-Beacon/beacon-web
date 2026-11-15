@@ -27,7 +27,9 @@ export function CheckEmail({ email, kind, onDifferent, onSignIn }: { email: stri
 
   return (
     <AccountLayout title={t("account.checkEmail.title")} description={t(kind === "reset" ? "account.checkEmail.resetSent" : "account.checkEmail.verifySent", { email })}>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
+        {resend.isSuccess && <FormStatus>{t("account.checkEmail.resent")}</FormStatus>}
+        {resend.isError && <FormStatus kind="error">{authErrorText(t, resend.error)}</FormStatus>}
         <FormButton
           type="button"
           variant="outline"
@@ -38,10 +40,6 @@ export function CheckEmail({ email, kind, onDifferent, onSignIn }: { email: stri
         >
           {left > 0 ? t("account.checkEmail.resendIn", { seconds: left }) : t("account.checkEmail.resend")}
         </FormButton>
-        <div className="min-h-5">
-          {resend.isSuccess && <FormStatus>{t("account.checkEmail.resent")}</FormStatus>}
-          {resend.isError && <FormStatus kind="error">{authErrorText(t, resend.error)}</FormStatus>}
-        </div>
       </div>
       <Divider />
       <div className="flex flex-wrap items-center justify-between gap-x-4">
