@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { auth } from "../../api/auth";
 import { useFeatures } from "../../hooks/useFeatures";
-import { setSessionUser, useSession } from "../../hooks/useSession";
+import { startSession, useSession } from "../../hooks/useSession";
+import { useSecretSubmit } from "../../hooks/useSessionMutation";
 import { FormButton } from "../../components/form/FormButton";
 import { FormStatus } from "../../components/form/FormStatus";
 import { PasswordField } from "../../components/form/PasswordField";
@@ -30,11 +31,10 @@ export function SignInView() {
   const challenge = params.get("code_challenge");
   const state = params.get("state");
 
-  const submit = useMutation({
-    mutationFn: () => auth.login(login.trim(), password),
+  const submit = useSecretSubmit(() => auth.login(login.trim(), password), {
     onSuccess: ({ user: signedIn }) => {
       setPassword("");
-      setSessionUser(queryClient, signedIn);
+      startSession(queryClient, signedIn);
     },
   });
 

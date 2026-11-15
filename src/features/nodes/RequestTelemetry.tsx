@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "../../hooks/useSession";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSecretSubmit } from "../../hooks/useSessionMutation";
 import { requests } from "../../api/auth";
 import { FormButton } from "../../components/form/FormButton";
 import { FormStatus } from "../../components/form/FormStatus";
@@ -22,13 +24,18 @@ function ManageLink() {
 
 // Eager: no chart imports. The panel renders it only for a repeater or room server when signed in and the feature is on.
 export function RequestTelemetry({ node }: { node: { id: string; publicKey: string } }) {
+  const { user } = useSession();
+  // Keyed by account so a typed guest password cannot carry over to another one.
+  return <RequestForm key={user?.id ?? ""} node={node} />;
+}
+
+function RequestForm({ node }: { node: { id: string; publicKey: string } }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const ended = useSessionEnded();
   const list = useTelemetryRequests();
   const [password, setPassword] = useState("");
-  const create = useMutation({
-    mutationFn: (pw: string) => requests.create(node.id, pw || undefined),
+  const create = useSecretSubmit((pw: string) => requests.create(node.id, pw || undefined), {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TELEMETRY_REQUESTS_KEY }),
     onError: ended,
   });

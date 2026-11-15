@@ -23,7 +23,7 @@ export function ProfileView() {
   if (!user) return <SignInView />;
 
   return (
-    <AccountLayout title={t("account.profile.title")} wide>
+    <AccountLayout key={user.id} title={t("account.profile.title")} wide>
       <AccountSection user={user} portal={portal} />
       {portal ? <PortalManagedSection portalUrl={features.portalUrl} /> : <PasswordSection />}
       {features.telemetryRequests && <RequestsSection />}

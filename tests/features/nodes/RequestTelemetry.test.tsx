@@ -13,7 +13,10 @@ vi.mock("../../../src/api/auth", async (orig) => {
 });
 
 vi.mock("../../../src/hooks/useFeatures", () => ({ useFeatures: () => ({ telemetryRequests: true }) }));
-vi.mock("../../../src/hooks/useSession", () => ({ useSession: () => ({ user: { id: "1" } }) }));
+vi.mock("../../../src/hooks/useSession", async (orig) => ({
+  ...(await orig<typeof import("../../../src/hooks/useSession")>()),
+  useSession: () => ({ user: { id: "1" } }),
+}));
 
 const node = { id: "node-self", publicKey: "aabbcc" };
 const NOTICE = "The guest password is shared with volunteer observers so they can ask this repeater for its stats. Never enter an admin password.";

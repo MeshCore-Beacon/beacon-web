@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSecretSubmit, useSessionMutation } from "../../../hooks/useSessionMutation";
 import { requests } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
 import { FormButton } from "../../../components/form/FormButton";
@@ -25,16 +26,15 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
   const refetch = () => queryClient.invalidateQueries({ queryKey: TELEMETRY_REQUESTS_KEY });
   const name = request.node.name || request.node.publicKey.slice(0, 8);
 
-  const savePassword = useMutation({
-    mutationFn: (pw: string) => requests.update(request.id, { password: pw === "" ? null : pw }),
+  const savePassword = useSecretSubmit((pw: string) => requests.update(request.id, { password: pw === "" ? null : pw }), {
     onSuccess: () => {
       setMode(null);
       return refetch();
     },
     onError: ended,
   });
-  const enable = useMutation({ mutationFn: () => requests.update(request.id, { enabled: true }), onSuccess: refetch, onError: ended });
-  const remove = useMutation({ mutationFn: () => requests.remove(request.id), onSuccess: refetch, onError: ended });
+  const enable = useSessionMutation({ mutationFn: () => requests.update(request.id, { enabled: true }), onSuccess: refetch, onError: ended });
+  const remove = useSessionMutation({ mutationFn: () => requests.remove(request.id), onSuccess: refetch, onError: ended });
   const error = savePassword.error ?? enable.error ?? remove.error;
   const busy = savePassword.isPending || enable.isPending || remove.isPending;
 

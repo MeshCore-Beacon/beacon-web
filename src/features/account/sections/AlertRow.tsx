@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSessionMutation } from "../../../hooks/useSessionMutation";
 import { alerts } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
 import { fieldClass } from "../../../components/form/fieldStyles";
@@ -23,7 +24,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   const [inputs, setInputs] = useState<Inputs>(() => inputsFor(kind, rule));
   const [local, setLocal] = useState<string | null>(null);
 
-  const save = useMutation({
+  const save = useSessionMutation({
     mutationFn: (body: { threshold: number | null; thresholdHigh: number | null; enabled: boolean }) =>
       alerts.putRule({ target: { kind: target.kind, publicKey: target.publicKey }, kind, ...body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ALERTS_KEY }),

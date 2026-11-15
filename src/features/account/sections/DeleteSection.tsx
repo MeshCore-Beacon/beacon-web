@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { me } from "../../../api/auth";
 import { clearSession } from "../../../hooks/useSession";
+import { useSecretSubmit } from "../../../hooks/useSessionMutation";
 import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
@@ -22,8 +23,7 @@ export function DeleteSection({ user }: { user: User }) {
   const [password, setPassword] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
-  const remove = useMutation({
-    mutationFn: () => me.deleteAccount(portal ? { confirmUsername: typed } : password),
+  const remove = useSecretSubmit(() => me.deleteAccount(portal ? { confirmUsername: typed } : password), {
     onSuccess: () => {
       setPassword("");
       clearSession(queryClient);

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation } from "@tanstack/react-query";
 import { auth } from "../../api/auth";
 import { useFeatures } from "../../hooks/useFeatures";
+import { useSecretSubmit } from "../../hooks/useSessionMutation";
 import { FormButton } from "../../components/form/FormButton";
 import { FormStatus } from "../../components/form/FormStatus";
 import { PasswordField } from "../../components/form/PasswordField";
@@ -33,8 +33,7 @@ export function RegisterView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const submit = useMutation({
-    mutationFn: () => auth.register({ username: username.trim(), email: email.trim(), password }),
+  const submit = useSecretSubmit(() => auth.register({ username: username.trim(), email: email.trim(), password }), {
     onSuccess: () => setPassword(""),
   });
 

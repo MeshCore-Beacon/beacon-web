@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSessionMutation } from "../../../hooks/useSessionMutation";
 import { me } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
 import { FormButton } from "../../../components/form/FormButton";
@@ -45,8 +46,8 @@ export function DevicesSection() {
   }, [list.error, ended]);
 
   const refetch = () => void queryClient.invalidateQueries({ queryKey: SESSIONS_KEY });
-  const endOne = useMutation({ mutationFn: (id: string) => me.endSession(id), onSuccess: refetch, onError: ended });
-  const endOthers = useMutation({ mutationFn: () => me.endOtherSessions(), onSuccess: refetch, onError: ended });
+  const endOne = useSessionMutation({ mutationFn: (id: string) => me.endSession(id), onSuccess: refetch, onError: ended });
+  const endOthers = useSessionMutation({ mutationFn: () => me.endOtherSessions(), onSuccess: refetch, onError: ended });
 
   const sessions = list.data?.sessions ?? [];
   const hasOthers = sessions.some((s) => !s.current);

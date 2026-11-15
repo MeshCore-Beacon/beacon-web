@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSessionMutation } from "../../hooks/useSessionMutation";
 import { auth } from "../../api/auth";
 import { Dropdown } from "../../components/Dropdown";
 import { clearSession, useSession } from "../../hooks/useSession";
@@ -14,7 +15,7 @@ function useSignOut() {
     clearSession(queryClient);
     if (view === "profile") close();
   };
-  const { mutate, isError, reset } = useMutation({
+  const { mutate, isError, reset } = useSessionMutation({
     mutationFn: () => auth.logout(),
     onSuccess: done,
     onError: (err) => {

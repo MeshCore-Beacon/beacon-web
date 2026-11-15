@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { me } from "../../../api/auth";
 import { setSessionUser } from "../../../hooks/useSession";
+import { useSecretSubmit, useSessionMutation } from "../../../hooks/useSessionMutation";
 import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
@@ -17,7 +18,7 @@ function DisplayNameForm({ user }: { user: User }) {
   const queryClient = useQueryClient();
   const ended = useSessionEnded();
   const [name, setName] = useState(user.displayName);
-  const save = useMutation({
+  const save = useSessionMutation({
     mutationFn: () => me.setDisplayName(name.trim()),
     onSuccess: ({ user: updated }) => {
       setName(updated.displayName);
@@ -49,8 +50,7 @@ function ChangeEmailForm({ user }: { user: User }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [sent, setSent] = useState<string | null>(null);
-  const change = useMutation({
-    mutationFn: (address: string) => me.changeEmail(address, password),
+  const change = useSecretSubmit((address: string) => me.changeEmail(address, password), {
     onSuccess: (_, address) => {
       setSent(address);
       setEmail("");

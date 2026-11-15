@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { me } from "../../../api/auth";
+import { useSecretSubmit } from "../../../hooks/useSessionMutation";
 import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { PasswordField } from "../../../components/form/PasswordField";
@@ -14,8 +15,7 @@ export function PasswordSection() {
   const ended = useSessionEnded();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
-  const change = useMutation({
-    mutationFn: () => me.changePassword(current, next),
+  const change = useSecretSubmit(() => me.changePassword(current, next), {
     onSuccess: () => {
       setCurrent("");
       setNext("");
