@@ -73,7 +73,7 @@ describe("RequestTelemetry", () => {
   it("shows the status in words and a link to the profile once requested", async () => {
     vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ status: "login_failed" })] });
     mount();
-    expect(await screen.findByText("The repeater refused the password")).toBeInTheDocument();
+    expect(await screen.findByText("Stopped: password refused")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Manage in profile" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request telemetry" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Guest password (optional)")).not.toBeInTheDocument();
