@@ -1119,13 +1119,14 @@
       "bridge": {
         "title": "Sign in to the Beacon app",
         "notice": "The Beacon app is asking you to sign in. Sign in here to continue.",
-        "confirm": "The Beacon app is asking to sign in as {{name}} (@{{username}}).",
+        "confirm": "The Beacon app is asking to sign in with this account:",
         "continue": "Continue",
         "continuing": "Continuing…",
         "cancel": "Cancel",
         "done": "Opening the Beacon app. You can close this page afterwards.",
         "incomplete": "This sign-in request from the app is incomplete. Go back to the app and try again.",
-        "badRedirect": "The sign-in could not return to the app. Nothing was shared."
+        "badRedirect": "The sign-in could not return to the app. Nothing was shared.",
+        "warning": "Only continue if you just chose \"Sign in\" in the Beacon app on this device. If you did not, cancel."
       },
       "errors": {
         "generic": "Something went wrong. Try again.",
@@ -1145,6 +1146,57 @@
         "not_signed_in": "You are not signed in. Sign in and try again.",
         "csrf_rejected": "The request was rejected. Reload the page and try again.",
         "accounts_disabled": "Accounts are not enabled on this server."
+      },
+      "profile": {
+        "title": "Profile",
+        "account": {
+          "title": "Account",
+          "username": "Username",
+          "displayName": "Display name",
+          "save": "Save",
+          "saving": "Saving…",
+          "saved": "Saved.",
+          "email": "Email",
+          "verified": "Verified",
+          "unverified": "Not verified",
+          "pending": "Waiting for confirmation: {{email}}",
+          "changeEmail": "Change email",
+          "newEmail": "New email",
+          "sendLink": "Change email",
+          "sending": "Sending…",
+          "checkEmail": "Check your email. If that address can be used, a link to confirm it is on its way. Waiting for confirmation: {{email}}"
+        },
+        "currentPassword": "Current password",
+        "wrongPassword": "That password is not right.",
+        "password": {
+          "title": "Password",
+          "submit": "Change password",
+          "submitting": "Saving…",
+          "done": "Password changed. Your other devices were signed out."
+        },
+        "devices": {
+          "title": "Devices",
+          "loading": "Loading devices…",
+          "thisDevice": "This device",
+          "browser": "Browser",
+          "app": "App",
+          "lastUsed": "Last used",
+          "created": "Created",
+          "signOut": "Sign out",
+          "signOutNamed": "Sign out {{label}}",
+          "signOutOthers": "Sign out everywhere else",
+          "ending": "Signing out…",
+          "empty": "No devices."
+        },
+        "delete": {
+          "title": "Delete account",
+          "explain": "This permanently removes your account, your sign-ins on every device and everything saved to it. It cannot be undone.",
+          "start": "Delete account",
+          "typeUsername": "Type {{username}} to confirm",
+          "confirm": "Delete my account",
+          "deleting": "Deleting…",
+          "cancel": "Cancel"
+        }
       }
     }
   }

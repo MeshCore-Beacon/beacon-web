@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
 import { FormStatus } from "../../components/form/FormStatus";
+import { ProfileView } from "./ProfileView";
 import { RegisterView } from "./RegisterView";
 import { ResetView } from "./ResetView";
 import { SignInView } from "./SignInView";
@@ -22,6 +23,7 @@ export function AccountViews() {
     case "register": return <RegisterView />;
     case "verify": return <VerifyView />;
     case "reset": return <ResetView />;
-    default: return null; // profile arrives with the profile task
+    case "profile": return <ProfileView />;
+    default: return null;
   }
 }

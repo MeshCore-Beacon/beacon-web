@@ -31,14 +31,22 @@ export function AppBridge({ user, codeChallenge, state }: { user: User; codeChal
 
   return (
     <AccountLayout title={t("account.bridge.title")}>
-      <p className="text-sm text-text-normal">{t("account.bridge.confirm", { name: user.displayName, username: user.username })}</p>
+      <p className="text-sm text-text-normal">{t("account.bridge.confirm")}</p>
+      <div className="flex flex-col gap-0.5 rounded border border-border bg-bg-raised px-3 py-2 font-mono">
+        <span className="text-sm font-semibold text-text-bright">{user.displayName}</span>
+        <span className="text-xs text-text-muted">@{user.username}</span>
+      </div>
       {go.isSuccess ? (
         <FormStatus>{t("account.bridge.done")}</FormStatus>
       ) : (
-        <div className="flex gap-3">
-          <FormButton type="button" busy={go.isPending} busyLabel={t("account.bridge.continuing")} onClick={() => go.mutate()}>{t("account.bridge.continue")}</FormButton>
-          <FormButton type="button" disabled={go.isPending} onClick={close}>{t("account.bridge.cancel")}</FormButton>
-        </div>
+        <>
+          <p className="text-sm font-semibold text-text-bright">{t("account.bridge.warning")}</p>
+          {/* Cancel is the default focus and the primary action; Continue is never focused on load. */}
+          <div className="flex gap-3">
+            <FormButton type="button" autoFocus disabled={go.isPending} onClick={close}>{t("account.bridge.cancel")}</FormButton>
+            <FormButton type="button" variant="quiet" busy={go.isPending} busyLabel={t("account.bridge.continuing")} onClick={() => go.mutate()}>{t("account.bridge.continue")}</FormButton>
+          </div>
+        </>
       )}
       {go.isError && (
         <FormStatus kind="error">

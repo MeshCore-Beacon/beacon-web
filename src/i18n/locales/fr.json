@@ -1125,13 +1125,14 @@
       "bridge": {
         "title": "Connexion à l’app Beacon",
         "notice": "L’app Beacon demande de se connecter. Connectez-vous ici pour continuer.",
-        "confirm": "L’app Beacon demande à se connecter en tant que {{name}} (@{{username}}).",
+        "confirm": "L’app Beacon demande à se connecter avec ce compte :",
         "continue": "Continuer",
         "continuing": "En cours…",
         "cancel": "Annuler",
         "done": "Ouverture de l’app Beacon. Vous pourrez ensuite fermer cette page.",
         "incomplete": "Cette demande de connexion de l’app est incomplète. Retournez dans l’app et réessayez.",
-        "badRedirect": "La connexion n’a pas pu revenir à l’app. Rien n’a été partagé."
+        "badRedirect": "La connexion n’a pas pu revenir à l’app. Rien n’a été partagé.",
+        "warning": "Ne continuez que si vous venez de choisir « Se connecter » dans l’app Beacon sur cet appareil. Sinon, annulez."
       },
       "errors": {
         "generic": "Une erreur s’est produite. Réessayez.",
@@ -1153,6 +1154,57 @@
         "not_signed_in": "Vous n’êtes pas connecté. Connectez-vous et réessayez.",
         "csrf_rejected": "La requête a été refusée. Rechargez la page et réessayez.",
         "accounts_disabled": "Les comptes ne sont pas activés sur ce serveur."
+      },
+      "profile": {
+        "title": "Profil",
+        "account": {
+          "title": "Compte",
+          "username": "Nom d’utilisateur",
+          "displayName": "Nom affiché",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "saved": "Enregistré.",
+          "email": "Courriel",
+          "verified": "Vérifié",
+          "unverified": "Non vérifié",
+          "pending": "En attente de confirmation : {{email}}",
+          "changeEmail": "Changer le courriel",
+          "newEmail": "Nouveau courriel",
+          "sendLink": "Changer le courriel",
+          "sending": "Envoi…",
+          "checkEmail": "Vérifiez vos courriels. Si cette adresse peut être utilisée, un lien de confirmation est en route. En attente de confirmation : {{email}}"
+        },
+        "currentPassword": "Mot de passe actuel",
+        "wrongPassword": "Ce mot de passe n’est pas le bon.",
+        "password": {
+          "title": "Mot de passe",
+          "submit": "Changer le mot de passe",
+          "submitting": "Enregistrement…",
+          "done": "Mot de passe changé. Vos autres appareils ont été déconnectés."
+        },
+        "devices": {
+          "title": "Appareils",
+          "loading": "Chargement des appareils…",
+          "thisDevice": "Cet appareil",
+          "browser": "Navigateur",
+          "app": "App",
+          "lastUsed": "Dernière utilisation",
+          "created": "Créé",
+          "signOut": "Se déconnecter",
+          "signOutNamed": "Déconnecter {{label}}",
+          "signOutOthers": "Déconnecter tous les autres",
+          "ending": "Déconnexion…",
+          "empty": "Aucun appareil."
+        },
+        "delete": {
+          "title": "Supprimer le compte",
+          "explain": "Cela supprime définitivement votre compte, vos connexions sur tous les appareils et tout ce qui y est enregistré. C’est irréversible.",
+          "start": "Supprimer le compte",
+          "typeUsername": "Saisissez {{username}} pour confirmer",
+          "confirm": "Supprimer mon compte",
+          "deleting": "Suppression…",
+          "cancel": "Annuler"
+        }
       }
     }
   }

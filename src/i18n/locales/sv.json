@@ -1006,13 +1006,14 @@
       "bridge": {
         "title": "Logga in i Beacon-appen",
         "notice": "Beacon-appen ber dig logga in. Logga in här för att fortsätta.",
-        "confirm": "Beacon-appen ber om att få logga in som {{name}} (@{{username}}).",
+        "confirm": "Beacon-appen ber om att få logga in med det här kontot:",
         "continue": "Fortsätt",
         "continuing": "Fortsätter…",
         "cancel": "Avbryt",
         "done": "Öppnar Beacon-appen. Du kan stänga den här sidan efteråt.",
         "incomplete": "Inloggningsbegäran från appen är ofullständig. Gå tillbaka till appen och försök igen.",
-        "badRedirect": "Inloggningen kunde inte återvända till appen. Inget delades."
+        "badRedirect": "Inloggningen kunde inte återvända till appen. Inget delades.",
+        "warning": "Fortsätt bara om du nyss valde ”Logga in” i Beacon-appen på den här enheten. Om du inte gjorde det, avbryt."
       },
       "errors": {
         "generic": "Något gick fel. Försök igen.",
@@ -1032,6 +1033,57 @@
         "not_signed_in": "Du är inte inloggad. Logga in och försök igen.",
         "csrf_rejected": "Begäran avvisades. Ladda om sidan och försök igen.",
         "accounts_disabled": "Konton är inte aktiverade på den här servern."
+      },
+      "profile": {
+        "title": "Profil",
+        "account": {
+          "title": "Konto",
+          "username": "Användarnamn",
+          "displayName": "Visningsnamn",
+          "save": "Spara",
+          "saving": "Sparar…",
+          "saved": "Sparat.",
+          "email": "E-post",
+          "verified": "Verifierad",
+          "unverified": "Inte verifierad",
+          "pending": "Väntar på bekräftelse: {{email}}",
+          "changeEmail": "Byt e-post",
+          "newEmail": "Ny e-post",
+          "sendLink": "Byt e-post",
+          "sending": "Skickar…",
+          "checkEmail": "Kolla din e-post. Om adressen kan användas är en bekräftelselänk på väg. Väntar på bekräftelse: {{email}}"
+        },
+        "currentPassword": "Nuvarande lösenord",
+        "wrongPassword": "Lösenordet stämmer inte.",
+        "password": {
+          "title": "Lösenord",
+          "submit": "Byt lösenord",
+          "submitting": "Sparar…",
+          "done": "Lösenordet är bytt. Dina andra enheter har loggats ut."
+        },
+        "devices": {
+          "title": "Enheter",
+          "loading": "Laddar enheter…",
+          "thisDevice": "Den här enheten",
+          "browser": "Webbläsare",
+          "app": "App",
+          "lastUsed": "Senast använd",
+          "created": "Skapad",
+          "signOut": "Logga ut",
+          "signOutNamed": "Logga ut {{label}}",
+          "signOutOthers": "Logga ut överallt annars",
+          "ending": "Loggar ut…",
+          "empty": "Inga enheter."
+        },
+        "delete": {
+          "title": "Radera konto",
+          "explain": "Det här raderar ditt konto, dina inloggningar på alla enheter och allt som sparats på det permanent. Det kan inte ångras.",
+          "start": "Radera konto",
+          "typeUsername": "Skriv {{username}} för att bekräfta",
+          "confirm": "Radera mitt konto",
+          "deleting": "Raderar…",
+          "cancel": "Avbryt"
+        }
       }
     }
   }
