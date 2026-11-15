@@ -1218,6 +1218,63 @@
           "open": "Open the MeshMapper portal"
         }
       },
+      "alerts": {
+        "title": "Alerts",
+        "loading": "Loading alerts…",
+        "toEmail": "Alerts are sent to {{email}}",
+        "toApp": "Alerts are sent to the Beacon app on your phone",
+        "noDevice": "Sign in to the Beacon app on a phone to receive them.",
+        "empty": "Alerts are set on radios in your Atlas. Add a radio there first.",
+        "openAtlas": "Open the Atlas tab",
+        "always": "You are always told when one of your telemetry requests needs attention.",
+        "turnOn": "Alert: {{name}}",
+        "backOnlineHint": "Turn on {{name}} first.",
+        "voltsPerDay": "{{volts}} V per day",
+        "hours_one": "{{count}} hour",
+        "hours_other": "{{count}} hours",
+        "minutes_one": "{{count}} minute",
+        "minutes_other": "{{count}} minutes",
+        "days_one": "{{count}} day",
+        "days_other": "{{count}} days",
+        "fields": {
+          "hours": "Hours",
+          "volts": "Volts",
+          "drop": "Drop per day",
+          "low": "Low (°C)",
+          "high": "High (°C)",
+          "dbm": "dBm",
+          "drift": "Drift",
+          "offline": "No report for"
+        },
+        "state": {
+          "ok": "OK",
+          "firing": "Alerting since",
+          "inactive": "No data right now",
+          "unknown": "Not checked yet"
+        },
+        "kinds": {
+          "gone_quiet": { "name": "Gone quiet", "when": "When the radio has not been heard for this long." },
+          "back_online": { "name": "Back online", "when": "When the radio is heard again after it went quiet." },
+          "battery_low": { "name": "Battery low", "when": "When the battery stays below this voltage." },
+          "battery_falling": { "name": "Battery falling", "when": "When the battery drops faster than this in a day." },
+          "rebooted": { "name": "Rebooted", "when": "When the radio restarts." },
+          "temperature": { "name": "Temperature", "when": "When the temperature goes below the low limit or above the high limit." },
+          "noise_high": { "name": "Noise high", "when": "When the noise floor stays above this level." },
+          "clock": { "name": "Clock drift", "when": "When the radio's clock is off by more than this." },
+          "observer_offline": { "name": "Observer offline", "when": "When the observer sends no status report for this long." }
+        },
+        "errors": {
+          "battery_low": "Enter a voltage between 2.50 and 5.00.",
+          "noise_high": "Enter a level between -130 and -50 dBm.",
+          "temperature_one": "Enter a low or a high limit.",
+          "temperature_number": "Enter the limits as numbers in degrees C.",
+          "temperature_order": "The low limit must be below the high limit.",
+          "kind_unavailable": "This alert is not available for this radio.",
+          "invalid_threshold": "That is not an allowed value for this alert.",
+          "not_on_atlas": "This radio is no longer in your Atlas.",
+          "alerts_disabled": "Alerts are turned off on this server."
+        }
+      },
       "requests": {
         "title": "Telemetry requests",
         "count": "{{used}} of {{limit}}",

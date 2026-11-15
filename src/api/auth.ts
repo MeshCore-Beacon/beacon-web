@@ -1,7 +1,7 @@
 import { API_BASE } from "../lib/constants";
 import { parseRetryAfter } from "./rate-limit";
 import type {
-  AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, TelemetryRequest, TelemetryRequestList, TelemetryRequestPatch, UserResponse, VerifyStatus,
+  AlertRule, AlertRulePut, AlertsResponse, AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, TelemetryRequest, TelemetryRequestList, TelemetryRequestPatch, UserResponse, VerifyStatus,
 } from "../features/account/types";
 import type { PutAtlas, ServerAtlas } from "../features/atlas/atlasSync";
 
@@ -67,7 +67,9 @@ export const me = {
   setDisplayName: (displayName: string) => authRequest<UserResponse>("PATCH", "/me", { displayName }),
   changePassword: (currentPassword: string, newPassword: string) => authRequest<void>("POST", "/me/password", { currentPassword, newPassword }),
   changeEmail: (email: string, currentPassword: string) => authRequest<CheckEmailStatus>("POST", "/me/email", { email, currentPassword }),
-  deleteAccount: (currentPassword: string) => authRequest<void>("DELETE", "/me", { currentPassword }),
+  // A password in local mode; portal accounts have none and confirm with the typed username.
+  deleteAccount: (proof: string | { confirmUsername: string }) =>
+    authRequest<void>("DELETE", "/me", typeof proof === "string" ? { currentPassword: proof } : proof),
   sessions: () => authRequest<{ sessions: Session[] }>("GET", "/me/sessions"),
   endSession: (id: string) => authRequest<void>("DELETE", `/me/sessions/${encodeURIComponent(id)}`),
   endOtherSessions: () => authRequest<void>("DELETE", "/me/sessions"),
@@ -82,4 +84,10 @@ export const requests = {
   update: (id: string, patch: TelemetryRequestPatch) =>
     authRequest<TelemetryRequest>("PATCH", `/me/telemetry-requests/${encodeURIComponent(id)}`, patch),
   remove: (id: string) => authRequest<void>("DELETE", `/me/telemetry-requests/${encodeURIComponent(id)}`),
+};
+
+export const alerts = {
+  get: (signal?: AbortSignal) => authRequest<AlertsResponse>("GET", "/me/alerts", undefined, signal),
+  putRule: (body: AlertRulePut) => authRequest<AlertRule>("PUT", "/me/alerts/rules", body),
+  deleteRule: (id: string) => authRequest<void>("DELETE", `/me/alerts/rules/${encodeURIComponent(id)}`),
 };

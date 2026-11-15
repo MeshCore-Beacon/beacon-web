@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { AccountViews } from "../../../src/features/account/AccountViews";
 import { me } from "../../../src/api/auth";
 import { navigateTo } from "../../../src/features/account/navigate";
@@ -148,5 +148,27 @@ describe("portal profile", () => {
     expect(screen.getByLabelText("New email")).toBeInTheDocument();
     expect(screen.getByLabelText("New password")).toBeInTheDocument();
     expect(screen.queryByText(/managed at the MeshMapper portal/)).toBeNull();
+  });
+});
+
+describe("portal delete", () => {
+  beforeEach(() => { mocks.signedIn = { ...user, provider: "portal", email: "" }; });
+  const open = async () => {
+    renderAt("?view=profile", <AccountViews />);
+    await screen.findByRole("heading", { name: "Profile" });
+    return within(screen.getByRole("region", { name: "Delete account" }));
+  };
+
+  it("asks for no password and sends the typed username", async () => {
+    vi.mocked(me.deleteAccount).mockResolvedValue(undefined);
+    const del = await open();
+    expect(del.queryByLabelText("Current password")).toBeNull();
+    fireEvent.click(del.getByRole("button", { name: "Delete account" }));
+    const confirm = del.getByRole("button", { name: "Delete my account" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(del.getByLabelText(/Type ridge to confirm/), { target: { value: "ridge" } });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+    await waitFor(() => expect(me.deleteAccount).toHaveBeenCalledWith({ confirmUsername: "ridge" }));
   });
 });

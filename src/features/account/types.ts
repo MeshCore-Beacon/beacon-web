@@ -48,3 +48,42 @@ export interface TelemetryRequestList {
 
 // password: omitted or null clears it on PATCH; enabled:true re-enables a paused request.
 export type TelemetryRequestPatch = { password?: string | null; enabled?: true };
+
+export type AlertKind =
+  | "gone_quiet" | "back_online" | "battery_low" | "battery_falling" | "rebooted"
+  | "temperature" | "noise_high" | "clock" | "observer_offline";
+export type AlertState = "ok" | "firing" | "inactive" | "unknown";
+
+export interface AlertRule {
+  id: string;
+  kind: AlertKind;
+  threshold: number | null;
+  thresholdHigh: number | null;
+  enabled: boolean;
+  state: AlertState;
+  stateChangedAt: number;
+  lastSentAt: number | null;
+}
+
+export interface AlertTarget {
+  kind: "node" | "observer";
+  publicKey: string;
+  name: string;
+  available: string[];
+  unavailable: Record<string, string>;
+  rules: AlertRule[];
+}
+
+export interface AlertsResponse {
+  delivery: "push" | "email";
+  hasDevice: boolean;
+  targets: AlertTarget[];
+}
+
+export interface AlertRulePut {
+  target: { kind: "node" | "observer"; publicKey: string };
+  kind: AlertKind;
+  threshold: number | null;
+  thresholdHigh: number | null;
+  enabled: boolean;
+}

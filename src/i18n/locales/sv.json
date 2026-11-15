@@ -1105,6 +1105,63 @@
           "open": "Öppna MeshMapper-portalen"
         }
       },
+      "alerts": {
+        "title": "Aviseringar",
+        "loading": "Läser in aviseringar…",
+        "toEmail": "Aviseringar skickas till {{email}}",
+        "toApp": "Aviseringar skickas till Beacon-appen på din telefon",
+        "noDevice": "Logga in i Beacon-appen på en telefon för att få dem.",
+        "empty": "Aviseringar ställs in på radioapparater i din Atlas. Lägg först till en radio.",
+        "openAtlas": "Öppna fliken Atlas",
+        "always": "Du får alltid besked när en av dina telemetribegäranden behöver uppmärksamhet.",
+        "turnOn": "Avisering: {{name}}",
+        "backOnlineHint": "Slå först på {{name}}.",
+        "voltsPerDay": "{{volts}} V per dygn",
+        "hours_one": "{{count}} timme",
+        "hours_other": "{{count}} timmar",
+        "minutes_one": "{{count}} minut",
+        "minutes_other": "{{count}} minuter",
+        "days_one": "{{count}} dygn",
+        "days_other": "{{count}} dygn",
+        "fields": {
+          "hours": "Timmar",
+          "volts": "Volt",
+          "drop": "Fall per dygn",
+          "low": "Låg (°C)",
+          "high": "Hög (°C)",
+          "dbm": "dBm",
+          "drift": "Avvikelse",
+          "offline": "Ingen rapport på"
+        },
+        "state": {
+          "ok": "OK",
+          "firing": "Larmar sedan",
+          "inactive": "Inga data just nu",
+          "unknown": "Inte kontrollerad än"
+        },
+        "kinds": {
+          "gone_quiet": { "name": "Tystnat", "when": "När radion inte har hörts på så här länge." },
+          "back_online": { "name": "Tillbaka online", "when": "När radion hörs igen efter att ha tystnat." },
+          "battery_low": { "name": "Lågt batteri", "when": "När batteriet stannar under den här spänningen." },
+          "battery_falling": { "name": "Fallande batteri", "when": "När batteriet sjunker snabbare än så här på ett dygn." },
+          "rebooted": { "name": "Startade om", "when": "När radion startar om." },
+          "temperature": { "name": "Temperatur", "when": "När temperaturen går under den låga gränsen eller över den höga." },
+          "noise_high": { "name": "Högt brus", "when": "När brusnivån stannar över den här nivån." },
+          "clock": { "name": "Klockavvikelse", "when": "När radions klocka avviker mer än så här." },
+          "observer_offline": { "name": "Observatör offline", "when": "När observatören inte skickar någon statusrapport på så här länge." }
+        },
+        "errors": {
+          "battery_low": "Ange en spänning mellan 2,50 och 5,00.",
+          "noise_high": "Ange en nivå mellan -130 och -50 dBm.",
+          "temperature_one": "Ange en låg eller en hög gräns.",
+          "temperature_number": "Ange gränserna som tal i grader C.",
+          "temperature_order": "Den låga gränsen måste vara under den höga.",
+          "kind_unavailable": "Den här aviseringen finns inte för den här radion.",
+          "invalid_threshold": "Det är inget tillåtet värde för den här aviseringen.",
+          "not_on_atlas": "Den här radion finns inte längre i din Atlas.",
+          "alerts_disabled": "Aviseringar är avstängda på den här servern."
+        }
+      },
       "requests": {
         "title": "Telemetribegäran",
         "count": "{{used}} av {{limit}}",

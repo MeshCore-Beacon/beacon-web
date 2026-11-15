@@ -4,6 +4,7 @@ import { useFeatures } from "../../hooks/useFeatures";
 import { FormStatus } from "../../components/form/FormStatus";
 import { AccountLayout } from "./AccountLayout";
 import { SignInView } from "./SignInView";
+import { AlertsSection } from "./sections/AlertsSection";
 import { AccountSection } from "./sections/AccountSection";
 import { DeleteSection } from "./sections/DeleteSection";
 import { DevicesSection } from "./sections/DevicesSection";
@@ -26,6 +27,7 @@ export function ProfileView() {
       <AccountSection user={user} portal={portal} />
       {portal ? <PortalManagedSection portalUrl={features.portalUrl} /> : <PasswordSection />}
       {features.telemetryRequests && <RequestsSection />}
+      {features.alerts && <AlertsSection user={user} />}
       <DevicesSection />
       <DeleteSection user={user} />
     </AccountLayout>
