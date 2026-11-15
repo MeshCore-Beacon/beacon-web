@@ -1017,7 +1017,7 @@
         "24h": "24h",
         "3d": "3d"
       },
-      "readingsLabel": "Battery and temperature from the last poll",
+      "readingsLabel": "Battery and temperature, latest hourly average",
       "sampleHelp": "Stored observations of packets from this node per hour over the selected window, with signal as measured by observers on the last hop.",
       "activityUnsupported": "This server does not provide node activity.",
       "lastSeen": "Last seen",

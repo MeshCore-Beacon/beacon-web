@@ -71,7 +71,7 @@ export function useAtlasNode(pin: NodePin | null, range: AtlasRange, active: boo
   };
 }
 
-// Newest value of a field is the last point that carries it, so battery and temperature may come from different polls.
+// Newest value of a field is the last hourly average that carries it, so battery and temperature may come from different hours.
 function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC"): number | null {
   for (let i = points.length - 1; i >= 0; i--) {
     const v = points[i]![key];

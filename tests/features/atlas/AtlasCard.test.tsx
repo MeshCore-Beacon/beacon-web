@@ -56,7 +56,7 @@ const polled = { range: "24h", interval: "1h", polled: true, untrustedReadings: 
   { t: 1, readings: 2, batteryMv: 4100, temperatureC: 15.2 },
   { t: 2, readings: 2, batteryMv: 4226, noiseFloorDb: -97 },
 ] };
-const LINE = "Battery and temperature from the last poll";
+const LINE = "Battery and temperature, latest hourly average";
 let client: QueryClient;
 
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
@@ -569,6 +569,13 @@ describe("AtlasCard", () => {
       mount();
       await screen.findByText("Observations");
       expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+    });
+
+    it("asks for nothing while another view is showing", async () => {
+      mount({ view: "heard" });
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      await new Promise((r) => setTimeout(r, 20));
       expect(api.getNodeTelemetry).not.toHaveBeenCalled();
     });
 

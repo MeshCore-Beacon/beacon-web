@@ -942,7 +942,7 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
-      "readingsLabel": "Batteri och temperatur från senaste avfrågningen"
+      "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet"
     },
     "account": {
       "back": "Tillbaka",
