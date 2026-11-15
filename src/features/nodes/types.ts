@@ -160,6 +160,7 @@ export interface NodeTelemetryPoint {
   packetsReceived?: number;
   packetsSent?: number;
   receiveErrors?: number;
+  counterSpanSecs?: number; // seconds the counter increments cover; divide by this, not the bucket length
 }
 
 export interface NodeTelemetry {

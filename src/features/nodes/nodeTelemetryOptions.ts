@@ -2,7 +2,6 @@ import type { EChartsOption } from "../stats/echarts-setup";
 import type { ChartColors } from "../stats/chartTheme";
 import { airtimeOption, metricLineOption, mvToVolts } from "../stats/chartOptions";
 import { intervalToMs } from "../stats/transforms";
-import type { TelemetryPoint } from "../stats/types";
 import type { NodeTelemetry, NodeTelemetryPoint } from "./types";
 
 // The server skips empty buckets. Put an empty point in each one so the line breaks there
@@ -34,7 +33,15 @@ export interface NodeChartLabels {
 const has = (points: NodeTelemetryPoint[], pick: (p: NodeTelemetryPoint) => number | undefined) =>
   points.some((p) => pick(p) != null);
 
-// A chart is built only when some point carries its field. Airtime values are per-bucket seconds.
+// Airtime is an increment over the span the server reports, so a rate needs that span. No span, or
+// a result over 100, means the data is unusable: leave a gap rather than stretch the axis.
+function airtimePct(secs: number | undefined, span: number | undefined): number | null {
+  if (secs == null || !span) return null;
+  const v = Math.round(((secs * 100) / span) * 1000) / 1000;
+  return v > 100 ? null : v;
+}
+
+// A chart is built only when some point carries its field.
 export function buildNodeCharts(data: NodeTelemetry, c: ChartColors, labels: NodeChartLabels): NodeCharts {
   const bucketMs = intervalToMs(data.interval);
   const points = fillGaps(data.points, bucketMs);
@@ -45,11 +52,13 @@ export function buildNodeCharts(data: NodeTelemetry, c: ChartColors, labels: Nod
   if (has(data.points, (p) => p.temperatureC)) out.temperature = line(labels.temperature, c.green, (p) => p.temperatureC ?? null);
   if (has(data.points, (p) => p.noiseFloorDb)) out.noise = line(labels.noise, c.warn, (p) => p.noiseFloorDb ?? null);
   if (bucketMs != null && (has(data.points, (p) => p.airtimeTxSecs) || has(data.points, (p) => p.airtimeRxSecs))) {
-    const air: TelemetryPoint[] = points.map((p) => ({
-      t: p.t, batteryMv: null, noiseFloorDb: null, uptimeSeconds: null, queueLength: null, receiveErrors: null,
-      airtimeTxSecs: p.airtimeTxSecs ?? null, airtimeRxSecs: p.airtimeRxSecs ?? null,
-    }));
-    out.airtime = airtimeOption(air, c, bucketMs, false);
+    out.airtime = airtimeOption([], c, bucketMs, false);
+    // Status polls are sparse, so mark each point or a lone value would not draw.
+    for (const s of out.airtime.series as { name: string; data: unknown; symbol: string; symbolSize: number }[]) {
+      s.data = points.map((p) => [p.t, airtimePct(s.name === "TX" ? p.airtimeTxSecs : p.airtimeRxSecs, p.counterSpanSecs)]);
+      s.symbol = "circle";
+      s.symbolSize = 4;
+    }
   }
   return out;
 }

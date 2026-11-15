@@ -29,8 +29,8 @@ describe("fillGaps", () => {
 
 describe("buildNodeCharts", () => {
   const full = tele([
-    { t: 0, readings: 2, batteryMv: 4200, temperatureC: 16.5, noiseFloorDb: -97, airtimeTxSecs: 36, airtimeRxSecs: 72 },
-    { t: 2 * H, readings: 1, batteryMv: 4100, temperatureC: 17, noiseFloorDb: -96, airtimeTxSecs: 0, airtimeRxSecs: 3.6 },
+    { t: 0, readings: 2, batteryMv: 4200, temperatureC: 16.5, noiseFloorDb: -97, airtimeTxSecs: 36, airtimeRxSecs: 72, counterSpanSecs: 3600 },
+    { t: 2 * H, readings: 1, batteryMv: 4100, temperatureC: 17, noiseFloorDb: -96, airtimeTxSecs: 0, airtimeRxSecs: 3.6, counterSpanSecs: 3600 },
   ]);
 
   it("builds all four charts when every field is present", () => {
@@ -52,17 +52,42 @@ describe("buildNodeCharts", () => {
     expect(s.data).toEqual([[0, 4.2], [H, null], [2 * H, 4.1]]);
   });
 
-  it("charts airtime seconds as percent of the bucket, with a gap", () => {
-    const o = buildNodeCharts(full, colors, labels).airtime as any;
-    const tx = o.series.find((x: any) => x.name === "TX");
-    const rx = o.series.find((x: any) => x.name === "RX");
+  const air = (points: NodeTelemetry["points"], name: "TX" | "RX" = "TX", interval = "1h") =>
+    (buildNodeCharts(tele(points, interval), colors, labels).airtime as any).series.find((x: any) => x.name === name);
+
+  it("charts airtime as percent of the counter span, with a gap", () => {
+    const tx = air(full.points, "TX");
+    const rx = air(full.points, "RX");
     expect(tx.data).toEqual([[0, 1], [H, null], [2 * H, 0]]);
     expect(rx.data).toEqual([[0, 2], [H, null], [2 * H, 0.1]]);
     expect(tx.connectNulls).toBe(false);
   });
 
-  it("sizes airtime percent by the response interval", () => {
-    const o = buildNodeCharts(tele([{ t: 0, readings: 1, airtimeTxSecs: 216, airtimeRxSecs: 0 }], "6h"), colors, labels).airtime as any;
-    expect(o.series.find((x: any) => x.name === "TX").data).toEqual([[0, 1]]);
+  it("divides by the span, not the bucket", () => {
+    // six hours of span in a one-hour bucket: 1944 s is 9%
+    expect(air([{ t: 0, readings: 1, airtimeTxSecs: 1944, airtimeRxSecs: 0, counterSpanSecs: 21600 }]).data).toEqual([[0, 9]]);
+    expect(air([{ t: 0, readings: 1, airtimeTxSecs: 1944, airtimeRxSecs: 0, counterSpanSecs: 21600 }], "TX", "6h").data).toEqual([[0, 9]]);
+  });
+
+  it("gives a point without a span, or with a zero span, no value", () => {
+    const pts = [
+      { t: 0, readings: 1, airtimeTxSecs: 5, airtimeRxSecs: 5 },
+      { t: H, readings: 1, airtimeTxSecs: 5, airtimeRxSecs: 5, counterSpanSecs: 0 },
+      { t: 2 * H, readings: 1, airtimeTxSecs: 36, airtimeRxSecs: 36, counterSpanSecs: 3600 },
+    ];
+    expect(air(pts).data).toEqual([[0, null], [H, null], [2 * H, 1]]);
+  });
+
+  it("gives a point that computes above 100 no value", () => {
+    const pts = [
+      { t: 0, readings: 1, airtimeTxSecs: 3601, airtimeRxSecs: 0, counterSpanSecs: 3600 },
+      { t: H, readings: 1, airtimeTxSecs: 3600, airtimeRxSecs: 0, counterSpanSecs: 3600 },
+    ];
+    expect(air(pts).data).toEqual([[0, null], [H, 100]]);
+  });
+
+  it("draws point markers so an isolated value shows", () => {
+    expect(air(full.points).symbol).not.toBe("none");
+    expect(air(full.points, "RX").symbol).not.toBe("none");
   });
 });

@@ -296,7 +296,7 @@
         "battery": "Batterie (V)",
         "temperature": "Température (°C)",
         "noise": "Bruit de fond (dBm)",
-        "airtime": "Temps d'antenne TX / RX (% de l'intervalle)",
+        "airtime": "Temps d'antenne TX / RX (% du temps)",
         "waiting": "Interrogé par {{name}}, en attente de la première mesure",
         "noReadings": "Aucune mesure sur cette période",
         "polledBy": "Interrogé par",

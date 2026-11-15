@@ -325,7 +325,7 @@
         "battery": "Battery (V)",
         "temperature": "Temperature (°C)",
         "noise": "Noise floor (dBm)",
-        "airtime": "Airtime TX / RX (% of bucket)",
+        "airtime": "Airtime TX / RX (% of time)",
         "waiting": "Polled by {{name}}, waiting for the first reading",
         "noReadings": "No readings in this range",
         "polledBy": "Polled by",

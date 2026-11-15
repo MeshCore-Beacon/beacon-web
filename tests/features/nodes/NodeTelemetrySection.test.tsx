@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NodeTelemetrySection from "../../../src/features/nodes/NodeTelemetrySection";
 import { getNodePolling, getNodeTelemetry } from "../../../src/api/client";
+import en from "../../../src/i18n/locales/en.json";
+import fr from "../../../src/i18n/locales/fr.json";
+import sv from "../../../src/i18n/locales/sv.json";
 import type { Node, NodePolling, NodeTelemetry } from "../../../src/features/nodes/types";
 
 vi.mock("../../../src/api/client", () => ({
@@ -65,6 +68,16 @@ describe("NodeTelemetrySection", () => {
     expect(mockTelemetry.mock.calls[0]?.[1]).toBe("168h");
     expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("1 standby")).toBeInTheDocument();
+  });
+
+  it("titles the airtime chart as percent of time, in every language", async () => {
+    mockTelemetry.mockResolvedValue(tele([{ ...point, counterSpanSecs: 21600 }]));
+    mockPolling.mockResolvedValue(polling());
+    renderSection();
+    expect(await screen.findByText("Airtime TX / RX (% of time)")).toBeInTheDocument();
+    expect(en.translation.nodeDetail.telemetry.airtime).toBe("Airtime TX / RX (% of time)");
+    expect(fr.translation.nodeDetail.telemetry.airtime).toBe("Temps d'antenne TX / RX (% du temps)");
+    expect(sv.translation.nodeDetail.telemetry.airtime).toBe("Sändtid TX / RX (% av tiden)");
   });
 
   it("draws only the charts whose field is present", async () => {
