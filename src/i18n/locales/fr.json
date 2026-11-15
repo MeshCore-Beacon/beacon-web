@@ -1172,7 +1172,8 @@
         "csrf_rejected": "La requête a été refusée. Rechargez la page et réessayez.",
         "accounts_disabled": "Les comptes ne sont pas activés sur ce serveur.",
         "service_unavailable": "Le serveur est occupé. Réessayez dans un instant.",
-        "read_only": "Ce serveur est en lecture seule pour le moment. Réessayez plus tard."
+        "read_only": "Ce serveur est en lecture seule pour le moment. Réessayez plus tard.",
+        "portal_managed": "Votre connexion est gérée sur le portail MeshMapper. Utilisez-le là-bas."
       },
       "profile": {
         "title": "Profil",
@@ -1220,6 +1221,7 @@
           "explain": "Cela supprime définitivement votre compte, vos connexions sur tous les appareils et tout ce qui y est enregistré. C’est irréversible.",
           "start": "Supprimer le compte",
           "typeUsername": "Saisissez {{username}} pour confirmer",
+          "wrongUsername": "Ce n’est pas votre nom d’utilisateur.",
           "confirm": "Supprimer mon compte",
           "deleting": "Suppression…",
           "cancel": "Annuler"
@@ -1284,10 +1286,13 @@
           "temperature_one": "Entrez une limite basse ou haute.",
           "temperature_number": "Entrez les limites en degrés C, sous forme de nombres.",
           "temperature_order": "La limite basse doit être inférieure à la limite haute.",
+          "temperature_range": "Entrez des limites entre -50 et 150 degrés C.",
           "kind_unavailable": "Cette alerte n'est pas disponible pour cette radio.",
           "invalid_threshold": "Cette valeur n'est pas permise pour cette alerte.",
           "not_on_atlas": "Cette radio n'est plus dans votre Atlas.",
-          "alerts_disabled": "Les alertes sont désactivées sur ce serveur."
+          "alerts_disabled": "Les alertes sont désactivées sur ce serveur.",
+          "not_found": "Cette alerte n'existe plus.",
+          "app_session_required": "Seule l'application Beacon peut inscrire un téléphone aux alertes."
         }
       },
       "requests": {

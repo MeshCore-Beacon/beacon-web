@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { me } from "../../../api/auth";
-import { useFeatures } from "../../../hooks/useFeatures";
 import { clearSession } from "../../../hooks/useSession";
 import { FormButton } from "../../../components/form/FormButton";
 import { FormStatus } from "../../../components/form/FormStatus";
@@ -11,7 +10,7 @@ import { TextField } from "../../../components/form/TextField";
 import type { User } from "../types";
 import { useView } from "../useView";
 import { ProfileSection } from "./ProfileSection";
-import { profileErrorText, useSessionEnded } from "./useSessionEnded";
+import { deleteErrorText, useSessionEnded } from "./useSessionEnded";
 
 export function DeleteSection({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -19,7 +18,7 @@ export function DeleteSection({ user }: { user: User }) {
   const { close } = useView();
   const ended = useSessionEnded();
   // Portal accounts have no password, so the typed username is the confirmation.
-  const portal = useFeatures().accounts === "portal";
+  const portal = user.provider === "portal";
   const [password, setPassword] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
@@ -64,7 +63,7 @@ export function DeleteSection({ user }: { user: User }) {
         ) : (
           <FormButton variant="danger" disabled={!portal && !password} className="self-start">{t("account.profile.delete.start")}</FormButton>
         )}
-        {remove.isError && <FormStatus kind="error">{profileErrorText(t, remove.error)}</FormStatus>}
+        {remove.isError && <FormStatus kind="error">{deleteErrorText(t, remove.error, portal)}</FormStatus>}
       </form>
     </ProfileSection>
   );

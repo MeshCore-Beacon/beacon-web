@@ -22,6 +22,12 @@ describe("useView", () => {
     expect(screen.getByTestId("view")).toHaveTextContent("register");
   });
 
+  it("drops the portal error when a view opens or closes", () => {
+    renderAt("?view=signin&error=portal", <Harness />);
+    fireEvent.click(screen.getByText("close"));
+    expect(searchOf(screen.getByTestId("search")).get("error")).toBeNull();
+  });
+
   it("reads null for an unknown view", () => {
     renderAt("?view=nope", <Harness />);
     expect(screen.getByTestId("view")).toHaveTextContent("none");

@@ -34,6 +34,9 @@ export interface TelemetryRequest {
   node: { id: string | null; publicKey: string; name: string };
   status: RequestStatus;
   statusReason: string;
+  // Stable snake_case reason, "" for none; absent on an older server. Days only for "offline".
+  statusReasonCode?: string;
+  statusReasonDays?: number;
   hasPassword: boolean;
   createdAt: number;
   updatedAt: number;

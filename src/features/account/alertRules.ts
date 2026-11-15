@@ -67,7 +67,9 @@ export function parseInputs(kind: AlertKind, { a, b }: Inputs): Parsed {
       if (Number.isNaN(low) || Number.isNaN(high)) return { ok: false, error: "temperature_number" };
       if (low == null && high == null) return { ok: false, error: "temperature_one" };
       if (low != null && high != null && low >= high) return { ok: false, error: "temperature_order" };
-      return { ok: true, threshold: low == null ? null : Math.round(low * 10), thresholdHigh: high == null ? null : Math.round(high * 10) };
+      const tenths = (v: number | null) => (v == null ? null : Math.round(v * 10));
+      if ([tenths(low), tenths(high)].some((v) => v != null && (v < -500 || v > 1500))) return { ok: false, error: "temperature_range" };
+      return { ok: true, threshold: tenths(low), thresholdHigh: tenths(high) };
     }
     default:
       return { ok: true, threshold: null, thresholdHigh: null };

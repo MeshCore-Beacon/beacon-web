@@ -31,7 +31,7 @@ beforeEach(() => {
     limit: 3,
     requests: [
       req(),
-      req({ id: "r2", node: { id: null, publicKey: "ee", name: "Ridge" }, status: "disabled", statusReason: "Not heard by any observer for 7 days.", hasPassword: true, poller: null, latestReadingAt: null }),
+      req({ id: "r2", node: { id: null, publicKey: "ee", name: "Ridge" }, status: "disabled", statusReason: "Not heard by any observer for 7 days.", statusReasonCode: "offline", statusReasonDays: 7, hasPassword: true, poller: null, latestReadingAt: null }),
     ],
   });
 });

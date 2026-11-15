@@ -19,3 +19,8 @@ export function useSessionEnded(): (err: unknown) => void {
 export function profileErrorText(t: TFunction, err: unknown): string {
   return errorCode(err) === "invalid_credentials" ? t("account.profile.wrongPassword") : authErrorText(t, err);
 }
+
+// Account deletion: a portal user's wrong username comes back as 422 invalid_input, which is not a generic form error.
+export function deleteErrorText(t: TFunction, err: unknown, portal: boolean): string {
+  return portal && errorCode(err) === "invalid_input" ? t("account.profile.delete.wrongUsername") : profileErrorText(t, err);
+}

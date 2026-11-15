@@ -6,6 +6,7 @@ export function req(over: Partial<TelemetryRequest> = {}): TelemetryRequest {
     node: { id: "node-self", publicKey: "aabbcc", name: "Hilltop" },
     status: "active",
     statusReason: "",
+    statusReasonCode: "",
     hasPassword: false,
     createdAt: 1_700_000_000_000,
     updatedAt: 1_700_000_000_000,

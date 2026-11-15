@@ -190,6 +190,19 @@ describe("alerts section", () => {
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "temperature", threshold: null, thresholdHigh: 455, enabled: true })));
     });
 
+    it("temperature outside -50 to 150 degrees is refused before sending", async () => {
+      await open();
+      const r = row("Hilltop", "temperature");
+      fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "150.5" } });
+      fireEvent.click(r.getByRole("switch"));
+      expect(await r.findByRole("alert")).toHaveTextContent(/between -50 and 150/);
+      fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "" } });
+      fireEvent.change(r.getByLabelText("Low (°C)"), { target: { value: "-50.1" } });
+      fireEvent.click(r.getByRole("switch"));
+      expect(await r.findByRole("alert")).toHaveTextContent(/between -50 and 150/);
+      expect(put()).not.toHaveBeenCalled();
+    });
+
     it("temperature low and high both go as tenths", async () => {
       await open();
       const r = row("Hilltop", "temperature");

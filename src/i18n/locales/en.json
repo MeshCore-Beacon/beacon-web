@@ -1163,7 +1163,8 @@
         "csrf_rejected": "The request was rejected. Reload the page and try again.",
         "accounts_disabled": "Accounts are not enabled on this server.",
         "service_unavailable": "The server is busy. Try again in a moment.",
-        "read_only": "This server is read-only right now. Try again later."
+        "read_only": "This server is read-only right now. Try again later.",
+        "portal_managed": "Your sign-in is managed at the MeshMapper portal. Use it there."
       },
       "profile": {
         "title": "Profile",
@@ -1211,6 +1212,7 @@
           "explain": "This permanently removes your account, your sign-ins on every device and everything saved to it. It cannot be undone.",
           "start": "Delete account",
           "typeUsername": "Type {{username}} to confirm",
+          "wrongUsername": "That is not your username.",
           "confirm": "Delete my account",
           "deleting": "Deleting…",
           "cancel": "Cancel"
@@ -1272,10 +1274,13 @@
           "temperature_one": "Enter a low or a high limit.",
           "temperature_number": "Enter the limits as numbers in degrees C.",
           "temperature_order": "The low limit must be below the high limit.",
+          "temperature_range": "Enter limits between -50 and 150 degrees C.",
           "kind_unavailable": "This alert is not available for this radio.",
           "invalid_threshold": "That is not an allowed value for this alert.",
           "not_on_atlas": "This radio is no longer in your Atlas.",
-          "alerts_disabled": "Alerts are turned off on this server."
+          "alerts_disabled": "Alerts are turned off on this server.",
+          "not_found": "That alert no longer exists.",
+          "app_session_required": "Only the Beacon app can register a phone for alerts."
         }
       },
       "requests": {

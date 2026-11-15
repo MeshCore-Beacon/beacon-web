@@ -19,7 +19,7 @@ export function AccountViews() {
   if (loading) return <div className="mx-auto w-full max-w-[420px] px-4 py-8"><FormStatus>{t("common.loading")}</FormStatus></div>;
   if (accounts === "off") return null;
 
-  if (accounts === "portal" && (view === "register" || view === "reset")) return <PortalSignIn />;
+  if (accounts === "portal" && (view === "register" || view === "reset" || view === "verify")) return <PortalSignIn />;
 
   switch (view) {
     case "signin": return <SignInView />;

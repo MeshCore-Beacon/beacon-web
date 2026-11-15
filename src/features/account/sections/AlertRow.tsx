@@ -6,24 +6,12 @@ import { alerts } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
 import { fieldClass } from "../../../components/form/fieldStyles";
 import { ALERTS_KEY } from "../../../hooks/useAlerts";
-import { authErrorText, errorCode } from "../errors";
+import { alertErrorText } from "../errors";
 import {
   BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, type Inputs,
 } from "../alertRules";
 import type { AlertKind, AlertRule, AlertTarget } from "../types";
 import { useSessionEnded } from "./useSessionEnded";
-
-const SERVER_CODES = new Set(["invalid_threshold", "not_on_atlas", "alerts_disabled"]);
-
-// kind_unavailable carries the server's reason; the rest map to fixed text.
-function serverErrorText(t: TFunction, err: unknown): string {
-  const code = errorCode(err);
-  if (code === "kind_unavailable") {
-    const message = (err as { message?: unknown }).message;
-    return typeof message === "string" && message !== "" ? message : t("account.alerts.errors.kind_unavailable");
-  }
-  return code && SERVER_CODES.has(code) ? t(`account.alerts.errors.${code}`) : authErrorText(t, err);
-}
 
 const minutesText = (t: TFunction, m: number) => (m % 60 === 0 ? durationText(t, "hours", m / 60) : durationText(t, "minutes", m));
 const secondsText = (t: TFunction, s: number) => (s >= 86400 ? durationText(t, "days", s / 86400) : s >= 3600 ? durationText(t, "hours", s / 3600) : durationText(t, "minutes", s / 60));
@@ -107,7 +95,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   }
 
   const name = t(`account.alerts.kinds.${kind}.name`);
-  const error = local ? t(`account.alerts.errors.${local}`) : save.isError ? serverErrorText(t, save.error) : null;
+  const error = local ? t(`account.alerts.errors.${local}`) : save.isError ? alertErrorText(t, save.error) : null;
 
   return (
     <li data-testid={`alert-${kind}`} className="flex flex-col gap-2 py-3">

@@ -1,42 +1,50 @@
 import { afterEach, describe, expect, it } from "vitest";
 import i18n from "../../../src/i18n";
-import { authErrorText, requestErrorText } from "../../../src/features/account/errors";
+import { alertErrorText, authErrorText, requestErrorText } from "../../../src/features/account/errors";
 import { fromServer, toPut, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
 import { requestReasonText } from "../../../src/features/account/requestReason";
 
-// Every reason string beacon-server's polling package can put in statusReason.
-const SERVER_REASONS = [
-  "No observer can reach this repeater yet.",
-  "Every observer that can reach this repeater is already polling its maximum.",
-  "The repeater did not accept this guest password. Enter a new one.",
-  "The repeater did not accept a blank or hello login. Enter a guest password.",
-  "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.",
-  "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password.",
-  "Not heard by any observer for 7 days.",
+// Every statusReasonCode beacon-server puts on a telemetry request (reason-codes.md), with its English sentence.
+const REASON_CODES: Array<[string, string, number?]> = [
+  ["no_observer", "No observer can reach this repeater yet."],
+  ["no_seat", "Every observer that can reach this repeater is already polling its maximum."],
+  ["login_failed", "The repeater did not accept this guest password. Enter a new one."],
+  ["blank_login_failed", "The repeater did not accept a blank or hello login. Enter a guest password."],
+  ["admin_stopped", "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one."],
+  ["blank_blocked", "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password."],
+  ["offline", "Not heard by any observer for 7 days.", 7],
 ];
+const reasonOf = (code: string, statusReason: string, days?: number) => ({
+  statusReasonCode: code, statusReason, ...(days === undefined ? {} : { statusReasonDays: days }),
+});
 
 afterEach(() => i18n.changeLanguage("en"));
 
 describe("telemetry request reasons", () => {
-  it.each(["en", "fr", "sv"])("has %s text for every server reason", async (lang) => {
+  it.each(["en", "fr", "sv"])("translates every reason code in %s without reading the sentence", async (lang) => {
     await i18n.changeLanguage(lang);
     const english = i18n.getFixedT("en");
-    for (const reason of SERVER_REASONS) {
-      const text = requestReasonText(i18n.t, reason);
-      expect(text).not.toMatch(/^account\./);
-      if (lang === "en") expect(text).toBe(reason);
-      else expect(text, reason).not.toBe(requestReasonText(english, reason));
+    for (const [code, sentence, days] of REASON_CODES) {
+      // The sentence is deliberately wrong: only the code may decide the text.
+      const text = requestReasonText(i18n.t, reasonOf(code, "x", days));
+      expect(text, code).not.toMatch(/^account\./);
+      expect(text, code).not.toBe("x");
+      if (lang === "en") expect(text).toBe(sentence);
+      else expect(text, code).not.toBe(requestReasonText(english, reasonOf(code, "x", days)));
     }
   });
 
-  it("fills in the offline days", async () => {
-    expect(requestReasonText(i18n.t, "Not heard by any observer for 7 days.")).toContain("7");
-    expect(requestReasonText(i18n.t, "Not heard by any observer for 1 days.")).toContain("1");
+  it("fills in the offline days, one day included", () => {
+    expect(requestReasonText(i18n.t, reasonOf("offline", "", 7))).toBe("Not heard by any observer for 7 days.");
+    expect(requestReasonText(i18n.t, reasonOf("offline", "", 1))).toBe("Not heard by any observer for 1 day.");
   });
 
-  it("shows a reason it does not know as sent, and nothing for none", () => {
-    expect(requestReasonText(i18n.t, "Something new.")).toBe("Something new.");
-    expect(requestReasonText(i18n.t, "")).toBe("");
+  it("shows the server's text for no code, an unknown code, other, or offline without days", () => {
+    expect(requestReasonText(i18n.t, { statusReason: "No observer can reach this repeater yet." })).toBe("No observer can reach this repeater yet.");
+    expect(requestReasonText(i18n.t, reasonOf("future_code", "Something new."))).toBe("Something new.");
+    expect(requestReasonText(i18n.t, reasonOf("other", "Odd text."))).toBe("Odd text.");
+    expect(requestReasonText(i18n.t, reasonOf("offline", "Not heard for ages."))).toBe("Not heard for ages.");
+    expect(requestReasonText(i18n.t, reasonOf("", ""))).toBe("");
   });
 });
 
@@ -88,5 +96,25 @@ describe("Atlas document as the server marshals it", () => {
       if (pin.tiles) expect(new Set(pin.tiles).size).toBe(4);
       expect([...pin.name].length).toBeLessThanOrEqual(160);
     }
+  });
+});
+
+describe("error codes on the portal and alert routes", () => {
+  it.each(["en", "fr", "sv"])("has %s text for portal_managed and the alert codes", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const generic = authErrorText(i18n.t, {});
+    for (const code of ["portal_managed", "not_found", "app_session_required"]) {
+      const text = alertErrorText(i18n.t, { code });
+      expect(text, code).not.toBe(generic);
+      expect(text).not.toMatch(/^account\./);
+    }
+    expect(authErrorText(i18n.t, { code: "portal_managed" })).not.toBe(generic);
+    for (const code of ["not_on_atlas", "invalid_threshold", "alerts_disabled", "invalid_input", "not_signed_in", "csrf_rejected", "service_unavailable", "read_only"]) {
+      expect(alertErrorText(i18n.t, { code }), code).not.toBe(generic);
+    }
+  });
+
+  it("keeps the server's own reason for kind_unavailable", () => {
+    expect(alertErrorText(i18n.t, { code: "kind_unavailable", message: "Turn on the gone-quiet alert for this radio first." })).toBe("Turn on the gone-quiet alert for this radio first.");
   });
 });

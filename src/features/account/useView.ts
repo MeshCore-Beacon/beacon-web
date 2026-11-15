@@ -5,7 +5,7 @@ export const VIEWS = ["signin", "register", "verify", "reset", "profile"] as con
 export type AccountView = (typeof VIEWS)[number];
 
 // Everything a view puts in the URL; closing or switching removes all of it.
-export const VIEW_PARAMS = ["view", "token", "app", "code_challenge", "state"] as const;
+export const VIEW_PARAMS = ["view", "token", "app", "code_challenge", "state", "error"] as const;
 
 function asView(value: string | null): AccountView | null {
   return (VIEWS as readonly string[]).includes(value ?? "") ? (value as AccountView) : null;

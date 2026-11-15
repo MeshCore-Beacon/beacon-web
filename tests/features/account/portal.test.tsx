@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { AccountViews } from "../../../src/features/account/AccountViews";
-import { me } from "../../../src/api/auth";
+import { auth, me } from "../../../src/api/auth";
 import { navigateTo } from "../../../src/features/account/navigate";
 import { API_BASE } from "../../../src/lib/constants";
 import { authError, mocks, renderAt, resetMocks, user } from "./helpers";
@@ -170,5 +170,47 @@ describe("portal delete", () => {
     expect(confirm).toBeEnabled();
     fireEvent.click(confirm);
     await waitFor(() => expect(me.deleteAccount).toHaveBeenCalledWith({ confirmUsername: "ridge" }));
+  });
+});
+
+describe("portal mode keeps off the routes the server refuses", () => {
+  it("the verify view shows the portal button and never calls /auth/verify", async () => {
+    renderAt("?view=verify&token=abc", <AccountViews />);
+    await screen.findByRole("button", { name: "Sign in with MeshMapper" });
+    expect(auth.verify).not.toHaveBeenCalled();
+  });
+
+  it("a return path is one the server's SafeReturn keeps", async () => {
+    renderAt("?tab=Atlas&iata=YOW&view=signin&app=1&code_challenge=" + "c".repeat(43) + "&state=" + "s".repeat(32), <AccountViews />);
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in with MeshMapper" }));
+    const ret = new URL(vi.mocked(navigateTo).mock.calls[0]![0], "http://x").searchParams.get("return")!;
+    expect(ret.startsWith("/")).toBe(true);
+    expect(ret.startsWith("//")).toBe(false);
+    expect(ret.length).toBeLessThanOrEqual(1024);
+    expect([...ret].every((c) => c > " " && c !== "\\" && c !== "\x7f")).toBe(true);
+  });
+});
+
+describe("portal delete with a wrong username", () => {
+  it("says that is not your username on 422 invalid_input", async () => {
+    mocks.signedIn = { ...user, provider: "portal", email: "" };
+    vi.mocked(me.deleteAccount).mockRejectedValue(authError("invalid_input", 422));
+    renderAt("?view=profile", <AccountViews />);
+    await screen.findByRole("heading", { name: "Profile" });
+    const del = within(screen.getByRole("region", { name: "Delete account" }));
+    fireEvent.click(del.getByRole("button", { name: "Delete account" }));
+    fireEvent.change(del.getByLabelText(/Type ridge to confirm/), { target: { value: "ridge" } });
+    fireEvent.click(del.getByRole("button", { name: "Delete my account" }));
+    expect(await del.findByText("That is not your username.")).toBeInTheDocument();
+  });
+
+  it("a portal user is judged by the account's provider, not the server mode", async () => {
+    mocks.features = { ...mocks.features, accounts: "local" };
+    mocks.signedIn = { ...user, provider: "portal", email: "" };
+    vi.mocked(me.deleteAccount).mockResolvedValue(undefined);
+    renderAt("?view=profile", <AccountViews />);
+    await screen.findByRole("heading", { name: "Profile" });
+    const del = within(screen.getByRole("region", { name: "Delete account" }));
+    expect(del.queryByLabelText("Current password")).toBeNull();
   });
 });

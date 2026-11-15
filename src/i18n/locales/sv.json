@@ -1050,7 +1050,8 @@
         "csrf_rejected": "Begäran avvisades. Ladda om sidan och försök igen.",
         "accounts_disabled": "Konton är inte aktiverade på den här servern.",
         "service_unavailable": "Servern är upptagen. Försök igen om en stund.",
-        "read_only": "Servern är skrivskyddad just nu. Försök igen senare."
+        "read_only": "Servern är skrivskyddad just nu. Försök igen senare.",
+        "portal_managed": "Din inloggning hanteras i MeshMapper-portalen. Använd den där."
       },
       "profile": {
         "title": "Profil",
@@ -1098,6 +1099,7 @@
           "explain": "Det här raderar ditt konto, dina inloggningar på alla enheter och allt som sparats på det permanent. Det kan inte ångras.",
           "start": "Radera konto",
           "typeUsername": "Skriv {{username}} för att bekräfta",
+          "wrongUsername": "Det är inte ditt användarnamn.",
           "confirm": "Radera mitt konto",
           "deleting": "Raderar…",
           "cancel": "Avbryt"
@@ -1159,10 +1161,13 @@
           "temperature_one": "Ange en låg eller en hög gräns.",
           "temperature_number": "Ange gränserna som tal i grader C.",
           "temperature_order": "Den låga gränsen måste vara under den höga.",
+          "temperature_range": "Ange gränser mellan -50 och 150 grader C.",
           "kind_unavailable": "Den här aviseringen finns inte för den här radion.",
           "invalid_threshold": "Det är inget tillåtet värde för den här aviseringen.",
           "not_on_atlas": "Den här radion finns inte längre i din Atlas.",
-          "alerts_disabled": "Aviseringar är avstängda på den här servern."
+          "alerts_disabled": "Aviseringar är avstängda på den här servern.",
+          "not_found": "Den aviseringen finns inte längre.",
+          "app_session_required": "Bara Beacon-appen kan registrera en telefon för aviseringar."
         }
       },
       "requests": {

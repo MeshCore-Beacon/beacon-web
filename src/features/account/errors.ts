@@ -3,7 +3,7 @@ import type { TFunction } from "i18next";
 const KNOWN = new Set([
   "invalid_credentials", "email_unverified", "token_invalid", "username_taken", "weak_password",
   "invalid_input", "registration_closed", "not_signed_in", "csrf_rejected", "accounts_disabled",
-  "service_unavailable", "read_only",
+  "service_unavailable", "read_only", "portal_managed",
 ]);
 
 function when(t: TFunction, ms?: number): string {
@@ -37,4 +37,16 @@ const REQUEST_CODES = new Set([
 export function requestErrorText(t: TFunction, err: unknown): string {
   const code = errorCode(err);
   return code && REQUEST_CODES.has(code) ? t(`account.requests.errors.${code}`) : authErrorText(t, err);
+}
+
+const ALERT_CODES = new Set(["invalid_threshold", "not_on_atlas", "alerts_disabled", "not_found", "app_session_required"]);
+
+// Alert rule errors; kind_unavailable carries the server's own reason, anything else falls back to the shared mapping.
+export function alertErrorText(t: TFunction, err: unknown): string {
+  const code = errorCode(err);
+  if (code === "kind_unavailable") {
+    const message = (err as { message?: unknown }).message;
+    return typeof message === "string" && message !== "" ? message : t("account.alerts.errors.kind_unavailable");
+  }
+  return code && ALERT_CODES.has(code) ? t(`account.alerts.errors.${code}`) : authErrorText(t, err);
 }
