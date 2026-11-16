@@ -26,6 +26,7 @@ import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 import { EmojiText } from "../../components/EmojiText";
 import { MAX_PAGE_SIZE } from "../../lib/constants";
+import { downloadNodeCsv } from "./node-csv";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 const NAME_SORT: TableSort = { id: "name", direction: "asc" };
@@ -276,6 +277,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          onExportCsv={() => downloadNodeCsv(nodes)}
+          exportCsvDisabled={!nodes.length || isLoading || isPaging || isError || isResolved === false}
         />
 
         <DataTable

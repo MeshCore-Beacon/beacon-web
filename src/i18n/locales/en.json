@@ -675,6 +675,8 @@
       }
     },
     "nodeFilters": {
+      "exportLoaded": "Export loaded nodes (CSV)",
+      "exportLoadedHelp": "Exports only the nodes currently loaded for these filters. Scroll to load more; this is not a full database export.",
       "label": "Node filters",
       "type": "Type",
       "multibytePaths": "Multi-byte paths",

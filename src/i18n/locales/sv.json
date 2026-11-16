@@ -639,6 +639,8 @@
       }
     },
     "nodeFilters": {
+      "exportLoaded": "Exportera inlästa noder (CSV)",
+      "exportLoadedHelp": "Exporterar bara noder som redan laddats för dessa filter. Rulla för att läsa in fler; detta är inte en fullständig databasexport.",
       "label": "Nodfilter",
       "type": "Typ",
       "multibytePaths": "Flerbytevägar",
