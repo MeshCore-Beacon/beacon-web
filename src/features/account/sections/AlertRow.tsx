@@ -11,7 +11,7 @@ import { useDisplayUnits } from "../../../hooks/useFeatures";
 import { tempSymbol } from "../../../lib/units";
 import { alertErrorText } from "../errors";
 import {
-  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, temperatureLimits, type Inputs, type Parsed,
+  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, parseTemperature, temperatureLimits, type Inputs, type Parsed,
 } from "../alertRules";
 import type { AlertKind, AlertRule, AlertTarget } from "../types";
 import { useSessionEnded } from "./useSessionEnded";
@@ -42,10 +42,8 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
     const shown = inputsFor(kind, rule, tempUnit);
     const keepA = rule?.threshold != null && next.a.trim() === shown.a;
     const keepB = rule?.thresholdHigh != null && next.b.trim() === shown.b;
-    if (keepA && keepB) return { ok: true, threshold: rule?.threshold ?? null, thresholdHigh: rule?.thresholdHigh ?? null };
-    const parsed = parseInputs(kind, next, tempUnit);
-    if (!parsed.ok || (!keepA && !keepB)) return parsed;
-    return { ok: true, threshold: keepA ? rule?.threshold ?? null : parsed.threshold, thresholdHigh: keepB ? rule?.thresholdHigh ?? null : parsed.thresholdHigh };
+    if (kind !== "temperature") return parseInputs(kind, next, tempUnit);
+    return parseTemperature(next.a, next.b, tempUnit, { a: keepA ? rule?.threshold ?? undefined : undefined, b: keepB ? rule?.thresholdHigh ?? undefined : undefined });
   };
 
   // Validates the inputs and sends them; an invalid value shows an error and sends nothing.

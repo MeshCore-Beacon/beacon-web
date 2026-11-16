@@ -42,9 +42,9 @@ function showTemp(tenths: number | null, unit: TemperatureUnit): string {
 }
 
 // The limits and minimum width as the temperature error text shows them, in the instance unit.
-export function temperatureLimits(unit: TemperatureUnit): { min: string; max: string; width: string; unit: string } {
-  if (unit === "f") return { min: String(Math.round(toDisplayTemp(-50, "f"))), max: String(Math.round(toDisplayTemp(150, "f"))), width: String(Math.ceil(2 * 1.8)), unit: tempSymbol(unit) };
-  return { min: "-50", max: "150", width: "2.0", unit: tempSymbol(unit) };
+export function temperatureLimits(unit: TemperatureUnit): { min: string; max: string; width: string; example: string; unit: string } {
+  if (unit === "f") return { min: String(Math.round(toDisplayTemp(-50, "f"))), max: String(Math.round(toDisplayTemp(150, "f"))), width: String(Math.ceil(2 * 1.8)), example: "95", unit: tempSymbol(unit) };
+  return { min: "-50", max: "150", width: "2.0", example: "95", unit: tempSymbol(unit) };
 }
 
 export type Parsed = { ok: true; threshold: number | null; thresholdHigh: number | null } | { ok: false; error: string };
@@ -71,22 +71,36 @@ export function parseInputs(kind: AlertKind, { a, b }: Inputs, unit: Temperature
       if (v == null || Number.isNaN(v) || v < -130 || v > -50) return { ok: false, error: "noise_high" };
       return { ok: true, threshold: Math.round(v), thresholdHigh: null };
     }
-    case "temperature": {
-      const low = num(a);
-      const high = num(b);
-      if (Number.isNaN(low) || Number.isNaN(high)) return { ok: false, error: "temperature_number" };
-      if (low == null && high == null) return { ok: false, error: "temperature_one" };
-      if (low != null && high != null && low >= high) return { ok: false, error: "temperature_order" };
-      const tenths = (v: number | null) => (v == null ? null : Math.round((unit === "f" ? fromDisplayTemp(v, "f") : v) * 10));
-      const [lo, hi] = [tenths(low), tenths(high)];
-      if ([lo, hi].some((v) => v != null && (v < -500 || v > 1500))) return { ok: false, error: "temperature_range" };
-      // The server refuses a range under 2.0 degrees (20 tenths) with invalid_threshold.
-      if (lo != null && hi != null && hi - lo < 20) return { ok: false, error: "temperature_width" };
-      return { ok: true, threshold: lo, thresholdHigh: hi };
-    }
+    case "temperature": return parseTemperature(a, b, unit);
     default:
       return { ok: true, threshold: null, thresholdHigh: null };
   }
+}
+
+type Bound = { ok: true; tenths: number | null } | { ok: false; error: string };
+
+// A typed limit in the instance unit as tenths of a degree C, or the first thing wrong with it.
+function bound(text: string, unit: TemperatureUnit): Bound {
+  const v = num(text);
+  if (v == null) return { ok: true, tenths: null };
+  if (Number.isNaN(v)) return { ok: false, error: "temperature_number" };
+  if (unit === "f" && !Number.isInteger(v)) return { ok: false, error: "temperature_whole" };
+  return { ok: true, tenths: Math.round((unit === "f" ? fromDisplayTemp(v, "f") : v) * 10) };
+}
+
+// Resolves both limits to tenths first (keep holds an untouched limit's stored tenths), then checks that pair.
+export function parseTemperature(a: string, b: string, unit: TemperatureUnit, keep: { a?: number; b?: number } = {}): Parsed {
+  const low = keep.a !== undefined ? { ok: true as const, tenths: keep.a } : bound(a, unit);
+  if (!low.ok) return low;
+  const high = keep.b !== undefined ? { ok: true as const, tenths: keep.b } : bound(b, unit);
+  if (!high.ok) return high;
+  const [lo, hi] = [low.tenths, high.tenths];
+  if (lo == null && hi == null) return { ok: false, error: "temperature_one" };
+  if (lo != null && hi != null && lo >= hi) return { ok: false, error: "temperature_order" };
+  if ([lo, hi].some((v) => v != null && (v < -500 || v > 1500))) return { ok: false, error: "temperature_range" };
+  // The server refuses a range under 2.0 degrees (20 tenths) with invalid_threshold.
+  if (lo != null && hi != null && hi - lo < 20) return { ok: false, error: "temperature_width" };
+  return { ok: true, threshold: lo, thresholdHigh: hi };
 }
 
 export function durationText(t: TFunction, unit: "minutes" | "hours" | "days", count: number): string {

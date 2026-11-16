@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inputsFor, parseInputs } from "../../../src/features/account/alertRules";
+import { inputsFor, parseInputs, parseTemperature } from "../../../src/features/account/alertRules";
 import type { AlertRule } from "../../../src/features/account/types";
 
 const rule = (threshold: number | null, thresholdHigh: number | null) => ({ threshold, thresholdHigh }) as AlertRule;
@@ -29,6 +29,17 @@ describe("temperature alert limits", () => {
 
   it("rejects F limits less than 2 C apart", () => {
     expect(parseInputs("temperature", { a: "70", b: "72" }, "f")).toEqual({ ok: false, error: "temperature_width" });
+  });
+
+  it("refuses a fractional F limit and accepts integral decimal text", () => {
+    for (const v of ["95.1", "95.5", "-10.5"]) expect(parseInputs("temperature", { a: v, b: "" }, "f")).toEqual({ ok: false, error: "temperature_whole" });
+    expect(parseInputs("temperature", { a: "95.0", b: "" }, "f")).toEqual({ ok: true, threshold: 350, thresholdHigh: null });
+  });
+
+  it("checks range, order and width on the resolved tenths, kept bounds included", () => {
+    const keep = { a: 357 };
+    expect(parseTemperature("96", "98", "f", keep)).toEqual({ ok: false, error: "temperature_width" });
+    expect(parseTemperature("96", "100", "f", { a: 358 })).toEqual({ ok: true, threshold: 358, thresholdHigh: 378 });
   });
 
   it("keeps Celsius parsing at one decimal", () => {

@@ -1340,6 +1340,7 @@
           "temperature_number": "Enter the limits as numbers in {{unit}}.",
           "temperature_order": "The low limit must be below the high limit.",
           "temperature_width": "The high limit must be at least {{width}} {{unit}} above the low limit.",
+          "temperature_whole": "Enter a whole number of degrees {{unit}}, such as {{example}}.",
           "temperature_range": "Enter limits between {{min}} and {{max}} {{unit}}.",
           "kind_unavailable": "This alert is not available for this radio.",
           "invalid_threshold": "That is not an allowed value for this alert.",

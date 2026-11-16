@@ -96,6 +96,10 @@ const ICON_IMAGE: ExpressionSpecification = [
 
 // Node labels fade in only past NODE_LABEL_MIN_ZOOM.
 const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
+// The telemetry line sits 3 em down with no padding so it clears its own name; readings 48h+ dim to 0.45.
+const TELEMETRY_TEXT_OFFSET_Y = 3;
+const TELEMETRY_TEXT_PADDING = 0;
+const TELEMETRY_OPACITY: ExpressionSpecification = ["case", ["boolean", ["get", "telemetryOld"], false], 0.45, 1];
 
 const TELEMETRY_MIN_ZOOM = 8;
 const UNCLUSTERED = ["!", ["has", "point_count"]] as ExpressionSpecification;
@@ -248,7 +252,8 @@ export function useMapNodes(
       } as SymbolLayerSpecification, beforeFlow);
     }
 
-    // Battery/temperature text under the name; no allow-overlap, so crowded labels thin out.
+    // Battery/temperature text under the name. Added beneath the name layer so names place first and
+    // this line yields; no allow-overlap, so crowded labels thin out.
     if (!map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
       map.addLayer({
         id: NODES_TELEMETRY_LAYER_ID,
@@ -260,16 +265,17 @@ export function useMapNodes(
           "text-field": ["get", "telemetry"],
           "text-font": ["Noto Sans Regular"],
           "text-size": 10,
-          "text-offset": [0, 2.5],
+          "text-offset": [0, TELEMETRY_TEXT_OFFSET_Y],
+          "text-padding": TELEMETRY_TEXT_PADDING,
           "text-anchor": "top",
         },
         paint: {
           "text-color": textColor,
           "text-halo-color": halo,
           "text-halo-width": 1.3,
-          "text-opacity": ["case", ["boolean", ["get", "telemetryOld"], false], 0.45, 1],
+          "text-opacity": TELEMETRY_OPACITY,
         },
-      } as SymbolLayerSpecification, beforeFlow);
+      } as SymbolLayerSpecification, NODES_POINT_LAYER_ID);
     }
 
     // Ring under the selected node's icon. Only matches an unclustered point (clusters carry no id);
@@ -414,6 +420,10 @@ export function useMapNodes(
     // live mode hides the name labels, so the text under them goes too
     if (map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
       map.setLayoutProperty(NODES_TELEMETRY_LAYER_ID, "visibility", live ? "none" : "visible");
+    }
+    if (map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
+      // unrelated nodes' text fades with their names; old readings stay dimmed on a focused node
+      map.setPaintProperty(NODES_TELEMETRY_LAYER_ID, "text-opacity", live || !focusIds ? TELEMETRY_OPACITY : focusCase(TELEMETRY_OPACITY, 0));
     }
     if (map.getLayer(LIVE_DOTS_LAYER_ID)) {
       map.setFilter(LIVE_DOTS_LAYER_ID, dotsFilter(dotTypes));

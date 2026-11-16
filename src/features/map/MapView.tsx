@@ -114,7 +114,10 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // battery/temperature labels, off by default; seeded URL -> localStorage like borders
   const [telemetry, setTelemetry] = useState(() => urlView.telemetry ?? localStorage.getItem(MAP_TELEMETRY_STORAGE_KEY) === "on");
+  // label ages read this clock, which only ticks while the labels are on; refresh it when they come on
+  const [now, setNow] = useState(() => Date.now());
   const handleTelemetryChange = useCallback((on: boolean) => {
+    if (on) setNow(Date.now());
     setTelemetry(on);
     localStorage.setItem(MAP_TELEMETRY_STORAGE_KEY, on ? "on" : "off");
   }, []);
@@ -164,9 +167,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // split memos: rebuild the FeatureCollection only when nodes change; a type-filter change just
   // re-filters the already-built collection instead of re-running the full transform over all nodes
   const { temperature: temperatureUnit, distance: distanceUnit } = useDisplayUnits();
-  const readings = useMapTelemetry(selectedIatas, regionKey, telemetryOn);
+  const readings = useMapTelemetry(selectedIatas, regionKey, telemetryOn && !regionPending);
   // ages tick once a minute while the labels are on
-  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!telemetryOn) return;
     const id = setInterval(() => setNow(Date.now()), 60_000);
@@ -258,7 +260,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       styleId,
       flow: packetFlow,
       borders,
-      telemetry: telemetryOffered ? telemetry : undefined,
+      telemetry: telemetry || telemetryOffered ? telemetry : undefined, // keep a saved "on" before /info loads
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
   }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders, telemetry, telemetryOffered]);

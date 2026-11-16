@@ -1354,6 +1354,7 @@
           "temperature_number": "Entrez les limites en {{unit}}, sous forme de nombres.",
           "temperature_order": "La limite basse doit être inférieure à la limite haute.",
           "temperature_width": "La limite haute doit être au moins {{width}} {{unit}} au-dessus de la limite basse.",
+          "temperature_whole": "Entrez un nombre entier de degrés {{unit}}, par exemple {{example}}.",
           "temperature_range": "Entrez des limites entre {{min}} et {{max}} {{unit}}.",
           "kind_unavailable": "Cette alerte n'est pas disponible pour cette radio.",
           "invalid_threshold": "Cette valeur n'est pas permise pour cette alerte.",

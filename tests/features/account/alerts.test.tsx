@@ -366,6 +366,37 @@ describe("alerts section", () => {
         await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 355, thresholdHigh: 412, enabled: true })));
       });
 
+      it("a kept low limit counts at its stored tenths when checking the width", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ threshold: 357, thresholdHigh: 412 })));
+        const r = row("Hilltop", "temperature");
+        const high = r.getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "98" } });
+        fireEvent.blur(high);
+        expect(await r.findByRole("alert")).toHaveTextContent(/at least/);
+        expect(put()).not.toHaveBeenCalled();
+      });
+
+      it("a pair exactly 20 tenths wide is accepted", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ threshold: 358, thresholdHigh: 412 })));
+        const high = row("Hilltop", "temperature").getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "100" } });
+        fireEvent.blur(high);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 358, thresholdHigh: 378 })));
+      });
+
+      it("a fractional F limit is refused and sends nothing", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule()));
+        const r = row("Hilltop", "temperature");
+        const high = r.getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "95.5" } });
+        fireEvent.blur(high);
+        expect(await r.findByRole("alert")).toHaveTextContent("Enter a whole number of degrees °F, such as 95.");
+        expect(put()).not.toHaveBeenCalled();
+      });
+
       it("editing only the high F limit keeps the untouched low limit's stored tenths", async () => {
         units.temperature = "f";
         await open(withRule(temperatureRule({ threshold: 355, thresholdHigh: 412 })));
@@ -377,12 +408,13 @@ describe("alerts section", () => {
     });
 
     it("the width message is translated in fr and sv", async () => {
-      const key = "account.alerts.errors.temperature_width";
       try {
         for (const lng of ["fr", "sv"]) {
           await act(() => i18n.changeLanguage(lng));
-          expect(i18n.t(key)).not.toBe(key);
-          expect(i18n.t(key)).not.toBe(i18n.t(key, { lng: "en" }));
+          for (const key of ["account.alerts.errors.temperature_width", "account.alerts.errors.temperature_whole"]) {
+            expect(i18n.t(key)).not.toBe(key);
+            expect(i18n.t(key)).not.toBe(i18n.t(key, { lng: "en" }));
+          }
         }
       } finally {
         await act(() => i18n.changeLanguage("en"));

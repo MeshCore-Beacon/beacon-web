@@ -45,3 +45,10 @@ describe("stableLabels", () => {
     ]) expect(stableLabels(prev, next)).toBe(next);
   });
 });
+
+describe("telemetryLabel rounding", () => {
+  const t = (c: number) => telemetryLabel({ nodeId: "a", sampledAt: now, temperatureC: c }, "c", now)?.text;
+  it("rounds half away from zero and never prints -0", () => {
+    expect([-0.5, -1.5, -2.5, 0.5, -0.4].map(t)).toEqual(["-1°  0m", "-2°  0m", "-3°  0m", "1°  0m", "0°  0m"]);
+  });
+});

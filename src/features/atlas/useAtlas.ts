@@ -82,9 +82,8 @@ function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC")
   return null;
 }
 
-// "4.23 V · 16.5 °C" (or °F on an imperial instance) for a polled repeater or room server, or null when there is nothing to show.
-// Reads only; the card's saved shape is untouched.
-// A card that has a Telemetry tab shows the readings there instead, so the line is only for one without.
+// "4.23 V · 16.5 °C" (°F when the instance uses it) for a polled repeater or room server, else null.
+// Read only; a card with a Telemetry tab shows the readings there instead.
 export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | undefined, active: boolean): string | null {
   const { polling } = useFeatures();
   const { temperature: tempUnit } = useDisplayUnits();

@@ -1227,6 +1227,7 @@
           "temperature_number": "Ange gränserna som tal i {{unit}}.",
           "temperature_order": "Den låga gränsen måste vara under den höga.",
           "temperature_width": "Den höga gränsen måste vara minst {{width}} {{unit}} över den låga.",
+          "temperature_whole": "Ange ett helt antal grader {{unit}}, till exempel {{example}}.",
           "temperature_range": "Ange gränser mellan {{min}} och {{max}} {{unit}}.",
           "kind_unavailable": "Den här aviseringen finns inte för den här radion.",
           "invalid_threshold": "Det är inget tillåtet värde för den här aviseringen.",
