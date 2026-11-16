@@ -90,7 +90,8 @@ export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | u
   const throttled = useThrottled();
   const polled = polling && isPolledNodeType(nodeTypeName);
   const { data } = useNodeTelemetry(nodeId ?? undefined, "24h", polled && active && !throttled, ATLAS_REFRESH_MS);
-  if (!polled || !data) return null;
+  // The Telemetry tab fills the same cache entry, so cached data alone must not bring the line back.
+  if (!polled || !active || !data) return null;
   const volts = mvToVolts(newest(data.points, "batteryMv"));
   const temp = newest(data.points, "temperatureC");
   const parts = [volts != null && `${volts.toFixed(2)} V`, temp != null && formatTemp(temp, tempUnit)].filter(Boolean);

@@ -1040,6 +1040,10 @@
       "activityUnsupported": "This server does not provide node activity.",
       "lastSeen": "Last seen",
       "meanHops": "Mean hops",
+      "heard": "Heard",
+      "hops": "{{value}} hops",
+      "neighbors_one": "{{count}} neighbor",
+      "neighbors_other": "{{count}} neighbors",
       "recent": "Recent",
       "stale": "Stale",
       "observers_one": "{{count}} observer heard the latest packet",
@@ -1087,6 +1091,9 @@
         "polledBy": "Polled by {{name}}",
         "polled": "Being polled",
         "notPolled": "Not being polled right now",
+        "polledShort": "Polled",
+        "notPolledShort": "Not polled",
+        "byPoller": "by {{name}}",
         "lastReading": "Last reading",
         "help": "Readings Beacon polled from this repeater, over the selected window. Airtime is the share of time spent transmitting and receiving. Packets and errors are per hour. Signal is the last SNR and RSSI the repeater reported. With only a few readings the points are drawn as dots."
       }

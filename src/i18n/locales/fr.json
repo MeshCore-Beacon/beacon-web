@@ -1046,6 +1046,10 @@
       "activityUnsupported": "Ce serveur ne fournit pas l’activité des nœuds.",
       "lastSeen": "Vu pour la dernière fois",
       "meanHops": "Sauts moyens",
+      "heard": "Entendu",
+      "hops": "{{value}} sauts",
+      "neighbors_one": "{{count}} voisin",
+      "neighbors_other": "{{count}} voisins",
       "recent": "Récent",
       "stale": "Périmé",
       "observers_one": "{{count}} observateur a entendu le dernier paquet",
@@ -1094,6 +1098,9 @@
         "polledBy": "Interrogé par {{name}}",
         "polled": "Interrogé",
         "notPolled": "Pas interrogé pour le moment",
+        "polledShort": "Interrogé",
+        "notPolledShort": "Non interrogé",
+        "byPoller": "par {{name}}",
         "lastReading": "Dernière mesure",
         "help": "Mesures relevées par Beacon sur ce répéteur, sur la période choisie. Le temps radio est la part du temps passée à émettre et à recevoir. Les paquets et les erreurs sont par heure. Le signal est le dernier SNR et RSSI rapporté par le répéteur. Avec peu de mesures, les points sont dessinés isolés."
       }
