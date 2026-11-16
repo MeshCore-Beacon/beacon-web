@@ -579,7 +579,9 @@
       "empty": "No observations on this route are still kept. Older ones may have expired.",
       "more": "Load more",
       "cap": "Showing the newest 500 observations.",
-      "inspect": "Inspect packet"
+      "inspect": "Inspect packet",
+      "invalidPath": "Invalid shared path. Open the route again to use its current representation.",
+      "invalid": "Invalid shared time window. Choose a range to continue."
     },
     "channelMessages": {
       "select": "Select a channel",
@@ -1272,15 +1274,42 @@
           "unknown": "Not checked yet"
         },
         "kinds": {
-          "gone_quiet": { "name": "Gone quiet", "when": "When the radio has not been heard for this long." },
-          "back_online": { "name": "Back online", "when": "When the radio is heard again after it went quiet." },
-          "battery_low": { "name": "Battery low", "when": "When the battery stays below this voltage." },
-          "battery_falling": { "name": "Battery falling", "when": "When the battery drops faster than this in a day." },
-          "rebooted": { "name": "Rebooted", "when": "When the radio restarts." },
-          "temperature": { "name": "Temperature", "when": "When the temperature goes below the low limit or above the high limit." },
-          "noise_high": { "name": "Noise high", "when": "When the noise floor stays above this level." },
-          "clock": { "name": "Clock drift", "when": "When the radio's clock is off by more than this." },
-          "observer_offline": { "name": "Observer offline", "when": "When the observer sends no status report for this long." }
+          "gone_quiet": {
+            "name": "Gone quiet",
+            "when": "When the radio has not been heard for this long."
+          },
+          "back_online": {
+            "name": "Back online",
+            "when": "When the radio is heard again after it went quiet."
+          },
+          "battery_low": {
+            "name": "Battery low",
+            "when": "When the battery stays below this voltage."
+          },
+          "battery_falling": {
+            "name": "Battery falling",
+            "when": "When the battery drops faster than this in a day."
+          },
+          "rebooted": {
+            "name": "Rebooted",
+            "when": "When the radio restarts."
+          },
+          "temperature": {
+            "name": "Temperature",
+            "when": "When the temperature goes below the low limit or above the high limit."
+          },
+          "noise_high": {
+            "name": "Noise high",
+            "when": "When the noise floor stays above this level."
+          },
+          "clock": {
+            "name": "Clock drift",
+            "when": "When the radio's clock is off by more than this."
+          },
+          "observer_offline": {
+            "name": "Observer offline",
+            "when": "When the observer sends no status report for this long."
+          }
         },
         "reason": {
           "observerNoData": "This observer does not report {{what}}.",

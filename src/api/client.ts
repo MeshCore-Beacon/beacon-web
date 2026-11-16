@@ -237,7 +237,7 @@ export async function getKnownRoutesPage(
   return toCursorPage(items, limit, (r) => ({ lastSeen: r.lastSeen, id: r.id }));
 }
 
-export function getRouteEvidence(iata: string, pathKey: string, params: { range?: string; since?: number; until?: number; pageCursor?: string; limit?: number }, signal?: AbortSignal): Promise<RouteEvidence> {
+export function getRouteEvidence(iata: string, pathKey: string, params: { range?: string; since?: number; until?: number; pageCursor?: string; limit?: number; hashSize?: number; pathBytes?: string }, signal?: AbortSignal): Promise<RouteEvidence> {
   return request(`/routes/${encodeURIComponent(iata)}/${encodeURIComponent(pathKey)}/observations`, params, signal);
 }
 
