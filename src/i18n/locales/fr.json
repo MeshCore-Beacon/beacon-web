@@ -1439,6 +1439,12 @@
         "button": "Se connecter avec MeshMapper",
         "failed": "La connexion n'a pas abouti. Réessayez."
       }
+    },
+    "contactExport": {
+      "button": "Contacts",
+      "help": "Télécharger les contacts JSON des lignes chargées uniquement. Les lignes incomplètes ou en double sont ignorées. Aucune clé privée ni route apprise.",
+      "result": "Contacts enregistrés : {{count}} sur {{loaded}} lignes chargées. Lignes incomplètes ou en double ignorées : {{skipped}}. Ce fichier ne représente pas tout le réseau.",
+      "empty": "Aucun contact admissible parmi les {{loaded}} lignes chargées. Un nom, une clé publique complète, un type pris en charge et une position utilisable sont requis."
     }
   }
 }

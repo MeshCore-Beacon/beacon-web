@@ -1311,6 +1311,12 @@
         "button": "Logga in med MeshMapper",
         "failed": "Inloggningen slutfördes inte. Försök igen."
       }
+    },
+    "contactExport": {
+      "button": "Kontakter",
+      "help": "Ladda ned kontakt-JSON för enbart inlästa rader. Ofullständiga och dubbla rader hoppas över. Inga privata nycklar eller inlärda rutter ingår.",
+      "result": "Sparade kontakter: {{count}} från {{loaded}} inlästa rader. Överhoppade ofullständiga eller dubbla rader: {{skipped}}. Detta är inte hela nätverket.",
+      "empty": "Inga giltiga kontakter bland {{loaded}} inlästa rader. Namn, fullständig publik nyckel, stödd typ och användbar position krävs."
     }
   }
 }

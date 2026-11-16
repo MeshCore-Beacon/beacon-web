@@ -8,6 +8,7 @@ import type { NodePage, NodeSummary } from "../../../src/features/nodes/types";
 import type { WsManager } from "../../../src/api/ws-manager";
 import type { WsNodeUpdate } from "../../../src/types/ws";
 import { stubVirtualLayout } from "../../virtual-layout";
+import * as contactExport from "../../../src/features/nodes/node-contacts";
 
 const region = { iatas: ["YVR"], regionKey: "YVR", isResolved: true };
 vi.mock("../../../src/hooks/useRegion", () => ({ useRegion: () => region }));
@@ -48,6 +49,25 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+it("exports only eligible loaded contacts without fetching additional data", async () => {
+  const download = vi.spyOn(contactExport, "downloadNodeContacts").mockImplementation(() => {});
+  vi.mocked(getNodesPage).mockResolvedValue({ items: [
+    node({ publicKey: "ab".repeat(32), lat: 43, lng: -80 }),
+    node({ id: "incomplete", name: "Incomplete node" }),
+  ], sort: "name", order: "asc", hasMore: false, nextCursor: null });
+  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <NodeTable wsManager={fakeWsManager} selectedNodeId={null} onSelectNode={vi.fn()} />
+  </QueryClientProvider>);
+  const button = screen.getByRole("button", { name: "Contacts", exact: true });
+  expect(button).toBeDisabled();
+  await waitFor(() => expect(button).toBeEnabled());
+  const reads = vi.mocked(getNodesPage).mock.calls.length;
+  fireEvent.click(button);
+  expect(download).toHaveBeenCalledWith(expect.objectContaining({ contacts: [expect.objectContaining({ public_key: "ab".repeat(32), out_path_list: null })] }));
+  expect(screen.getByRole("status")).toHaveTextContent("Contacts saved: 1 from 2 loaded rows. Skipped: 1");
+  expect(getNodesPage).toHaveBeenCalledTimes(reads);
 });
 
 describe("NodeTable name column", () => {

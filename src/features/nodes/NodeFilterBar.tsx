@@ -23,6 +23,8 @@ interface NodeFilterBarProps {
   scopeFilter: string;
   onScopeChange: (s: string) => void;
   scopeOptions: string[];
+  onExportContacts?: () => void;
+  exportContactsDisabled?: boolean;
 }
 
 export function NodeFilterBar({
@@ -39,10 +41,17 @@ export function NodeFilterBar({
   scopeFilter,
   onScopeChange,
   scopeOptions,
+  onExportContacts,
+  exportContactsDisabled,
 }: NodeFilterBarProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const contactsAction = onExportContacts && <button type="button" onClick={onExportContacts}
+    disabled={exportContactsDisabled} title={t("contactExport.help")}
+    className="shrink-0 rounded border border-border px-2 py-1 font-mono text-[11px] text-text-normal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+    {t("contactExport.button")}
+  </button>;
   // close the sheet when leaving mobile — derive during render, not in an effect
   if (sheetOpen && !isMobile) setSheetOpen(false);
 
@@ -81,6 +90,7 @@ export function NodeFilterBar({
       <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label={t("nodeFilters.label")}>
         <SearchBar value={search} onChange={onSearchChange} fields={searchFields} field={searchField} onFieldChange={onSearchFieldChange} />
         <FiltersButton activeCount={activeCount} onClick={() => setSheetOpen(true)} />
+        {contactsAction}
         {sheetOpen && (
           <FilterSheet onClose={() => setSheetOpen(false)} onClear={activeCount > 0 ? clearAll : undefined}>
             {controls(true)}
@@ -107,6 +117,7 @@ export function NodeFilterBar({
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>
 
       {controls(false)}
+      {contactsAction}
     </div>
   );
 }

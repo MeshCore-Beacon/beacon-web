@@ -1424,6 +1424,12 @@
         "button": "Sign in with MeshMapper",
         "failed": "Sign-in did not complete. Try again."
       }
+    },
+    "contactExport": {
+      "button": "Contacts",
+      "help": "Download contact-file JSON for loaded rows only. Incomplete or duplicate rows are skipped. No private keys or learned routes are included.",
+      "result": "Contacts saved: {{count}} from {{loaded}} loaded rows. Skipped: {{skipped}} incomplete or duplicate rows. This is not the full network.",
+      "empty": "No eligible contacts in {{loaded}} loaded rows. A name, full public key, supported type and usable location are required."
     }
   }
 }

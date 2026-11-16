@@ -26,6 +26,7 @@ import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 import { EmojiText } from "../../components/EmojiText";
 import { MAX_PAGE_SIZE } from "../../lib/constants";
+import { downloadNodeContacts, nodeContacts } from "./node-contacts";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 const NAME_SORT: TableSort = { id: "name", direction: "asc" };
@@ -115,6 +116,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [clientSort, setClientSort] = useState(false);
   // A server that doesn't send lastSeen can't sort by it either, so Last heard stays hidden there.
   const [noLastSeen, setNoLastSeen] = useState(false);
+  const [contactsNotice, setContactsNotice] = useState<{ count: number; loaded: number; skipped: number } | null>(null);
 
   const columns = useMemo<Column<NodeSummary>[]>(() => [
     {
@@ -259,6 +261,14 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 
+  const exportContactsDisabled = isLoading || isPaging || isError || isResolved === false || nodes.length === 0;
+  const handleExportContacts = () => {
+    if (exportContactsDisabled) return;
+    const result = nodeContacts(nodes);
+    if (result.file.contacts.length) downloadNodeContacts(result.file);
+    setContactsNotice({ count: result.file.contacts.length, loaded: nodes.length, skipped: result.skipped });
+  };
+
   return (
     <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex flex-col flex-1 min-w-0">
@@ -276,7 +286,12 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          onExportContacts={handleExportContacts}
+          exportContactsDisabled={exportContactsDisabled}
         />
+        {contactsNotice && <p role="status" className="shrink-0 px-4 py-2 text-xs text-text-muted">
+          {t(contactsNotice.count ? "contactExport.result" : "contactExport.empty", contactsNotice)}
+        </p>}
 
         <DataTable
           columns={columns}
