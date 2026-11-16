@@ -151,3 +151,15 @@ describe("parseNodeType", () => {
     expect(parseNodeType(null)).toBeUndefined();
   });
 });
+
+describe("telemetry param", () => {
+  it("parses on and leaves it undefined when absent", () => {
+    expect(parseMapView(new URLSearchParams("telemetry=on"))).toEqual({ telemetry: true });
+    expect(parseMapView(new URLSearchParams("")).telemetry).toBeUndefined();
+  });
+
+  it("builds telemetry=on from a snapshot", () => {
+    const snap: MapViewSnapshot = { center: [0, 0], zoom: 5, clustered: true, nodeType: "", neighborLines: "on", styleId: "liberty", flow: false, borders: false, telemetry: true };
+    expect(buildMapParams(snap).telemetry).toBe("on");
+  });
+});

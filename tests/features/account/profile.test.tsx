@@ -19,6 +19,7 @@ vi.mock("../../../src/api/auth", async (orig) => {
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
+  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
 }));
 
 const here: Session = { id: "s1", kind: "web", label: "Firefox on macOS", current: true, createdAt: 1_700_000_000_000, lastUsedAt: 1_700_000_100_000, expiresAt: 1_800_000_000_000 };

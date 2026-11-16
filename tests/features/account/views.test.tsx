@@ -17,6 +17,7 @@ vi.mock("../../../src/features/account/navigate", () => ({ navigateTo: vi.fn() }
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
+  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
 }));
 
 beforeEach(() => {
