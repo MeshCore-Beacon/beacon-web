@@ -67,6 +67,9 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   // Typed inputs save when focus leaves, and only if the value moved.
   const blur = () => {
     if (!rule?.enabled) return;
+    // An unedited box still shows its rounded display (F), so re-parsing it would move the stored value.
+    const shown = inputsFor(kind, rule, tempUnit);
+    if (inputs.a === shown.a && inputs.b === shown.b) return;
     const parsed = parseInputs(kind, inputs, tempUnit);
     if (!parsed.ok) return setLocal(parsed.error);
     if (parsed.threshold === rule.threshold && parsed.thresholdHigh === rule.thresholdHigh) return;

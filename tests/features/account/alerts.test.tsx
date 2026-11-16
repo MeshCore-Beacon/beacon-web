@@ -18,10 +18,11 @@ vi.mock("../../../src/api/auth", async (orig) => {
     alerts: { get: vi.fn(), putRule: vi.fn(), deleteRule: vi.fn() },
   };
 });
+const units = vi.hoisted(() => ({ temperature: "c" as "c" | "f" }));
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
-  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
+  useDisplayUnits: () => ({ temperature: units.temperature, distance: "metric" }),
 }));
 
 const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
@@ -42,6 +43,7 @@ const response = (over: Partial<AlertsResponse> = {}): AlertsResponse => ({ deli
 beforeEach(() => {
   resetMocks();
   mocks.features = { ...mocks.features, alerts: true, alertDelivery: "email" };
+  units.temperature = "c";
   vi.mocked(me.get).mockResolvedValue({ user });
   vi.mocked(me.sessions).mockResolvedValue({ sessions: [] });
   vi.mocked(alerts.get).mockResolvedValue(response());
@@ -323,6 +325,39 @@ describe("alerts section", () => {
       fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "12" } });
       fireEvent.click(r.getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 100, thresholdHigh: 120 })));
+    });
+
+    describe("blur on an enabled temperature limit", () => {
+      const temperatureRule = (over: Partial<AlertRule> = {}) => rule({ kind: "temperature", threshold: 355, thresholdHigh: 400, ...over });
+      const withRule = (r: AlertRule) => response({ targets: [repeater({ rules: [r] })] });
+
+      it("an unedited limit in F is not rewritten on blur", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule()));
+        const low = row("Hilltop", "temperature").getByLabelText("Low (°F)");
+        expect(low).toHaveValue("96");
+        fireEvent.focus(low);
+        fireEvent.blur(low);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(put()).not.toHaveBeenCalled();
+      });
+
+      it("an edited limit in F saves, and the untouched limit keeps its stored tenths", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule()));
+        const low = row("Hilltop", "temperature").getByLabelText("Low (°F)");
+        fireEvent.change(low, { target: { value: "15" } });
+        fireEvent.blur(low);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "temperature", threshold: -94, thresholdHigh: 400 })));
+      });
+
+      it("an edited limit in C saves, and the untouched limit keeps its stored tenths", async () => {
+        await open(withRule(temperatureRule({ threshold: -100 })));
+        const low = row("Hilltop", "temperature").getByLabelText("Low (°C)");
+        fireEvent.change(low, { target: { value: "-9.0" } });
+        fireEvent.blur(low);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: -90, thresholdHigh: 400 })));
+      });
     });
 
     it("the width message is translated in fr and sv", async () => {
