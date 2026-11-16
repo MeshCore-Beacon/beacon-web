@@ -7,9 +7,11 @@ import { alerts } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
 import { fieldClassRoomy } from "../../../components/form/fieldStyles";
 import { ALERTS_KEY } from "../../../hooks/useAlerts";
+import { useDisplayUnits } from "../../../hooks/useFeatures";
+import { tempSymbol } from "../../../lib/units";
 import { alertErrorText } from "../errors";
 import {
-  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, type Inputs,
+  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, temperatureLimits, type Inputs,
 } from "../alertRules";
 import type { AlertKind, AlertRule, AlertTarget } from "../types";
 import { useSessionEnded } from "./useSessionEnded";
@@ -21,7 +23,8 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const ended = useSessionEnded();
-  const [inputs, setInputs] = useState<Inputs>(() => inputsFor(kind, rule));
+  const { temperature: tempUnit } = useDisplayUnits();
+  const [inputs, setInputs] = useState<Inputs>(() => inputsFor(kind, rule, tempUnit));
   const [local, setLocal] = useState<string | null>(null);
 
   const save = useSessionMutation({
@@ -36,7 +39,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
 
   // Validates the inputs and sends them; an invalid value shows an error and sends nothing.
   const send = (next: Inputs, enabled: boolean) => {
-    const parsed = parseInputs(kind, next);
+    const parsed = parseInputs(kind, next, tempUnit);
     if (!parsed.ok) {
       setLocal(parsed.error);
       return;
@@ -64,13 +67,13 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   // Typed inputs save when focus leaves, and only if the value moved.
   const blur = () => {
     if (!rule?.enabled) return;
-    const parsed = parseInputs(kind, inputs);
+    const parsed = parseInputs(kind, inputs, tempUnit);
     if (!parsed.ok) return setLocal(parsed.error);
     if (parsed.threshold === rule.threshold && parsed.thresholdHigh === rule.thresholdHigh) return;
     send(inputs, true);
   };
 
-  const label = (key: string) => t(`account.alerts.fields.${key}`);
+  const label = (key: string) => t(`account.alerts.fields.${key}`, { unit: tempSymbol(tempUnit) });
   const select = (key: string, options: number[], text: (n: number) => string) => (
     <select aria-label={label(key)} value={inputs.a} disabled={save.isPending} onChange={(e) => change("a", e.target.value, true)} className={`${fieldClassRoomy} !w-auto`}>
       {options.map((o) => <option key={o} value={o}>{text(o)}</option>)}
@@ -92,12 +95,12 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
     case "observer_offline": input = select("offline", OBSERVER_OFFLINE_MINUTES, (m) => minutesText(t, m)); break;
     case "battery_low": input = text("volts", "a", "3.50"); break;
     case "noise_high": input = text("dbm", "a", "-90"); break;
-    case "temperature": input = <>{text("low", "a", "-10.0")}<span aria-hidden className="text-text-dim">–</span>{text("high", "b", "40.0")}</>; break;
+    case "temperature": input = <>{text("low", "a", tempUnit === "f" ? "14" : "-10.0")}<span aria-hidden className="text-text-dim">–</span>{text("high", "b", tempUnit === "f" ? "104" : "40.0")}</>; break;
   }
 
   const name = t(`account.alerts.kinds.${kind}.name`);
-  const unit = kind === "battery_low" ? "V" : kind === "noise_high" ? "dBm" : kind === "temperature" ? "°C" : null;
-  const error = local ? t(`account.alerts.errors.${local}`) : save.isError ? alertErrorText(t, save.error, kind) : null;
+  const unit = kind === "battery_low" ? "V" : kind === "noise_high" ? "dBm" : kind === "temperature" ? tempSymbol(tempUnit) : null;
+  const error = local ? t(`account.alerts.errors.${local}`, temperatureLimits(tempUnit)) : save.isError ? alertErrorText(t, save.error, kind) : null;
 
   const stateText = rule ? t(`account.alerts.state.${rule.state}`) : null;
 

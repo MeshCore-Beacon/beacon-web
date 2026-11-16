@@ -21,6 +21,7 @@ vi.mock("../../../src/api/auth", async (orig) => {
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
+  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
 }));
 
 const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
@@ -317,7 +318,7 @@ describe("alerts section", () => {
       fireEvent.change(r.getByLabelText("Low (°C)"), { target: { value: "10" } });
       fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "11.9" } });
       fireEvent.click(r.getByRole("switch"));
-      expect(await r.findByRole("alert")).toHaveTextContent("The high limit must be at least 2 degrees above the low limit.");
+      expect(await r.findByRole("alert")).toHaveTextContent("The high limit must be at least 2.0 °C above the low limit.");
       expect(put()).not.toHaveBeenCalled();
       fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "12" } });
       fireEvent.click(r.getByRole("switch"));
