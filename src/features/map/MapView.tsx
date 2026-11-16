@@ -20,7 +20,7 @@ import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
 import { useMapTelemetry } from "./useMapTelemetry";
-import { telemetryLabel } from "./telemetry-label";
+import { telemetryLabel, stableLabels } from "./telemetry-label";
 import { useDisplayUnits, useFeatures } from "../../hooks/useFeatures";
 import { useRegion, useRegionSelection } from "../../hooks/useRegion";
 import { serializeSelection } from "../../hooks/region-selection";
@@ -172,7 +172,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
   }, [telemetryOn]);
-  const labels = useMemo(() => {
+  const nextLabels = useMemo(() => {
     const out = new Map<string, { text: string; old: boolean }>();
     for (const [id, r] of readings) {
       const l = telemetryLabel(r, temperatureUnit, now);
@@ -180,6 +180,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     }
     return out;
   }, [readings, temperatureUnit, now]);
+  // adopt new labels only when their content differs, so a no-op tick doesn't rebuild the node source
+  const [labels, setLabels] = useState(nextLabels);
+  if (stableLabels(labels, nextLabels) !== labels) setLabels(nextLabels);
   const baseFc = useMemo(() => nodesToFeatureCollection(nodes, labels), [nodes, labels]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
   // Live Map lights crossed nodes from the unfiltered list and draws idle nodes as dots

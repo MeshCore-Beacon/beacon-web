@@ -21,3 +21,15 @@ export function telemetryLabel(r: NodeLatestReading, unit: TemperatureUnit, now:
   parts.push(age(ageMs));
   return { text: parts.join("  "), old: ageMs >= OLD_MS };
 }
+
+type Labels = Map<string, { text: string; old: boolean }>;
+
+// Returns prev when next holds the same labels, so a no-op age tick doesn't re-feed the map source.
+export function stableLabels(prev: Labels, next: Labels): Labels {
+  if (prev.size !== next.size) return next;
+  for (const [id, l] of next) {
+    const p = prev.get(id);
+    if (!p || p.text !== l.text || p.old !== l.old) return next;
+  }
+  return prev;
+}
