@@ -28,24 +28,30 @@ export function QuietLine({ text, action, onAction }: { text: string; action: st
   );
 }
 
-// One centred panel for every account view, in the upper third of the page.
-export function AccountLayout({ title, description, children, wide }: { title: string; description?: ReactNode; children: ReactNode; wide?: boolean }) {
+export function CloseButton({ className = "absolute right-1 top-1" }: { className?: string }) {
   const { t } = useTranslation();
   const { close } = useView();
   return (
+    <button
+      type="button"
+      onClick={close}
+      aria-label={t("common.close")}
+      className={`${className} inline-flex h-11 w-11 items-center justify-center rounded text-text-muted hover:text-text-bright`}
+    >
+      <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+        <path d="M3 3l10 10M13 3L3 13" />
+      </svg>
+    </button>
+  );
+}
+
+// One centred panel for every account view, in the upper third of the page.
+export function AccountLayout({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+  return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className={`mx-auto w-full ${wide ? "max-w-[560px]" : "max-w-[400px]"} px-4 pb-10 pt-6 sm:pt-[10vh]`}>
+      <div className="mx-auto w-full max-w-[400px] px-4 pb-10 pt-6 sm:pt-[10vh]">
         <section className="relative flex flex-col gap-5 rounded-lg border border-border bg-bg-surface p-5 sm:p-6">
-          <button
-            type="button"
-            onClick={close}
-            aria-label={t("common.close")}
-            className="absolute right-1 top-1 inline-flex h-11 w-11 items-center justify-center rounded text-text-muted hover:text-text-bright"
-          >
-            <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
-              <path d="M3 3l10 10M13 3L3 13" />
-            </svg>
-          </button>
+          <CloseButton />
           <header className="flex flex-col gap-1.5 pr-8">
             <h1 className="font-mono text-lg font-semibold text-text-bright">{title}</h1>
             {description && <p className="text-sm text-text-normal">{description}</p>}

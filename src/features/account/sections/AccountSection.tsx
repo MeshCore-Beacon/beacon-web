@@ -10,35 +10,38 @@ import { PasswordField } from "../../../components/form/PasswordField";
 import { TextField } from "../../../components/form/TextField";
 import { authErrorText } from "../errors";
 import type { User } from "../types";
-import { ProfileSection } from "./ProfileSection";
+import { ProfileSection, SubHeading } from "./ProfileSection";
 import { profileErrorText, useSessionEnded } from "./useSessionEnded";
+import { useFlash } from "./useFlash";
 
 function DisplayNameForm({ user }: { user: User }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const ended = useSessionEnded();
   const [name, setName] = useState(user.displayName);
+  const flash = useFlash();
   const save = useSessionMutation({
     mutationFn: () => me.setDisplayName(name.trim()),
     onSuccess: ({ user: updated }) => {
       setName(updated.displayName);
       setSessionUser(queryClient, updated);
+      flash.show();
     },
     onError: ended,
   });
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         save.mutate();
       }}
     >
-      <TextField label={t("account.profile.account.displayName")} name="displayName" autoComplete="nickname" maxLength={40} value={name} onChange={setName} disabled={save.isPending} />
-      <FormButton busy={save.isPending} busyLabel={t("account.profile.account.saving")} disabled={!name.trim() || name.trim() === user.displayName} className="self-start">
+      <TextField roomy label={t("account.profile.account.displayName")} name="displayName" autoComplete="nickname" maxLength={40} hint={t("account.profile.account.displayNameHint")} value={name} onChange={(v) => { setName(v); flash.hide(); }} disabled={save.isPending} />
+      <FormButton variant="solid" size="lg" busy={save.isPending} busyLabel={t("account.profile.account.saving")} disabled={!name.trim() || name.trim() === user.displayName} className="sm:w-auto sm:self-start sm:px-8">
         {t("account.profile.account.save")}
       </FormButton>
-      {save.isSuccess && <FormStatus>{t("account.profile.account.saved")}</FormStatus>}
+      {flash.on && <FormStatus>{t("account.profile.account.saved")}</FormStatus>}
       {save.isError && <FormStatus kind="error">{authErrorText(t, save.error)}</FormStatus>}
     </form>
   );
@@ -60,15 +63,15 @@ function ChangeEmailForm({ user }: { user: User }) {
   });
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         change.mutate(email.trim());
       }}
     >
-      <TextField label={t("account.profile.account.newEmail")} name="newEmail" type="email" autoComplete="email" value={email} onChange={setEmail} disabled={change.isPending} />
-      <PasswordField label={t("account.profile.currentPassword")} name="emailPassword" autoComplete="current-password" value={password} onChange={setPassword} disabled={change.isPending} />
-      <FormButton busy={change.isPending} busyLabel={t("account.profile.account.sending")} disabled={!email.trim() || !password} className="self-start">
+      <TextField roomy label={t("account.profile.account.newEmail")} name="newEmail" type="email" autoComplete="email" value={email} onChange={setEmail} disabled={change.isPending} />
+      <PasswordField roomy label={t("account.profile.currentPassword")} name="emailPassword" hint={t("account.profile.account.passwordHint")} autoComplete="current-password" value={password} onChange={setPassword} disabled={change.isPending} />
+      <FormButton variant="solid" size="lg" busy={change.isPending} busyLabel={t("account.profile.account.sending")} disabled={!/^\S+@\S+$/.test(email.trim()) || !password} className="sm:w-auto sm:self-start sm:px-8">
         {t("account.profile.account.sendLink")}
       </FormButton>
       {sent ? (
@@ -84,24 +87,14 @@ function ChangeEmailForm({ user }: { user: User }) {
 export function AccountSection({ user, portal }: { user: User; portal?: boolean }) {
   const { t } = useTranslation();
   return (
-    <ProfileSection id="profile-account" title={t("account.profile.account.title")}>
-      <dl className="flex flex-col gap-3 font-mono text-sm">
-        <div className="flex flex-col gap-0.5">
-          <dt className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{t("account.profile.account.username")}</dt>
-          <dd className="text-text-normal">@{user.username}</dd>
-        </div>
-        {!portal && <div className="flex flex-col gap-0.5">
-          <dt className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">{t("account.profile.account.email")}</dt>
-          <dd className="flex flex-wrap items-center gap-2 text-text-normal">
-            <span className="break-all">{user.email}</span>
-            <span className={user.emailVerified ? "text-xs text-green" : "text-xs text-warn"}>
-              {user.emailVerified ? t("account.profile.account.verified") : t("account.profile.account.unverified")}
-            </span>
-          </dd>
-        </div>}
-      </dl>
+    <ProfileSection id="profile-account" title={t("account.profile.account.title")} description={t(portal ? "account.profile.account.aboutPortal" : "account.profile.account.about")}>
       <DisplayNameForm user={user} />
-      {!portal && <ChangeEmailForm user={user} />}
+      {!portal && (
+        <div className="flex flex-col gap-4 border-t border-border-subtle pt-5">
+          <SubHeading>{t("account.profile.account.changeEmail")}</SubHeading>
+          <ChangeEmailForm user={user} />
+        </div>
+      )}
     </ProfileSection>
   );
 }

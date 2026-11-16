@@ -10,6 +10,8 @@ import { PasswordField } from "../../components/form/PasswordField";
 import { useSessionEnded } from "../account/sections/useSessionEnded";
 import { requestErrorText } from "../account/errors";
 import { useView } from "../account/useView";
+import { requestLine } from "../account/requestStatus";
+import { StatusDot } from "../account/StatusDot";
 import { GUEST_PASSWORD_MAX, TELEMETRY_REQUESTS_KEY, useTelemetryRequests } from "../../hooks/useTelemetryRequests";
 
 function ManageLink() {
@@ -50,10 +52,14 @@ function RequestForm({ node }: { node: { id: string; publicKey: string } }) {
   const full = used >= limit;
 
   if (existing) {
+    const line = requestLine(t, existing);
     return (
       <div className="flex flex-col gap-1 font-mono text-[13px]">
         <div className="text-[11px] uppercase tracking-wider text-text-muted">{t("nodeDetail.telemetry.requested")}</div>
-        <div className="text-text-normal">{t(`account.requests.status.${existing.status}`)}</div>
+        <div className="flex items-start gap-2 text-text-normal">
+          <StatusDot tone={line.tone} />
+          <span>{line.text}</span>
+        </div>
         <ManageLink />
       </div>
     );
