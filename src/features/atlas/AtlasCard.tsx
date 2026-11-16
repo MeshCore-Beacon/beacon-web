@@ -17,9 +17,10 @@ import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
 import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
-import { DEFAULT_TILES, OBSERVER_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile } from "./atlas";
+import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { TilePicker } from "./TilePicker";
-import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings } from "./useAtlas";
+import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, useTelemetryTab } from "./useAtlas";
+import { DOT_LIMIT, sparkValues } from "./telemetry-sample";
 import type { PayloadShare } from "./observer-sample";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
@@ -44,10 +45,11 @@ interface AtlasCardProps extends AtlasActions {
   onResolved: (id: string, observerId?: string) => void;
   onUpgrade: (node: NodeSummary, observerId: string) => void;
   onTilesChange: (tiles: readonly ObserverTile[]) => void;
+  onTelemetryTilesChange: (tiles: readonly TelemetryTile[]) => void;
   handle: Partial<CardHandleProps>;
 }
 
-const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver" };
+const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver", telemetry: "atlas.viewTelemetry" };
 
 const TILE_LABEL: Record<ObserverTile, string> = {
   airtime: "atlas.airtime",
@@ -61,6 +63,16 @@ const TILE_LABEL: Record<ObserverTile, string> = {
   queue: "observerPage.queue",
   errors: "observerPage.errors",
 };
+const TELEMETRY_LABEL: Record<TelemetryTile, string> = {
+  battery: "atlas.battery",
+  noise: "atlas.noiseFloor",
+  uptime: "atlas.uptime",
+  airtime: "atlas.airtime",
+  temperature: "atlas.telemetry.temperature",
+  packets: "atlas.telemetry.packets",
+  signal: "atlas.telemetry.signal",
+  errors: "atlas.telemetry.errors",
+};
 // Accents belong to the slot, so a card keeps its colours whatever its tiles show.
 const SLOT_ACCENT = [0, 3, 2, 1];
 
@@ -70,7 +82,11 @@ const ICON_BUTTON = `${ACTION_BUTTON_CLASS} ${ICON_BOX}`;
 // Remove rests muted and only turns to danger under the pointer or focus, so it never reads as a primary action.
 const REMOVE_BUTTON = `${ICON_BOX} rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
 
-const percent = (v: number) => `${v < 10 ? v.toFixed(1) : Math.round(v)}%`;
+const rounded = (v: number) => (v < 10 ? v.toFixed(1) : String(Math.round(v)));
+const percent = (v: number) => `${rounded(v)}%`;
+// Two units at most so a long uptime fits the tile; the title has the full value.
+const shortUptime = (seconds: number) => formatUptime(seconds).split(" ").slice(0, 2).join(" ");
+const perHour = (v: number) => `${rounded(v)}/h`;
 const MIX_SLICES = 5;
 
 // Share bar of the payload types heard, busiest first, with the top ones named underneath.
@@ -109,7 +125,7 @@ export function AtlasCard({
   pin,
   range,
   active,
-  view,
+  view: requested,
   home,
   onViewChange,
   onPinView,
@@ -117,6 +133,7 @@ export function AtlasCard({
   onResolved,
   onUpgrade,
   onTilesChange,
+  onTelemetryTilesChange,
   handle,
   onViewNode,
   onViewObserver,
@@ -126,11 +143,22 @@ export function AtlasCard({
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
-  const readings = useAtlasReadings(node?.id ?? null, node?.nodeTypeName, active && view === "analytics");
+  const tab = useTelemetryTab(node?.id ?? null, node?.nodeTypeName, active, requested === "analytics" || requested === "telemetry");
+  // A card with the Telemetry tab shows the polled readings there; the one-line summary is for a card without it.
+  const readings = useAtlasReadings(node?.id ?? null, node?.nodeTypeName, active && requested === "analytics" && !tab.available && !tab.settling);
   const observerId = pin.kind === "observer" ? pin.observerId : (node?.observerId ?? pin.observerId ?? null);
-  const obs = useAtlasObserver(observerId, range, active, view === "observer", pin.kind === "observer");
+  const obs = useAtlasObserver(observerId, range, active, requested === "observer", pin.kind === "observer");
   const observer = obs.observer.data;
-  const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : observerId ? ["analytics", "heard", "observer"] : ["analytics", "heard"];
+  // A card pinned to Telemetry keeps its tab while the answer is still coming in, then falls back to Analytics if there is none.
+  const hasTab = pin.kind === "node" && (tab.available || (requested === "telemetry" && tab.settling));
+  const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : [
+    "analytics",
+    "heard",
+    ...(observerId ? (["observer"] as const) : []),
+    ...(hasTab ? (["telemetry"] as const) : []),
+  ];
+  const view: AtlasView = requested === "telemetry" && !views.includes("telemetry") ? "analytics" : requested;
+  const tel = useAtlasTelemetry(node?.id ?? null, range, active && view === "telemetry");
 
   const latest = sample.latest;
   const heard = usePacketDetail(view === "heard" && latest ? latest.packetHash : null);
@@ -256,11 +284,11 @@ export function AtlasCard({
 
   // One line that never wraps: the right side gives way first, then the left, a failure never does,
   // and the tip carries every fact in full.
-  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[]) => (
-    <div data-card-footer className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
+  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[], wrap = false) => (
+    <div data-card-footer className={`flex gap-3 font-mono text-[11px] text-text-muted ${wrap ? "items-start" : "items-center whitespace-nowrap"}`}>
       {left}
       {state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
-      <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>
+      {right !== "" && <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>}
       <span className="flex shrink-0"><InfoTip text={tip} /></span>
     </div>
   );
@@ -282,6 +310,63 @@ export function AtlasCard({
   const meanHops = `${t("atlas.meanHops")} ${average(sample.hops)}`;
   const neighbors = node ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : "";
   const free = OBSERVER_TILES.filter((id) => !tiles.includes(id)).map((id) => ({ value: id, label: t(TILE_LABEL[id]) }));
+  const telemetryTiles = nodePin?.telemetryTiles ?? DEFAULT_TELEMETRY_TILES;
+  const telSample = tel.sample;
+  const freeTelemetry = TELEMETRY_TILES.filter((id) => !telemetryTiles.includes(id) && (id !== "temperature" || telSample.temperature.values.length > 0))
+    .map((id) => ({ value: id, label: t(TELEMETRY_LABEL[id]) }));
+  const telemetryTile = (id: TelemetryTile, slot: number) => {
+    const common = {
+      compact: true,
+      accent: c.series[SLOT_ACCENT[slot]!]!,
+      label: (
+        <TilePicker
+          label={t(TELEMETRY_LABEL[id])}
+          options={freeTelemetry}
+          up={slot >= 2}
+          onPick={(next) => onTelemetryTilesChange(telemetryTiles.map((old, i) => (i === slot ? (next as TelemetryTile) : old)))}
+          onReset={nodePin?.telemetryTiles && (() => onTelemetryTilesChange(DEFAULT_TELEMETRY_TILES))}
+        />
+      ),
+    };
+    const s = telSample;
+    const tile = (
+      series: { latest: number | null; values: number[] },
+      format: (v: number) => string,
+      options: { peak?: boolean; sublabel?: string | null; counter?: boolean; title?: (v: number) => string } = {},
+    ) => (
+      <StatCard
+        {...common}
+        wrapSublabel
+        value={series.latest === null ? dash : options.title ? <span title={options.title(series.latest)}>{format(series.latest)}</span> : format(series.latest)}
+        spark={sparkValues(series.values)}
+        markPeak={options.peak && series.values.length >= DOT_LIMIT}
+        sublabel={series.latest === null ? t(options.counter && s.readings > 0 ? "atlas.telemetry.needsPair" : "atlas.telemetry.noReadings") : options.sublabel}
+      />
+    );
+    switch (id) {
+      case "battery":
+        return tile(s.battery, formatBattery);
+      case "noise":
+        return tile(s.noise, (v) => `${Math.round(v)} dBm`);
+      case "uptime":
+        return tile(s.uptime, shortUptime, { title: formatUptime, sublabel: s.rebooted ? t("atlas.telemetry.restarted") : null });
+      case "airtime":
+        return tile(s.airtime, percent, { peak: true, counter: true, sublabel: s.airtimeTx !== null && s.airtimeRx !== null ? `TX ${percent(s.airtimeTx)} · RX ${percent(s.airtimeRx)}` : null });
+      case "temperature":
+        return tile(s.temperature, (v) => `${v.toFixed(1)} °C`);
+      case "packets":
+        return tile(s.packets, perHour, { peak: true, counter: true, sublabel: s.packetsSent !== null ? t("atlas.telemetry.sentPerHour", { value: perHour(s.packetsSent) }) : null });
+      case "signal":
+        return tile(s.signal, (v) => `${v.toFixed(1)} dB`, { sublabel: s.rssi !== null ? `${Math.round(s.rssi)} dBm` : null });
+      case "errors":
+        return tile(s.errors, perHour, { peak: true, counter: true });
+    }
+  };
+  // polled only says a reading was ever stored; an assigned poller is what means it is polled now.
+  const polledNow = tab.polling?.poller != null;
+  const lastReading = tab.polling?.latestReadingAt ?? telSample.latestAt;
+  const pollerName = tab.polling?.poller?.name;
+  const pollState = !tab.polling ? null : polledNow ? (pollerName ? t("atlas.telemetry.polledBy", { name: pollerName }) : t("atlas.telemetry.polled")) : t("atlas.telemetry.notPolled");
   const windowLabel = obs.sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`);
   const observerTile = (id: ObserverTile, slot: number) => {
     const sample = obs.sample;
@@ -461,6 +546,27 @@ export function AtlasCard({
                 {t("atlas.openPacket")}
               </button>
             </>
+          )}
+        </div>
+      )}
+      {view === "telemetry" && node && (
+        <div ref={body} className="flex flex-1 flex-col gap-3">
+          <div className="grid flex-1 grid-cols-2 gap-3">{telemetryTiles.map((id, slot) => <Fragment key={id}>{telemetryTile(id, slot)}</Fragment>)}</div>
+          {footer(
+            (pollState || lastReading != null) && (
+              <span className="flex min-w-0 flex-1 flex-wrap gap-x-3">
+                {pollState && <span className="min-w-0 break-words">{pollState}</span>}
+                {lastReading != null && (
+                  <span className="whitespace-nowrap">
+                    <span>{t("atlas.telemetry.lastReading")}</span> <Timestamp value={lastReading} />
+                  </span>
+                )}
+              </span>
+            ),
+            "",
+            tel,
+            [pollState, lastReading != null && `${t("atlas.telemetry.lastReading")} ${formatAbsolute(lastReading)}`, t("atlas.telemetry.help")],
+            true,
           )}
         </div>
       )}

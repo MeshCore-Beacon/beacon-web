@@ -40,7 +40,8 @@ export interface TelemetryRequest {
   hasPassword: boolean;
   createdAt: number;
   updatedAt: number;
-  poller: { observerId: string; name: string } | null;
+  // state and stateAt are what the observer reports; absent on an older server.
+  poller: { observerId: string; name: string; state?: string; stateAt?: number | null } | null;
   latestReadingAt: number | null;
 }
 

@@ -130,3 +130,34 @@ describe("mergeAtlas", () => {
     expect(mergeAtlas(server, local([node(1)]), { [uuid(101)]: key(1) }).atlas.pins).toHaveLength(1);
   });
 });
+
+describe("telemetry fields", () => {
+  const tiles = ["packets", "signal", "errors", "battery"] as const;
+  const withBoth = local([node(1, { view: "telemetry", telemetryTiles: [...tiles] })]);
+
+  it("sends the view and tiles when the server supports them", () => {
+    expect(toPut(withBoth, {}, 2, true).pins).toEqual([{ kind: "node", publicKey: key(1), name: "N1", telemetryTiles: [...tiles], view: "telemetry" }]);
+  });
+
+  it("strips both against an older server, and keeps the other views", () => {
+    expect(toPut(withBoth, {}, 2).pins).toEqual([{ kind: "node", publicKey: key(1), name: "N1" }]);
+    expect(toPut(local([node(1, { view: "heard", telemetryTiles: [...tiles] })]), {}, 2).pins).toEqual([{ kind: "node", publicKey: key(1), name: "N1", view: "heard" }]);
+  });
+
+  it("reads both from the server and validates them", () => {
+    const { atlas } = fromServer(doc([
+      { kind: "node", publicKey: key(1), id: uuid(1), name: "N1", observerId: null, view: "telemetry", telemetryTiles: [...tiles] },
+      { kind: "node", publicKey: key(2), id: uuid(2), name: "N2", observerId: null, telemetryTiles: ["a", "b", "c", "d"] as never },
+    ]), null, {});
+    expect(atlas.pins[0]).toMatchObject({ view: "telemetry", telemetryTiles: [...tiles] });
+    expect(atlas.pins[1]).not.toHaveProperty("telemetryTiles");
+  });
+
+  it("keeps this browser's two fields when an older server answers without them, and lets a newer one overrule", () => {
+    const answer = doc([{ kind: "node", publicKey: key(1), id: uuid(1), name: "N1", observerId: null }]);
+    expect(fromServer(answer, withBoth, {}, true).atlas.pins[0]).toMatchObject({ view: "telemetry", telemetryTiles: [...tiles] });
+    expect(fromServer(answer, withBoth, {}, false).atlas.pins[0]).not.toHaveProperty("view");
+    const heard = { ...answer, pins: [{ ...answer.pins[0]!, view: "heard" as const }] };
+    expect(fromServer(heard, withBoth, {}, true).atlas.pins[0]).toMatchObject({ view: "heard" });
+  });
+});

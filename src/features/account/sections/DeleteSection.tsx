@@ -39,29 +39,29 @@ export function DeleteSection({ user }: { user: User }) {
   };
 
   return (
-    <ProfileSection id="profile-delete" title={t("account.profile.delete.title")}>
+    <ProfileSection id="profile-delete" title={t("account.profile.delete.title")} danger>
       <p className="text-sm text-text-normal">{t("account.profile.delete.explain")}</p>
       <form
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!confirming) setConfirming(true);
           else if (typed === user.username) remove.mutate();
         }}
       >
-        {!portal && <PasswordField label={t("account.profile.currentPassword")} name="deletePassword" autoComplete="current-password" value={password} onChange={setPassword} disabled={remove.isPending} />}
+        {!portal && <PasswordField roomy label={t("account.profile.currentPassword")} name="deletePassword" autoComplete="current-password" value={password} onChange={setPassword} disabled={remove.isPending} />}
         {confirming ? (
           <>
-            <TextField label={t("account.profile.delete.typeUsername", { username: user.username })} name="confirmUsername" autoComplete="off" value={typed} onChange={setTyped} disabled={remove.isPending} />
-            <div className="flex gap-3">
-              <FormButton variant="danger" busy={remove.isPending} busyLabel={t("account.profile.delete.deleting")} disabled={typed !== user.username || (!portal && !password)}>
+            <TextField roomy label={t("account.profile.delete.typeUsername", { username: user.username })} name="confirmUsername" autoComplete="off" value={typed} onChange={setTyped} disabled={remove.isPending} />
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <FormButton variant="dangerSolid" size="md" busy={remove.isPending} busyLabel={t("account.profile.delete.deleting")} disabled={typed !== user.username || (!portal && !password)}>
                 {t("account.profile.delete.confirm")}
               </FormButton>
-              <FormButton type="button" variant="quiet" disabled={remove.isPending} onClick={cancel}>{t("account.profile.delete.cancel")}</FormButton>
+              <FormButton type="button" variant="outline" size="md" disabled={remove.isPending} onClick={cancel}>{t("account.profile.delete.cancel")}</FormButton>
             </div>
           </>
         ) : (
-          <FormButton variant="danger" disabled={!portal && !password} className="self-start">{t("account.profile.delete.start")}</FormButton>
+          <FormButton variant="danger" size="md" disabled={!portal && !password} className="self-start">{t("account.profile.delete.start")}</FormButton>
         )}
         {remove.isError && <FormStatus kind="error">{deleteErrorText(t, remove.error, portal)}</FormStatus>}
       </form>

@@ -959,7 +959,23 @@
       "loadFailed": "Det gick inte att läsa in Atlas från ditt konto. Visar den här enhetens kopia.",
       "mergeDropped_one": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
       "mergeDropped_other": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
-      "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet"
+      "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet",
+      "viewTelemetry": "Telemetri",
+      "telemetry": {
+        "temperature": "Temperatur",
+        "packets": "Paket",
+        "signal": "Signal",
+        "errors": "Fel",
+        "needsPair": "Kräver två statusvärden",
+        "noReadings": "Inga värden i det här fönstret",
+        "restarted": "Startades om",
+        "sentPerHour": "skickade {{value}}",
+        "polledBy": "Avläses av {{name}}",
+        "polled": "Avläses",
+        "notPolled": "Avläses inte just nu",
+        "lastReading": "Senaste värdet",
+        "help": "Värden som Beacon har hämtat från den här repeatern, över det valda fönstret. Sändtid är andelen av tiden som gått åt till att sända och ta emot. Paket och fel räknas per timme. Signal är det senaste SNR och RSSI som repeatern rapporterade. Med få värden ritas punkterna som prickar."
+      }
     },
     "account": {
       "entry": {
@@ -1070,6 +1086,10 @@
       "profile": {
         "title": "Profil",
         "account": {
+          "about": "Hur du visas i Beacon och adressen ditt konto använder.",
+          "aboutPortal": "Hur du visas i Beacon.",
+          "displayNameHint": "Visas i menyn och i din Atlas.",
+          "passwordHint": "Vi frågar så att ingen annan kan ändra den från en öppen session.",
           "title": "Konto",
           "username": "Användarnamn",
           "displayName": "Visningsnamn",
@@ -1089,12 +1109,17 @@
         "currentPassword": "Nuvarande lösenord",
         "wrongPassword": "Lösenordet stämmer inte.",
         "password": {
+          "about": "När du ändrar det loggas du ut från dina andra enheter.",
           "title": "Lösenord",
           "submit": "Byt lösenord",
           "submitting": "Sparar…",
           "done": "Lösenordet är bytt. Dina andra enheter har loggats ut."
         },
         "devices": {
+          "about": "Var du är inloggad just nu.",
+          "signOutAsk": "Logga ut {{label}}?",
+          "signOutYes": "Ja, logga ut",
+          "signOutOthersAsk": "Logga ut alla andra enheter?",
           "title": "Enheter",
           "loading": "Laddar enheter…",
           "thisDevice": "Den här enheten",
@@ -1125,6 +1150,9 @@
         }
       },
       "alerts": {
+        "about": "Få besked när en radio i din Atlas behöver uppmärksamhet.",
+        "on": "På",
+        "off": "Av",
         "title": "Aviseringar",
         "loading": "Läser in aviseringar…",
         "toEmail": "Aviseringar skickas till {{email}}",
@@ -1133,6 +1161,11 @@
         "empty": "Aviseringar ställs in på radioapparater i din Atlas. Lägg först till en radio.",
         "openAtlas": "Öppna fliken Atlas",
         "always": "Du får alltid besked när en av dina telemetribegäranden behöver uppmärksamhet.",
+        "none": "Inga larm på",
+        "onCount_one": "{{count}} larm på",
+        "onCount_other": "{{count}} larm på",
+        "firing_one": "Larmar: {{name}}",
+        "firing_other": "Larmar: {{count}} larm",
         "turnOn": "Avisering: {{name}}",
         "backOnlineHint": "Slå först på {{name}}.",
         "voltsPerDay": "{{volts}} V per dygn",
@@ -1202,6 +1235,16 @@
         }
       },
       "requests": {
+        "poll": {
+          "ok": "Avläses av {{name}}",
+          "pending": "Tilldelad {{name}}. Första avläsningen är på väg.",
+          "not_direct": "Tilldelad {{name}}, som inte kan höra repeatern direkt just nu.",
+          "no_reply": "{{name}} frågar, men repeatern svarar inte.",
+          "not_claimed": "Tilldelad {{name}}. Väntar på att den tar över.",
+          "password": "{{name}} rapporterade ett lösenordsproblem. Kontrollerar."
+        },
+        "about": "Be Beacon läsa en repeaters statistik med ett gästlösenord.",
+        "openNodes": "Öppna fliken Noder",
         "title": "Telemetribegäran",
         "count": "{{used}} av {{limit}}",
         "loading": "Laddar begäran…",
@@ -1209,8 +1252,8 @@
         "status": {
           "waiting": "Väntar på en observatör som kan nå den",
           "active": "Avläses",
-          "login_failed": "Repeatern avvisade lösenordet",
-          "admin_stopped": "Stoppad: lösenordet gav administratörsåtkomst och raderades",
+          "login_failed": "Stoppad: lösenordet avvisades",
+          "admin_stopped": "Stoppad: administratörslösenord",
           "disabled": "Pausad: repeatern har inte hörts på sistone"
         },
         "reason": {
@@ -1230,7 +1273,8 @@
         "passwordSet": "Lösenord satt",
         "noPassword": "Inget lösenord",
         "changePassword": "Ändra lösenord",
-        "adminStoppedHelp": "Lösenordet du angav var ett administratörslösenord. Beacon har raderat det. Bara ett gästlösenord startar begäran igen.",
+        "adminStoppedHelp": "Lösenordet du angav var ett administratörslösenord, så Beacon raderade det. Ange repeaterns gästlösenord för att starta igen.",
+        "loginFailedHelp": "Repeatern avvisade det lösenordet. Ange rätt gästlösenord för att försöka igen.",
         "enterNewPassword": "Ange ett nytt lösenord",
         "enterNewPasswordNamed": "Ange ett nytt lösenord för {{name}}",
         "changePasswordNamed": "Ändra lösenord för {{name}}",

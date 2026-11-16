@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSessionMutation } from "../../../hooks/useSessionMutation";
 import { alerts } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
-import { fieldClass } from "../../../components/form/fieldStyles";
+import { fieldClassRoomy } from "../../../components/form/fieldStyles";
 import { ALERTS_KEY } from "../../../hooks/useAlerts";
 import { alertErrorText } from "../errors";
 import {
@@ -72,7 +72,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
 
   const label = (key: string) => t(`account.alerts.fields.${key}`);
   const select = (key: string, options: number[], text: (n: number) => string) => (
-    <select aria-label={label(key)} value={inputs.a} disabled={save.isPending} onChange={(e) => change("a", e.target.value, true)} className={`${fieldClass} w-auto`}>
+    <select aria-label={label(key)} value={inputs.a} disabled={save.isPending} onChange={(e) => change("a", e.target.value, true)} className={`${fieldClassRoomy} !w-auto`}>
       {options.map((o) => <option key={o} value={o}>{text(o)}</option>)}
     </select>
   );
@@ -80,7 +80,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
     <input
       type="text" inputMode="decimal" autoComplete="off" aria-label={label(key)} placeholder={placeholder}
       value={inputs[field]} disabled={save.isPending} aria-invalid={local ? true : undefined}
-      onChange={(e) => change(field, e.target.value, false)} onBlur={blur} className={`${fieldClass} w-24`}
+      onChange={(e) => change(field, e.target.value, false)} onBlur={blur} className={`${fieldClassRoomy} !w-28`}
     />
   );
 
@@ -92,24 +92,33 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
     case "observer_offline": input = select("offline", OBSERVER_OFFLINE_MINUTES, (m) => minutesText(t, m)); break;
     case "battery_low": input = text("volts", "a", "3.50"); break;
     case "noise_high": input = text("dbm", "a", "-90"); break;
-    case "temperature": input = <>{text("low", "a", "-10.0")}{text("high", "b", "40.0")}</>; break;
+    case "temperature": input = <>{text("low", "a", "-10.0")}<span aria-hidden className="text-text-dim">–</span>{text("high", "b", "40.0")}</>; break;
   }
 
   const name = t(`account.alerts.kinds.${kind}.name`);
+  const unit = kind === "battery_low" ? "V" : kind === "noise_high" ? "dBm" : kind === "temperature" ? "°C" : null;
   const error = local ? t(`account.alerts.errors.${local}`) : save.isError ? alertErrorText(t, save.error, kind) : null;
+
+  const stateText = rule ? t(`account.alerts.state.${rule.state}`) : null;
 
   return (
     <li data-testid={`alert-${kind}`} className="flex flex-col gap-2 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-mono text-sm text-text-bright">{name}</span>
-        <input type="checkbox" role="switch" aria-label={t("account.alerts.turnOn", { name })} checked={checked} disabled={blocked || save.isPending} onChange={toggle} className="h-4 w-4" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="font-mono text-sm font-semibold text-text-bright">{name}</span>
+          <p className="text-xs text-text-muted">{t(`account.alerts.kinds.${kind}.when`)}</p>
+        </div>
+        <label className="-my-1.5 inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-mono text-xs text-text-muted">
+          <input type="checkbox" role="switch" aria-label={t("account.alerts.turnOn", { name })} checked={checked} disabled={blocked || save.isPending} onChange={toggle} className="peer sr-only" />
+          <span aria-hidden className="relative h-5 w-9 rounded-full border border-border bg-bg-raised transition-colors peer-checked:border-primary peer-checked:bg-primary peer-disabled:opacity-50 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-primary after:absolute after:left-0.5 after:top-0.5 after:h-3.5 after:w-3.5 after:rounded-full after:bg-text-muted after:transition-transform peer-checked:after:translate-x-4 peer-checked:after:bg-bg-base motion-reduce:transition-none motion-reduce:after:transition-none" />
+          <span aria-hidden className="w-6">{checked ? t("account.alerts.on") : t("account.alerts.off")}</span>
+        </label>
       </div>
-      <p className="text-xs text-text-muted">{t(`account.alerts.kinds.${kind}.when`)}</p>
-      {input && <div className="flex flex-wrap items-center gap-2">{input}</div>}
+      {input && <div className="flex flex-wrap items-center gap-2">{input}{unit && <span className="font-mono text-xs text-text-muted">{unit}</span>}</div>}
       {blocked && <p className="text-xs text-text-muted">{t("account.alerts.backOnlineHint", { name: t("account.alerts.kinds.gone_quiet.name") })}</p>}
-      {rule && (
+      {stateText && (
         <p className="font-mono text-xs text-text-normal">
-          {t(`account.alerts.state.${rule.state}`)}{rule.state === "firing" && <> <Timestamp value={rule.stateChangedAt} /></>}
+          {stateText}{rule?.state === "firing" && <> <Timestamp value={rule.stateChangedAt} /></>}
         </p>
       )}
       {error && <p role="alert" className="text-sm text-danger">{error}</p>}
