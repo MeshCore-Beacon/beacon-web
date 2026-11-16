@@ -819,6 +819,23 @@
       "lastSeen": "Last seen"
     },
     "traces": {
+      "quality": {
+        "snrBytes": "Recorded SNR bytes",
+        "show": "Show possible collision related observations",
+        "hidden": "{{count}} hidden in loaded sample",
+        "suspect": "Suspect observation",
+        "ambiguous": "Possible prefix collision",
+        "evidenceOnly": "Raw evidence is retained. This does not establish a real route or identify a confirmed collision.",
+        "unsupported_version": "Unsupported packet version",
+        "non_direct_trace": "TRACE does not support flood routing",
+        "incomplete_payload": "Incomplete trace payload",
+        "payload_too_large": "Payload exceeds the protocol limit",
+        "unsupported_flags": "Unrecognized trace flags",
+        "misaligned_hashes": "Hash bytes do not match the declared width",
+        "too_many_hops": "Route exceeds the supported trace hop count",
+        "invalid_snr_path": "SNR path cannot match this trace",
+        "ambiguous_prefix": "A hop matches multiple known nodes"
+      },
       "packets": "Packets",
       "packetCount_one": "{{count}} packet",
       "packetCount_other": "{{count}} packets",
@@ -839,7 +856,8 @@
       "all": "All",
       "trace": "Trace",
       "ping": "Ping",
-      "empty": "No traces"
+      "empty": "No traces",
+      "hops": "{{count}} hops"
     },
     "loadingPill": {
       "nodes": {
@@ -1272,15 +1290,42 @@
           "unknown": "Not checked yet"
         },
         "kinds": {
-          "gone_quiet": { "name": "Gone quiet", "when": "When the radio has not been heard for this long." },
-          "back_online": { "name": "Back online", "when": "When the radio is heard again after it went quiet." },
-          "battery_low": { "name": "Battery low", "when": "When the battery stays below this voltage." },
-          "battery_falling": { "name": "Battery falling", "when": "When the battery drops faster than this in a day." },
-          "rebooted": { "name": "Rebooted", "when": "When the radio restarts." },
-          "temperature": { "name": "Temperature", "when": "When the temperature goes below the low limit or above the high limit." },
-          "noise_high": { "name": "Noise high", "when": "When the noise floor stays above this level." },
-          "clock": { "name": "Clock drift", "when": "When the radio's clock is off by more than this." },
-          "observer_offline": { "name": "Observer offline", "when": "When the observer sends no status report for this long." }
+          "gone_quiet": {
+            "name": "Gone quiet",
+            "when": "When the radio has not been heard for this long."
+          },
+          "back_online": {
+            "name": "Back online",
+            "when": "When the radio is heard again after it went quiet."
+          },
+          "battery_low": {
+            "name": "Battery low",
+            "when": "When the battery stays below this voltage."
+          },
+          "battery_falling": {
+            "name": "Battery falling",
+            "when": "When the battery drops faster than this in a day."
+          },
+          "rebooted": {
+            "name": "Rebooted",
+            "when": "When the radio restarts."
+          },
+          "temperature": {
+            "name": "Temperature",
+            "when": "When the temperature goes below the low limit or above the high limit."
+          },
+          "noise_high": {
+            "name": "Noise high",
+            "when": "When the noise floor stays above this level."
+          },
+          "clock": {
+            "name": "Clock drift",
+            "when": "When the radio's clock is off by more than this."
+          },
+          "observer_offline": {
+            "name": "Observer offline",
+            "when": "When the observer sends no status report for this long."
+          }
         },
         "reason": {
           "observerNoData": "This observer does not report {{what}}.",

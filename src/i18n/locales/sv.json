@@ -1159,15 +1159,42 @@
           "unknown": "Inte kontrollerad än"
         },
         "kinds": {
-          "gone_quiet": { "name": "Tystnat", "when": "När radion inte har hörts på så här länge." },
-          "back_online": { "name": "Tillbaka online", "when": "När radion hörs igen efter att ha tystnat." },
-          "battery_low": { "name": "Lågt batteri", "when": "När batteriet stannar under den här spänningen." },
-          "battery_falling": { "name": "Fallande batteri", "when": "När batteriet sjunker snabbare än så här på ett dygn." },
-          "rebooted": { "name": "Startade om", "when": "När radion startar om." },
-          "temperature": { "name": "Temperatur", "when": "När temperaturen går under den låga gränsen eller över den höga." },
-          "noise_high": { "name": "Högt brus", "when": "När brusnivån stannar över den här nivån." },
-          "clock": { "name": "Klockavvikelse", "when": "När radions klocka avviker mer än så här." },
-          "observer_offline": { "name": "Observatör offline", "when": "När observatören inte skickar någon statusrapport på så här länge." }
+          "gone_quiet": {
+            "name": "Tystnat",
+            "when": "När radion inte har hörts på så här länge."
+          },
+          "back_online": {
+            "name": "Tillbaka online",
+            "when": "När radion hörs igen efter att ha tystnat."
+          },
+          "battery_low": {
+            "name": "Lågt batteri",
+            "when": "När batteriet stannar under den här spänningen."
+          },
+          "battery_falling": {
+            "name": "Fallande batteri",
+            "when": "När batteriet sjunker snabbare än så här på ett dygn."
+          },
+          "rebooted": {
+            "name": "Startade om",
+            "when": "När radion startar om."
+          },
+          "temperature": {
+            "name": "Temperatur",
+            "when": "När temperaturen går under den låga gränsen eller över den höga."
+          },
+          "noise_high": {
+            "name": "Högt brus",
+            "when": "När brusnivån stannar över den här nivån."
+          },
+          "clock": {
+            "name": "Klockavvikelse",
+            "when": "När radions klocka avviker mer än så här."
+          },
+          "observer_offline": {
+            "name": "Observatör offline",
+            "when": "När observatören inte skickar någon statusrapport på så här länge."
+          }
         },
         "reason": {
           "observerNoData": "Den här observatören rapporterar inte {{what}}.",

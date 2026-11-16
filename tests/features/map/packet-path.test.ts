@@ -25,7 +25,8 @@ describe("buildPacketPaths", () => {
     const candidates: ResolvedHop = { confidence: "ambiguous", nodes: [...hop("reset", 0, 0).nodes, ...hop("invalid", 181, 10).nodes, ...hop("valid", 0, 45).nodes] };
     const hops = [hop("unknown", 0, 0), candidates, hop("end", -75, 0)];
     const ordinary = buildPacketPaths(detail([obs(1, hops)]));
-    const trace = buildPacketPaths(detail([], { header: { payloadType: PayloadType.TRACE, routeType: 1 }, resolvedRoute: hops } as Partial<PacketDetail>));
+    const trace = buildPacketPaths(detail([], { header: { payloadType: PayloadType.TRACE, routeType: 2 },
+        parsedPayload: { snrValues: [1, 2] }, resolvedRoute: hops } as Partial<PacketDetail>));
     expect(ordinary).toEqual([]); expect(trace).toEqual([]);
     const valid = buildPacketPaths(detail([obs(1, [hop("start", 0, 45), hop("end", -75, 0)])]));
     expect(valid[0].points.map(p => [p.lng, p.lat])).toEqual([[0, 45], [-75, 0]]);
@@ -128,11 +129,15 @@ describe("buildPacketPaths", () => {
     const d = detail(
       [obs(1, [hop("a", -79, 43), hop("b", -75, 45)], { observerId: "obs-1", propagationTimeMs: 100 })],
       {
-        header: { payloadType: PayloadType.TRACE, routeType: 1 },
+        header: { payloadType: PayloadType.TRACE, routeType: 2 },
+        parsedPayload: { snrValues: [1, 2] },
         resolvedRoute: [hop("e", -81, 47), hop("f", -77, 48)],
       } as unknown as Partial<PacketDetail>,
     );
     expect(buildPacketPaths(d).map((p) => p.key)).toEqual(["trace"]);
+    expect(buildPacketPaths({ ...d, traceQuality: { status: "suspect", reasons: ["unsupported_flags"] } })).toEqual([]);
+    expect(buildPacketPaths({ ...d, traceQuality: { status: "ambiguous", reasons: ["ambiguous_prefix"] } })).toEqual([]);
+    expect(buildPacketPaths({ ...d, parsedPayload: { snrValues: [1] } })).toEqual([]);
   });
 
   it("draws nothing for a TRACE with no resolved route", () => {
