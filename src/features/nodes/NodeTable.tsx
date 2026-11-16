@@ -216,7 +216,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   // filter set and order. WS updates keep loaded rows live, no 30s refetch.
   const { items: nodes, loadedCount, isPaging, isError, isLoading, loadMore, firstPage } = useInfinitePages<NodeSummary, number, NodePage>({
     queryKey,
-    queryFn: (page) =>
+    queryFn: (page, signal) =>
       getNodesPage(iatas, {
         cursor: page?.cursor,
         pageCursor: page?.pageCursor,
@@ -229,7 +229,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         scope: scopeFilter || undefined,
         sort: serverSort,
         order: sort.direction,
-      }),
+      }, signal),
     getId: nodeId,
     keepPrevious: true,
     auto: clientSort,

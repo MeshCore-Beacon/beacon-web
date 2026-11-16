@@ -44,8 +44,8 @@ describe("useInfinitePages", () => {
     expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]);
     expect(result.current.loadedCount).toBe(3);
     expect(queryFn).toHaveBeenCalledTimes(2);
-    expect(queryFn).toHaveBeenNthCalledWith(1, undefined); // first page sends no cursor
-    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }); // second page uses page 1's nextCursor
+    expect(queryFn).toHaveBeenNthCalledWith(1, undefined, expect.any(AbortSignal)); // first page sends no cursor
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }, expect.any(AbortSignal)); // second page uses page 1's nextCursor
   });
 
   it("dedupes items repeated across a page boundary (cursor is a non-unique timestamp)", async () => {
@@ -99,7 +99,7 @@ describe("useInfinitePages", () => {
     expect(result.current.isPaging).toBe(true);
 
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
-    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1 }); // the same page again, not a skip
+    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1 }, expect.any(AbortSignal)); // the same page again, not a skip
     expect(result.current.isPaging).toBe(false);
     expect(result.current.isError).toBe(false);
   });
@@ -145,7 +145,7 @@ describe("useInfinitePages", () => {
 
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b", "c"]));
     expect(queryFn).toHaveBeenCalledTimes(2);
-    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }); // loadMore used page 1's nextCursor
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 2 }, expect.any(AbortSignal)); // loadMore used page 1's nextCursor
     expect(result.current.hasMore).toBe(false);
   });
 
@@ -183,7 +183,7 @@ describe("useInfinitePages", () => {
       .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
     const { result } = renderHook(() => useInfinitePages({ queryKey: ["pc", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isPaging).toBe(false));
-    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 7, pageCursor: "v1:7000:aa" });
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 7, pageCursor: "v1:7000:aa" }, expect.any(AbortSignal));
     expect(result.current.items.map(rowId)).toEqual(["a", "b"]);
   });
 
@@ -234,7 +234,7 @@ describe("useInfinitePages", () => {
     expect(result.current.items.map(rowId)).toEqual(["a"]);
     await act(() => vi.advanceTimersByTimeAsync(200));
     expect(queryFn).toHaveBeenCalledTimes(3);
-    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1, pageCursor: "v1:1000:aa" });
+    expect(queryFn).toHaveBeenNthCalledWith(3, { cursor: 1, pageCursor: "v1:1000:aa" }, expect.any(AbortSignal));
     expect(result.current.items.map(rowId)).toEqual(["a", "b"]);
   });
 
@@ -256,7 +256,7 @@ describe("useInfinitePages", () => {
       .mockResolvedValueOnce({ items: [row("b")], nextCursor: null, hasMore: false });
     const { result } = renderHook(() => useInfinitePages({ queryKey: ["bad-pc", 1], queryFn, getId: rowId }), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.items.map(rowId)).toEqual(["a", "b"]));
-    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 1, pageCursor: "v1:1000:aa" });
+    expect(queryFn).toHaveBeenNthCalledWith(2, { cursor: 1, pageCursor: "v1:1000:aa" }, expect.any(AbortSignal));
     expect(queryFn.mock.calls[2]![0]).toStrictEqual({ cursor: 1 });
     expect(result.current.isError).toBe(false);
   });
