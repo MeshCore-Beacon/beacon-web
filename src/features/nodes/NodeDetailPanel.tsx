@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
 import { Badge } from "../../components/Badge";
-import { DetailPanel, Section, Field } from "../../components/DetailPanel";
+import { DetailPanel, Section, Field, FoldSection } from "../../components/DetailPanel";
 import { CopyButton } from "../../components/CopyButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
@@ -22,6 +22,8 @@ import { RequestTelemetry } from "./RequestTelemetry";
 // Pulls in ECharts, so it stays out of the main bundle; mounted only for polled node types.
 import { isPolledNodeType } from "./polledType";
 const NodeTelemetrySection = lazy(() => import("./NodeTelemetrySection"));
+
+const SUBHEAD = "mt-2 mb-0.5 font-mono text-[10px] uppercase tracking-wider text-text-dim first:mt-0";
 
 function NodeNeighborRow({ neighbor, onClick }: { neighbor: NodeNeighbor; onClick?: () => void }) {
   const { t } = useTranslation();
@@ -117,6 +119,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
   const canRequest = useRequestsAvailable();
   // Handed to the lazy chart section so it sits inside it, without that chunk importing it.
   const requestBlock = canRequest && !!node && isPolledNodeType(node.nodeTypeName) ? <RequestTelemetry key={node.id} node={node} /> : null;
+  const telemetryInfo = requestBlock ? [t("nodeDetail.telemetry.requestIntro"), t("nodeDetail.telemetry.passwordNotice")] : undefined;
+  const detailsSummary = node
+    ? [hasLocation && `${node.lat!.toFixed(2)}, ${node.lng!.toFixed(2)}`, node.minFirmwareVersion && `fw ${node.minFirmwareVersion}`].filter(Boolean).join(" · ")
+    : "";
+  const LINK = "font-mono text-[11px] text-primary hover:underline";
 
   return (
     <DetailPanel
@@ -136,6 +143,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
       {node && (
         <>
           <Section title={t("nodeDetail.summary")} first>
+            <div data-summary>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   <EmojiText text={node.name ?? formatHex(node.id)} />
@@ -154,67 +162,31 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 </div>
                 <CopyButton value={node.publicKey} ariaLabel={t("nodeDetail.copyKey")} className="shrink-0" />
               </div>
-              {node.observerId && (
-                <button
-                  type="button"
-                  onClick={() => onViewObserver(node.observerId!)}
-                  className="mt-2 block font-mono text-[11px] text-primary hover:underline"
-                >
-                  {t("nodeDetail.viewObserver")}
-                </button>
-              )}
-            </Section>
-
-            {(hasLocation || node.locationSource) && (
-              <Section title={t("nodeDetail.location")}>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[13px]">
-                  {hasLocation && <Field label={t("nodeDetail.lat")} value={node.lat!.toFixed(5)} />}
-                  {hasLocation && <Field label={t("nodeDetail.lng")} value={node.lng!.toFixed(5)} />}
-                  {node.locationSource && <Field label={t("nodeDetail.source")} value={node.locationSource} />}
+              <div className="mt-1 font-mono text-[13px]">
+                <Field label={t("nodeDetail.lastSeen")} value={<Timestamp value={node.lastSeen} />} />
+              </div>
+              {(node.observerId || (hasMapLocation(node) && onViewOnMap)) && (
+                <div className="mt-2 flex gap-4">
+                  {node.observerId && (
+                    <button type="button" onClick={() => onViewObserver(node.observerId!)} className={LINK}>
+                      {t("nodeDetail.viewObserver")}
+                    </button>
+                  )}
+                  {hasMapLocation(node) && onViewOnMap && (
+                    <button type="button" onClick={() => onViewOnMap(node.lat, node.lng)} className={LINK}>
+                      {t("nodeDetail.viewOnMap")}
+                    </button>
+                  )}
                 </div>
-                {hasMapLocation(node) && onViewOnMap && (
-                  <button
-                    type="button"
-                    onClick={() => onViewOnMap(node.lat, node.lng)}
-                    className="mt-2 block font-mono text-[11px] text-primary hover:underline"
-                  >
-                    {t("nodeDetail.viewOnMap")}
-                  </button>
-                )}
-              </Section>
-            )}
-
-            {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
+              )}
+            </div>
+            </Section>
 
             {showTelemetry ? (
               <Suspense fallback={null}>
-                <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} extra={requestBlock} />
+                <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} extra={requestBlock} info={telemetryInfo} />
               </Suspense>
-            ) : requestBlock && <Section title={t("nodeDetail.telemetry.title")}>{requestBlock}</Section>}
-
-            <Section title={t("nodeDetail.capabilities")}>
-              <div className="flex flex-col gap-0.5 font-mono text-[13px]">
-                {node.minFirmwareVersion && <Field label={t("nodeDetail.minFirmware")} value={node.minFirmwareVersion} />}
-                <Field label={t("nodeDetail.multibytePaths")} value={node.supportsMultibytePaths ? t("nodeDetail.yes") : t("nodeDetail.no")} />
-                <Field label={t("nodeDetail.multibyteTraces")} value={node.supportsMultibyteTraces ? t("nodeDetail.yes") : t("nodeDetail.no")} />
-                {node.radio && <Field label={t("nodeDetail.radio")} value={formatRadio(node.radio) ?? "—"} />}
-                {node.defaultScope && <Field label={t("nodeDetail.scope")} value={node.defaultScope} />}
-              </div>
-            </Section>
-
-            <Section title={t("nodeDetail.timestamps")}>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[13px]">
-                <Field label={t("nodeDetail.first")} value={<Timestamp value={node.firstSeen} />} />
-                <Field label={t("nodeDetail.last")} value={<Timestamp value={node.lastSeen} />} />
-                {node.lastAdvertAt != null && <Field label={t("nodeDetail.advert")} value={<Timestamp value={node.lastAdvertAt} />} />}
-                {node.clockDriftSeconds != null && (
-                  <Field
-                    label={t("nodeDetail.clockDrift")}
-                    value={<span className={node.clockOutOfSync ? "text-warn" : "text-green"}>{formatClockDrift(node.clockDriftSeconds, { inSync: t("clockDrift.inSync"), ahead: t("clockDrift.ahead"), behind: t("clockDrift.behind") })}</span>}
-                  />
-                )}
-              </div>
-            </Section>
+            ) : requestBlock && <Section title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</Section>}
 
             <Section title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
               {neighbors && neighbors.length > 0 ? (
@@ -248,6 +220,41 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noRecentPackets")}</div>
               )}
             </Section>
+
+            <FoldSection id="node-details" title={t("nodeDetail.details")} summary={detailsSummary}>
+              {(hasLocation || node.locationSource) && (
+                <>
+                  <div className={SUBHEAD}>{t("nodeDetail.location")}</div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-[13px]">
+                    {hasLocation && <Field label={t("nodeDetail.lat")} value={node.lat!.toFixed(5)} />}
+                    {hasLocation && <Field label={t("nodeDetail.lng")} value={node.lng!.toFixed(5)} />}
+                    {node.locationSource && <Field label={t("nodeDetail.source")} value={node.locationSource} />}
+                  </div>
+                </>
+              )}
+              <div className={SUBHEAD}>{t("nodeDetail.capabilities")}</div>
+              <div className="flex flex-col gap-0.5 font-mono text-[13px]">
+                {node.minFirmwareVersion && <Field label={t("nodeDetail.minFirmware")} value={node.minFirmwareVersion} />}
+                <Field label={t("nodeDetail.multibytePaths")} value={node.supportsMultibytePaths ? t("nodeDetail.yes") : t("nodeDetail.no")} />
+                <Field label={t("nodeDetail.multibyteTraces")} value={node.supportsMultibyteTraces ? t("nodeDetail.yes") : t("nodeDetail.no")} />
+                {node.radio && <Field label={t("nodeDetail.radio")} value={formatRadio(node.radio) ?? "—"} />}
+                {node.defaultScope && <Field label={t("nodeDetail.scope")} value={node.defaultScope} />}
+              </div>
+              <div className={SUBHEAD}>{t("nodeDetail.timestamps")}</div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[13px]">
+                <Field label={t("nodeDetail.first")} value={<Timestamp value={node.firstSeen} />} />
+                <Field label={t("nodeDetail.last")} value={<Timestamp value={node.lastSeen} />} />
+                {node.lastAdvertAt != null && <Field label={t("nodeDetail.advert")} value={<Timestamp value={node.lastAdvertAt} />} />}
+                {node.clockDriftSeconds != null && (
+                  <Field
+                    label={t("nodeDetail.clockDrift")}
+                    value={<span className={node.clockOutOfSync ? "text-warn" : "text-green"}>{formatClockDrift(node.clockDriftSeconds, { inSync: t("clockDrift.inSync"), ahead: t("clockDrift.ahead"), behind: t("clockDrift.behind") })}</span>}
+                  />
+                )}
+              </div>
+            </FoldSection>
+
+            {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
         </>
       )}
     </DetailPanel>

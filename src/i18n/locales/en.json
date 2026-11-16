@@ -256,6 +256,11 @@
     },
     "nodeDetail": {
       "viewOnMap": "View on map",
+      "lastSeen": "Last seen",
+      "details": "Details",
+      "scopesCount_one": "{{count}} scope",
+      "scopesCount_other": "{{count}} scopes",
+      "fromMeshMapperIn": "From MeshMapper ({{iata}})",
       "title": "Node Detail",
       "copyLink": "Copy node link",
       "notFound": "Node not found",
@@ -340,9 +345,11 @@
         "requestIntro": "Ask Beacon to have this repeater polled for battery and radio stats by a volunteer observer that can hear it.",
         "guestPassword": "Guest password (optional)",
         "passwordNotice": "The guest password is shared with volunteer observers so they can ask this repeater for its stats. Never enter an admin password.",
-        "used": "{{used}} of {{limit}} requests used",
         "limitReached": "You have used all of your requests. Remove one in your profile to ask for another.",
-        "requested": "Telemetry requested",
+        "polledShort": "Polled",
+        "by": "by",
+        "passwordHint": "Guest password only, never admin.",
+        "usedShort": "{{used}} of {{limit}} used",
         "manage": "Manage in profile"
       }
     },

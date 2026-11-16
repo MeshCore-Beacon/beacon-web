@@ -255,6 +255,11 @@
     },
     "nodeDetail": {
       "viewOnMap": "Visa på karta",
+      "lastSeen": "Senast sedd",
+      "details": "Detaljer",
+      "scopesCount_one": "{{count}} scope",
+      "scopesCount_other": "{{count}} scopes",
+      "fromMeshMapperIn": "Från MeshMapper ({{iata}})",
       "title": "Noddetaljer",
       "copyLink": "Kopiera nodlänk",
       "notFound": "Noden hittades inte",
@@ -304,9 +309,11 @@
         "requestIntro": "Be Beacon låta en frivillig observatör som hör den här repeatern avläsa dess batteri och radiostatistik.",
         "guestPassword": "Gästlösenord (valfritt)",
         "passwordNotice": "Gästlösenordet delas med frivilliga observatörer så att de kan be repeatern om dess statistik. Ange aldrig ett administratörslösenord.",
-        "used": "{{used}} av {{limit}} begäran använda",
         "limitReached": "Du har använt alla dina begäran. Ta bort en i din profil för att begära en till.",
-        "requested": "Telemetri begärd",
+        "polledShort": "Avläst",
+        "by": "av",
+        "passwordHint": "Endast gästlösenord, aldrig admin.",
+        "usedShort": "{{used}} av {{limit}} använda",
         "manage": "Hantera i profilen"
       }
     },

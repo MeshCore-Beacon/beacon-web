@@ -261,6 +261,11 @@
     },
     "nodeDetail": {
       "viewOnMap": "Voir sur la carte",
+      "lastSeen": "Vu pour la dernière fois",
+      "details": "Détails",
+      "scopesCount_one": "{{count}} portée",
+      "scopesCount_other": "{{count}} portées",
+      "fromMeshMapperIn": "Depuis MeshMapper ({{iata}})",
       "title": "Détail du nœud",
       "copyLink": "Copier le lien du nœud",
       "notFound": "Nœud introuvable",
@@ -311,9 +316,11 @@
         "requestIntro": "Demandez à Beacon de faire interroger ce répéteur pour sa batterie et ses statistiques radio par un observateur bénévole qui l’entend.",
         "guestPassword": "Mot de passe invité (facultatif)",
         "passwordNotice": "Le mot de passe invité est partagé avec des observateurs bénévoles pour qu’ils puissent demander ses statistiques à ce répéteur. Ne saisissez jamais un mot de passe administrateur.",
-        "used": "{{used}} demandes utilisées sur {{limit}}",
         "limitReached": "Vous avez utilisé toutes vos demandes. Retirez-en une dans votre profil pour en faire une autre.",
-        "requested": "Télémétrie demandée",
+        "polledShort": "Interrogé",
+        "by": "par",
+        "passwordHint": "Mot de passe invité seulement, jamais admin.",
+        "usedShort": "{{used}} sur {{limit}} utilisées",
         "manage": "Gérer dans le profil"
       }
     },

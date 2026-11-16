@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { NodeDetailPanel } from "../../../src/features/nodes/NodeDetailPanel";
@@ -83,7 +83,7 @@ describe("NodeDetailPanel telemetry section", () => {
     setPolling(true);
     mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "repeater" });
     renderPanel();
-    expect(await screen.findByText("Polled by")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Poller" })).toBeInTheDocument();
     expect(mockGetNodeTelemetry).toHaveBeenCalled();
   });
 
@@ -91,7 +91,7 @@ describe("NodeDetailPanel telemetry section", () => {
     setPolling(true);
     mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "room_server" });
     renderPanel();
-    expect(await screen.findByText("Polled by")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Poller" })).toBeInTheDocument();
   });
 
   it("resets the range when the panel switches to another node", async () => {
@@ -117,7 +117,7 @@ describe("NodeDetailPanel telemetry section", () => {
     renderPanel();
     await screen.findByText("Self Node");
     await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByText("Polled by")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
     expect(mockGetNodeTelemetry).not.toHaveBeenCalled();
     expect(mockGetNodePolling).not.toHaveBeenCalled();
   });
@@ -128,7 +128,7 @@ describe("NodeDetailPanel telemetry section", () => {
     renderPanel();
     await screen.findByText("Self Node");
     await new Promise((r) => setTimeout(r, 30));
-    expect(screen.queryByText("Polled by")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
     expect(mockGetNodeTelemetry).not.toHaveBeenCalled();
     expect(mockGetNodePolling).not.toHaveBeenCalled();
   });
@@ -338,8 +338,11 @@ describe("NodeDetailPanel MeshMapper", () => {
     expect(screen.getByText("yow")).toBeInTheDocument();
     expect(screen.getByText("observed 37 packets · reported")).toBeInTheDocument();
     expect(screen.getByText("On the fire tower, east face")).toBeInTheDocument();
-    expect(screen.getByText(/From MeshMapper/)).toBeInTheDocument();
+    expect(screen.getByText(/More information:.*From MeshMapper \(YOW\)/)).toBeInTheDocument();
     expect(screen.queryByText("CARpeater")).not.toBeInTheDocument();
+    const fold = screen.getByText("MeshMapper").closest("details")!;
+    expect(fold).not.toHaveAttribute("open");
+    expect(fold.querySelector("summary")).toHaveTextContent("YOW · 1 scope");
   });
 
   it("never shows MeshMapper's proof type", async () => {
@@ -415,5 +418,55 @@ describe("NodeDetailPanel MeshMapper", () => {
     const { container } = renderPanel();
     expect(await screen.findByText("<b>bold</b>")).toBeInTheDocument();
     expect(container.querySelector("b")).toBeNull();
+  });
+});
+
+describe("NodeDetailPanel layout", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("shows when the node was last seen in the summary", async () => {
+    renderPanel();
+    const name = await screen.findByText("Self Node");
+    const summary = name.closest("[data-summary]") as HTMLElement;
+    expect(summary).toHaveTextContent(/Last seen/);
+  });
+
+  it("orders telemetry, neighbors and packets before the folded details", async () => {
+    setPolling(true);
+    mockGetNode.mockResolvedValue({ ...node, minFirmwareVersion: "1.14.0", lat: 45.4215, lng: -75.6972, locationSource: "advert" });
+    renderPanel();
+    await screen.findByRole("button", { name: "Poller" });
+    const titles = ["Telemetry", "Neighbors", "Recent packets", "Details"].map((text) => screen.getByText(text));
+    for (let i = 1; i < titles.length; i++) {
+      expect(titles[i - 1]!.compareDocumentPosition(titles[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    const fold = screen.getByText("Details").closest("details")!;
+    expect(fold).not.toHaveAttribute("open");
+    expect(fold.querySelector("summary")).toHaveTextContent("45.42, -75.70 · fw 1.14.0");
+    expect(fold).toContainElement(screen.getByText("Capabilities"));
+    expect(fold).toContainElement(screen.getByText("Timestamps"));
+    expect(fold).toContainElement(screen.getByText("Lat"));
+  });
+
+  it("remembers a fold left open", async () => {
+    const first = renderPanel();
+    const summary = (await screen.findByText("Details")).closest("summary")!;
+    fireEvent.click(summary);
+    await waitFor(() => expect(summary.closest("details")).toHaveAttribute("open"));
+    first.unmount();
+    renderPanel();
+    expect((await screen.findByText("Details")).closest("details")).toHaveAttribute("open");
+  });
+
+  it("keeps View on map in the summary", async () => {
+    mockGetNode.mockResolvedValue({ ...node, lat: 45.4, lng: -75.7 });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <NodeDetailPanel nodeId="node-self" onClose={vi.fn()} onViewObserver={vi.fn()} onViewOnMap={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    const link = await screen.findByRole("button", { name: "View on map" });
+    expect(link.closest("[data-summary]")).not.toBeNull();
   });
 });
