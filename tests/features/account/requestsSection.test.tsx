@@ -140,7 +140,7 @@ describe("telemetry requests section", () => {
 describe("stopped requests", () => {
   const stopped = req({
     id: "r3", node: { id: "n3", publicKey: "cc", name: "Cliff" }, status: "admin_stopped", statusReasonCode: "admin_stopped",
-    statusReason: "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.", poller: null,
+    statusReason: "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.", poller: null, latestReadingAt: null,
   });
   const failed = req({
     id: "r4", node: { id: "n4", publicKey: "dd", name: "Marsh" }, status: "login_failed", statusReasonCode: "login_failed",
@@ -155,10 +155,26 @@ describe("stopped requests", () => {
   it("offers only a new password and delete on an admin-stopped request, and says why", async () => {
     await openStopped();
     const r = row("Cliff");
-    expect(r.getByText(/The password you entered was an admin password\. Beacon deleted it\. Only a guest password will start it again\./)).toBeInTheDocument();
+    expect(r.getByText("The password you entered was an admin password, so Beacon deleted it. Enter the repeater's guest password to start again.")).toBeInTheDocument();
     expect(r.getByRole("button", { name: /Enter a new password/ })).toBeInTheDocument();
     expect(r.getByRole("button", { name: /^Remove/ })).toBeInTheDocument();
     expect(r.queryByRole("button", { name: /Re-enable|Change password/ })).not.toBeInTheDocument();
+  });
+
+  it("says an admin-stopped request's reason once, with no observer or empty reading lines", async () => {
+    await openStopped();
+    const r = row("Cliff");
+    expect(r.getByText("Stopped: admin password")).toBeInTheDocument();
+    expect(r.getAllByText(/admin password/i)).toHaveLength(2);
+    expect(r.getAllByText(/The password you entered was an admin password/)).toHaveLength(1);
+    expect(r.queryByText(/gave admin access/)).not.toBeInTheDocument();
+    expect(r.queryByText(/Polled by/)).not.toBeInTheDocument();
+    expect(r.queryByText(/Last reading/)).not.toBeInTheDocument();
+    const m = row("Marsh");
+    expect(m.getByText("Stopped: password refused")).toBeInTheDocument();
+    expect(m.getByText("The repeater refused that password. Enter the right guest password to try again.")).toBeInTheDocument();
+    expect(m.queryByText(/Polled by/)).not.toBeInTheDocument();
+    expect(m.getByText(/Last reading/)).toBeInTheDocument();
   });
 
   it("offers a new password and delete on a failed login, with no enable control", async () => {

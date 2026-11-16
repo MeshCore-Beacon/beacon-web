@@ -7,11 +7,12 @@ export interface Features {
   registration: boolean;
   telemetryRequests: boolean;
   alerts: boolean;
+  atlasTelemetry: boolean;
   alertDelivery: "push" | "email" | undefined;
   portalUrl?: string;
 }
 
-const OFF: Features = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false, alertDelivery: undefined };
+const OFF: Features = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false, atlasTelemetry: false, alertDelivery: undefined };
 
 // Shares VersionGate's /info query. Until it loads, on an older server, or on a failure, every feature reads as off.
 function useInfo() {
@@ -38,6 +39,7 @@ export function useFeatures(): Features {
     registration: f.registration === true,
     telemetryRequests: f.telemetryRequests === true,
     alerts: f.alerts === true,
+    atlasTelemetry: f.atlasTelemetry === true,
     alertDelivery: f.alertDelivery === "push" || f.alertDelivery === "email" ? f.alertDelivery : undefined,
     portalUrl: typeof f.portalUrl === "string" && f.portalUrl !== "" ? f.portalUrl : undefined,
   };

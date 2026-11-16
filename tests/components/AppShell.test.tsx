@@ -23,13 +23,13 @@ const wsManager = {
   getLastEventTimestamp: () => Date.now(),
 } as unknown as WsManager;
 
-function renderShell(onTabChange: (tab: string) => void = () => {}) {
+function renderShell(onTabChange: (tab: string) => void = () => {}, ws: WsManager = wsManager) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <RegionProvider defaultSelection={ALL_REGIONS}>
-          <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={wsManager}>
+          <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={ws}>
             <div />
           </AppShell>
         </RegionProvider>
@@ -327,5 +327,16 @@ describe("AppShell on a phone", () => {
     fireEvent.click(screen.getByRole("button", { name: "Français" }));
     await waitFor(() => expect(document.documentElement.lang).toBe("fr"));
     await act(() => i18n.changeLanguage("en"));
+  });
+
+  it("shrinks the stale badge to a dot and the age so the instance name keeps its room", () => {
+    const media = window.matchMedia("(max-width: 767px)");
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ ...media, media: query, matches: query === "(max-width: 767px)" }));
+    vi.mocked(getIatas).mockResolvedValue([]);
+    const stale = { onStatusChange: () => () => {}, getStatus: () => "connecting", getLastEventTimestamp: () => Date.now() - 5000 } as unknown as WsManager;
+    renderShell(() => {}, stale);
+    const badge = screen.getByRole("status", { name: "STALE 5s" });
+    expect(badge).toHaveTextContent(/^5s$/);
+    expect(screen.queryByText("STALE 5s")).not.toBeInTheDocument();
   });
 });

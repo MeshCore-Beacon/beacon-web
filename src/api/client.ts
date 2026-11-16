@@ -128,7 +128,7 @@ export interface ServerInfo {
   minWebVersion: string | null;
   serverVersion: string;
   // absent on servers that predate the flags
-  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; alertDelivery?: string; portalUrl?: string };
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; alertDelivery?: string; portalUrl?: string };
 }
 
 export function getServerInfo(): Promise<ServerInfo> {
@@ -486,7 +486,7 @@ export function getObserverActivity(observerId: string, range: string, interval:
 }
 
 // Bucket per range, the same as the server's defaults.
-const NODE_TELEMETRY_INTERVAL: Record<NodeTelemetryRange, string> = { "24h": "1h", "168h": "6h", "720h": "24h" };
+const NODE_TELEMETRY_INTERVAL: Record<NodeTelemetryRange, string> = { "24h": "1h", "72h": "1h", "168h": "6h", "720h": "24h" };
 
 export function getNodeTelemetry(id: string, range: NodeTelemetryRange, signal?: AbortSignal): Promise<NodeTelemetry> {
   return request(`/nodes/${encodeURIComponent(id)}/telemetry`, { range, interval: NODE_TELEMETRY_INTERVAL[range] }, signal);

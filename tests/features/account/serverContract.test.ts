@@ -4,6 +4,8 @@ import { alertErrorText, authErrorText, requestErrorText } from "../../../src/fe
 import { fromServer, toPut, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
 import type { AlertsResponse } from "../../../src/features/account/types";
 import { requestReasonText } from "../../../src/features/account/requestReason";
+import { requestLine } from "../../../src/features/account/requestStatus";
+import type { TelemetryRequest } from "../../../src/features/account/types";
 import { unavailableText } from "../../../src/features/account/unavailableReason";
 
 // Every statusReasonCode beacon-server puts on a telemetry request (reason-codes.md), with its English sentence.
@@ -107,6 +109,58 @@ describe("telemetry request reasons", () => {
     expect(requestReasonText(i18n.t, reasonOf("other", "Odd text."))).toBe("Odd text.");
     expect(requestReasonText(i18n.t, reasonOf("offline", "Not heard for ages."))).toBe("Not heard for ages.");
     expect(requestReasonText(i18n.t, reasonOf("", ""))).toBe("");
+  });
+});
+
+// GET /me/telemetry-requests: poller.state and poller.stateAt are optional (an older server omits them).
+const POLL_STATES: Array<[string, string, string]> = [
+  ["ok", "Being polled by North", "ok"],
+  ["pending", "Assigned to North. First poll is on its way.", "wait"],
+  ["not_direct", "Assigned to North, which cannot hear this repeater directly right now.", "wait"],
+  ["no_reply", "North is asking, but the repeater is not answering.", "wait"],
+  ["not_claimed", "Assigned to North. Waiting for it to pick this up.", "wait"],
+  ["login_failed", "North reported a password problem. Checking.", "wait"],
+  ["admin_stop", "North reported a password problem. Checking.", "wait"],
+];
+const withPoller = (poller: TelemetryRequest["poller"], status: TelemetryRequest["status"] = "active") => ({ status, poller });
+
+describe("telemetry request poller state", () => {
+  it("reads state and stateAt, both optional", () => {
+    const full: TelemetryRequest["poller"] = JSON.parse('{"observerId":"o1","name":"North","state":"ok","stateAt":1700000000000}');
+    const nulled: TelemetryRequest["poller"] = JSON.parse('{"observerId":"o1","name":"North","state":"pending","stateAt":null}');
+    const old: TelemetryRequest["poller"] = JSON.parse('{"observerId":"o1","name":"North"}');
+    expect(full?.stateAt).toBe(1_700_000_000_000);
+    expect(nulled?.stateAt).toBeNull();
+    expect(old?.state).toBeUndefined();
+  });
+
+  it.each(["en", "fr", "sv"])("has a sentence and a dot for every state in %s", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const english = i18n.getFixedT("en");
+    for (const [state, sentence, tone] of POLL_STATES) {
+      const poller = { observerId: "o1", name: "North", state };
+      const line = requestLine(i18n.t, withPoller(poller));
+      expect(line.text, state).not.toMatch(/^account\./);
+      expect(line.text, state).toContain("North");
+      expect(line.tone, state).toBe(tone);
+      expect(line.names).toBe(true);
+      if (lang === "en") expect(line.text).toBe(sentence);
+      else if (state !== "admin_stop") expect(line.text, state).not.toBe(requestLine(english, withPoller(poller)).text);
+    }
+  });
+
+  it("keeps the flat status for a missing or unknown state, and for a poller-less request", () => {
+    for (const poller of [{ observerId: "o1", name: "North" }, { observerId: "o1", name: "North", state: "brand_new" }, null]) {
+      const line = requestLine(i18n.t, withPoller(poller));
+      expect(line).toEqual({ text: "Being polled", tone: "idle", names: false });
+    }
+  });
+
+  it("ignores the poller state unless the request is active", () => {
+    const poller = { observerId: "o1", name: "North", state: "ok" };
+    expect(requestLine(i18n.t, withPoller(poller, "waiting"))).toMatchObject({ tone: "wait", names: false });
+    expect(requestLine(i18n.t, withPoller(poller, "login_failed")).tone).toBe("bad");
+    expect(requestLine(i18n.t, withPoller(poller, "disabled")).tone).toBe("idle");
   });
 });
 
