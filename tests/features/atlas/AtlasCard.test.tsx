@@ -703,6 +703,13 @@ describe("AtlasCard", () => {
       expect((await screen.findAllByText(/Not being polled right now/))[0]).toBeInTheDocument();
     });
 
+    // The server's polled flag means a reading was ever stored; only an assigned poller means it is polled now.
+    it("says it is not being polled when readings exist but nobody is assigned", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: true, poller: null, latestReadingAt: Date.now() - 3 * 86_400_000 }));
+      mount({ view: "telemetry" });
+      expect((await screen.findAllByText(/Not being polled right now/))[0]).toBeInTheDocument();
+    });
+
     it("asks for 72h on a 3d card when the server supports it", async () => {
       vi.mocked(api.getServerInfo).mockResolvedValue(info(true, true));
       mount({ view: "telemetry", range: "3d" });

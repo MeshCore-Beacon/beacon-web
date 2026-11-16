@@ -362,7 +362,8 @@ export function AtlasCard({
         return tile(s.errors, perHour, { peak: true, counter: true });
     }
   };
-  const polledNow = tab.polling?.polled === true;
+  // polled only says a reading was ever stored; an assigned poller is what means it is polled now.
+  const polledNow = tab.polling?.poller != null;
   const lastReading = tab.polling?.latestReadingAt ?? telSample.latestAt;
   const pollerName = tab.polling?.poller?.name;
   const pollState = !tab.polling ? null : polledNow ? (pollerName ? t("atlas.telemetry.polledBy", { name: pollerName }) : t("atlas.telemetry.polled")) : t("atlas.telemetry.notPolled");
