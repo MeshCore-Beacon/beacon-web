@@ -39,7 +39,8 @@ function Sparkline({ values, color, markPeak, interpolateGaps }: { values: (numb
   const min = Math.min(...known);
   const range = max - min || 1;
   const x = (i: number) => values.length === 1 ? SPARK_W / 2 : (i / (values.length - 1)) * SPARK_W;
-  const y = (v: number) => SPARK_H - 1 - ((v - min) / range) * (SPARK_H - 2);
+  // a lone reading sits mid-height, not on the floor
+  const y = (v: number) => (known.length === 1 ? SPARK_H / 2 : SPARK_H - 1 - ((v - min) / range) * (SPARK_H - 2));
   // A null hour breaks the line, so an outage shows as a gap rather than a straight join.
   const runs: string[][] = [[]];
   values.forEach((v, i) => {
@@ -95,6 +96,7 @@ export function StatCard({
   sublabel,
   compact,
   interpolateGaps,
+  wrapSublabel,
   visual,
 }: {
   label: ReactNode;
@@ -105,6 +107,7 @@ export function StatCard({
   presence?: boolean[];
   sublabel?: ReactNode;
   interpolateGaps?: boolean;
+  wrapSublabel?: boolean; // let a long sub-label run to a second line instead of cutting it
   compact?: boolean; // narrow tiles: value stays text-xl so "-77.2 dBm" never wraps
   visual?: ReactNode; // replaces the sparkline; keep it near the sparkline's height
 }) {
@@ -112,7 +115,7 @@ export function StatCard({
     <div className="flex flex-col rounded-lg border border-border bg-bg-surface px-3.5 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <span className="min-w-0 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
-        {sublabel && <span className="min-w-0 max-w-full truncate font-mono text-[9px] text-text-dim">{sublabel}</span>}
+        {sublabel && <span className={`min-w-0 max-w-full font-mono text-[9px] text-text-dim ${wrapSublabel ? "" : "truncate"}`}>{sublabel}</span>}
       </div>
       <div className={`mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright ${compact ? "" : "sm:text-2xl"}`}>{value}</div>
       <div className="mt-auto">

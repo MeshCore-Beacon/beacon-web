@@ -1,12 +1,12 @@
-import { ATLAS_LIMIT, NO_NODE_ID, parseAtlas, pinKey, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas } from "./atlas";
+import { ATLAS_LIMIT, NO_NODE_ID, parseAtlas, pinKey, type AtlasPin, type NodePin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas, type TelemetryTile } from "./atlas";
 
 // The account document, as /me/atlas answers it. Times and ids follow the API contract.
-export interface ServerNodePin { kind: "node"; publicKey: string; id: string | null; name: string; observerId: string | null; tiles?: ObserverTile[]; view?: AtlasView }
+export interface ServerNodePin { kind: "node"; publicKey: string; id: string | null; name: string; observerId: string | null; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
 export interface ServerObserverPin { kind: "observer"; observerPublicKey: string; observerId: string | null; name: string; tiles?: ObserverTile[] }
 export interface ServerAtlas { revision: number; range: AtlasRange; limit: number; pins: (ServerNodePin | ServerObserverPin)[] }
 
 export type PutPin =
-  | { kind: "node"; publicKey: string; name: string; tiles?: ObserverTile[]; view?: AtlasView }
+  | { kind: "node"; publicKey: string; name: string; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
   | { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
   | { kind: "observer"; observerPublicKey: string; name: string; tiles?: ObserverTile[] };
 export interface PutAtlas { baseRevision: number; range: AtlasRange; pins: PutPin[] }
@@ -22,12 +22,18 @@ const isPlaceholder = (id: string) => id.startsWith(PLACEHOLDER_PREFIX);
 
 export const emptyAtlas = (): SavedAtlas => ({ version: 2, range: "24h", pins: [] });
 
-// The server document as a local Atlas. `previous` lends the ids the server could not resolve.
-export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys): { atlas: SavedAtlas; keys: ObserverKeys } {
+// The server document as a local Atlas. `previous` lends the ids the server could not resolve. A server
+// without Telemetry tab support never stores `view: "telemetry"` or `telemetryTiles`, so with
+// `keepTelemetry` the previous local pin's two stay in this browser's copy.
+export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys, keepTelemetry = false): { atlas: SavedAtlas; keys: ObserverKeys } {
   const nodeIds = new Map<string, string>();
+  const before = new Map<string, NodePin>();
   const observerIds = new Map<string, string>();
   for (const pin of previous?.pins ?? []) {
-    if (pin.kind === "node") nodeIds.set(pin.publicKey, pin.id);
+    if (pin.kind === "node") {
+      nodeIds.set(pin.publicKey, pin.id);
+      before.set(pin.publicKey, pin);
+    }
     else if (known[pin.observerId]) observerIds.set(known[pin.observerId]!, pin.observerId);
   }
   const keys: ObserverKeys = {};
@@ -36,7 +42,10 @@ export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known:
     if (pin.kind === "node") {
       const publicKey = pin.publicKey.toLowerCase();
       if (pin.observerId) keys[pin.observerId] = publicKey;
-      return { kind: "node", id: pin.id ?? nodeIds.get(publicKey) ?? NO_NODE_ID, publicKey, name: pin.name, observerId: pin.observerId ?? undefined, ...tiles, view: pin.view };
+      const local = keepTelemetry ? before.get(publicKey) : undefined;
+      const telemetryTiles = pin.telemetryTiles ?? local?.telemetryTiles;
+      const view = pin.view ?? (local?.view === "telemetry" ? local.view : undefined);
+      return { kind: "node", id: pin.id ?? nodeIds.get(publicKey) ?? NO_NODE_ID, publicKey, name: pin.name, observerId: pin.observerId ?? undefined, ...tiles, ...(telemetryTiles && { telemetryTiles }), view };
     }
     const key = pin.observerPublicKey.toLowerCase();
     const observerId = pin.observerId ?? observerIds.get(key) ?? placeholderObserverId(key);
@@ -47,10 +56,15 @@ export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known:
   return { atlas: parseAtlas(JSON.stringify({ version: 2, range: doc.range, pins })), keys };
 }
 
-export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number): PutAtlas {
+// `telemetry` is the server's `features.atlasTelemetry`. Without it the Telemetry tab's two fields stay
+// out of the body, which an older server would reject; a pin on that tab is sent as having no view.
+export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number, telemetry = false): PutAtlas {
   const pins = saved.pins.map((pin): PutPin => {
     const tiles = pin.tiles && { tiles: pin.tiles };
-    if (pin.kind === "node") return { kind: "node", publicKey: pin.publicKey, name: pin.name, ...tiles, ...(pin.view && { view: pin.view }) };
+    if (pin.kind === "node") {
+      const view = telemetry || pin.view !== "telemetry" ? pin.view : undefined;
+      return { kind: "node", publicKey: pin.publicKey, name: pin.name, ...tiles, ...(telemetry && pin.telemetryTiles && { telemetryTiles: pin.telemetryTiles }), ...(view && { view }) };
+    }
     const key = keys[pin.observerId];
     if (isPlaceholder(pin.observerId) && key) return { kind: "observer", observerPublicKey: key, name: pin.name, ...tiles };
     return { kind: "observer", observerId: pin.observerId, name: pin.name, ...tiles };

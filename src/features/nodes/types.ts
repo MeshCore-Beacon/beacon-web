@@ -163,7 +163,7 @@ export interface NodeTelemetryPoint {
   counterSpanSecs?: number; // seconds the counter increments cover; divide by this, not the bucket length
 }
 
-export type NodeTelemetryRange = "24h" | "168h" | "720h";
+export type NodeTelemetryRange = "24h" | "72h" | "168h" | "720h";
 
 export interface NodeTelemetry {
   range: string;
