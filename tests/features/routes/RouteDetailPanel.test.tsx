@@ -29,6 +29,21 @@ function mount({ url = "/?tab=Routes", listed }: { url?: string; listed?: KnownR
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(getRouteEvidence).mockResolvedValue(page); });
 
 describe("route detail", () => {
+  it("lets the server validate a copied window ahead of the user's clock", async () => {
+    const until = Date.now() + 10_000, since = until - 86_400_000;
+    mount({ url: `/?routeSince=${since}&routeUntil=${until}` });
+    await screen.findByText("Garden");
+    expect(getRouteEvidence).toHaveBeenCalledWith("YOW", key, { since, until, limit: 50 }, expect.anything());
+  });
+
+  it("uses the loaded evidence representation instead of a stale listed route", async () => {
+    vi.mocked(getRouteEvidence).mockResolvedValue({ ...page, route: { ...route, hops: [{ ...route.hops[0]!, hashBytes: "ab01" }] }, hashSize: 2, pathBytes: "ab01cd02" });
+    mount({ listed: route });
+    await screen.findByText("Garden");
+    expect(screen.getByText("AB01")).toBeInTheDocument();
+    expect(screen.queryByText("AB")).not.toBeInTheDocument();
+  });
+
   it("lists recent packets as far back as the server keeps them, with no window picker", async () => {
     mount({ url: "/?routeRange=7d" });
     await screen.findByText("Garden");
