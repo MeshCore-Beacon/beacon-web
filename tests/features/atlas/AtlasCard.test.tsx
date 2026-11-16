@@ -641,6 +641,19 @@ describe("AtlasCard", () => {
       expect(options).toEqual(["Packets", "Signal", "Errors"]);
     });
 
+    it("shows the temperature tile in the instance unit", async () => {
+      const warm = { ...week, points: week.points.map((p) => ({ ...p, temperatureC: 15.25 })) };
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue(warm as never);
+      const tiles = { pin: { ...pin, telemetryTiles: ["temperature", "noise", "uptime", "airtime"] }, view: "telemetry" as const };
+      const { unmount } = mount(tiles);
+      expect(await screen.findByText("15.3 °C")).toBeInTheDocument();
+      unmount();
+      client.clear();
+      vi.mocked(api.getServerInfo).mockResolvedValue({ features: { polling: true }, display: { temperatureUnit: "f", distanceUnit: "imperial" } } as never);
+      mount(tiles);
+      expect(await screen.findByText("59.5 °F")).toBeInTheDocument();
+    });
+
     it("offers temperature when a reading has one, and picking a tile reports the new four", async () => {
       vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: week.points.map((p) => ({ ...p, temperatureC: 15.25 })) } as never);
       mount({ view: "telemetry" });

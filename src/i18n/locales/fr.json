@@ -298,7 +298,7 @@
         "title": "Télémétrie",
         "range": "Période de télémétrie",
         "battery": "Batterie (V)",
-        "temperature": "Température (°C)",
+        "temperature": "Température ({{unit}})",
         "noise": "Bruit de fond (dBm)",
         "airtime": "Temps d'antenne TX / RX (% du temps)",
         "waiting": "Interrogé par {{name}}, en attente de la première mesure",

@@ -9,6 +9,8 @@ import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
+import { formatTemp } from "../../lib/units";
+import { useDisplayUnits } from "../../hooks/useFeatures";
 import type { Observation } from "../../types/api";
 import type { NodeSummary } from "../nodes/types";
 import { deriveObserverStatus } from "../observers/observer-status";
@@ -140,6 +142,7 @@ export function AtlasCard({
   onAnalyzePacket,
 }: AtlasCardProps) {
   const { t } = useTranslation();
+  const { temperature: tempUnit } = useDisplayUnits();
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
@@ -353,7 +356,7 @@ export function AtlasCard({
       case "airtime":
         return tile(s.airtime, percent, { peak: true, counter: true, sublabel: s.airtimeTx !== null && s.airtimeRx !== null ? `TX ${percent(s.airtimeTx)} · RX ${percent(s.airtimeRx)}` : null });
       case "temperature":
-        return tile(s.temperature, (v) => `${v.toFixed(1)} °C`);
+        return tile(s.temperature, (v) => formatTemp(v, tempUnit));
       case "packets":
         return tile(s.packets, perHour, { peak: true, counter: true, sublabel: s.packetsSent !== null ? t("atlas.telemetry.sentPerHour", { value: perHour(s.packetsSent) }) : null });
       case "signal":

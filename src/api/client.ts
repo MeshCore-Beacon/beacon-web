@@ -128,7 +128,8 @@ export interface ServerInfo {
   minWebVersion: string | null;
   serverVersion: string;
   // absent on servers that predate the flags
-  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; alertDelivery?: string; portalUrl?: string };
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; mapTelemetry?: boolean; alertDelivery?: string; portalUrl?: string };
+  display?: { temperatureUnit?: string; distanceUnit?: string };
 }
 
 export function getServerInfo(): Promise<ServerInfo> {

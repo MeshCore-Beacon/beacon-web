@@ -291,7 +291,7 @@
         "title": "Telemetri",
         "range": "Telemetriperiod",
         "battery": "Batteri (V)",
-        "temperature": "Temperatur (°C)",
+        "temperature": "Temperatur ({{unit}})",
         "noise": "Brusgolv (dBm)",
         "airtime": "Sändtid TX / RX (% av tiden)",
         "waiting": "Avläses av {{name}}, väntar på första värdet",

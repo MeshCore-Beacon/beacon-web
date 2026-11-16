@@ -327,7 +327,7 @@
         "title": "Telemetry",
         "range": "Telemetry range",
         "battery": "Battery (V)",
-        "temperature": "Temperature (°C)",
+        "temperature": "Temperature ({{unit}})",
         "noise": "Noise floor (dBm)",
         "airtime": "Airtime TX / RX (% of time)",
         "waiting": "Polled by {{name}}, waiting for the first reading",
