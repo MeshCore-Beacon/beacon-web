@@ -2,8 +2,7 @@
   "name": "English",
   "translation": {
     "language": {
-      "label": "Language",
-      "help": "Choose a language."
+      "label": "Language"
     },
     "tabs": {
       "Packets": "Packets",

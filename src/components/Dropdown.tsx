@@ -1,12 +1,11 @@
 import { useState, useRef, useCallback, useEffect, type ReactNode } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
 
-const ALIGN_CLASS = { left: "left-0", right: "right-0", "left-below-md": "left-0 md:left-auto md:right-0" } as const;
+const ALIGN_CLASS = { left: "left-0", right: "right-0" } as const;
 
 export function Dropdown({ renderTrigger, align = "right", width = "w-48", fullWidth = false, up = false, children }: {
   renderTrigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
-  // left-below-md: the trigger sits at the left edge of a phone row but mid-row on desktop
-  align?: "left" | "right" | "left-below-md";
+  align?: "left" | "right";
   width?: string;
   // stretch + render the panel inline (accordion) for the mobile filter sheet
   fullWidth?: boolean;

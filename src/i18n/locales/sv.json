@@ -2,8 +2,7 @@
   "name": "Svenska",
   "translation": {
     "language": {
-      "label": "Språk",
-      "help": "Välj ett språk."
+      "label": "Språk"
     },
     "tabs": {
       "Packets": "Paket",
