@@ -3,6 +3,7 @@ import type { ChartColors } from "../stats/chartTheme";
 import { airtimeOption, metricLineOption, mvToVolts } from "../stats/chartOptions";
 import { intervalToMs } from "../stats/transforms";
 import { airtimePct } from "./telemetry";
+import { toDisplayTemp, type TemperatureUnit } from "../../lib/units";
 import type { NodeTelemetry, NodeTelemetryPoint } from "./types";
 
 // The server skips empty buckets. Put an empty point in each one so the line breaks there
@@ -45,14 +46,14 @@ function withMarkers(option: EChartsOption): EChartsOption {
 }
 
 // A chart is built only when some point carries its field.
-export function buildNodeCharts(data: NodeTelemetry, c: ChartColors, labels: NodeChartLabels): NodeCharts {
+export function buildNodeCharts(data: NodeTelemetry, c: ChartColors, labels: NodeChartLabels, tempUnit: TemperatureUnit): NodeCharts {
   const bucketMs = intervalToMs(data.interval);
   const points = fillGaps(data.points, bucketMs);
   const line = (name: string, color: string, accessor: (p: NodeTelemetryPoint) => number | null) =>
     withMarkers(metricLineOption(points, c, { name, color, accessor, connectNulls: false }));
   const out: NodeCharts = {};
   if (has(data.points, (p) => p.batteryMv)) out.battery = line(labels.battery, c.primary, (p) => mvToVolts(p.batteryMv));
-  if (has(data.points, (p) => p.temperatureC)) out.temperature = line(labels.temperature, c.green, (p) => p.temperatureC ?? null);
+  if (has(data.points, (p) => p.temperatureC)) out.temperature = line(labels.temperature, c.green, (p) => (p.temperatureC == null ? null : toDisplayTemp(p.temperatureC, tempUnit)));
   if (has(data.points, (p) => p.noiseFloorDb)) out.noise = line(labels.noise, c.warn, (p) => p.noiseFloorDb ?? null);
   if (bucketMs != null && (has(data.points, (p) => p.airtimeTxSecs) || has(data.points, (p) => p.airtimeRxSecs))) {
     out.airtime = airtimeOption([], c, bucketMs, false);

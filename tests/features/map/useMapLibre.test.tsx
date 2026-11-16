@@ -4,6 +4,7 @@ import { renderHook, act } from "@testing-library/react";
 type Handler = (e?: unknown) => void;
 
 const maps = vi.hoisted(() => [] as FakeMap[]);
+const scales = vi.hoisted(() => [] as { unit: string }[]);
 
 interface FakeLayer {
   id: string;
@@ -93,7 +94,17 @@ vi.mock("maplibre-gl", () => {
     }
   }
   class Control {}
-  return { Map, LngLatBounds, NavigationControl: Control, ScaleControl: Control, AttributionControl: Control };
+  class ScaleControl {
+    unit: string;
+    constructor(o: { unit: string }) {
+      this.unit = o.unit;
+      scales.push(this);
+    }
+    setUnit(u: string) {
+      this.unit = u;
+    }
+  }
+  return { Map, LngLatBounds, NavigationControl: Control, ScaleControl, AttributionControl: Control };
 });
 
 const { useMapLibre } = await import("../../../src/features/map/useMapLibre");
@@ -101,10 +112,10 @@ const { resolveMapStyle } = await import("../../../src/features/map/types");
 
 const camera = { center: [-75.7, 45.4] as [number, number], zoom: 9 };
 
-function mount(props: { styleId?: string; fitPoints: [number, number][] | null; fitScope?: string; onStyleError?: (id: string) => void; terrain?: boolean }) {
+function mount(props: { styleId?: string; fitPoints: [number, number][] | null; fitScope?: string; onStyleError?: (id: string) => void; terrain?: boolean; distanceUnit?: "metric" | "imperial" }) {
   const hook = renderHook(
     (p: typeof props) => {
-      const r = useMapLibre(p.styleId ?? "dark", p.fitPoints, p.onStyleError, camera, p.fitScope, p.terrain);
+      const r = useMapLibre(p.styleId ?? "dark", p.fitPoints, p.onStyleError, camera, p.fitScope, p.terrain, p.distanceUnit);
       // the map attaches to the container ref, so hand it a node before the init effect runs
       if (!r.containerRef.current) r.containerRef.current = document.createElement("div");
       return r;
@@ -118,6 +129,7 @@ function mount(props: { styleId?: string; fitPoints: [number, number][] | null; 
 
 beforeEach(() => {
   maps.length = 0;
+  scales.length = 0;
 });
 
 describe("useMapLibre deep-link fit", () => {
@@ -216,5 +228,21 @@ describe("useMapLibre terrain", () => {
     expectNoTerrain(map);
     act(() => map.fire("style.load"));
     expectTerrain(map);
+  });
+});
+
+describe("useMapLibre scale bar", () => {
+  it("opens in the given unit and switches in place when it changes", () => {
+    const { rerender } = mount({ fitPoints: null, distanceUnit: "imperial" });
+    expect(scales).toHaveLength(1);
+    expect(scales[0]!.unit).toBe("imperial");
+    rerender({ fitPoints: null, distanceUnit: "metric" });
+    expect(scales).toHaveLength(1);
+    expect(scales[0]!.unit).toBe("metric");
+  });
+
+  it("defaults to metric", () => {
+    mount({ fitPoints: null });
+    expect(scales[0]!.unit).toBe("metric");
   });
 });

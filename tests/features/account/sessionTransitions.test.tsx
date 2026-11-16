@@ -11,7 +11,7 @@ vi.mock('../../../src/api/auth', async (orig) => ({ ...await orig<typeof import(
   me: { get: vi.fn(), setDisplayName: vi.fn(), sessions: vi.fn(), changePassword: vi.fn(), changeEmail: vi.fn(), deleteAccount: vi.fn() },
   requests: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
-vi.mock('../../../src/hooks/useFeatures', () => ({ useFeatures: () => mocks.features, useFeaturesLoading: () => false }));
+vi.mock('../../../src/hooks/useFeatures', () => ({ useFeatures: () => mocks.features, useFeaturesLoading: () => false, useDisplayUnits: () => ({ temperature: 'c', distance: 'metric' }) }));
 const device = { id: 's1', kind: 'web' as const, label: 'A private laptop', current: true, createdAt: 1, lastUsedAt: 1, expiresAt: 9999999999999 };
 const defer = <T,>() => { let resolve!: (v:T)=>void; let reject!: (v:unknown)=>void; const promise = new Promise<T>((a,b)=>{resolve=a;reject=b;}); return {promise,resolve,reject}; };
 beforeEach(() => { resetMocks(); vi.mocked(me.get).mockResolvedValue({user}); vi.mocked(me.sessions).mockResolvedValue({sessions:[device]}); });
