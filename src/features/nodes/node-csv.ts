@@ -11,7 +11,7 @@ function cell(value: string | number | boolean | null | undefined): string {
 export function nodeCsv(nodes: readonly NodeSummary[]): string {
   const rows: (string | number | boolean | null | undefined)[][] = [[
     "id", "public_key", "name", "type", "latitude", "longitude", "radio",
-    "advert_scope", "heard_areas", "known_neighbors", "is_observer", "last_heard_utc",
+    "matched_scope", "heard_areas", "known_neighbors", "is_observer", "last_heard_utc",
   ]];
   for (const node of nodes) {
     const date = new Date(node.lastSeen ?? NaN);
