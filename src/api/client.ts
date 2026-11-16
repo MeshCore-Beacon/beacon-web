@@ -3,7 +3,7 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling } from "../features/nodes/types";
+import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodeLatestReading, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling } from "../features/nodes/types";
 
 import type {
   StatsSeries,
@@ -128,7 +128,8 @@ export interface ServerInfo {
   minWebVersion: string | null;
   serverVersion: string;
   // absent on servers that predate the flags
-  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; alertDelivery?: string; portalUrl?: string };
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; mapTelemetry?: boolean; alertDelivery?: string; portalUrl?: string };
+  display?: { temperatureUnit?: string; distanceUnit?: string };
 }
 
 export function getServerInfo(): Promise<ServerInfo> {
@@ -392,6 +393,11 @@ export function getObserversPage(
 
 export function getNode(nodeId: string, signal?: AbortSignal): Promise<Node> {
   return request(`/nodes/${nodeId}`, undefined, signal);
+}
+
+export function getLatestNodeTelemetry(iatas: string[] | undefined): Promise<{ generatedAt: number; items: NodeLatestReading[] }> {
+  if (noIatas(iatas)) return Promise.resolve({ generatedAt: Date.now(), items: [] });
+  return request("/nodes/telemetry/latest", { iatas: iatasParam(iatas) });
 }
 
 export function getNodeObservations(

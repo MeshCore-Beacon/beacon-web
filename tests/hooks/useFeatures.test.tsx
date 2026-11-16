@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useFeatures, useFeaturesLoading } from "../../src/hooks/useFeatures";
+import { useDisplayUnits, useFeatures, useFeaturesLoading } from "../../src/hooks/useFeatures";
 
-const OFF = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false, atlasTelemetry: false };
+const OFF = { polling: false, accounts: "off", registration: false, telemetryRequests: false, alerts: false, atlasTelemetry: false, mapTelemetry: false };
 let client: QueryClient;
 const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 const stubInfo = (body: unknown, ok = true) =>
@@ -35,7 +35,7 @@ describe("useFeatures", () => {
   });
 
   it("returns the server's values when present", async () => {
-    const features = { polling: true, accounts: "local", registration: true, telemetryRequests: true, alerts: false, atlasTelemetry: true };
+    const features = { polling: true, accounts: "local", registration: true, telemetryRequests: true, alerts: false, atlasTelemetry: true, mapTelemetry: true };
     stubInfo({ serverVersion: "2.3.0", features });
     const { result } = renderHook(() => useFeatures(), { wrapper });
     await waitFor(() => expect(result.current.polling).toBe(true));
@@ -56,5 +56,28 @@ describe("useFeaturesLoading", () => {
     const { result } = renderHook(() => useFeaturesLoading(), { wrapper });
     expect(result.current).toBe(true);
     await waitFor(() => expect(result.current).toBe(false));
+  });
+});
+
+describe("useDisplayUnits", () => {
+  it("is Celsius and metric without a display block", async () => {
+    stubInfo({ serverVersion: "2.3.0" });
+    const { result } = renderHook(() => useDisplayUnits(), { wrapper });
+    await waitFor(() => expect(client.getQueryState(["server-info"])?.status).toBe("success"));
+    expect(result.current).toEqual({ temperature: "c", distance: "metric" });
+  });
+
+  it("returns the instance units", async () => {
+    stubInfo({ serverVersion: "2.3.0", display: { temperatureUnit: "f", distanceUnit: "imperial" } });
+    const { result } = renderHook(() => useDisplayUnits(), { wrapper });
+    await waitFor(() => expect(result.current.temperature).toBe("f"));
+    expect(result.current).toEqual({ temperature: "f", distance: "imperial" });
+  });
+
+  it("reads an unknown unit as the default", async () => {
+    stubInfo({ serverVersion: "2.3.0", display: { temperatureUnit: "k", distanceUnit: "nautical" } });
+    const { result } = renderHook(() => useDisplayUnits(), { wrapper });
+    await waitFor(() => expect(client.getQueryState(["server-info"])?.status).toBe("success"));
+    expect(result.current).toEqual({ temperature: "c", distance: "metric" });
   });
 });

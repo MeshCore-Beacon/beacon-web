@@ -28,6 +28,14 @@ export interface NodeSummary {
   stale?: boolean; // server-configured freshness threshold; absent on older servers
 }
 
+// Latest polled battery/temperature for a node; temperatures are Celsius, either value may be absent.
+export interface NodeLatestReading {
+  nodeId: string;
+  sampledAt: number; // epoch ms
+  batteryMv?: number;
+  temperatureC?: number;
+}
+
 // /nodes orders, server 2.1.0+; lastSeen ascending only from a server whose rows carry lastSeen
 export type NodeSort = "name" | "type" | "neighbors" | "lastSeen";
 

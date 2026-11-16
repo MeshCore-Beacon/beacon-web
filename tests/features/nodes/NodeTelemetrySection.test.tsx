@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NodeTelemetrySection from "../../../src/features/nodes/NodeTelemetrySection";
-import { getNodePolling, getNodeTelemetry } from "../../../src/api/client";
+import { getNodePolling, getNodeTelemetry, getServerInfo } from "../../../src/api/client";
 import en from "../../../src/i18n/locales/en.json";
 import fr from "../../../src/i18n/locales/fr.json";
 import sv from "../../../src/i18n/locales/sv.json";
@@ -11,6 +11,7 @@ import type { Node, NodePolling, NodeTelemetry } from "../../../src/features/nod
 vi.mock("../../../src/api/client", () => ({
   getNodeTelemetry: vi.fn(),
   getNodePolling: vi.fn(),
+  getServerInfo: vi.fn(),
   isNotFound: (e: unknown) => (e as { status?: number } | null)?.status === 404,
 }));
 // ECharts needs a real canvas; the section's behaviour is in which cards it draws
@@ -20,6 +21,7 @@ vi.mock("../../../src/features/stats/EChart", () => ({
 
 const mockTelemetry = vi.mocked(getNodeTelemetry);
 const mockPolling = vi.mocked(getNodePolling);
+const mockInfo = vi.mocked(getServerInfo);
 
 const node = { id: "n1", nodeTypeName: "repeater" } as Node;
 const point = { t: 1_700_000_000_000, readings: 2, batteryMv: 4200, temperatureC: 16, noiseFloorDb: -97, airtimeTxSecs: 1, airtimeRxSecs: 2 };
@@ -39,6 +41,8 @@ function renderSection(onViewObserver = vi.fn()) {
 beforeEach(() => {
   mockTelemetry.mockReset();
   mockPolling.mockReset();
+  mockInfo.mockReset();
+  mockInfo.mockResolvedValue({ serverVersion: "2.3.0" } as never);
 });
 
 describe("NodeTelemetrySection", () => {
@@ -116,6 +120,23 @@ describe("NodeTelemetrySection", () => {
     mockPolling.mockResolvedValue(polling());
     renderSection();
     expect(await screen.findAllByTestId("chart")).toHaveLength(2);
+  });
+
+  it("titles and draws the temperature chart in the instance unit", async () => {
+    mockInfo.mockResolvedValue({ serverVersion: "2.3.0", display: { temperatureUnit: "f", distanceUnit: "imperial" } } as never);
+    mockTelemetry.mockResolvedValue(tele([{ t: point.t, readings: 1, batteryMv: 4200, temperatureC: 20 }]));
+    mockPolling.mockResolvedValue(polling());
+    renderSection();
+    expect(await screen.findByText("Temperature (°F)")).toBeInTheDocument();
+    const charts = screen.getAllByTestId("chart").map((c) => JSON.parse(c.getAttribute("data-option")!));
+    expect(charts.some((o) => o.series[0].data.some((d: number[]) => d[1] === 68))).toBe(true);
+  });
+
+  it("titles the temperature chart in Celsius by default", async () => {
+    mockTelemetry.mockResolvedValue(tele([point]));
+    mockPolling.mockResolvedValue(polling());
+    renderSection();
+    expect(await screen.findByText("Temperature (°C)")).toBeInTheDocument();
   });
 
   it("links the poller to its observer", async () => {
