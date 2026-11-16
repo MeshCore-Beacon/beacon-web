@@ -32,6 +32,7 @@ export interface TelemetrySample {
   rssi: number | null;
   errors: TelemetrySeries; // receive errors per hour
   rebooted: boolean; // uptime fell somewhere in the window
+  readings: number; // points in the window, whatever they carry
   latestAt: number | null; // newest reading in the window, epoch ms
 }
 
@@ -75,6 +76,7 @@ export function summarizeTelemetry(data: NodeTelemetry | undefined, range: Atlas
     rssi: lastSignal && finite(lastSignal.lastRssiDb) ? lastSignal.lastRssiDb : null,
     errors: series(points, (p) => perHour(p.receiveErrors, p.counterSpanSecs)),
     rebooted: uptime.values.some((v, i) => i > 0 && v < uptime.values[i - 1]!),
+    readings: points.length,
     latestAt: points.at(-1)?.t ?? null,
   };
 }

@@ -84,6 +84,8 @@ const REMOVE_BUTTON = `${ICON_BOX} rounded border border-border text-text-muted 
 
 const rounded = (v: number) => (v < 10 ? v.toFixed(1) : String(Math.round(v)));
 const percent = (v: number) => `${rounded(v)}%`;
+// Two units at most so a long uptime fits the tile; the title has the full value.
+const shortUptime = (seconds: number) => formatUptime(seconds).split(" ").slice(0, 2).join(" ");
 const perHour = (v: number) => `${rounded(v)}/h`;
 const MIX_SLICES = 5;
 
@@ -282,11 +284,11 @@ export function AtlasCard({
 
   // One line that never wraps: the right side gives way first, then the left, a failure never does,
   // and the tip carries every fact in full.
-  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[]) => (
-    <div data-card-footer className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
+  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[], wrap = false) => (
+    <div data-card-footer className={`flex gap-3 font-mono text-[11px] text-text-muted ${wrap ? "items-start" : "items-center whitespace-nowrap"}`}>
       {left}
       {state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
-      <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>
+      {right !== "" && <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>}
       <span className="flex shrink-0"><InfoTip text={tip} /></span>
     </div>
   );
@@ -330,14 +332,15 @@ export function AtlasCard({
     const tile = (
       series: { latest: number | null; values: number[] },
       format: (v: number) => string,
-      options: { peak?: boolean; sublabel?: string | null } = {},
+      options: { peak?: boolean; sublabel?: string | null; counter?: boolean; title?: (v: number) => string } = {},
     ) => (
       <StatCard
         {...common}
-        value={series.latest === null ? dash : format(series.latest)}
+        wrapSublabel
+        value={series.latest === null ? dash : options.title ? <span title={options.title(series.latest)}>{format(series.latest)}</span> : format(series.latest)}
         spark={sparkValues(series.values)}
         markPeak={options.peak && series.values.length >= DOT_LIMIT}
-        sublabel={series.latest === null ? t("atlas.telemetry.noReadings") : options.sublabel}
+        sublabel={series.latest === null ? t(options.counter && s.readings > 0 ? "atlas.telemetry.needsPair" : "atlas.telemetry.noReadings") : options.sublabel}
       />
     );
     switch (id) {
@@ -346,17 +349,17 @@ export function AtlasCard({
       case "noise":
         return tile(s.noise, (v) => `${Math.round(v)} dBm`);
       case "uptime":
-        return tile(s.uptime, formatUptime, { sublabel: s.rebooted ? t("atlas.telemetry.restarted") : null });
+        return tile(s.uptime, shortUptime, { title: formatUptime, sublabel: s.rebooted ? t("atlas.telemetry.restarted") : null });
       case "airtime":
-        return tile(s.airtime, percent, { peak: true, sublabel: s.airtimeTx !== null && s.airtimeRx !== null ? `TX ${percent(s.airtimeTx)} · RX ${percent(s.airtimeRx)}` : null });
+        return tile(s.airtime, percent, { peak: true, counter: true, sublabel: s.airtimeTx !== null && s.airtimeRx !== null ? `TX ${percent(s.airtimeTx)} · RX ${percent(s.airtimeRx)}` : null });
       case "temperature":
         return tile(s.temperature, (v) => `${v.toFixed(1)} °C`);
       case "packets":
-        return tile(s.packets, perHour, { peak: true, sublabel: s.packetsSent !== null ? t("atlas.telemetry.sentPerHour", { value: perHour(s.packetsSent) }) : null });
+        return tile(s.packets, perHour, { peak: true, counter: true, sublabel: s.packetsSent !== null ? t("atlas.telemetry.sentPerHour", { value: perHour(s.packetsSent) }) : null });
       case "signal":
         return tile(s.signal, (v) => `${v.toFixed(1)} dB`, { sublabel: s.rssi !== null ? `${Math.round(s.rssi)} dBm` : null });
       case "errors":
-        return tile(s.errors, perHour, { peak: true });
+        return tile(s.errors, perHour, { peak: true, counter: true });
     }
   };
   const polledNow = tab.polling?.polled === true;
@@ -550,19 +553,19 @@ export function AtlasCard({
           <div className="grid flex-1 grid-cols-2 gap-3">{telemetryTiles.map((id, slot) => <Fragment key={id}>{telemetryTile(id, slot)}</Fragment>)}</div>
           {footer(
             (pollState || lastReading != null) && (
-              <span className="min-w-0 truncate">
-                {pollState}
-                {pollState && lastReading != null && " · "}
+              <span className="flex min-w-0 flex-1 flex-wrap gap-x-3">
+                {pollState && <span className="min-w-0 break-words">{pollState}</span>}
                 {lastReading != null && (
-                  <>
+                  <span className="whitespace-nowrap">
                     <span>{t("atlas.telemetry.lastReading")}</span> <Timestamp value={lastReading} />
-                  </>
+                  </span>
                 )}
               </span>
             ),
             "",
             tel,
             [pollState, lastReading != null && `${t("atlas.telemetry.lastReading")} ${formatAbsolute(lastReading)}`, t("atlas.telemetry.help")],
+            true,
           )}
         </div>
       )}

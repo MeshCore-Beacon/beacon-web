@@ -1079,13 +1079,14 @@
         "packets": "Packets",
         "signal": "Signal",
         "errors": "Errors",
+        "needsPair": "Needs two status readings",
         "noReadings": "No readings in this window",
         "restarted": "Restarted",
         "sentPerHour": "sent {{value}}",
         "polledBy": "Polled by {{name}}",
         "polled": "Being polled",
         "notPolled": "Not being polled right now",
-        "lastReading": "last reading",
+        "lastReading": "Last reading",
         "help": "Readings Beacon polled from this repeater, over the selected window. Airtime is the share of time spent transmitting and receiving. Packets and errors are per hour. Signal is the last SNR and RSSI the repeater reported. With only a few readings the points are drawn as dots."
       }
     },

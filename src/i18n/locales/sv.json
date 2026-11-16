@@ -966,13 +966,14 @@
         "packets": "Paket",
         "signal": "Signal",
         "errors": "Fel",
+        "needsPair": "Kräver två statusvärden",
         "noReadings": "Inga värden i det här fönstret",
         "restarted": "Startades om",
         "sentPerHour": "skickade {{value}}",
         "polledBy": "Avläses av {{name}}",
         "polled": "Avläses",
         "notPolled": "Avläses inte just nu",
-        "lastReading": "senaste värdet",
+        "lastReading": "Senaste värdet",
         "help": "Värden som Beacon har hämtat från den här repeatern, över det valda fönstret. Sändtid är andelen av tiden som gått åt till att sända och ta emot. Paket och fel räknas per timme. Signal är det senaste SNR och RSSI som repeatern rapporterade. Med få värden ritas punkterna som prickar."
       }
     },

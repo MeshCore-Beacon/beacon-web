@@ -667,10 +667,34 @@ describe("AtlasCard", () => {
       expect(handlers.onTelemetryTilesChange).toHaveBeenCalledWith(["battery", "noise", "uptime", "airtime"]);
     });
 
+    it("shows at most two units of uptime, with the full value in the title", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [reading(1, { uptimeSeconds: 164 * 86_400 + 12 * 3_600 + 7 * 60 })] } as never);
+      mount({ view: "telemetry" });
+      const value = await screen.findByText("164d 12h");
+      expect(value).toHaveAttribute("title", "164d 12h 7m");
+    });
+
+    it("says counters need two status readings when the window has readings but no pair", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [reading(1, { batteryMv: 4100 })] } as never);
+      mount({ view: "telemetry" });
+      await screen.findByText("4.10V");
+      expect(screen.getAllByText("Needs two status readings")).toHaveLength(1);
+      expect(screen.getAllByText("No readings in this window")).toHaveLength(2);
+    });
+
+    it("centres a single reading in the sparkline", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [reading(1, { batteryMv: 4100 })] } as never);
+      const { container } = mount({ view: "telemetry" });
+      await screen.findByText("4.10V");
+      const dot = container.querySelector("line[data-sample]")!;
+      expect(dot.getAttribute("y1")).toBe("10");
+      expect(dot.getAttribute("x1")).toBe("60");
+    });
+
     it("says who polls it and when the last reading was", async () => {
       mount({ view: "telemetry" });
       expect((await screen.findAllByText(/Polled by Ridge listener/))[0]).toBeInTheDocument();
-      expect(screen.getAllByText(/last reading/)[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/Last reading/)[0]).toBeInTheDocument();
     });
 
     it("says it is not being polled when polling stopped", async () => {
