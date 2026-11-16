@@ -145,7 +145,7 @@ describe("AtlasCard", () => {
     mount();
     const footer = (await screen.findByText("Last seen")).closest("[data-card-footer]") as HTMLElement;
     expect(footer).not.toHaveClass("flex-wrap");
-    expect(within(footer).getByText("Last seen").parentElement).toHaveClass("truncate");
+    expect(within(footer).getByText("Last seen")).toHaveClass("truncate");
     expect(await within(footer).findByText("Mean hops 2.0 · Neighbors (4)")).toHaveClass("truncate");
     const tip = within(footer).getByText(/More information:/);
     expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
