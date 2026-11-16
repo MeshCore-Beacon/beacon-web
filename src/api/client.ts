@@ -437,38 +437,38 @@ export function getPathStats(since: number, until: number, iatas?: StatsRegion, 
   return request("/stats/paths", { since, until, ...statsRegionParams(iatas) }, signal);
 }
 
-export function getPayloadBreakdown(iatas?: StatsRegion, since?: number): Promise<PayloadBreakdownItem[]> {
-  return request("/stats/payload-breakdown", { ...statsRegionParams(iatas), since });
+export function getPayloadBreakdown(iatas?: StatsRegion, since?: number, signal?: AbortSignal): Promise<PayloadBreakdownItem[]> {
+  return request("/stats/payload-breakdown", { ...statsRegionParams(iatas), since }, signal);
 }
 
-export function getTopNodes(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopNode[]> {
-  return request("/stats/top-nodes", { ...statsRegionParams(iatas), since, limit });
+export function getTopNodes(iatas?: StatsRegion, since?: number, limit = 10, signal?: AbortSignal): Promise<TopNode[]> {
+  return request("/stats/top-nodes", { ...statsRegionParams(iatas), since, limit }, signal);
 }
 
-export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopObserver[]> {
-  return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit });
+export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10, signal?: AbortSignal): Promise<TopObserver[]> {
+  return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit }, signal);
 }
 
-export function getTopAdvertisers(iatas: StatsRegion | undefined, since: number | undefined, sort: AdvertiserSort, limit = 10): Promise<TopAdvertiser[]> {
-  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, sort, limit });
+export function getTopAdvertisers(iatas: StatsRegion | undefined, since: number | undefined, sort: AdvertiserSort, limit = 10, signal?: AbortSignal): Promise<TopAdvertiser[]> {
+  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, sort, limit }, signal);
 }
 
-export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopTalker[]> {
-  return request("/stats/top-talkers", { ...statsRegionParams(iatas), since, limit });
+export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10, signal?: AbortSignal): Promise<TopTalker[]> {
+  return request("/stats/top-talkers", { ...statsRegionParams(iatas), since, limit }, signal);
 }
 
-export function getRadioPresets(iatas?: StatsRegion): Promise<RadioPreset[]> {
-  return request("/stats/radio-presets", { ...statsRegionParams(iatas) });
+export function getRadioPresets(iatas?: StatsRegion, signal?: AbortSignal): Promise<RadioPreset[]> {
+  return request("/stats/radio-presets", { ...statsRegionParams(iatas) }, signal);
 }
 
-export function getStatsNodeTypes(iatas?: StatsRegion): Promise<NodeTypeCount[]> {
-  return request("/stats/node-types", { ...statsRegionParams(iatas) });
+export function getStatsNodeTypes(iatas?: StatsRegion, signal?: AbortSignal): Promise<NodeTypeCount[]> {
+  return request("/stats/node-types", { ...statsRegionParams(iatas) }, signal);
 }
 
 // Repeaters/room servers whose clock has drifted past the server threshold, worst-first. Not
 // time-windowed and top-N only (no cursor), so callers pass a generous limit and page client-side.
-export function getClockDrift(iatas?: StatsRegion, limit = 100): Promise<ClockDriftEntry[]> {
-  return request("/stats/clock-drift", { ...statsRegionParams(iatas), limit });
+export function getClockDrift(iatas?: StatsRegion, limit = 100, signal?: AbortSignal): Promise<ClockDriftEntry[]> {
+  return request("/stats/clock-drift", { ...statsRegionParams(iatas), limit }, signal);
 }
 
 // renamed from getScopes to avoid colliding with the /scopes name list; this is the /stats/scopes
