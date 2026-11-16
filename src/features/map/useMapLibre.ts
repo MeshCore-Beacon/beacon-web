@@ -3,6 +3,7 @@ import { Map as MapLibreMap, NavigationControl, ScaleControl, AttributionControl
 import type { RasterDEMSourceSpecification } from "maplibre-gl";
 import "./maplibre-worker";
 import i18n from "../../i18n";
+import type { DistanceUnit } from "../../lib/units";
 import {
   DEM_TILES,
   DEM_ATTRIBUTION,
@@ -110,6 +111,7 @@ export function useMapLibre(
   fitScope?: string,
   // 3D terrain + hillshade; while off no DEM source exists, so no elevation tiles are fetched
   terrain = false,
+  distanceUnit: DistanceUnit = "metric",
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -119,6 +121,8 @@ export function useMapLibre(
   const hasLoadedRef = useRef(false); // a style has loaded at least once (distinguishes initial-load failure)
   const swapPendingRef = useRef(false); // a setStyle() basemap swap is in flight (awaiting style.load)
   const nodeIconResolverRef = useRef<((id: string) => Promise<void>) | null>(null); // filled by useMapNodes
+  const distanceUnitRef = useRef(distanceUnit);
+  const scaleRef = useRef<ScaleControl | null>(null);
   const onStyleErrorRef = useRef(onStyleError);
   const lastFitKeyRef = useRef<string | null>(null); // last applied fit target; skips redundant re-fits
   const skipInitialFitRef = useRef(!!initialCamera); // let a deep-link camera win over the first fit
@@ -135,6 +139,12 @@ export function useMapLibre(
   useEffect(() => {
     onStyleErrorRef.current = onStyleError;
   }, [onStyleError]);
+  // The scale bar is built with the first unit; only a later change touches it.
+  useEffect(() => {
+    if (distanceUnitRef.current === distanceUnit) return;
+    distanceUnitRef.current = distanceUnit;
+    scaleRef.current?.setUnit(distanceUnit);
+  }, [distanceUnit]);
 
   // Init once. StrictMode-safe: the guard prevents a duplicate map, and cleanup fully tears the
   // map down (map.remove() disposes the GL context + all map.on listeners) and nulls the ref so a
@@ -161,7 +171,9 @@ export function useMapLibre(
     lastStyleIdRef.current = styleIdRef.current;
 
     map.addControl(new NavigationControl({ visualizePitch: true }), "top-right");
-    map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
+    const scale = new ScaleControl({ unit: distanceUnitRef.current });
+    scaleRef.current = scale;
+    map.addControl(scale, "bottom-left");
     map.addControl(new AttributionControl({ compact: true })); // bottom-right
     // maplibre pops the compact attribution open the first time the basemap credit loads (it tacks
     // on .maplibregl-compact-show). Mark it .maplibregl-compact up front so it skips that and stays

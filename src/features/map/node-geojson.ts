@@ -10,14 +10,18 @@ export interface NodeFeatureProps {
   name: string | null;
   nodeTypeName: string;
   isObserver: boolean; // role flag; selects the observer-pip marker variant (default false)
+  telemetry?: string; // battery/temperature label; absent when the node has no reading
+  telemetryOld?: boolean;
 }
 
 export function nodesToFeatureCollection(
   nodes: NodeSummary[],
+  labels?: Map<string, { text: string; old: boolean }>,
 ): FeatureCollection<Point, NodeFeatureProps> {
   const features: Feature<Point, NodeFeatureProps>[] = [];
   for (const n of nodes) {
     if (!hasMapLocation(n)) continue;
+    const label = labels?.get(n.id);
     features.push({
       type: "Feature",
       // GeoJSON/maplibre order is [lng, lat]; the API sends decimal degrees as-is
@@ -27,6 +31,7 @@ export function nodesToFeatureCollection(
         name: n.name,
         nodeTypeName: n.nodeTypeName,
         isObserver: !!n.isObserver,
+        ...(label && { telemetry: label.text, telemetryOld: label.old }),
       },
     });
   }

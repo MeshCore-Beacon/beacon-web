@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNodeActivity, isNotFound } from "../../api/client";
 import { useRateLimit } from "../../hooks/useRateLimit";
-import { useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
+import { useDisplayUnits, useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
+import { formatTemp } from "../../lib/units";
 import { mvToVolts } from "../stats/chartOptions";
 import type { NodeTelemetryPoint } from "../nodes/types";
 import { isPolledNodeType } from "../nodes/polledType";
@@ -81,18 +82,18 @@ function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC")
   return null;
 }
 
-// "4.23 V · 16.5 °C" for a polled repeater or room server, or null when there is nothing to show.
-// Reads only; the card's saved shape is untouched.
-// A card that has a Telemetry tab shows the readings there instead, so the line is only for one without.
+// "4.23 V · 16.5 °C" (°F when the instance uses it) for a polled repeater or room server, else null.
+// Read only; a card with a Telemetry tab shows the readings there instead.
 export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | undefined, active: boolean): string | null {
   const { polling } = useFeatures();
+  const { temperature: tempUnit } = useDisplayUnits();
   const throttled = useThrottled();
   const polled = polling && isPolledNodeType(nodeTypeName);
   const { data } = useNodeTelemetry(nodeId ?? undefined, "24h", polled && active && !throttled, ATLAS_REFRESH_MS);
   if (!polled || !data) return null;
   const volts = mvToVolts(newest(data.points, "batteryMv"));
   const temp = newest(data.points, "temperatureC");
-  const parts = [volts != null && `${volts.toFixed(2)} V`, temp != null && `${temp.toFixed(1)} °C`].filter(Boolean);
+  const parts = [volts != null && `${volts.toFixed(2)} V`, temp != null && formatTemp(temp, tempUnit)].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
 }
 

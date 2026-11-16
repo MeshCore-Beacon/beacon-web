@@ -4,6 +4,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   NODES_CLUSTER_LAYER_ID,
   NODES_POINT_LAYER_ID,
+  NODES_TELEMETRY_LAYER_ID,
   NODES_SELECTED_LAYER_ID,
   LIVE_DOTS_LAYER_ID,
   LIVE_LIT_ICON_LAYER_ID,
@@ -22,7 +23,7 @@ vi.mock("@nazka/map-gl-js-spiderfy", () => ({
 import { useMapNodes } from "../../../src/features/map/useMapNodes";
 
 // map stub that keeps a real layer stack so addLayer's beforeId placement can be asserted
-function stackMap(layers: string[]): MapLibreMap {
+function stackMap(layers: string[], specs: Record<string, unknown>[] = []): MapLibreMap {
   const sources = new Set<string>();
   const fns = new Map<PropertyKey, unknown>();
   const canvas = { style: {} as Record<string, string> };
@@ -30,6 +31,7 @@ function stackMap(layers: string[]): MapLibreMap {
     getCanvas: () => canvas,
     getLayer: (id: string) => (layers.includes(id) ? { id } : undefined),
     addLayer: (spec: { id: string }, beforeId?: string) => {
+      specs.push(spec as unknown as Record<string, unknown>);
       const at = beforeId ? layers.indexOf(beforeId) : -1;
       if (at >= 0) layers.splice(at, 0, spec.id);
       else layers.push(spec.id);
@@ -143,5 +145,32 @@ describe("useMapNodes layer order", () => {
     vi.mocked(map.queryRenderedFeatures).mockReturnValue([{ properties: { id: "lit", glow: 0.05 } }] as never);
     dotClick({ point: { x: 1, y: 2 }, features: [{ properties: { id: "dot" } }] });
     expect(onSelect).toHaveBeenCalledWith("dot");
+  });
+
+  it("places the telemetry text beneath the name layer so names win label collisions, and below the name", () => {
+    const layers: string[] = [];
+    const specs: Record<string, unknown>[] = [];
+    const geojson = { type: "FeatureCollection" as const, features: [] };
+    renderHook(() => useMapNodes({ current: stackMap(layers, specs) }, { current: null }, true, geojson, true, "dark", false, () => {}, null, false, null));
+    expect(layers.indexOf(NODES_TELEMETRY_LAYER_ID)).toBeGreaterThanOrEqual(0);
+    expect(layers.indexOf(NODES_TELEMETRY_LAYER_ID)).toBeLessThan(layers.indexOf(NODES_POINT_LAYER_ID));
+    const spec = specs.find((x) => x.id === NODES_TELEMETRY_LAYER_ID) as { layout: Record<string, unknown> };
+    expect(spec.layout["text-offset"]).toEqual([0, 3]);
+    expect(spec.layout["text-padding"]).toBe(0);
+  });
+
+  it("fades the telemetry text of unrelated nodes with the names when a focus set is shown", () => {
+    const map = stackMap([NODES_TELEMETRY_LAYER_ID, NODES_POINT_LAYER_ID]);
+    const geojson = { type: "FeatureCollection" as const, features: [] };
+    const fresh = ["case", ["boolean", ["get", "telemetryOld"], false], 0.45, 1];
+    const { rerender } = renderHook(
+      ({ focus }: { focus: string[] | null }) => useMapNodes({ current: map }, { current: null }, true, geojson, true, "dark", false, () => {}, null, false, focus),
+      { initialProps: { focus: null as string[] | null } },
+    );
+    expect(vi.mocked(map.setPaintProperty).mock.calls.filter((c) => c[0] === NODES_TELEMETRY_LAYER_ID).at(-1)![2]).toEqual(fresh);
+    rerender({ focus: ["n1"] });
+    expect(vi.mocked(map.setPaintProperty).mock.calls.filter((c) => c[0] === NODES_TELEMETRY_LAYER_ID).at(-1)).toEqual([
+      NODES_TELEMETRY_LAYER_ID, "text-opacity", ["case", ["in", ["get", "id"], ["literal", ["n1"]]], fresh, 0],
+    ]);
   });
 });
