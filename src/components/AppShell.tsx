@@ -52,6 +52,16 @@ function LiveBadge({ wsManager, compact = false }: { wsManager: WsManager; compa
   }
 
   if (status === "connecting") {
+    // On a phone the word gives way to a dot and the age, so the instance name keeps its room.
+    if (compact) {
+      const full = t("connection.stale", { age: staleStr });
+      return (
+        <div role="status" aria-label={full} title={full} className="flex items-center gap-1 font-mono text-[11px] text-warn bg-warn/7 border border-warn/15 px-1.5 py-0.5 rounded-sm whitespace-nowrap">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-warn" />
+          <span aria-hidden>{staleStr}</span>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-1.5 font-mono text-[11px] text-warn bg-warn/7 border border-warn/15 px-2 py-0.5 rounded-sm">
         {t("connection.stale", { age: staleStr })}
@@ -437,8 +447,8 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
       <InstanceBanner text={BANNER} />
       {isMobile ? (
         <header className="flex items-center gap-2 px-3 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
-          <BeaconWordmark iconSize={20} textClassName="text-sm" className="shrink-0" />
-          <div className="min-w-0">
+          <BeaconWordmark iconSize={20} textClassName="text-sm" className="min-w-0" />
+          <div className="shrink-0">
             <RegionSelector />
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">

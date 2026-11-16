@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNodeActivity, isNotFound } from "../../api/client";
 import { useRateLimit } from "../../hooks/useRateLimit";
-import { useFeatures } from "../../hooks/useFeatures";
+import { useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
 import { mvToVolts } from "../stats/chartOptions";
 import type { NodeTelemetryPoint } from "../nodes/types";
 import { isPolledNodeType } from "../nodes/polledType";
-import { useNodeTelemetry } from "../nodes/useNodeTelemetry";
+import { useNodePolling, useNodeTelemetry } from "../nodes/useNodeTelemetry";
 import { loadAtlasNode, summarizeActivity, type NodePin, type AtlasRange } from "./atlas";
 import { OBSERVER_RANGE } from "./observer-sample";
+import { summarizeTelemetry, telemetryRange } from "./telemetry-sample";
 
 export const ATLAS_REFRESH_MS = 60_000;
 // A pin whose radio is gone is checked rarely, so it can come back after a reset without costing a poll a minute.
@@ -82,6 +83,7 @@ function newest(points: NodeTelemetryPoint[], key: "batteryMv" | "temperatureC")
 
 // "4.23 V · 16.5 °C" for a polled repeater or room server, or null when there is nothing to show.
 // Reads only; the card's saved shape is untouched.
+// A card that has a Telemetry tab shows the readings there instead, so the line is only for one without.
 export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | undefined, active: boolean): string | null {
   const { polling } = useFeatures();
   const throttled = useThrottled();
@@ -92,4 +94,36 @@ export function useAtlasReadings(nodeId: string | null, nodeTypeName: string | u
   const temp = newest(data.points, "temperatureC");
   const parts = [volts != null && `${volts.toFixed(2)} V`, temp != null && `${temp.toFixed(1)} °C`].filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
+}
+
+// Does this node get a Telemetry tab? It is a polled type on a server with polling, and either the
+// polling route says it is polled or the readings route holds something from the last 30 days. The
+// polling route is one small request per card; the 30-day check only runs for a node it does not call
+// polled, and only while `look` is true (the card is on a tab that needs the answer).
+export function useTelemetryTab(nodeId: string | null, nodeTypeName: string | undefined, active: boolean, look: boolean) {
+  const { polling: on } = useFeatures();
+  const featuresLoading = useFeaturesLoading();
+  const throttled = useThrottled();
+  const eligible = on && isPolledNodeType(nodeTypeName);
+  const ask = eligible && active && !throttled && nodeId !== null;
+  const route = useNodePolling(nodeId ?? undefined, ask);
+  const routePolled = route.data?.polled === true;
+  const history = useNodeTelemetry(nodeId ?? undefined, "720h", ask && look && route.isFetched && !routePolled, undefined);
+  const hasHistory = !!history.data && history.data.points.length > 0;
+  return {
+    available: eligible && (routePolled || hasHistory),
+    // Still finding out, so a card pinned to the tab does not flash another one first.
+    settling: nodeId === null || featuresLoading || (ask && (!route.isFetched || (look && !routePolled && history.isPending && !history.isError))),
+    polling: route.data,
+  };
+}
+
+// The polled readings behind the Telemetry tab, for the card's range. One query, made only while the tab is showing.
+export function useAtlasTelemetry(nodeId: string | null, range: AtlasRange, enabled: boolean) {
+  const { atlasTelemetry } = useFeatures();
+  const now = useTick(ATLAS_REFRESH_MS);
+  const throttled = useThrottled();
+  const query = useNodeTelemetry(nodeId ?? undefined, telemetryRange(range, atlasTelemetry), enabled && !throttled, ATLAS_REFRESH_MS);
+  const sample = useMemo(() => summarizeTelemetry(query.data, range, now), [query.data, range, now]);
+  return { sample, loading: query.isLoading, failed: query.isError, unsupported: query.unsupported };
 }
