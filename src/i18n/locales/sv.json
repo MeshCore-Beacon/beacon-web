@@ -606,6 +606,8 @@
       "areaBordersLabel": "Områdesgränser",
       "terrain": "Terräng",
       "terrainLabel": "3D-terräng och reliefskuggning",
+      "telemetry": "Telemetri",
+      "telemetryLabel": "Visa batteri och temperatur på kartan",
       "all": "Alla",
       "on": "På",
       "off": "Av",

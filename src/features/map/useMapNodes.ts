@@ -17,6 +17,7 @@ import {
   NODES_SOURCE_ID,
   NODES_CLUSTER_LAYER_ID,
   NODES_POINT_LAYER_ID,
+  NODES_TELEMETRY_LAYER_ID,
   NODES_SELECTED_LAYER_ID,
   NODES_SELECTED_LEAF_LAYER_ID,
   PACKET_FLOW_TRAIL_LAYER_ID,
@@ -96,6 +97,7 @@ const ICON_IMAGE: ExpressionSpecification = [
 // Node labels fade in only past NODE_LABEL_MIN_ZOOM.
 const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
 
+const TELEMETRY_MIN_ZOOM = 8;
 const UNCLUSTERED = ["!", ["has", "point_count"]] as ExpressionSpecification;
 const ALL_DOT_TYPES = idleDotTypes("");
 const LIVE_DOT_RADIUS = ["interpolate", ["linear"], ["zoom"], ...LIVE_DOT_RADIUS_STOPS.flat()] as unknown as ExpressionSpecification;
@@ -175,7 +177,7 @@ export function useMapNodes(
     // maplibre fixes `cluster` at source creation, so toggling clustering means recreating the
     // source. The spiderfy effect below also keys on `clustered` and re-applies itself around this.
     if (appliedClusteredRef.current !== clustered && map.getSource(NODES_SOURCE_ID)) {
-      for (const id of [LIVE_DOTS_LAYER_ID, NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
+      for (const id of [LIVE_DOTS_LAYER_ID, NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID, NODES_TELEMETRY_LAYER_ID]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
       map.removeSource(NODES_SOURCE_ID);
@@ -242,6 +244,30 @@ export function useMapNodes(
           "text-halo-color": halo,
           "text-halo-width": 1.3,
           "text-opacity": LABEL_OPACITY, // labels fade in only at high zoom
+        },
+      } as SymbolLayerSpecification, beforeFlow);
+    }
+
+    // Battery/temperature text under the name; no allow-overlap, so crowded labels thin out.
+    if (!map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
+      map.addLayer({
+        id: NODES_TELEMETRY_LAYER_ID,
+        type: "symbol",
+        source: NODES_SOURCE_ID,
+        minzoom: TELEMETRY_MIN_ZOOM,
+        filter: ["all", UNCLUSTERED, ["has", "telemetry"]],
+        layout: {
+          "text-field": ["get", "telemetry"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-offset": [0, 2.5],
+          "text-anchor": "top",
+        },
+        paint: {
+          "text-color": textColor,
+          "text-halo-color": halo,
+          "text-halo-width": 1.3,
+          "text-opacity": ["case", ["boolean", ["get", "telemetryOld"], false], 0.45, 1],
         },
       } as SymbolLayerSpecification, beforeFlow);
     }
@@ -321,6 +347,8 @@ export function useMapNodes(
     // node-label colors track the basemap dark/light flag (cluster count is white on the hexagon)
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-color", textColor);
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-halo-color", halo);
+    map.setPaintProperty(NODES_TELEMETRY_LAYER_ID, "text-color", textColor);
+    map.setPaintProperty(NODES_TELEMETRY_LAYER_ID, "text-halo-color", halo);
 
     // seed the (possibly just-recreated) source; live updates flow through the geojson effect below
     (map.getSource(NODES_SOURCE_ID) as GeoJSONSource).setData(geojsonRef.current);
@@ -383,6 +411,10 @@ export function useMapNodes(
     const iconOpacity: ExpressionSpecification | number = live ? 1 : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
     const labelOpacity: ExpressionSpecification | number = live ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
     const dimActive = live || Boolean(focusIds);
+    // live mode hides the name labels, so the text under them goes too
+    if (map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
+      map.setLayoutProperty(NODES_TELEMETRY_LAYER_ID, "visibility", live ? "none" : "visible");
+    }
     if (map.getLayer(LIVE_DOTS_LAYER_ID)) {
       map.setFilter(LIVE_DOTS_LAYER_ID, dotsFilter(dotTypes));
       map.setLayoutProperty(LIVE_DOTS_LAYER_ID, "visibility", live ? "visible" : "none");

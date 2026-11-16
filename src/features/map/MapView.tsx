@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
@@ -15,11 +15,13 @@ import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFo
 import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, MAP_TELEMETRY_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
-import { useDisplayUnits } from "../../hooks/useFeatures";
+import { useMapTelemetry } from "./useMapTelemetry";
+import { telemetryLabel } from "./telemetry-label";
+import { useDisplayUnits, useFeatures } from "../../hooks/useFeatures";
 import { useRegion, useRegionSelection } from "../../hooks/useRegion";
 import { serializeSelection } from "../../hooks/region-selection";
 import { useTheme } from "../../hooks/useTheme";
@@ -110,6 +112,16 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     localStorage.setItem(MAP_TERRAIN_STORAGE_KEY, on ? "on" : "off");
   }, []);
 
+  // battery/temperature labels, off by default; seeded URL -> localStorage like borders
+  const [telemetry, setTelemetry] = useState(() => urlView.telemetry ?? localStorage.getItem(MAP_TELEMETRY_STORAGE_KEY) === "on");
+  const handleTelemetryChange = useCallback((on: boolean) => {
+    setTelemetry(on);
+    localStorage.setItem(MAP_TELEMETRY_STORAGE_KEY, on ? "on" : "off");
+  }, []);
+  const features = useFeatures();
+  const telemetryOffered = features.mapTelemetry && features.polling;
+  const telemetryOn = telemetry && telemetryOffered;
+
   // A deep-link camera opens the map here and suppresses the initial region fit (see useMapLibre).
   const initialCamera = useMemo(
     () => (urlView.center ? { center: urlView.center, zoom: urlView.zoom ?? DEFAULT_ZOOM } : undefined),
@@ -151,7 +163,24 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
 
   // split memos: rebuild the FeatureCollection only when nodes change; a type-filter change just
   // re-filters the already-built collection instead of re-running the full transform over all nodes
-  const baseFc = useMemo(() => nodesToFeatureCollection(nodes), [nodes]);
+  const { temperature: temperatureUnit, distance: distanceUnit } = useDisplayUnits();
+  const readings = useMapTelemetry(selectedIatas, regionKey, telemetryOn);
+  // ages tick once a minute while the labels are on
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!telemetryOn) return;
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [telemetryOn]);
+  const labels = useMemo(() => {
+    const out = new Map<string, { text: string; old: boolean }>();
+    for (const [id, r] of readings) {
+      const l = telemetryLabel(r, temperatureUnit, now);
+      if (l) out.set(id, l);
+    }
+    return out;
+  }, [readings, temperatureUnit, now]);
+  const baseFc = useMemo(() => nodesToFeatureCollection(nodes, labels), [nodes, labels]);
   const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
   // Live Map lights crossed nodes from the unfiltered list and draws idle nodes as dots
   const liveNodeIndex = useMemo(() => buildLiveNodeIndex(baseFc), [baseFc]);
@@ -209,7 +238,6 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   }, [iatas, selectedIatas]);
   const borderData = useMapBordersData(borderIatas, borders);
 
-  const { distance: distanceUnit } = useDisplayUnits();
   const { containerRef, mapRef, isReady, error, nodeIconResolverRef } = useMapLibre(styleId, fitPoints, handleStyleError, initialCamera, serializeSelection(selection), terrain, distanceUnit);
   const isDark = resolveMapStyle(styleId).dark; // drives marker theming + maplibre control chrome
 
@@ -227,9 +255,10 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       styleId,
       flow: packetFlow,
       borders,
+      telemetry: telemetryOffered ? telemetry : undefined,
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders]);
+  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders, telemetry, telemetryOffered]);
 
   useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
@@ -255,6 +284,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onBordersChange={handleBordersChange}
         terrain={terrain}
         onTerrainChange={handleTerrainChange}
+        telemetry={telemetryOn}
+        onTelemetryChange={telemetryOffered ? handleTelemetryChange : undefined}
         buildShareParams={buildShareParams}
         liveMap={packetFlow}
       />

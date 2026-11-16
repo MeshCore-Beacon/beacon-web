@@ -41,6 +41,8 @@ export const DEM_ATTRIBUTION =
 export const TERRAIN_EXAGGERATION = 1.5;
 
 // 3D terrain + hillshade, off by default: each view pulls dozens of uncached DEM tiles
+export const MAP_TELEMETRY_STORAGE_KEY = "beacon-map-telemetry";
+export const NODES_TELEMETRY_LAYER_ID = "nodes-telemetry"; // battery/temperature text under the node name
 export const MAP_TERRAIN_STORAGE_KEY = "beacon-map-terrain";
 
 // The fallback/initial map view, configured per deployment via .env (VITE_MAP_CENTER as decimal

@@ -642,6 +642,8 @@
       "areaBordersLabel": "Area borders",
       "terrain": "Terrain",
       "terrainLabel": "3D terrain and hillshade",
+      "telemetry": "Telemetry",
+      "telemetryLabel": "Show battery and temperature on the map",
       "all": "All",
       "on": "On",
       "off": "Off",
