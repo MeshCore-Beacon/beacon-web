@@ -48,17 +48,80 @@ beforeEach(() => {
 });
 afterEach(() => vi.clearAllMocks());
 
-async function open(data: AlertsResponse = response()) {
+async function open(data: AlertsResponse = response(), collapsed = false) {
   vi.mocked(alerts.get).mockResolvedValue(data);
   const view = renderAt("?tab=Map&view=profile", <AccountViews />);
   const region = within(await screen.findByRole("region", { name: "Alerts" }));
   await waitFor(() => expect(alerts.get).toHaveBeenCalled());
   await region.findByText(data.targets[0]?.name ?? /Alerts are set/);
+  if (!collapsed) for (const b of region.queryAllByRole("button", { expanded: false })) fireEvent.click(b);
   return { ...view, region };
 }
 const block = (name: string) => within(screen.getByRole("group", { name }));
 const row = (target: string, kind: string) => within(block(target).getByTestId(`alert-${kind}`));
 const put = () => vi.mocked(alerts.putRule);
+
+describe("collapsible radios", () => {
+  const head = (name: string) => within(screen.getByRole("group", { name })).getByRole("button", { name: new RegExp(name) });
+  const firingRule = (over: Partial<AlertRule> = {}) => rule({ state: "firing", ...over });
+
+  it("starts collapsed with no switches in the tree, even with one radio", async () => {
+    const { region } = await open(response({ targets: [repeater()] }), true);
+    expect(region.queryAllByRole("switch")).toHaveLength(0);
+    expect(head("Hilltop")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("summarises none, one, several and firing", async () => {
+    const one = repeater({ rules: [rule({ id: "a", kind: "gone_quiet", threshold: 24 })] });
+    const many = repeater({ publicKey: "m", name: "Many", rules: [rule({ id: "a", kind: "gone_quiet", threshold: 24 }), rule({ id: "b" }), rule({ id: "c", kind: "noise_high", threshold: -90, enabled: false })] });
+    const fire1 = repeater({ publicKey: "f1", name: "Fire1", rules: [firingRule(), rule({ id: "z", kind: "rebooted" })] });
+    const fire2 = repeater({ publicKey: "f2", name: "Fire2", rules: [firingRule(), firingRule({ id: "y", kind: "noise_high", threshold: -90 })] });
+    await open(response({ targets: [plain(), one, many, fire1, fire2] }), true);
+    expect(head("Ridge")).toHaveTextContent("No alerts on");
+    expect(head("Hilltop")).toHaveTextContent("1 alert on");
+    expect(head("Many")).toHaveTextContent("2 alerts on");
+    expect(head("Fire1")).toHaveTextContent("Alerting: Battery low · 2 alerts on");
+    expect(head("Fire2")).toHaveTextContent("Alerting: 2 alerts · 2 alerts on");
+    expect(within(head("Fire1")).getByText("Alerting: Battery low")).toHaveClass("text-danger");
+    expect(head("Fire1")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("expands to the rows, wires aria-controls, and several can be open", async () => {
+    await open(response(), true);
+    const a = head("Hilltop"), b = head("Ridge");
+    fireEvent.click(a);
+    fireEvent.click(b);
+    expect(a).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById(a.getAttribute("aria-controls") as string)).toBeVisible();
+    expect(within(screen.getByRole("group", { name: "Hilltop" })).getAllByRole("switch").length).toBeGreaterThan(0);
+    expect(within(screen.getByRole("group", { name: "Ridge" })).getAllByRole("switch").length).toBeGreaterThan(0);
+    fireEvent.click(a);
+    expect(a).toHaveAttribute("aria-expanded", "false");
+    expect(within(screen.getByRole("group", { name: "Hilltop" })).queryAllByRole("switch")).toHaveLength(0);
+  });
+
+  it("keeps an unsaved threshold across a collapse and expand without refetching", async () => {
+    await open(response({ targets: [repeater({ rules: [rule({ kind: "noise_high", threshold: -90 })] })] }), true);
+    const calls = vi.mocked(alerts.get).mock.calls.length;
+    fireEvent.click(head("Hilltop"));
+    fireEvent.change(row("Hilltop", "noise_high").getByLabelText("dBm"), { target: { value: "-77" } });
+    fireEvent.click(head("Hilltop"));
+    fireEvent.click(head("Hilltop"));
+    expect(row("Hilltop", "noise_high").getByLabelText("dBm")).toHaveValue("-77");
+    expect(vi.mocked(alerts.get).mock.calls.length).toBe(calls);
+  });
+
+  it("updates the summary after a toggle once collapsed", async () => {
+    await open(response(), true);
+    fireEvent.click(head("Ridge"));
+    expect(head("Ridge")).toHaveTextContent("No alerts on");
+    vi.mocked(alerts.get).mockResolvedValue(response({ targets: [repeater(), repeater({ publicKey: "ccdd", name: "Ridge", rules: [rule({ id: "n", kind: "gone_quiet", threshold: 24 })] })] }));
+    fireEvent.click(row("Ridge", "gone_quiet").getByRole("switch"));
+    await waitFor(() => expect(put()).toHaveBeenCalled());
+    fireEvent.click(head("Ridge"));
+    await waitFor(() => expect(head("Ridge")).toHaveTextContent("1 alert on"));
+  });
+});
 
 describe("alerts section", () => {
   it("is absent when the feature is off and fetches nothing", async () => {

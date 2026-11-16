@@ -1076,6 +1076,7 @@
       "viewAnalytics": "Analyses",
       "viewHeard": "Entendu par",
       "viewObserver": "Observateur",
+      "viewTelemetry": "Télémétrie",
       "view": "Vue de la carte",
       "airtime": "Temps radio",
       "airtimeHeard": "RX, d’après les paquets reçus",
@@ -1097,7 +1098,22 @@
       "resetTiles": "Réinitialiser les tuiles",
       "pinView": "Ouvrir sur cet onglet",
       "pinViewHelp": "Faire de cet onglet celui sur lequel la fiche s’ouvre",
-      "viewPinned": "La fiche s’ouvre sur cet onglet"
+      "viewPinned": "La fiche s’ouvre sur cet onglet",
+      "telemetry": {
+        "temperature": "Température",
+        "packets": "Paquets",
+        "signal": "Signal",
+        "errors": "Erreurs",
+        "needsPair": "Il faut deux relevés d’état",
+        "noReadings": "Aucune mesure sur cette période",
+        "restarted": "Redémarré",
+        "sentPerHour": "envoyés {{value}}",
+        "polledBy": "Interrogé par {{name}}",
+        "polled": "Interrogé",
+        "notPolled": "Pas interrogé pour le moment",
+        "lastReading": "Dernière mesure",
+        "help": "Mesures relevées par Beacon sur ce répéteur, sur la période choisie. Le temps radio est la part du temps passée à émettre et à recevoir. Les paquets et les erreurs sont par heure. Le signal est le dernier SNR et RSSI rapporté par le répéteur. Avec peu de mesures, les points sont dessinés isolés."
+      }
     },
     "account": {
       "entry": {
@@ -1210,6 +1226,10 @@
       "profile": {
         "title": "Profil",
         "account": {
+          "about": "Comment vous apparaissez dans Beacon et l'adresse utilisée par votre compte.",
+          "aboutPortal": "Comment vous apparaissez dans Beacon.",
+          "displayNameHint": "Affiché dans le menu et sur votre Atlas.",
+          "passwordHint": "Nous le demandons pour que personne d'autre ne puisse la changer depuis une session ouverte.",
           "title": "Compte",
           "username": "Nom d’utilisateur",
           "displayName": "Nom affiché",
@@ -1229,12 +1249,17 @@
         "currentPassword": "Mot de passe actuel",
         "wrongPassword": "Ce mot de passe n’est pas le bon.",
         "password": {
+          "about": "La changer vous déconnecte de vos autres appareils.",
           "title": "Mot de passe",
           "submit": "Changer le mot de passe",
           "submitting": "Enregistrement…",
           "done": "Mot de passe changé. Vos autres appareils ont été déconnectés."
         },
         "devices": {
+          "about": "Là où vous êtes connecté en ce moment.",
+          "signOutAsk": "Déconnecter {{label}} ?",
+          "signOutYes": "Oui, déconnecter",
+          "signOutOthersAsk": "Déconnecter tous les autres appareils ?",
           "title": "Appareils",
           "loading": "Chargement des appareils…",
           "thisDevice": "Cet appareil",
@@ -1265,6 +1290,9 @@
         }
       },
       "alerts": {
+        "about": "Soyez prévenu quand une radio de votre Atlas demande de l'attention.",
+        "on": "Oui",
+        "off": "Non",
         "title": "Alertes",
         "loading": "Chargement des alertes…",
         "toEmail": "Les alertes sont envoyées à {{email}}",
@@ -1273,6 +1301,13 @@
         "empty": "Les alertes se règlent sur les radios de votre Atlas. Ajoutez d'abord une radio.",
         "openAtlas": "Ouvrir l'onglet Atlas",
         "always": "Vous êtes toujours prévenu quand une de vos demandes de télémétrie demande votre attention.",
+        "none": "Aucune alerte activée",
+        "onCount_one": "{{count}} alerte activée",
+        "onCount_many": "{{count}} alertes activées",
+        "onCount_other": "{{count}} alertes activées",
+        "firing_one": "En alerte : {{name}}",
+        "firing_many": "En alerte : {{count}} alertes",
+        "firing_other": "En alerte : {{count}} alertes",
         "turnOn": "Alerte : {{name}}",
         "backOnlineHint": "Activez d'abord « {{name}} ».",
         "voltsPerDay": "{{volts}} V par jour",
@@ -1372,6 +1407,16 @@
         }
       },
       "requests": {
+        "poll": {
+          "ok": "Interrogé par {{name}}",
+          "pending": "Attribué à {{name}}. La première lecture arrive.",
+          "not_direct": "Attribué à {{name}}, qui n'entend pas ce répéteur directement pour le moment.",
+          "no_reply": "{{name}} interroge, mais le répéteur ne répond pas.",
+          "not_claimed": "Attribué à {{name}}. En attente qu'il le prenne en charge.",
+          "password": "{{name}} signale un problème de mot de passe. Vérification en cours."
+        },
+        "about": "Demandez à Beacon de lire les statistiques d'un répéteur avec un mot de passe invité.",
+        "openNodes": "Ouvrir l'onglet Nœuds",
         "title": "Demandes de télémétrie",
         "count": "{{used}} sur {{limit}}",
         "loading": "Chargement des demandes…",
@@ -1379,8 +1424,8 @@
         "status": {
           "waiting": "En attente d’un observateur qui puisse l’atteindre",
           "active": "Interrogé",
-          "login_failed": "Le répéteur a refusé le mot de passe",
-          "admin_stopped": "Arrêté : ce mot de passe donnait un accès administrateur et a été supprimé",
+          "login_failed": "Arrêté : mot de passe refusé",
+          "admin_stopped": "Arrêté : mot de passe administrateur",
           "disabled": "En pause : le répéteur n’a pas été entendu récemment"
         },
         "reason": {
@@ -1401,7 +1446,8 @@
         "passwordSet": "Mot de passe défini",
         "noPassword": "Pas de mot de passe",
         "changePassword": "Changer le mot de passe",
-        "adminStoppedHelp": "Le mot de passe saisi était un mot de passe administrateur. Beacon l'a supprimé. Seul un mot de passe invité relancera la demande.",
+        "adminStoppedHelp": "Le mot de passe saisi était un mot de passe administrateur, donc Beacon l’a supprimé. Saisissez le mot de passe invité du répéteur pour relancer.",
+        "loginFailedHelp": "Le répéteur a refusé ce mot de passe. Saisissez le bon mot de passe invité pour réessayer.",
         "enterNewPassword": "Saisir un nouveau mot de passe",
         "enterNewPasswordNamed": "Saisir un nouveau mot de passe pour {{name}}",
         "changePasswordNamed": "Changer le mot de passe de {{name}}",

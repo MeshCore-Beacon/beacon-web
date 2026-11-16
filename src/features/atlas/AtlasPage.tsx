@@ -18,7 +18,7 @@ import type { ObserverDirectoryItem } from "../observers/types";
 import { Card } from "../stats/cards";
 import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions } from "./AtlasCard";
-import { ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, atlasFile, atlasFileName, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile } from "./atlas";
+import { ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, atlasFile, atlasFileName, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTelemetryTiles, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { useCardDrag } from "./useCardDrag";
 import { useSyncedAtlas } from "./useSyncedAtlas";
 
@@ -116,6 +116,8 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     adjust((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? { ...other, id, observerId } : other)) }));
   const retile = (pin: AtlasPin, tiles: readonly ObserverTile[]) =>
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) ? withTiles(other, tiles) : other)) }));
+  const retelemetry = (pin: AtlasPin, tiles: readonly TelemetryTile[]) =>
+    update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? withTelemetryTiles(other, tiles) : other)) }));
   const pinView = (pin: AtlasPin, view: AtlasView) => {
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? withView(other, view) : other)) }));
     setOpen((current) => (current?.key === pinKey(pin) ? null : current));
@@ -363,6 +365,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                     onResolved={(id, observerId) => relink(pin, id, observerId)}
                     onUpgrade={(match, observerId) => upgrade(pin, match, observerId)}
                     onTilesChange={(tiles) => retile(pin, tiles)}
+                    onTelemetryTilesChange={(tiles) => retelemetry(pin, tiles)}
                     handle={drag.handleProps(index)}
                     {...actions}
                   />

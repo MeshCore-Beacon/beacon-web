@@ -73,10 +73,18 @@ describe("RequestTelemetry", () => {
   it("shows the status in words and a link to the profile once requested", async () => {
     vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ status: "login_failed" })] });
     mount();
-    expect(await screen.findByText("The repeater refused the password")).toBeInTheDocument();
+    expect(await screen.findByText("Stopped: password refused")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Manage in profile" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request telemetry" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Guest password (optional)")).not.toBeInTheDocument();
+  });
+
+  it("shows what the observer reports in the request block", async () => {
+    const poller = { observerId: "o1", name: "North", state: "not_direct" };
+    vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ poller })] });
+    mount();
+    const line = await screen.findByText("Assigned to North, which cannot hear this repeater directly right now.");
+    expect(line.previousElementSibling).toHaveAttribute("data-tone", "wait");
   });
 
   it("matches an existing request by public key when the node id differs", async () => {

@@ -2,6 +2,7 @@ import type { EChartsOption } from "../stats/echarts-setup";
 import type { ChartColors } from "../stats/chartTheme";
 import { airtimeOption, metricLineOption, mvToVolts } from "../stats/chartOptions";
 import { intervalToMs } from "../stats/transforms";
+import { airtimePct } from "./telemetry";
 import type { NodeTelemetry, NodeTelemetryPoint } from "./types";
 
 // The server skips empty buckets. Put an empty point in each one so the line breaks there
@@ -32,14 +33,6 @@ export interface NodeChartLabels {
 
 const has = (points: NodeTelemetryPoint[], pick: (p: NodeTelemetryPoint) => number | undefined) =>
   points.some((p) => pick(p) != null);
-
-// Airtime is an increment over the span the server reports, so a rate needs that span. No span, or
-// a result over 100, means the data is unusable: leave a gap rather than stretch the axis.
-function airtimePct(secs: number | undefined, span: number | undefined): number | null {
-  if (secs == null || !span) return null;
-  const raw = (secs * 100) / span;
-  return raw > 100 ? null : Math.round(raw * 1000) / 1000;
-}
 
 // Status polls are sparse, so every series gets small markers or a lone value between gaps would not draw.
 const MARKER_SIZE = 3;

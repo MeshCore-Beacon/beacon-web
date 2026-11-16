@@ -1069,6 +1069,7 @@
       "viewAnalytics": "Analytics",
       "viewHeard": "Heard by",
       "viewObserver": "Observer",
+      "viewTelemetry": "Telemetry",
       "view": "Card view",
       "airtime": "Airtime",
       "airtimeHeard": "RX, from heard",
@@ -1090,7 +1091,22 @@
       "resetTiles": "Reset tiles",
       "pinView": "Open on this tab",
       "pinViewHelp": "Make this the tab the card opens on",
-      "viewPinned": "The card opens on this tab"
+      "viewPinned": "The card opens on this tab",
+      "telemetry": {
+        "temperature": "Temperature",
+        "packets": "Packets",
+        "signal": "Signal",
+        "errors": "Errors",
+        "needsPair": "Needs two status readings",
+        "noReadings": "No readings in this window",
+        "restarted": "Restarted",
+        "sentPerHour": "sent {{value}}",
+        "polledBy": "Polled by {{name}}",
+        "polled": "Being polled",
+        "notPolled": "Not being polled right now",
+        "lastReading": "Last reading",
+        "help": "Readings Beacon polled from this repeater, over the selected window. Airtime is the share of time spent transmitting and receiving. Packets and errors are per hour. Signal is the last SNR and RSSI the repeater reported. With only a few readings the points are drawn as dots."
+      }
     },
     "account": {
       "entry": {
@@ -1201,6 +1217,10 @@
       "profile": {
         "title": "Profile",
         "account": {
+          "about": "How you appear in Beacon and the address your account uses.",
+          "aboutPortal": "How you appear in Beacon.",
+          "displayNameHint": "Shown in the menu and on your Atlas.",
+          "passwordHint": "We ask so nobody else can change it from an open session.",
           "title": "Account",
           "username": "Username",
           "displayName": "Display name",
@@ -1220,12 +1240,17 @@
         "currentPassword": "Current password",
         "wrongPassword": "That password is not right.",
         "password": {
+          "about": "Changing it signs you out of your other devices.",
           "title": "Password",
           "submit": "Change password",
           "submitting": "Saving…",
           "done": "Password changed. Your other devices were signed out."
         },
         "devices": {
+          "about": "Where you are signed in right now.",
+          "signOutAsk": "Sign out {{label}}?",
+          "signOutYes": "Yes, sign out",
+          "signOutOthersAsk": "Sign out every other device?",
           "title": "Devices",
           "loading": "Loading devices…",
           "thisDevice": "This device",
@@ -1256,6 +1281,9 @@
         }
       },
       "alerts": {
+        "about": "Get told when a radio in your Atlas needs attention.",
+        "on": "On",
+        "off": "Off",
         "title": "Alerts",
         "loading": "Loading alerts…",
         "toEmail": "Alerts are sent to {{email}}",
@@ -1264,6 +1292,11 @@
         "empty": "Alerts are set on radios in your Atlas. Add a radio there first.",
         "openAtlas": "Open the Atlas tab",
         "always": "You are always told when one of your telemetry requests needs attention.",
+        "none": "No alerts on",
+        "onCount_one": "{{count}} alert on",
+        "onCount_other": "{{count}} alerts on",
+        "firing_one": "Alerting: {{name}}",
+        "firing_other": "Alerting: {{count}} alerts",
         "turnOn": "Alert: {{name}}",
         "backOnlineHint": "Turn on {{name}} first.",
         "voltsPerDay": "{{volts}} V per day",
@@ -1360,6 +1393,16 @@
         }
       },
       "requests": {
+        "poll": {
+          "ok": "Being polled by {{name}}",
+          "pending": "Assigned to {{name}}. First poll is on its way.",
+          "not_direct": "Assigned to {{name}}, which cannot hear this repeater directly right now.",
+          "no_reply": "{{name}} is asking, but the repeater is not answering.",
+          "not_claimed": "Assigned to {{name}}. Waiting for it to pick this up.",
+          "password": "{{name}} reported a password problem. Checking."
+        },
+        "about": "Ask Beacon to read a repeater's stats with a guest password.",
+        "openNodes": "Open the Nodes tab",
         "title": "Telemetry requests",
         "count": "{{used}} of {{limit}}",
         "loading": "Loading requests…",
@@ -1367,8 +1410,8 @@
         "status": {
           "waiting": "Waiting for an observer that can reach it",
           "active": "Being polled",
-          "login_failed": "The repeater refused the password",
-          "admin_stopped": "Stopped: that password gave admin access and was deleted",
+          "login_failed": "Stopped: password refused",
+          "admin_stopped": "Stopped: admin password",
           "disabled": "Paused: the repeater has not been heard recently"
         },
         "reason": {
@@ -1388,7 +1431,8 @@
         "passwordSet": "Password set",
         "noPassword": "No password",
         "changePassword": "Change password",
-        "adminStoppedHelp": "The password you entered was an admin password. Beacon deleted it. Only a guest password will start it again.",
+        "adminStoppedHelp": "The password you entered was an admin password, so Beacon deleted it. Enter the repeater's guest password to start again.",
+        "loginFailedHelp": "The repeater refused that password. Enter the right guest password to try again.",
         "enterNewPassword": "Enter a new password",
         "enterNewPasswordNamed": "Enter a new password for {{name}}",
         "changePasswordNamed": "Change password for {{name}}",
