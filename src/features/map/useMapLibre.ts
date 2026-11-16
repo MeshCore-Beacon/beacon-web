@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map as MapLibreMap, NavigationControl, ScaleControl, AttributionControl, LngLatBounds } from "maplibre-gl";
 import type { RasterDEMSourceSpecification } from "maplibre-gl";
 import "./maplibre-worker";
-import i18n from "../../i18n";
+import { localizeMapControls, mapLocale } from "./map-locale";
 import type { DistanceUnit } from "../../lib/units";
 import {
   DEM_TILES,
@@ -17,19 +17,6 @@ import {
   IATA_PITCH,
   resolveMapStyle,
 } from "./types";
-
-// MapLibre reads its control tooltips once at construction, so a language switch applies on next mount.
-export function mapLocale(): Record<string, string> {
-  return {
-    "AttributionControl.ToggleAttribution": i18n.t("map.controls.toggleAttribution"),
-    "AttributionControl.MapFeedback": i18n.t("map.controls.mapFeedback"),
-    "Map.Title": i18n.t("map.controls.map"),
-    "NavigationControl.ResetBearing": i18n.t("map.controls.resetBearing"),
-    "NavigationControl.ZoomIn": i18n.t("map.controls.zoomIn"),
-    "NavigationControl.ZoomOut": i18n.t("map.controls.zoomOut"),
-    "Popup.Close": i18n.t("map.controls.closePopup"),
-  };
-}
 
 // serialized fit target, so the fit effect can skip redundant re-fits
 const fitKey = (points: [number, number][] | null) =>
@@ -175,6 +162,7 @@ export function useMapLibre(
     scaleRef.current = scale;
     map.addControl(scale, "bottom-left");
     map.addControl(new AttributionControl({ compact: true })); // bottom-right
+    const stopLocalizing = localizeMapControls(map.getContainer());
     // maplibre pops the compact attribution open the first time the basemap credit loads (it tacks
     // on .maplibregl-compact-show). Mark it .maplibregl-compact up front so it skips that and stays
     // a bare (i) on load — clicking it still opens the credit.
@@ -229,6 +217,7 @@ export function useMapLibre(
     });
 
     return () => {
+      stopLocalizing();
       map.remove();
       mapRef.current = null;
       setIsReady(false);
