@@ -167,3 +167,15 @@ describe("MessagePanel load failure", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+it("does not pin an older future-dated message after newer arrivals", async () => {
+  vi.mocked(getChannelMessagesPage).mockResolvedValueOnce({ items: [
+    { ...restMsg, id: 2, packetHash: "new", content: "New receipt", sentAt: 2000 },
+    { ...restMsg, id: 1, packetHash: "future", content: "Old receipt with wrong clock", sentAt: 9999999999999 },
+  ], hasMore: false, nextCursor: null });
+  const qc = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  render(<QueryClientProvider client={qc}><MessagePanel channel={channel} heardCounts={{}} regionKey="*" /></QueryClientProvider>);
+  const older = await screen.findByText("Old receipt with wrong clock");
+  const newer = screen.getByText("New receipt");
+  expect(older.compareDocumentPosition(newer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
