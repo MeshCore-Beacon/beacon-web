@@ -1051,6 +1051,7 @@
       "viewAnalytics": "Analytics",
       "viewHeard": "Heard by",
       "viewObserver": "Observer",
+      "viewTelemetry": "Telemetry",
       "view": "Card view",
       "airtime": "Airtime",
       "airtimeHeard": "RX, from heard",
@@ -1072,7 +1073,21 @@
       "resetTiles": "Reset tiles",
       "pinView": "Open on this tab",
       "pinViewHelp": "Make this the tab the card opens on",
-      "viewPinned": "The card opens on this tab"
+      "viewPinned": "The card opens on this tab",
+      "telemetry": {
+        "temperature": "Temperature",
+        "packets": "Packets",
+        "signal": "Signal",
+        "errors": "Errors",
+        "noReadings": "No readings in this window",
+        "restarted": "Restarted",
+        "sentPerHour": "sent {{value}}",
+        "polledBy": "Polled by {{name}}",
+        "polled": "Being polled",
+        "notPolled": "Not being polled right now",
+        "lastReading": "last reading",
+        "help": "Readings Beacon polled from this repeater, over the selected window. Airtime is the share of time spent transmitting and receiving. Packets and errors are per hour. Signal is the last SNR and RSSI the repeater reported. With only a few readings the points are drawn as dots."
+      }
     },
     "account": {
       "entry": {

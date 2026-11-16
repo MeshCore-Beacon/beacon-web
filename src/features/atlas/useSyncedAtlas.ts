@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { me } from "../../api/auth";
+import { useFeatures } from "../../hooks/useFeatures";
 import { useSession } from "../../hooks/useSession";
 import type { SavedAtlas } from "./atlas";
 import { fromServer, mergeAtlas, OWNER_KEY, syncedMarker, toPut, type ObserverKeys, type ServerAtlas } from "./atlasSync";
@@ -23,6 +24,9 @@ const isConflict = (error: unknown) => (error as { status?: unknown } | null)?.s
 export function useSyncedAtlas() {
   const { t } = useTranslation();
   const base = useSavedAtlas();
+  // Read at send time like the rest: until /info answers, and on an older server, the Telemetry fields stay local.
+  const { atlasTelemetry } = useFeatures();
+  const telemetry = useRef(atlasTelemetry);
   const { user } = useSession();
   const userId = user?.id ?? null;
   const [syncedFor, setSyncedFor] = useState<string | null>(null);
@@ -49,11 +53,12 @@ export function useSyncedAtlas() {
   useEffect(() => {
     baseRef.current = base;
     tRef.current = t;
+    telemetry.current = atlasTelemetry;
   });
 
   const markWhenSent = useRef<string | null>(null);
   const adopt = useCallback((doc: ServerAtlas) => {
-    const { atlas, keys: next } = fromServer(doc, baseRef.current.latest(), keys.current);
+    const { atlas, keys: next } = fromServer(doc, baseRef.current.latest(), keys.current, !telemetry.current);
     keys.current = next;
     revision.current = doc.revision;
     baseRef.current.update(() => atlas);
@@ -77,7 +82,7 @@ export function useSyncedAtlas() {
           const rev = revision.current;
           // A conflict without a document cleared it: go back through the load before writing.
           if (rev === null) { queued.current = true; return; }
-          const doc = await me.putAtlas(toPut(baseRef.current.latest(), keys.current, rev));
+          const doc = await me.putAtlas(toPut(baseRef.current.latest(), keys.current, rev, telemetry.current));
           if (generation.current !== mine) return;
           // A save commits exactly rev + 1. Whatever the answer says, the next save builds on that, so a
           // newer copy from another device meets a conflict instead of being overwritten.
@@ -117,7 +122,7 @@ export function useSyncedAtlas() {
         const doc = await me.atlas();
         if (generation.current !== mine) return;
         const local = baseline.current ?? baseRef.current.latest();
-        const server = fromServer(doc, local, {});
+        const server = fromServer(doc, local, {}, !telemetry.current);
         keys.current = server.keys;
         revision.current = doc.revision;
         let marked = true;

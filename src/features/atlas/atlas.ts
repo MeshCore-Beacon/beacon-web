@@ -9,9 +9,14 @@ export type AtlasRange = "24h" | "3d";
 export const OBSERVER_TILES = ["airtime", "battery", "uptime", "types", "packets", "snr", "rssi", "noise", "queue", "errors"] as const;
 export type ObserverTile = (typeof OBSERVER_TILES)[number];
 export const DEFAULT_TILES: readonly ObserverTile[] = ["airtime", "battery", "types", "noise"];
-export type AtlasView = "analytics" | "heard" | "observer";
+// The metrics a Telemetry tab tile can show, from a repeater's polled readings. A pin stores its four
+// only when they differ from the default.
+export const TELEMETRY_TILES = ["battery", "noise", "uptime", "airtime", "temperature", "packets", "signal", "errors"] as const;
+export type TelemetryTile = (typeof TELEMETRY_TILES)[number];
+export const DEFAULT_TELEMETRY_TILES: readonly TelemetryTile[] = ["battery", "noise", "uptime", "airtime"];
+export type AtlasView = "analytics" | "heard" | "observer" | "telemetry";
 // `view` is the tab the card opens on, stored only when it is not Analytics.
-export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[]; view?: AtlasView }
+export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
 export interface ObserverPin { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
 export type AtlasPin = NodePin | ObserverPin;
 export interface SavedAtlas { version: 2; range: AtlasRange; pins: AtlasPin[] }
@@ -71,17 +76,27 @@ export function readAtlasFile(text: string): AtlasImport | null {
 }
 
 // Four distinct known ids in slot order; undefined for anything else and for the default layout.
-function toTiles(raw: unknown): ObserverTile[] | undefined {
-  if (!Array.isArray(raw) || raw.length !== DEFAULT_TILES.length || new Set(raw).size !== raw.length) return undefined;
-  if (!raw.every((id): id is ObserverTile => OBSERVER_TILES.includes(id))) return undefined;
-  return raw.every((id, i) => id === DEFAULT_TILES[i]) ? undefined : [...raw];
+function toTileList<T extends string>(raw: unknown, known: readonly T[], defaults: readonly T[]): T[] | undefined {
+  if (!Array.isArray(raw) || raw.length !== defaults.length || new Set(raw).size !== raw.length) return undefined;
+  if (!raw.every((id): id is T => known.includes(id))) return undefined;
+  return raw.every((id, i) => id === defaults[i]) ? undefined : [...raw];
 }
+const toTiles = (raw: unknown) => toTileList(raw, OBSERVER_TILES, DEFAULT_TILES);
+export const toTelemetryTiles = (raw: unknown) => toTileList(raw, TELEMETRY_TILES, DEFAULT_TELEMETRY_TILES);
 
 export function withTiles<P extends AtlasPin>(pin: P, tiles: readonly ObserverTile[]): P {
   const next = { ...pin };
   const kept = toTiles(tiles);
   if (kept) next.tiles = kept;
   else delete next.tiles;
+  return next;
+}
+
+export function withTelemetryTiles(pin: NodePin, tiles: readonly TelemetryTile[]): NodePin {
+  const next = { ...pin };
+  const kept = toTelemetryTiles(tiles);
+  if (kept) next.telemetryTiles = kept;
+  else delete next.telemetryTiles;
   return next;
 }
 
@@ -109,7 +124,9 @@ function toPin(raw: unknown): AtlasPin | null {
   const pin: NodePin = { kind, id: value.id, publicKey: value.publicKey.toLowerCase(), name };
   if (isUuid(value.observerId)) pin.observerId = value.observerId;
   if (tiles) pin.tiles = tiles;
-  if (value.view === "heard" || value.view === "observer") pin.view = value.view;
+  const telemetryTiles = toTelemetryTiles(value.telemetryTiles);
+  if (telemetryTiles) pin.telemetryTiles = telemetryTiles;
+  if (value.view === "heard" || value.view === "observer" || value.view === "telemetry") pin.view = value.view;
   return pin;
 }
 
