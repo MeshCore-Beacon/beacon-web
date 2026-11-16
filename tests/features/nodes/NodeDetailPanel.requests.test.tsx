@@ -18,6 +18,7 @@ vi.mock("../../../src/features/stats/EChart", () => ({ EChart: () => <div data-t
 const state = { polling: false, telemetryRequests: true, user: user as typeof user | null };
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => ({ polling: state.polling, accounts: "local", registration: true, telemetryRequests: state.telemetryRequests, alerts: false }),
+  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
 }));
 vi.mock("../../../src/hooks/useSession", () => ({
   useSession: () => ({ user: state.user, loading: false, enabled: true, refresh: () => {} }),

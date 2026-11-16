@@ -34,26 +34,33 @@ describe("buildNodeCharts", () => {
   ]);
 
   it("builds all four charts when every field is present", () => {
-    const c = buildNodeCharts(full, colors, labels);
+    const c = buildNodeCharts(full, colors, labels, "c");
     expect(Object.keys(c).filter((k) => (c as any)[k]).sort()).toEqual(["airtime", "battery", "noise", "temperature"]);
   });
 
   it("skips a chart whose field is in no point", () => {
-    const c = buildNodeCharts(tele([{ t: 0, readings: 1, batteryMv: 4200, temperatureC: 16 }]), colors, labels);
+    const c = buildNodeCharts(tele([{ t: 0, readings: 1, batteryMv: 4200, temperatureC: 16 }]), colors, labels, "c");
     expect(c.battery).toBeDefined();
     expect(c.temperature).toBeDefined();
     expect(c.noise).toBeUndefined();
     expect(c.airtime).toBeUndefined();
   });
 
+  it("draws temperature in the instance unit", () => {
+    const temp = (u: "c" | "f") => (buildNodeCharts(full, colors, labels, u).temperature as any).series[0].data;
+    expect(temp("c")).toEqual([[0, 16.5], [H, null], [2 * H, 17]]);
+    expect(temp("f")[0][1]).toBeCloseTo(61.7);
+    expect(temp("f")[2][1]).toBeCloseTo(62.6);
+  });
+
   it("converts mV to V and breaks the line at an empty bucket", () => {
-    const s = (buildNodeCharts(full, colors, labels).battery as any).series[0];
+    const s = (buildNodeCharts(full, colors, labels, "c").battery as any).series[0];
     expect(s.connectNulls).toBe(false);
     expect(s.data).toEqual([[0, 4.2], [H, null], [2 * H, 4.1]]);
   });
 
   const air = (points: NodeTelemetry["points"], name: "TX" | "RX" = "TX", interval = "1h") =>
-    (buildNodeCharts(tele(points, interval), colors, labels).airtime as any).series.find((x: any) => x.name === name);
+    (buildNodeCharts(tele(points, interval), colors, labels, "c").airtime as any).series.find((x: any) => x.name === name);
 
   it("charts airtime as percent of the counter span, with a gap", () => {
     const tx = air(full.points, "TX");
@@ -95,7 +102,7 @@ describe("buildNodeCharts", () => {
     const c = buildNodeCharts(tele([
       { t: 0, readings: 1, batteryMv: 4200, temperatureC: 16, noiseFloorDb: -97, airtimeTxSecs: 1, airtimeRxSecs: 1, counterSpanSecs: 3600 },
       { t: 3 * H, readings: 1, batteryMv: 4100, temperatureC: 17, noiseFloorDb: -96, airtimeTxSecs: 1, airtimeRxSecs: 1, counterSpanSecs: 3600 },
-    ]), colors, labels);
+    ]), colors, labels, "c");
     for (const key of ["battery", "temperature", "noise", "airtime"] as const) {
       for (const s of (c[key] as any).series) {
         expect(s.data[1][1]).toBeNull();

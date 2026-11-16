@@ -20,6 +20,7 @@ vi.mock("../../../src/api/auth", async (orig) => {
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
+  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
 }));
 
 beforeEach(() => {
