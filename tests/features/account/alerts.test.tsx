@@ -18,9 +18,11 @@ vi.mock("../../../src/api/auth", async (orig) => {
     alerts: { get: vi.fn(), putRule: vi.fn(), deleteRule: vi.fn() },
   };
 });
+const units = vi.hoisted(() => ({ temperature: "c" as "c" | "f" }));
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
+  useDisplayUnits: () => ({ temperature: units.temperature, distance: "metric" }),
 }));
 
 const rule = (over: Partial<AlertRule> = {}): AlertRule => ({
@@ -41,6 +43,7 @@ const response = (over: Partial<AlertsResponse> = {}): AlertsResponse => ({ deli
 beforeEach(() => {
   resetMocks();
   mocks.features = { ...mocks.features, alerts: true, alertDelivery: "email" };
+  units.temperature = "c";
   vi.mocked(me.get).mockResolvedValue({ user });
   vi.mocked(me.sessions).mockResolvedValue({ sessions: [] });
   vi.mocked(alerts.get).mockResolvedValue(response());
@@ -317,20 +320,101 @@ describe("alerts section", () => {
       fireEvent.change(r.getByLabelText("Low (°C)"), { target: { value: "10" } });
       fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "11.9" } });
       fireEvent.click(r.getByRole("switch"));
-      expect(await r.findByRole("alert")).toHaveTextContent("The high limit must be at least 2 degrees above the low limit.");
+      expect(await r.findByRole("alert")).toHaveTextContent("The high limit must be at least 2.0 °C above the low limit.");
       expect(put()).not.toHaveBeenCalled();
       fireEvent.change(r.getByLabelText("High (°C)"), { target: { value: "12" } });
       fireEvent.click(r.getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 100, thresholdHigh: 120 })));
     });
 
+    describe("blur on an enabled temperature limit", () => {
+      const temperatureRule = (over: Partial<AlertRule> = {}) => rule({ kind: "temperature", threshold: 355, thresholdHigh: 400, ...over });
+      const withRule = (r: AlertRule) => response({ targets: [repeater({ rules: [r] })] });
+
+      it("an unedited limit in F is not rewritten on blur", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule()));
+        const low = row("Hilltop", "temperature").getByLabelText("Low (°F)");
+        expect(low).toHaveValue("96");
+        fireEvent.focus(low);
+        fireEvent.blur(low);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(put()).not.toHaveBeenCalled();
+      });
+
+      it("an edited limit in F saves, and the untouched limit keeps its stored tenths", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule()));
+        const low = row("Hilltop", "temperature").getByLabelText("Low (°F)");
+        fireEvent.change(low, { target: { value: "15" } });
+        fireEvent.blur(low);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "temperature", threshold: -94, thresholdHigh: 400 })));
+      });
+
+      it("an edited limit in C saves, and the untouched limit keeps its stored tenths", async () => {
+        await open(withRule(temperatureRule({ threshold: -100 })));
+        const low = row("Hilltop", "temperature").getByLabelText("Low (°C)");
+        fireEvent.change(low, { target: { value: "-9.0" } });
+        fireEvent.blur(low);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: -90, thresholdHigh: 400 })));
+      });
+
+      it("turning an F limit back on keeps the stored tenths of both bounds", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ enabled: false, threshold: 355, thresholdHigh: 412 })));
+        fireEvent.click(row("Hilltop", "temperature").getByRole("switch"));
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 355, thresholdHigh: 412, enabled: true })));
+      });
+
+      it("a kept low limit counts at its stored tenths when checking the width", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ threshold: 357, thresholdHigh: 412 })));
+        const r = row("Hilltop", "temperature");
+        const high = r.getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "98" } });
+        fireEvent.blur(high);
+        expect(await r.findByRole("alert")).toHaveTextContent(/at least/);
+        expect(put()).not.toHaveBeenCalled();
+      });
+
+      it("a pair exactly 20 tenths wide is accepted", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ threshold: 358, thresholdHigh: 412 })));
+        const high = row("Hilltop", "temperature").getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "100" } });
+        fireEvent.blur(high);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 358, thresholdHigh: 378 })));
+      });
+
+      it("a fractional F limit is refused and sends nothing", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule()));
+        const r = row("Hilltop", "temperature");
+        const high = r.getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "95.5" } });
+        fireEvent.blur(high);
+        expect(await r.findByRole("alert")).toHaveTextContent("Enter a whole number of degrees °F, such as 95.");
+        expect(put()).not.toHaveBeenCalled();
+      });
+
+      it("editing only the high F limit keeps the untouched low limit's stored tenths", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ threshold: 355, thresholdHigh: 412 })));
+        const high = row("Hilltop", "temperature").getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "110" } });
+        fireEvent.blur(high);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 355, thresholdHigh: 433, enabled: true })));
+      });
+    });
+
     it("the width message is translated in fr and sv", async () => {
-      const key = "account.alerts.errors.temperature_width";
       try {
         for (const lng of ["fr", "sv"]) {
           await act(() => i18n.changeLanguage(lng));
-          expect(i18n.t(key)).not.toBe(key);
-          expect(i18n.t(key)).not.toBe(i18n.t(key, { lng: "en" }));
+          for (const key of ["account.alerts.errors.temperature_width", "account.alerts.errors.temperature_whole"]) {
+            expect(i18n.t(key)).not.toBe(key);
+            expect(i18n.t(key)).not.toBe(i18n.t(key, { lng: "en" }));
+          }
         }
       } finally {
         await act(() => i18n.changeLanguage("en"));

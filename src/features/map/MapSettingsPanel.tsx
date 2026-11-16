@@ -59,6 +59,9 @@ interface MapSettingsPanelProps {
   onBordersChange: (on: boolean) => void;
   terrain: boolean;
   onTerrainChange: (on: boolean) => void;
+  // the row shows only when the server offers telemetry labels
+  telemetry?: boolean;
+  onTelemetryChange?: (on: boolean) => void;
   // builds deep-link params for the current view, evaluated at copy time (reads the live camera)
   buildShareParams: () => Record<string, string | null>;
   // Live Map forces clustering off while it runs; the saved choice comes back afterwards
@@ -78,6 +81,8 @@ export function MapSettingsPanel({
   onBordersChange,
   terrain,
   onTerrainChange,
+  telemetry = false,
+  onTelemetryChange,
   buildShareParams,
   liveMap = false,
 }: MapSettingsPanelProps) {
@@ -182,6 +187,17 @@ export function MapSettingsPanel({
               className="w-full"
             />
           </Section>
+          {onTelemetryChange && (
+            <Section title={t("map.telemetry")}>
+              <SegmentedControl
+                ariaLabel={t("map.telemetryLabel")}
+                options={[on, off]}
+                value={telemetry ? "on" : "off"}
+                onChange={(v) => onTelemetryChange(v === "on")}
+                className="w-full"
+              />
+            </Section>
+          )}
           <div className="px-3 py-2.5 border-t border-border-subtle flex justify-end">
             <CopyLinkButton
               params={buildShareParams}

@@ -31,6 +31,7 @@ vi.mock("../../../src/features/account/AccountViews", () => ({ AccountViews: () 
 vi.mock("../../../src/hooks/useFeatures", () => ({
   useFeatures: () => mocks.features,
   useFeaturesLoading: () => mocks.featuresLoading,
+  useDisplayUnits: () => ({ temperature: "c", distance: "metric" }),
 }));
 
 beforeEach(() => {
