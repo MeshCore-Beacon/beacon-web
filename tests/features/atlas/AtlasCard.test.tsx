@@ -19,6 +19,8 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getObserver: vi.fn(),
   getObserverActivity: vi.fn(),
   getObserverTelemetry: vi.fn(),
+  getServerInfo: vi.fn(),
+  getNodeTelemetry: vi.fn(),
 }));
 
 const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -48,6 +50,13 @@ const handlers = {
   onTilesChange: vi.fn(),
   onPinView: vi.fn(),
 };
+const info = (polling: boolean) => ({ features: { polling, accounts: "off", telemetryRequests: false, alerts: false } }) as never;
+// Battery and temperature come from different points on purpose: newest means newest that carries the field.
+const polled = { range: "24h", interval: "1h", polled: true, untrustedReadings: 0, points: [
+  { t: 1, readings: 2, batteryMv: 4100, temperatureC: 15.2 },
+  { t: 2, readings: 2, batteryMv: 4226, noiseFloorDb: -97 },
+] };
+const LINE = "Battery and temperature, latest hourly average";
 let client: QueryClient;
 
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
@@ -64,6 +73,7 @@ beforeEach(() => {
   vi.mocked(api.getNode).mockResolvedValue(node);
   vi.mocked(api.getNodeActivity).mockResolvedValue(nodeActivity);
   vi.mocked(api.getPacketDetail).mockResolvedValue(detail);
+  vi.mocked(api.getServerInfo).mockResolvedValue(info(false));
 });
 afterEach(() => client.clear());
 
@@ -511,5 +521,74 @@ describe("AtlasCard", () => {
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
     mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
     await waitFor(() => expect(handlers.onUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: node.id }), observerId));
+  });
+
+  describe("polled telemetry line", () => {
+    beforeEach(() => {
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true));
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue(polled as never);
+    });
+
+    it("shows the newest battery and temperature for a repeater, asking for the 24h range", async () => {
+      mount();
+      const line = await screen.findByLabelText(LINE);
+      expect(line).toHaveTextContent("4.23 V · 15.2 °C");
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
+    });
+
+    it("shows the battery alone when no point carries a temperature", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...polled, points: [{ t: 1, readings: 1, batteryMv: 4226 }] } as never);
+      mount();
+      expect((await screen.findByLabelText(LINE)).textContent).toBe("4.23 V");
+    });
+
+    it("also shows it for a room server", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, nodeType: 3, nodeTypeName: "room_server" });
+      mount();
+      expect(await screen.findByLabelText(LINE)).toBeInTheDocument();
+    });
+
+    it("shows no line for a node without readings", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...polled, polled: false, points: [] } as never);
+      mount();
+      await waitFor(() => expect(api.getNodeTelemetry).toHaveBeenCalled());
+      await screen.findByText("Observations");
+      expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
+    });
+
+    it("shows no line, and asks for nothing, for a companion", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, nodeType: 1, nodeTypeName: "companion" });
+      mount();
+      await screen.findByText("Observations");
+      expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+    });
+
+    it("shows no line, and asks for nothing, when polling is off", async () => {
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(false));
+      mount();
+      await screen.findByText("Observations");
+      expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+    });
+
+    it("asks for nothing while another view is showing", async () => {
+      mount({ view: "heard" });
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      await new Promise((r) => setTimeout(r, 20));
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+    });
+
+    it("never touches the saved Atlas", async () => {
+      const saved = JSON.stringify({ version: 2, pins: [{ kind: "node", ...pin }], range: "24h" });
+      localStorage.setItem("beacon-atlas-v2", saved);
+      const write = vi.spyOn(Storage.prototype, "setItem");
+      mount();
+      await screen.findByLabelText(LINE);
+      expect(write).not.toHaveBeenCalled();
+      expect(localStorage.getItem("beacon-atlas-v2")).toBe(saved);
+      write.mockRestore();
+      localStorage.clear();
+    });
   });
 });

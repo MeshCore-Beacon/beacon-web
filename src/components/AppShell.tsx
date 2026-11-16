@@ -16,6 +16,7 @@ import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL, BANNER } from "../lib/constants";
 import { InstanceBanner } from "./InstanceBanner";
+import { AccountEntry, AccountMenuItems } from "../features/account/AccountMenu";
 import type { WsManager } from "../api/ws-manager";
 
 // header widgets: WS status, region picker, theme picker
@@ -404,6 +405,7 @@ function SettingsMenu() {
     >
       {(close) => (
         <>
+          <AccountMenuItems onPick={close} />
           <div className={MENU_GROUP}>{t("language.label")}</div>
           <LanguageOptions onPick={close} />
           <div className={`${MENU_GROUP} mt-1 border-t border-border-subtle`}>{t("theme.label")}</div>
@@ -458,6 +460,7 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
             <RateLimitBadge />
             <GitHubLink />
           </div>
+          <AccountEntry />
         </header>
       )}
 

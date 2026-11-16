@@ -58,6 +58,10 @@
       "copyLink": "Copy link",
       "copied": "Copied",
       "copyFailed": "Copy failed",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "show": "Show",
+      "hide": "Hide",
       "filters": "Filters",
       "closeFilters": "Close filters",
       "clearAll": "Clear all",
@@ -318,7 +322,30 @@
       "fromMeshMapper": "From MeshMapper",
       "updated": "updated",
       "carpeater": "CARpeater",
-      "carpeaterHint": "Mobile repeater in a vehicle: its position moves."
+      "carpeaterHint": "Mobile repeater in a vehicle: its position moves.",
+      "telemetry": {
+        "title": "Telemetry",
+        "range": "Telemetry range",
+        "battery": "Battery (V)",
+        "temperature": "Temperature (°C)",
+        "noise": "Noise floor (dBm)",
+        "airtime": "Airtime TX / RX (% of time)",
+        "waiting": "Polled by {{name}}, waiting for the first reading",
+        "noReadings": "No readings in this range",
+        "polledBy": "Polled by",
+        "lastReading": "Last reading",
+        "standby_one": "{{count}} standby",
+        "standby_other": "{{count}} standby",
+        "request": "Request telemetry",
+        "requesting": "Requesting…",
+        "requestIntro": "Ask Beacon to have this repeater polled for battery and radio stats by a volunteer observer that can hear it.",
+        "guestPassword": "Guest password (optional)",
+        "passwordNotice": "The guest password is shared with volunteer observers so they can ask this repeater for its stats. Never enter an admin password.",
+        "used": "{{used}} of {{limit}} requests used",
+        "limitReached": "You have used all of your requests. Remove one in your profile to ask for another.",
+        "requested": "Telemetry requested",
+        "manage": "Manage in profile"
+      }
     },
     "nodes": {
       "lastHeard": "last heard {{ago}}",
@@ -987,6 +1014,12 @@
       "savedCount_other": "{{count}} / {{limit}} saved",
       "savedCountShort": "{{count}}/{{limit}}",
       "localOnly": "Saved in this browser",
+      "syncedToAccount": "Synced to your account",
+      "conflict": "Atlas was changed on another device. Showing the latest.",
+      "syncFailed": "Could not save the Atlas to your account. Your change is kept on this device.",
+      "loadFailed": "Could not load the Atlas from your account. Showing this device's copy.",
+      "mergeDropped_one": "{{count}} card from this device did not fit in your account Atlas.",
+      "mergeDropped_other": "{{count}} cards from this device did not fit in your account Atlas.",
       "storageFailed": "Browser storage is unavailable; changes last only for this visit.",
       "limitReached": "All {{limit}} slots are in use. Remove a card to add another.",
       "refine": "Showing the first {{limit}} matches; refine the search for more.",
@@ -1001,6 +1034,7 @@
         "24h": "24h",
         "3d": "3d"
       },
+      "readingsLabel": "Battery and temperature, latest hourly average",
       "sampleHelp": "Stored observations of packets from this node per hour over the selected window, with signal as measured by observers on the last hop.",
       "activityUnsupported": "This server does not provide node activity.",
       "lastSeen": "Last seen",
@@ -1039,6 +1073,310 @@
       "pinView": "Open on this tab",
       "pinViewHelp": "Make this the tab the card opens on",
       "viewPinned": "The card opens on this tab"
+    },
+    "account": {
+      "entry": {
+        "signIn": "Sign in",
+        "profile": "Profile",
+        "signOut": "Sign out",
+        "signOutFailed": "Could not sign out. Try again."
+      },
+      "fields": {
+        "login": "Username or email",
+        "username": "Username",
+        "email": "Email",
+        "password": "Password",
+        "newPassword": "New password"
+      },
+      "signin": {
+        "title": "Sign in",
+        "submit": "Sign in",
+        "submitting": "Signing in…",
+        "register": "Create an account",
+        "forgot": "Forgot password?",
+        "description": {
+          "atlas": "Sync your Atlas.",
+          "telemetry": "Sync your Atlas and request repeater telemetry.",
+          "alerts": "Sync your Atlas and get alerts.",
+          "all": "Sync your Atlas, request repeater telemetry and get alerts."
+        }
+      },
+      "resend": {
+        "button": "Send the link again"
+      },
+      "checkEmail": {
+        "title": "Check your email",
+        "verifySent": "If {{email}} can be used, a confirmation link is on its way. It can take a minute. Check your spam folder too.",
+        "resetSent": "If {{email}} has an account, a reset link is on its way. It can take a minute. Check your spam folder too.",
+        "resend": "Send it again",
+        "resendIn": "Send it again in {{seconds}}s",
+        "resent": "Sent again.",
+        "different": "Use a different email",
+        "signIn": "Sign in"
+      },
+      "register": {
+        "title": "Create an account",
+        "submit": "Create account",
+        "submitting": "Creating…",
+        "usernameHint": "3 to 30 letters, numbers, dots, dashes or underscores.",
+        "passwordHint": "At least 12 characters.",
+        "havePrompt": "Already have an account?",
+        "signInLink": "Sign in",
+        "closed": "Registration is closed on this server."
+      },
+      "verify": {
+        "title": "Verify your email",
+        "checking": "Checking your link…",
+        "success": "Your email is verified. You can sign in now.",
+        "signIn": "Sign in",
+        "newLinkHelp": "Enter your email and we will send a new link.",
+        "newLink": "Send a new link"
+      },
+      "reset": {
+        "title": "Reset your password",
+        "intro": "Enter your account email and we will send a reset link.",
+        "send": "Send reset link",
+        "sending": "Sending…",
+        "setIntro": "Choose a new password for your account.",
+        "set": "Set password",
+        "setting": "Saving…",
+        "done": "Your password is changed. You can sign in with it now.",
+        "signIn": "Sign in",
+        "newLink": "Request a new link",
+        "toSignIn": "Back to sign in"
+      },
+      "bridge": {
+        "title": "Sign in to the Beacon app",
+        "notice": "The Beacon app is asking you to sign in. Sign in here to continue.",
+        "confirm": "The Beacon app is asking to sign in with this account:",
+        "continue": "Continue",
+        "continuing": "Continuing…",
+        "cancel": "Cancel",
+        "done": "Opening the Beacon app. You can close this page afterwards.",
+        "incomplete": "This sign-in request from the app is incomplete. Go back to the app and try again.",
+        "badRedirect": "The sign-in could not return to the app. Nothing was shared.",
+        "warning": "Only continue if you just chose \"Sign in\" in the Beacon app on this device. If you did not, cancel."
+      },
+      "errors": {
+        "generic": "Something went wrong. Try again.",
+        "invalid_credentials": "Wrong username, email or password.",
+        "email_unverified": "Confirm your email first. Check your inbox for the link, or send it again below.",
+        "tooMany": "Too many attempts. Try again {{when}}.",
+        "whenLater": "later",
+        "whenSeconds_one": "in {{count}} second",
+        "whenSeconds_other": "in {{count}} seconds",
+        "whenMinutes_one": "in {{count}} minute",
+        "whenMinutes_other": "in {{count}} minutes",
+        "passwordTooLong": "That password is too long.",
+        "weak_password": "That password is not accepted: {{reason}}",
+        "username_taken": "That username is taken.",
+        "invalid_input": "Check what you entered and try again.",
+        "registration_closed": "Registration is closed on this server.",
+        "token_invalid": "This link is no longer valid.",
+        "not_signed_in": "You are not signed in. Sign in and try again.",
+        "csrf_rejected": "The request was rejected. Reload the page and try again.",
+        "accounts_disabled": "Accounts are not enabled on this server.",
+        "service_unavailable": "The server is busy. Try again in a moment.",
+        "read_only": "This server is read-only right now. Try again later.",
+        "portal_managed": "Your sign-in is managed at the MeshMapper portal. Use it there."
+      },
+      "profile": {
+        "title": "Profile",
+        "account": {
+          "title": "Account",
+          "username": "Username",
+          "displayName": "Display name",
+          "save": "Save",
+          "saving": "Saving…",
+          "saved": "Saved.",
+          "email": "Email",
+          "verified": "Verified",
+          "unverified": "Not verified",
+          "pending": "Waiting for confirmation: {{email}}",
+          "changeEmail": "Change email",
+          "newEmail": "New email",
+          "sendLink": "Change email",
+          "sending": "Sending…",
+          "checkEmail": "Check your email. If that address can be used, a link to confirm it is on its way. Waiting for confirmation: {{email}}"
+        },
+        "currentPassword": "Current password",
+        "wrongPassword": "That password is not right.",
+        "password": {
+          "title": "Password",
+          "submit": "Change password",
+          "submitting": "Saving…",
+          "done": "Password changed. Your other devices were signed out."
+        },
+        "devices": {
+          "title": "Devices",
+          "loading": "Loading devices…",
+          "thisDevice": "This device",
+          "browser": "Browser",
+          "app": "App",
+          "lastUsed": "Last used",
+          "created": "Created",
+          "signOut": "Sign out",
+          "signOutNamed": "Sign out {{label}}",
+          "signOutOthers": "Sign out everywhere else",
+          "ending": "Signing out…",
+          "empty": "No devices."
+        },
+        "delete": {
+          "title": "Delete account",
+          "explain": "This permanently removes your account, your sign-ins on every device and everything saved to it. It cannot be undone.",
+          "start": "Delete account",
+          "typeUsername": "Type {{username}} to confirm",
+          "wrongUsername": "That is not your username.",
+          "confirm": "Delete my account",
+          "deleting": "Deleting…",
+          "cancel": "Cancel"
+        },
+        "portal": {
+          "title": "Sign-in",
+          "managed": "Your sign-in is managed at the MeshMapper portal.",
+          "open": "Open the MeshMapper portal"
+        }
+      },
+      "alerts": {
+        "title": "Alerts",
+        "loading": "Loading alerts…",
+        "toEmail": "Alerts are sent to {{email}}",
+        "toApp": "Alerts are sent to the Beacon app on your phone",
+        "noDevice": "Sign in to the Beacon app on a phone to receive them.",
+        "empty": "Alerts are set on radios in your Atlas. Add a radio there first.",
+        "openAtlas": "Open the Atlas tab",
+        "always": "You are always told when one of your telemetry requests needs attention.",
+        "turnOn": "Alert: {{name}}",
+        "backOnlineHint": "Turn on {{name}} first.",
+        "voltsPerDay": "{{volts}} V per day",
+        "hours_one": "{{count}} hour",
+        "hours_other": "{{count}} hours",
+        "minutes_one": "{{count}} minute",
+        "minutes_other": "{{count}} minutes",
+        "days_one": "{{count}} day",
+        "days_other": "{{count}} days",
+        "fields": {
+          "hours": "Hours",
+          "volts": "Volts",
+          "drop": "Drop per day",
+          "low": "Low (°C)",
+          "high": "High (°C)",
+          "dbm": "dBm",
+          "drift": "Drift",
+          "offline": "No report for"
+        },
+        "state": {
+          "ok": "OK",
+          "firing": "Alerting since",
+          "inactive": "No data right now",
+          "unknown": "Not checked yet"
+        },
+        "kinds": {
+          "gone_quiet": { "name": "Gone quiet", "when": "When the radio has not been heard for this long." },
+          "back_online": { "name": "Back online", "when": "When the radio is heard again after it went quiet." },
+          "battery_low": { "name": "Battery low", "when": "When the battery stays below this voltage." },
+          "battery_falling": { "name": "Battery falling", "when": "When the battery drops faster than this in a day." },
+          "rebooted": { "name": "Rebooted", "when": "When the radio restarts." },
+          "temperature": { "name": "Temperature", "when": "When the temperature goes below the low limit or above the high limit." },
+          "noise_high": { "name": "Noise high", "when": "When the noise floor stays above this level." },
+          "clock": { "name": "Clock drift", "when": "When the radio's clock is off by more than this." },
+          "observer_offline": { "name": "Observer offline", "when": "When the observer sends no status report for this long." }
+        },
+        "reason": {
+          "observerNoData": "This observer does not report {{what}}.",
+          "repeatersOnly": "Only repeaters report {{what}}.",
+          "notPolled": "Beacon is not polling this repeater. Request telemetry for it first.",
+          "noData": "This repeater does not report {{what}}.",
+          "observerNoClock": "Observers have no clock drift value.",
+          "clockRepeatersOnly": "Only repeaters and room servers report their clock.",
+          "needsGoneQuiet": "Turn on the gone-quiet alert for this radio first.",
+          "notApplicable": "This alert does not apply to this radio."
+        },
+        "reasonWhat": {
+          "battery": "a battery level",
+          "uptime": "its uptime",
+          "temperature": "a temperature",
+          "noise": "a noise floor"
+        },
+        "errors": {
+          "battery_low": "Enter a voltage between 2.50 and 5.00.",
+          "noise_high": "Enter a level between -130 and -50 dBm.",
+          "temperature_one": "Enter a low or a high limit.",
+          "temperature_number": "Enter the limits as numbers in degrees C.",
+          "temperature_order": "The low limit must be below the high limit.",
+          "temperature_width": "The high limit must be at least 2 degrees above the low limit.",
+          "temperature_range": "Enter limits between -50 and 150 degrees C.",
+          "kind_unavailable": "This alert is not available for this radio.",
+          "invalid_threshold": "That is not an allowed value for this alert.",
+          "not_on_atlas": "This radio is no longer in your Atlas.",
+          "alerts_disabled": "Alerts are turned off on this server.",
+          "not_found": "That alert no longer exists.",
+          "app_session_required": "Only the Beacon app can register a phone for alerts."
+        }
+      },
+      "requests": {
+        "title": "Telemetry requests",
+        "count": "{{used}} of {{limit}}",
+        "loading": "Loading requests…",
+        "empty": "You have not asked for any telemetry yet. Open a repeater in the Nodes tab and choose Request telemetry.",
+        "status": {
+          "waiting": "Waiting for an observer that can reach it",
+          "active": "Being polled",
+          "login_failed": "The repeater refused the password",
+          "admin_stopped": "Stopped: that password gave admin access and was deleted",
+          "disabled": "Paused: the repeater has not been heard recently"
+        },
+        "reason": {
+          "noObserver": "No observer can reach this repeater yet.",
+          "noSeat": "Every observer that can reach this repeater is already polling its maximum.",
+          "loginFailed": "The repeater did not accept this guest password. Enter a new one.",
+          "blankFailed": "The repeater did not accept a blank or hello login. Enter a guest password.",
+          "adminStopped": "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.",
+          "blankBlocked": "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password.",
+          "offline_one": "Not heard by any observer for {{count}} day.",
+          "offline_other": "Not heard by any observer for {{count}} days."
+        },
+        "polledBy": "Polled by",
+        "noObserver": "no observer yet",
+        "lastReading": "Last reading",
+        "never": "none yet",
+        "passwordSet": "Password set",
+        "noPassword": "No password",
+        "changePassword": "Change password",
+        "adminStoppedHelp": "The password you entered was an admin password. Beacon deleted it. Only a guest password will start it again.",
+        "enterNewPassword": "Enter a new password",
+        "enterNewPasswordNamed": "Enter a new password for {{name}}",
+        "changePasswordNamed": "Change password for {{name}}",
+        "newPassword": "New guest password",
+        "passwordHint": "Leave empty to remove the password.",
+        "notice": "The guest password is shared with volunteer observers so they can ask this repeater for its stats. Never enter an admin password.",
+        "savePassword": "Save password",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "reenable": "Re-enable",
+        "reenableNamed": "Re-enable {{name}}",
+        "enabling": "Enabling…",
+        "remove": "Remove",
+        "removeNamed": "Remove {{name}}",
+        "removeAsk": "Stop requesting telemetry for {{name}}?",
+        "removeYes": "Yes, remove",
+        "removing": "Removing…",
+        "errors": {
+          "request_limit": "You have used all of your telemetry requests.",
+          "already_requested": "You already asked for this repeater.",
+          "not_a_repeater": "Only repeaters and room servers can be polled.",
+          "password_invalid": "The password must be 1 to 15 characters.",
+          "password_invalid_stopped": "This request needs a guest password of 1 to 15 characters. It cannot be restarted with a blank login.",
+          "no_password_blocked": "This repeater gives admin access without a password, so it cannot be polled this way",
+          "requests_disabled": "Telemetry requests are not enabled on this server.",
+          "not_found": "That request no longer exists."
+        }
+      },
+      "portal": {
+        "intro": "Beacon signs you in through your MeshMapper account.",
+        "button": "Sign in with MeshMapper",
+        "failed": "Sign-in did not complete. Try again."
+      }
     }
   }
 }

@@ -14,6 +14,8 @@ import {
 } from "./hooks/region-selection";
 import { ThemeProvider } from "./hooks/useTheme";
 import { useIsMobile } from "./hooks/useMediaQuery";
+import { useFeatures, useFeaturesLoading } from "./hooks/useFeatures";
+import { useView, VIEW_PARAMS } from "./features/account/useView";
 import { usePauseWhenHidden } from "./hooks/usePauseWhenHidden";
 import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
@@ -45,6 +47,9 @@ const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ defau
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
 const StatsOverview = lazy(() => import("./features/stats/StatsOverview").then((m) => ({ default: m.StatsOverview })));
+
+// Sign-in, registration, verify and reset views: one chunk, fetched only when one is opened.
+const AccountViews = lazy(() => import("./features/account/AccountViews").then((m) => ({ default: m.AccountViews })));
 
 // global singletons
 
@@ -91,13 +96,14 @@ function AnalyticsPrefetch({ active }: { active: boolean }) {
 // Once the first view has had time to load, fetch the lazy tabs' code so a later click doesn't wait
 // on it; skipped when the browser asks to save data.
 const PRELOAD_DELAY_MS = 3_000;
-function usePreloadLazyTabs() {
+function usePreloadLazyTabs(accountsOn: boolean) {
   useEffect(() => {
     if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
     let idle: number | undefined;
     const preload = () => {
       if (ENABLED_TABS.includes("Analytics")) void import("./features/stats/StatsOverview");
       if (ENABLED_TABS.includes("Map")) void import("./features/map/MapView");
+      if (accountsOn) void import("./features/account/AccountViews");
     };
     const timer = setTimeout(() => {
       if ("requestIdleCallback" in window) idle = requestIdleCallback(preload, { timeout: 5_000 });
@@ -107,7 +113,7 @@ function usePreloadLazyTabs() {
       clearTimeout(timer);
       if (idle !== undefined) cancelIdleCallback(idle);
     };
-  }, []);
+  }, [accountsOn]);
 }
 
 // null-render component -- easiest way to sync region changes into the WS manager
@@ -192,11 +198,21 @@ function TabLoading({ tab }: { tab: string }) {
   return <EmptyState title={t(`tabs.${tab}`, { defaultValue: tab })} subtitle={t("common.loading")} />;
 }
 
+function ViewLoading() {
+  const { t } = useTranslation();
+  return <EmptyState title={t("common.loading")} />;
+}
+
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  usePreloadLazyTabs();
+  const features = useFeatures();
+  const featuresLoading = useFeaturesLoading();
+  usePreloadLazyTabs(features.accounts !== "off");
+  // While /info is loading a ?view= holds the content area, so a tab does not flash first; with accounts off it is ignored.
+  const { view } = useView();
+  const viewOpen = view !== null && (featuresLoading || features.accounts !== "off");
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
@@ -265,6 +281,7 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
+      for (const key of VIEW_PARAMS) next.delete(key);
       if (tab !== "Routes") for (const key of ["route", "routeIata"]) next.delete(key);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
@@ -381,12 +398,12 @@ function AppInner() {
       />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="relative flex flex-1 min-h-0 min-w-0">
-          <div key={activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
-            <Suspense fallback={<TabLoading tab={activeTab} />}>
-              {tabContent[activeTab]}
+          <div key={viewOpen ? "view" : activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
+            <Suspense fallback={viewOpen ? <ViewLoading /> : <TabLoading tab={activeTab} />}>
+              {viewOpen ? <AccountViews /> : tabContent[activeTab]}
             </Suspense>
           </div>
-          {analyzerHash && activeTab !== "Map" && activeTab !== "Analytics" && (
+          {!viewOpen && analyzerHash && activeTab !== "Map" && activeTab !== "Analytics" && (
             <PacketAnalyzerDrawer
               detail={analyzerDetail}
               loading={analyzerLoading}
@@ -398,7 +415,7 @@ function AppInner() {
               onViewPath={(key) => { if (analyzerDetail) handleViewPath(analyzerDetail, key); }}
             />
           )}
-          {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
+          {!viewOpen && (activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
             <NodeDetailPanel
               nodeId={selectedNodeId}
               onClose={handleCloseNode}
@@ -408,7 +425,7 @@ function AppInner() {
               onViewOnMap={canViewOnMap ? (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng) : undefined}
             />
           )}
-          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
+          {!viewOpen && panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
         </div>
       </AppShell>
     </RegionProvider>

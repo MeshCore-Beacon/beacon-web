@@ -3,7 +3,8 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodePage, NodeSort } from "../features/nodes/types";
+import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling } from "../features/nodes/types";
+
 import type {
   StatsSeries,
   SignalStats,
@@ -126,6 +127,8 @@ export interface ServerInfo {
   minAppVersion: string | null;
   minWebVersion: string | null;
   serverVersion: string;
+  // absent on servers that predate the flags
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; alertDelivery?: string; portalUrl?: string };
 }
 
 export function getServerInfo(): Promise<ServerInfo> {
@@ -480,6 +483,17 @@ export function getObserverTelemetry(
 
 export function getObserverActivity(observerId: string, range: string, interval: string, until?: number, signal?: AbortSignal): Promise<ObserverActivity> {
   return request(`/observers/${observerId}/activity`, { range, interval, until }, signal);
+}
+
+// Bucket per range, the same as the server's defaults.
+const NODE_TELEMETRY_INTERVAL: Record<NodeTelemetryRange, string> = { "24h": "1h", "168h": "6h", "720h": "24h" };
+
+export function getNodeTelemetry(id: string, range: NodeTelemetryRange, signal?: AbortSignal): Promise<NodeTelemetry> {
+  return request(`/nodes/${encodeURIComponent(id)}/telemetry`, { range, interval: NODE_TELEMETRY_INTERVAL[range] }, signal);
+}
+
+export function getNodePolling(id: string, signal?: AbortSignal): Promise<NodePolling> {
+  return request(`/nodes/${encodeURIComponent(id)}/polling`, undefined, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.

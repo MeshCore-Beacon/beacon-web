@@ -57,6 +57,10 @@
       "copyLink": "Kopiera länk",
       "copied": "Kopierad",
       "copyFailed": "Kopieringen misslyckades",
+      "showPassword": "Visa lösenord",
+      "hidePassword": "Dölj lösenord",
+      "show": "Visa",
+      "hide": "Dölj",
       "filters": "Filter",
       "closeFilters": "Stäng filter",
       "clearAll": "Rensa alla",
@@ -282,7 +286,30 @@
       "noRecentPackets": "Inga senaste paket",
       "observations_one": "{{formatted}} obs",
       "observations_other": "{{formatted}} obs",
-      "hops": "Hopp"
+      "hops": "Hopp",
+      "telemetry": {
+        "title": "Telemetri",
+        "range": "Telemetriperiod",
+        "battery": "Batteri (V)",
+        "temperature": "Temperatur (°C)",
+        "noise": "Brusgolv (dBm)",
+        "airtime": "Sändtid TX / RX (% av tiden)",
+        "waiting": "Avläses av {{name}}, väntar på första värdet",
+        "noReadings": "Inga värden i den här perioden",
+        "polledBy": "Avläses av",
+        "lastReading": "Senaste värde",
+        "standby_one": "{{count}} reserv",
+        "standby_other": "{{count}} reserv",
+        "request": "Begär telemetri",
+        "requesting": "Begär…",
+        "requestIntro": "Be Beacon låta en frivillig observatör som hör den här repeatern avläsa dess batteri och radiostatistik.",
+        "guestPassword": "Gästlösenord (valfritt)",
+        "passwordNotice": "Gästlösenordet delas med frivilliga observatörer så att de kan be repeatern om dess statistik. Ange aldrig ett administratörslösenord.",
+        "used": "{{used}} av {{limit}} begäran använda",
+        "limitReached": "Du har använt alla dina begäran. Ta bort en i din profil för att begära en till.",
+        "requested": "Telemetri begärd",
+        "manage": "Hantera i profilen"
+      }
     },
     "nodes": {
       "lastHeard": "senast mottagen {{ago}}",
@@ -924,6 +951,319 @@
     },
     "units": {
       "perDay": "{{value}}/d"
+    },
+    "atlas": {
+      "syncedToAccount": "Synkad med ditt konto",
+      "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",
+      "syncFailed": "Det gick inte att spara Atlas på ditt konto. Din ändring finns kvar på den här enheten.",
+      "loadFailed": "Det gick inte att läsa in Atlas från ditt konto. Visar den här enhetens kopia.",
+      "mergeDropped_one": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
+      "mergeDropped_other": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
+      "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet"
+    },
+    "account": {
+      "entry": {
+        "signIn": "Logga in",
+        "profile": "Profil",
+        "signOut": "Logga ut",
+        "signOutFailed": "Det gick inte att logga ut. Försök igen."
+      },
+      "fields": {
+        "login": "Användarnamn eller e-post",
+        "username": "Användarnamn",
+        "email": "E-post",
+        "password": "Lösenord",
+        "newPassword": "Nytt lösenord"
+      },
+      "signin": {
+        "title": "Logga in",
+        "submit": "Logga in",
+        "submitting": "Loggar in…",
+        "register": "Skapa ett konto",
+        "forgot": "Glömt lösenordet?",
+        "description": {
+          "atlas": "Synkronisera din Atlas.",
+          "telemetry": "Synkronisera din Atlas och begär telemetri från repeatrar.",
+          "alerts": "Synkronisera din Atlas och få aviseringar.",
+          "all": "Synkronisera din Atlas, begär telemetri från repeatrar och få aviseringar."
+        }
+      },
+      "resend": {
+        "button": "Skicka länken igen"
+      },
+      "checkEmail": {
+        "title": "Kolla din e-post",
+        "verifySent": "Om {{email}} kan användas är en bekräftelselänk på väg. Det kan ta en minut. Kolla skräpposten också.",
+        "resetSent": "Om {{email}} har ett konto är en återställningslänk på väg. Det kan ta en minut. Kolla skräpposten också.",
+        "resend": "Skicka igen",
+        "resendIn": "Skicka igen om {{seconds}} s",
+        "resent": "Skickat igen.",
+        "different": "Använd en annan e-postadress",
+        "signIn": "Logga in"
+      },
+      "register": {
+        "title": "Skapa ett konto",
+        "submit": "Skapa konto",
+        "submitting": "Skapar…",
+        "usernameHint": "3 till 30 bokstäver, siffror, punkter, bindestreck eller understreck.",
+        "passwordHint": "Minst 12 tecken.",
+        "havePrompt": "Har du redan ett konto?",
+        "signInLink": "Logga in",
+        "closed": "Registreringen är stängd på den här servern."
+      },
+      "verify": {
+        "title": "Verifiera din e-post",
+        "checking": "Kontrollerar länken…",
+        "success": "Din e-post är verifierad. Du kan logga in nu.",
+        "signIn": "Logga in",
+        "newLinkHelp": "Ange din e-post så skickar vi en ny länk.",
+        "newLink": "Skicka en ny länk"
+      },
+      "reset": {
+        "title": "Återställ lösenordet",
+        "intro": "Ange kontots e-postadress så skickar vi en återställningslänk.",
+        "send": "Skicka länk",
+        "sending": "Skickar…",
+        "setIntro": "Välj ett nytt lösenord för ditt konto.",
+        "set": "Ange lösenord",
+        "setting": "Sparar…",
+        "done": "Ditt lösenord är ändrat. Du kan logga in med det nu.",
+        "signIn": "Logga in",
+        "newLink": "Begär en ny länk",
+        "toSignIn": "Tillbaka till inloggning"
+      },
+      "bridge": {
+        "title": "Logga in i Beacon-appen",
+        "notice": "Beacon-appen ber dig logga in. Logga in här för att fortsätta.",
+        "confirm": "Beacon-appen ber om att få logga in med det här kontot:",
+        "continue": "Fortsätt",
+        "continuing": "Fortsätter…",
+        "cancel": "Avbryt",
+        "done": "Öppnar Beacon-appen. Du kan stänga den här sidan efteråt.",
+        "incomplete": "Inloggningsbegäran från appen är ofullständig. Gå tillbaka till appen och försök igen.",
+        "badRedirect": "Inloggningen kunde inte återvända till appen. Inget delades.",
+        "warning": "Fortsätt bara om du nyss valde ”Logga in” i Beacon-appen på den här enheten. Om du inte gjorde det, avbryt."
+      },
+      "errors": {
+        "generic": "Något gick fel. Försök igen.",
+        "invalid_credentials": "Fel användarnamn, e-post eller lösenord.",
+        "email_unverified": "Bekräfta din e-post först. Kolla inkorgen eller skicka länken igen nedan.",
+        "tooMany": "För många försök. Försök igen {{when}}.",
+        "whenLater": "senare",
+        "whenSeconds_one": "om {{count}} sekund",
+        "whenSeconds_other": "om {{count}} sekunder",
+        "whenMinutes_one": "om {{count}} minut",
+        "whenMinutes_other": "om {{count}} minuter",
+        "passwordTooLong": "Lösenordet är för långt.",
+        "weak_password": "Lösenordet godtas inte: {{reason}}",
+        "username_taken": "Användarnamnet är upptaget.",
+        "invalid_input": "Kontrollera det du skrev och försök igen.",
+        "registration_closed": "Registreringen är stängd på den här servern.",
+        "token_invalid": "Länken är inte längre giltig.",
+        "not_signed_in": "Du är inte inloggad. Logga in och försök igen.",
+        "csrf_rejected": "Begäran avvisades. Ladda om sidan och försök igen.",
+        "accounts_disabled": "Konton är inte aktiverade på den här servern.",
+        "service_unavailable": "Servern är upptagen. Försök igen om en stund.",
+        "read_only": "Servern är skrivskyddad just nu. Försök igen senare.",
+        "portal_managed": "Din inloggning hanteras i MeshMapper-portalen. Använd den där."
+      },
+      "profile": {
+        "title": "Profil",
+        "account": {
+          "title": "Konto",
+          "username": "Användarnamn",
+          "displayName": "Visningsnamn",
+          "save": "Spara",
+          "saving": "Sparar…",
+          "saved": "Sparat.",
+          "email": "E-post",
+          "verified": "Verifierad",
+          "unverified": "Inte verifierad",
+          "pending": "Väntar på bekräftelse: {{email}}",
+          "changeEmail": "Byt e-post",
+          "newEmail": "Ny e-post",
+          "sendLink": "Byt e-post",
+          "sending": "Skickar…",
+          "checkEmail": "Kolla din e-post. Om adressen kan användas är en bekräftelselänk på väg. Väntar på bekräftelse: {{email}}"
+        },
+        "currentPassword": "Nuvarande lösenord",
+        "wrongPassword": "Lösenordet stämmer inte.",
+        "password": {
+          "title": "Lösenord",
+          "submit": "Byt lösenord",
+          "submitting": "Sparar…",
+          "done": "Lösenordet är bytt. Dina andra enheter har loggats ut."
+        },
+        "devices": {
+          "title": "Enheter",
+          "loading": "Laddar enheter…",
+          "thisDevice": "Den här enheten",
+          "browser": "Webbläsare",
+          "app": "App",
+          "lastUsed": "Senast använd",
+          "created": "Skapad",
+          "signOut": "Logga ut",
+          "signOutNamed": "Logga ut {{label}}",
+          "signOutOthers": "Logga ut överallt annars",
+          "ending": "Loggar ut…",
+          "empty": "Inga enheter."
+        },
+        "delete": {
+          "title": "Radera konto",
+          "explain": "Det här raderar ditt konto, dina inloggningar på alla enheter och allt som sparats på det permanent. Det kan inte ångras.",
+          "start": "Radera konto",
+          "typeUsername": "Skriv {{username}} för att bekräfta",
+          "wrongUsername": "Det är inte ditt användarnamn.",
+          "confirm": "Radera mitt konto",
+          "deleting": "Raderar…",
+          "cancel": "Avbryt"
+        },
+        "portal": {
+          "title": "Inloggning",
+          "managed": "Din inloggning hanteras i MeshMapper-portalen.",
+          "open": "Öppna MeshMapper-portalen"
+        }
+      },
+      "alerts": {
+        "title": "Aviseringar",
+        "loading": "Läser in aviseringar…",
+        "toEmail": "Aviseringar skickas till {{email}}",
+        "toApp": "Aviseringar skickas till Beacon-appen på din telefon",
+        "noDevice": "Logga in i Beacon-appen på en telefon för att få dem.",
+        "empty": "Aviseringar ställs in på radioapparater i din Atlas. Lägg först till en radio.",
+        "openAtlas": "Öppna fliken Atlas",
+        "always": "Du får alltid besked när en av dina telemetribegäranden behöver uppmärksamhet.",
+        "turnOn": "Avisering: {{name}}",
+        "backOnlineHint": "Slå först på {{name}}.",
+        "voltsPerDay": "{{volts}} V per dygn",
+        "hours_one": "{{count}} timme",
+        "hours_other": "{{count}} timmar",
+        "minutes_one": "{{count}} minut",
+        "minutes_other": "{{count}} minuter",
+        "days_one": "{{count}} dygn",
+        "days_other": "{{count}} dygn",
+        "fields": {
+          "hours": "Timmar",
+          "volts": "Volt",
+          "drop": "Fall per dygn",
+          "low": "Låg (°C)",
+          "high": "Hög (°C)",
+          "dbm": "dBm",
+          "drift": "Avvikelse",
+          "offline": "Ingen rapport på"
+        },
+        "state": {
+          "ok": "OK",
+          "firing": "Larmar sedan",
+          "inactive": "Inga data just nu",
+          "unknown": "Inte kontrollerad än"
+        },
+        "kinds": {
+          "gone_quiet": { "name": "Tystnat", "when": "När radion inte har hörts på så här länge." },
+          "back_online": { "name": "Tillbaka online", "when": "När radion hörs igen efter att ha tystnat." },
+          "battery_low": { "name": "Lågt batteri", "when": "När batteriet stannar under den här spänningen." },
+          "battery_falling": { "name": "Fallande batteri", "when": "När batteriet sjunker snabbare än så här på ett dygn." },
+          "rebooted": { "name": "Startade om", "when": "När radion startar om." },
+          "temperature": { "name": "Temperatur", "when": "När temperaturen går under den låga gränsen eller över den höga." },
+          "noise_high": { "name": "Högt brus", "when": "När brusnivån stannar över den här nivån." },
+          "clock": { "name": "Klockavvikelse", "when": "När radions klocka avviker mer än så här." },
+          "observer_offline": { "name": "Observatör offline", "when": "När observatören inte skickar någon statusrapport på så här länge." }
+        },
+        "reason": {
+          "observerNoData": "Den här observatören rapporterar inte {{what}}.",
+          "repeatersOnly": "Bara repeatrar rapporterar {{what}}.",
+          "notPolled": "Beacon hämtar inte data från den här repeatern. Begär telemetri för den först.",
+          "noData": "Den här repeatern rapporterar inte {{what}}.",
+          "observerNoClock": "Observatörer har inget klockavvikelsevärde.",
+          "clockRepeatersOnly": "Bara repeatrar och rumsservrar rapporterar sin klocka.",
+          "needsGoneQuiet": "Slå först på tystnadsaviseringen för den här radion.",
+          "notApplicable": "Den här aviseringen gäller inte den här radion."
+        },
+        "reasonWhat": {
+          "battery": "batterinivå",
+          "uptime": "drifttid",
+          "temperature": "temperatur",
+          "noise": "brusnivå"
+        },
+        "errors": {
+          "battery_low": "Ange en spänning mellan 2,50 och 5,00.",
+          "noise_high": "Ange en nivå mellan -130 och -50 dBm.",
+          "temperature_one": "Ange en låg eller en hög gräns.",
+          "temperature_number": "Ange gränserna som tal i grader C.",
+          "temperature_order": "Den låga gränsen måste vara under den höga.",
+          "temperature_width": "Den höga gränsen måste vara minst 2 grader över den låga.",
+          "temperature_range": "Ange gränser mellan -50 och 150 grader C.",
+          "kind_unavailable": "Den här aviseringen finns inte för den här radion.",
+          "invalid_threshold": "Det är inget tillåtet värde för den här aviseringen.",
+          "not_on_atlas": "Den här radion finns inte längre i din Atlas.",
+          "alerts_disabled": "Aviseringar är avstängda på den här servern.",
+          "not_found": "Den aviseringen finns inte längre.",
+          "app_session_required": "Bara Beacon-appen kan registrera en telefon för aviseringar."
+        }
+      },
+      "requests": {
+        "title": "Telemetribegäran",
+        "count": "{{used}} av {{limit}}",
+        "loading": "Laddar begäran…",
+        "empty": "Du har inte begärt någon telemetri ännu. Öppna en repeater på fliken Noder och välj Begär telemetri.",
+        "status": {
+          "waiting": "Väntar på en observatör som kan nå den",
+          "active": "Avläses",
+          "login_failed": "Repeatern avvisade lösenordet",
+          "admin_stopped": "Stoppad: lösenordet gav administratörsåtkomst och raderades",
+          "disabled": "Pausad: repeatern har inte hörts på sistone"
+        },
+        "reason": {
+          "noObserver": "Ingen observatör kan nå den här repeatern ännu.",
+          "noSeat": "Alla observatörer som kan nå den här repeatern avläser redan sitt max.",
+          "loginFailed": "Repeatern godtog inte det här gästlösenordet. Ange ett nytt.",
+          "blankFailed": "Repeatern godtog inte en tom eller hello-inloggning. Ange ett gästlösenord.",
+          "adminStopped": "Repeatern gav administratörsåtkomst med det här lösenordet, så Beacon raderade det. Ange ett gästlösenord, aldrig ett administratörslösenord.",
+          "blankBlocked": "Den här repeatern ger administratörsåtkomst med en tom inloggning, så Beacon avläser den inte utan gästlösenord.",
+          "offline_one": "Ingen observatör har hört den på {{count}} dag.",
+          "offline_other": "Ingen observatör har hört den på {{count}} dagar."
+        },
+        "polledBy": "Avläses av",
+        "noObserver": "ingen observatör ännu",
+        "lastReading": "Senaste värde",
+        "never": "inget ännu",
+        "passwordSet": "Lösenord satt",
+        "noPassword": "Inget lösenord",
+        "changePassword": "Ändra lösenord",
+        "adminStoppedHelp": "Lösenordet du angav var ett administratörslösenord. Beacon har raderat det. Bara ett gästlösenord startar begäran igen.",
+        "enterNewPassword": "Ange ett nytt lösenord",
+        "enterNewPasswordNamed": "Ange ett nytt lösenord för {{name}}",
+        "changePasswordNamed": "Ändra lösenord för {{name}}",
+        "newPassword": "Nytt gästlösenord",
+        "passwordHint": "Lämna tomt för att ta bort lösenordet.",
+        "notice": "Gästlösenordet delas med frivilliga observatörer så att de kan be repeatern om dess statistik. Ange aldrig ett administratörslösenord.",
+        "savePassword": "Spara lösenord",
+        "saving": "Sparar…",
+        "cancel": "Avbryt",
+        "reenable": "Aktivera igen",
+        "reenableNamed": "Aktivera {{name}} igen",
+        "enabling": "Aktiverar…",
+        "remove": "Ta bort",
+        "removeNamed": "Ta bort {{name}}",
+        "removeAsk": "Sluta begära telemetri för {{name}}?",
+        "removeYes": "Ja, ta bort",
+        "removing": "Tar bort…",
+        "errors": {
+          "request_limit": "Du har använt alla dina telemetribegäran.",
+          "already_requested": "Du har redan begärt den här repeatern.",
+          "not_a_repeater": "Bara repeatrar och rumsservrar kan avläsas.",
+          "password_invalid": "Lösenordet måste vara 1 till 15 tecken.",
+          "password_invalid_stopped": "Den här begäran behöver ett gästlösenord på 1 till 15 tecken. Den kan inte startas om med en tom inloggning.",
+          "no_password_blocked": "Den här repeatern ger administratörsåtkomst utan lösenord, så den kan inte avläsas på det här sättet",
+          "requests_disabled": "Telemetribegäran är inte aktiverade på den här servern.",
+          "not_found": "Den begäran finns inte längre."
+        }
+      },
+      "portal": {
+        "intro": "Beacon loggar in dig med ditt MeshMapper-konto.",
+        "button": "Logga in med MeshMapper",
+        "failed": "Inloggningen slutfördes inte. Försök igen."
+      }
     }
   }
 }

@@ -4,18 +4,28 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { NodeDetailPanel } from "../../../src/features/nodes/NodeDetailPanel";
 import i18n from "../../../src/i18n";
-import { getNode, getNodeObservations, getNodeNeighbors } from "../../../src/api/client";
+import { getNode, getNodeObservations, getNodeNeighbors, getServerInfo, getNodeTelemetry, getNodePolling } from "../../../src/api/client";
 import type { MeshMapperRepeater, Node, NodeNeighbor } from "../../../src/features/nodes/types";
 
 vi.mock("../../../src/api/client", () => ({
   getNode: vi.fn(),
   getNodeObservations: vi.fn(),
   getNodeNeighbors: vi.fn(),
+  getServerInfo: vi.fn(),
+  getNodeTelemetry: vi.fn(),
+  getNodePolling: vi.fn(),
+  isNotFound: () => false,
+}));
+vi.mock("../../../src/features/stats/EChart", () => ({
+  EChart: () => <div data-testid="chart" />,
 }));
 
 const mockGetNode = vi.mocked(getNode);
 const mockGetNodeObservations = vi.mocked(getNodeObservations);
 const mockGetNodeNeighbors = vi.mocked(getNodeNeighbors);
+const mockGetServerInfo = vi.mocked(getServerInfo);
+const mockGetNodeTelemetry = vi.mocked(getNodeTelemetry);
+const mockGetNodePolling = vi.mocked(getNodePolling);
 
 const node: Node = {
   id: "node-self",
@@ -56,6 +66,72 @@ beforeEach(() => {
   mockGetNode.mockResolvedValue(node);
   mockGetNodeObservations.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
   mockGetNodeNeighbors.mockResolvedValue([]);
+  mockGetServerInfo.mockReset();
+  mockGetNodeTelemetry.mockReset();
+  mockGetNodePolling.mockReset();
+  mockGetServerInfo.mockResolvedValue({ features: { polling: false, accounts: "off", telemetryRequests: false, alerts: false } } as never);
+  mockGetNodeTelemetry.mockResolvedValue({ range: "168h", interval: "6h", polled: true, untrustedReadings: 0, points: [{ t: 1_700_000_000_000, readings: 1, batteryMv: 4200 }] });
+  mockGetNodePolling.mockResolvedValue({ polled: true, latestReadingAt: 1_700_000_000_000, poller: { observerId: "o1", name: "Poller" }, standbys: [] });
+});
+
+function setPolling(on: boolean) {
+  mockGetServerInfo.mockResolvedValue({ features: { polling: on, accounts: "off", telemetryRequests: false, alerts: false } } as never);
+}
+
+describe("NodeDetailPanel telemetry section", () => {
+  it("shows the section for a repeater when polling is on", async () => {
+    setPolling(true);
+    mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "repeater" });
+    renderPanel();
+    expect(await screen.findByText("Polled by")).toBeInTheDocument();
+    expect(mockGetNodeTelemetry).toHaveBeenCalled();
+  });
+
+  it("shows it for a room server", async () => {
+    setPolling(true);
+    mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "room_server" });
+    renderPanel();
+    expect(await screen.findByText("Polled by")).toBeInTheDocument();
+  });
+
+  it("resets the range when the panel switches to another node", async () => {
+    setPolling(true);
+    // The next node is already cached, so the panel never unmounts the section while it loads.
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["node", "node-other"], { ...node, id: "node-other", nodeTypeName: "repeater" });
+    mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "repeater" });
+    const ui = (id: string) => (
+      <QueryClientProvider client={client}>
+        <NodeDetailPanel nodeId={id} onClose={vi.fn()} onViewObserver={vi.fn()} />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(ui("node-self"));
+    fireEvent.click(await screen.findByRole("button", { name: "24h" }));
+    expect(screen.getByRole("button", { name: "24h" })).toHaveAttribute("aria-pressed", "true");
+    rerender(ui("node-other"));
+    expect(await screen.findByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("is absent and fetches nothing when polling is off", async () => {
+    mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "repeater" });
+    renderPanel();
+    await screen.findByText("Self Node");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("Polled by")).not.toBeInTheDocument();
+    expect(mockGetNodeTelemetry).not.toHaveBeenCalled();
+    expect(mockGetNodePolling).not.toHaveBeenCalled();
+  });
+
+  it("is absent and fetches nothing for a companion", async () => {
+    setPolling(true);
+    mockGetNode.mockResolvedValue({ ...node, nodeTypeName: "companion" });
+    renderPanel();
+    await screen.findByText("Self Node");
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("Polled by")).not.toBeInTheDocument();
+    expect(mockGetNodeTelemetry).not.toHaveBeenCalled();
+    expect(mockGetNodePolling).not.toHaveBeenCalled();
+  });
 });
 
 describe("NodeDetailPanel neighbors", () => {

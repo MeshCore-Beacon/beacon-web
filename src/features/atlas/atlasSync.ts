@@ -1,0 +1,93 @@
+import { ATLAS_LIMIT, NO_NODE_ID, parseAtlas, pinKey, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas } from "./atlas";
+
+// The account document, as /me/atlas answers it. Times and ids follow the API contract.
+export interface ServerNodePin { kind: "node"; publicKey: string; id: string | null; name: string; observerId: string | null; tiles?: ObserverTile[]; view?: AtlasView }
+export interface ServerObserverPin { kind: "observer"; observerPublicKey: string; observerId: string | null; name: string; tiles?: ObserverTile[] }
+export interface ServerAtlas { revision: number; range: AtlasRange; limit: number; pins: (ServerNodePin | ServerObserverPin)[] }
+
+export type PutPin =
+  | { kind: "node"; publicKey: string; name: string; tiles?: ObserverTile[]; view?: AtlasView }
+  | { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
+  | { kind: "observer"; observerPublicKey: string; name: string; tiles?: ObserverTile[] };
+export interface PutAtlas { baseRevision: number; range: AtlasRange; pins: PutPin[] }
+
+// observerId -> public key, for the observers the server has told us about. Kept in memory only, so the
+// stored shape stays what older builds and the app's import read.
+export type ObserverKeys = Record<string, string>;
+
+const PLACEHOLDER_PREFIX = "00000000-0000-4000-8000-";
+// An observer the server no longer knows by id still needs a distinct local id.
+export const placeholderObserverId = (publicKey: string) => PLACEHOLDER_PREFIX + publicKey.slice(0, 12).toLowerCase();
+const isPlaceholder = (id: string) => id.startsWith(PLACEHOLDER_PREFIX);
+
+export const emptyAtlas = (): SavedAtlas => ({ version: 2, range: "24h", pins: [] });
+
+// The server document as a local Atlas. `previous` lends the ids the server could not resolve.
+export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys): { atlas: SavedAtlas; keys: ObserverKeys } {
+  const nodeIds = new Map<string, string>();
+  const observerIds = new Map<string, string>();
+  for (const pin of previous?.pins ?? []) {
+    if (pin.kind === "node") nodeIds.set(pin.publicKey, pin.id);
+    else if (known[pin.observerId]) observerIds.set(known[pin.observerId]!, pin.observerId);
+  }
+  const keys: ObserverKeys = {};
+  const pins = doc.pins.map((pin) => {
+    const tiles = pin.tiles && { tiles: pin.tiles };
+    if (pin.kind === "node") {
+      const publicKey = pin.publicKey.toLowerCase();
+      if (pin.observerId) keys[pin.observerId] = publicKey;
+      return { kind: "node", id: pin.id ?? nodeIds.get(publicKey) ?? NO_NODE_ID, publicKey, name: pin.name, observerId: pin.observerId ?? undefined, ...tiles, view: pin.view };
+    }
+    const key = pin.observerPublicKey.toLowerCase();
+    const observerId = pin.observerId ?? observerIds.get(key) ?? placeholderObserverId(key);
+    keys[observerId] = key;
+    return { kind: "observer", observerId, name: pin.name, ...tiles };
+  });
+  // Through the local parser so the cap, dedupe and tile defaults match everything else that loads.
+  return { atlas: parseAtlas(JSON.stringify({ version: 2, range: doc.range, pins })), keys };
+}
+
+export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number): PutAtlas {
+  const pins = saved.pins.map((pin): PutPin => {
+    const tiles = pin.tiles && { tiles: pin.tiles };
+    if (pin.kind === "node") return { kind: "node", publicKey: pin.publicKey, name: pin.name, ...tiles, ...(pin.view && { view: pin.view }) };
+    const key = keys[pin.observerId];
+    if (isPlaceholder(pin.observerId) && key) return { kind: "observer", observerPublicKey: key, name: pin.name, ...tiles };
+    return { kind: "observer", observerId: pin.observerId, name: pin.name, ...tiles };
+  });
+  return { baseRevision, range: saved.range, pins };
+}
+
+// Does the server list already hold this local pin, under either of its identities?
+function held(pin: AtlasPin, server: AtlasPin[], keys: ObserverKeys): boolean {
+  const key = pin.kind === "observer" ? keys[pin.observerId] : undefined;
+  return server.some((other) => {
+    if (pinKey(other) === pinKey(pin) && other.kind === pin.kind) return true;
+    if (pin.kind === "observer") {
+      if (other.observerId === pin.observerId) return true;
+      return key !== undefined && (other.kind === "node" ? other.publicKey === key : keys[other.observerId] === key);
+    }
+    return other.kind === "observer" && keys[other.observerId] === pin.publicKey;
+  });
+}
+
+export interface MergeResult { atlas: SavedAtlas; dropped: number; upload: boolean }
+
+// First sign-in: server pins first, then local pins it does not hold, up to the limit. `upload` says
+// whether the result differs from the server copy.
+export function mergeAtlas(server: SavedAtlas, local: SavedAtlas, keys: ObserverKeys): MergeResult {
+  if (local.pins.length === 0) return { atlas: server, dropped: 0, upload: false };
+  if (server.pins.length === 0) return { atlas: { ...local, pins: local.pins.slice(0, ATLAS_LIMIT) }, dropped: Math.max(0, local.pins.length - ATLAS_LIMIT), upload: true };
+  const extra = local.pins.filter((pin) => !held(pin, server.pins, keys));
+  const room = Math.max(0, ATLAS_LIMIT - server.pins.length);
+  return {
+    atlas: { ...server, pins: [...server.pins, ...extra.slice(0, room)] },
+    dropped: Math.max(0, extra.length - room),
+    upload: extra.length > 0 && room > 0,
+  };
+}
+
+export const syncedMarker = (userId: string) => `beacon-atlas-synced:${userId}`;
+
+// The user id the local copy was last synced to, so another account never inherits it.
+export const OWNER_KEY = "beacon-atlas-owner";

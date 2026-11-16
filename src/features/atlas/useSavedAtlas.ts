@@ -26,10 +26,12 @@ export function useSavedAtlas() {
     window.addEventListener("storage", receive);
     return () => window.removeEventListener("storage", receive);
   }, []);
-  const update = (change: (value: SavedAtlas) => SavedAtlas) => {
+  // `persist: false` changes only what is on screen; the synced Atlas uses it for the automatic rewrites.
+  const update = (change: (value: SavedAtlas) => SavedAtlas, persist = true) => {
     const next = change(current.current);
     current.current = next;
     setSaved(next);
+    if (!persist) return;
     try {
       localStorage.setItem(ATLAS_KEY, JSON.stringify(next));
       setStorageFailed(false);
@@ -37,5 +39,5 @@ export function useSavedAtlas() {
       setStorageFailed(true);
     }
   };
-  return { saved, update, storageFailed };
+  return { saved, update, storageFailed, latest: () => current.current };
 }
