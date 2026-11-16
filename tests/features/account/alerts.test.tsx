@@ -358,6 +358,22 @@ describe("alerts section", () => {
         fireEvent.blur(low);
         await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: -90, thresholdHigh: 400 })));
       });
+
+      it("turning an F limit back on keeps the stored tenths of both bounds", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ enabled: false, threshold: 355, thresholdHigh: 412 })));
+        fireEvent.click(row("Hilltop", "temperature").getByRole("switch"));
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 355, thresholdHigh: 412, enabled: true })));
+      });
+
+      it("editing only the high F limit keeps the untouched low limit's stored tenths", async () => {
+        units.temperature = "f";
+        await open(withRule(temperatureRule({ threshold: 355, thresholdHigh: 412 })));
+        const high = row("Hilltop", "temperature").getByLabelText("High (°F)");
+        fireEvent.change(high, { target: { value: "110" } });
+        fireEvent.blur(high);
+        await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ threshold: 355, thresholdHigh: 433, enabled: true })));
+      });
     });
 
     it("the width message is translated in fr and sv", async () => {

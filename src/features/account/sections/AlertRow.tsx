@@ -11,7 +11,7 @@ import { useDisplayUnits } from "../../../hooks/useFeatures";
 import { tempSymbol } from "../../../lib/units";
 import { alertErrorText } from "../errors";
 import {
-  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, temperatureLimits, type Inputs,
+  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, temperatureLimits, type Inputs, type Parsed,
 } from "../alertRules";
 import type { AlertKind, AlertRule, AlertTarget } from "../types";
 import { useSessionEnded } from "./useSessionEnded";
@@ -37,9 +37,20 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   const checked = save.isPending ? save.variables.enabled : rule?.enabled ?? false;
   const blocked = kind === "back_online" && !goneQuietOn && !checked;
 
+  // A box still showing its displayed text keeps the stored value, since F rounds the display.
+  const resolve = (next: Inputs): Parsed => {
+    const shown = inputsFor(kind, rule, tempUnit);
+    const keepA = rule?.threshold != null && next.a.trim() === shown.a;
+    const keepB = rule?.thresholdHigh != null && next.b.trim() === shown.b;
+    if (keepA && keepB) return { ok: true, threshold: rule?.threshold ?? null, thresholdHigh: rule?.thresholdHigh ?? null };
+    const parsed = parseInputs(kind, next, tempUnit);
+    if (!parsed.ok || (!keepA && !keepB)) return parsed;
+    return { ok: true, threshold: keepA ? rule?.threshold ?? null : parsed.threshold, thresholdHigh: keepB ? rule?.thresholdHigh ?? null : parsed.thresholdHigh };
+  };
+
   // Validates the inputs and sends them; an invalid value shows an error and sends nothing.
   const send = (next: Inputs, enabled: boolean) => {
-    const parsed = parseInputs(kind, next, tempUnit);
+    const parsed = resolve(next);
     if (!parsed.ok) {
       setLocal(parsed.error);
       return;
@@ -67,10 +78,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   // Typed inputs save when focus leaves, and only if the value moved.
   const blur = () => {
     if (!rule?.enabled) return;
-    // An unedited box still shows its rounded display (F), so re-parsing it would move the stored value.
-    const shown = inputsFor(kind, rule, tempUnit);
-    if (inputs.a === shown.a && inputs.b === shown.b) return;
-    const parsed = parseInputs(kind, inputs, tempUnit);
+    const parsed = resolve(inputs);
     if (!parsed.ok) return setLocal(parsed.error);
     if (parsed.threshold === rule.threshold && parsed.thresholdHigh === rule.thresholdHigh) return;
     send(inputs, true);
