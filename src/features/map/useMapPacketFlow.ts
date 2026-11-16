@@ -98,6 +98,10 @@ export function useMapPacketFlow(
 
   const startLoop = useCallback(() => {
     if (rafRef.current != null) return;
+    // GeoJSON updates cross the worker boundary. Keep their cost independent of
+    // a monitor's 60/120/240 Hz refresh rate; positions still use elapsed time.
+    const frameMs = 1000 / 30;
+    let paintedAt: number | null = null;
     // light hop k of a flow at the moment the dot reached it; unknown nodes stay dark
     function lightHop(p: Flow, k: number) {
       const id = p.ids[k];
@@ -118,6 +122,11 @@ export function useMapPacketFlow(
     function frame() {
       const map = mapRef.current;
       const now = performance.now();
+      if (paintedAt !== null && now - paintedAt < frameMs) {
+        rafRef.current = requestAnimationFrame(frame);
+        return;
+      }
+      paintedAt = now;
 
       const dots: Feature<Point>[] = [];
       const lines: Feature<LineString>[] = [];

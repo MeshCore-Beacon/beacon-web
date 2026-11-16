@@ -558,7 +558,9 @@
       "empty": "Aucune observation de ce trajet n’est encore conservée. Les plus anciennes ont pu expirer.",
       "more": "Charger plus",
       "cap": "Affichage des 500 observations les plus récentes.",
-      "inspect": "Examiner le paquet"
+      "inspect": "Examiner le paquet",
+      "invalidPath": "Chemin partagé invalide. Rouvrez le trajet pour utiliser sa représentation actuelle.",
+      "invalid": "Période partagée invalide. Choisissez une période pour continuer."
     },
     "channelMessages": {
       "select": "Choisir un canal",
@@ -802,6 +804,23 @@
       "lastSeen": "Dernière réception"
     },
     "traces": {
+      "quality": {
+        "snrBytes": "Octets SNR enregistrés",
+        "show": "Afficher les observations possiblement liées à une collision",
+        "hidden": "{{count}} masquées dans cet échantillon",
+        "suspect": "Observation suspecte",
+        "ambiguous": "Collision de préfixe possible",
+        "evidenceOnly": "Les données brutes sont conservées. Elles ne prouvent ni un trajet réel ni une collision confirmée.",
+        "unsupported_version": "Version de paquet non prise en charge",
+        "non_direct_trace": "TRACE ne prend pas en charge la diffusion",
+        "incomplete_payload": "Charge utile de trace incomplète",
+        "payload_too_large": "Charge utile supérieure à la limite du protocole",
+        "unsupported_flags": "Indicateurs de trace non reconnus",
+        "misaligned_hashes": "Octets incompatibles avec la largeur annoncée",
+        "too_many_hops": "Trajet dépassant le nombre de sauts pris en charge",
+        "invalid_snr_path": "Le chemin SNR ne correspond pas à cette trace",
+        "ambiguous_prefix": "Un saut correspond à plusieurs nœuds connus"
+      },
       "packets": "Paquets",
       "packetCount_one": "{{count}} paquet",
       "packetCount_other": "{{count}} paquets",
@@ -826,7 +845,8 @@
       "all": "Tous",
       "trace": "Trace",
       "ping": "Ping",
-      "empty": "Aucune trace"
+      "empty": "Aucune trace",
+      "hops": "{{count}} sauts"
     },
     "loadingPill": {
       "nodes": {
@@ -1284,15 +1304,42 @@
           "unknown": "Pas encore vérifié"
         },
         "kinds": {
-          "gone_quiet": { "name": "Silence", "when": "Quand la radio n'a pas été entendue depuis ce délai." },
-          "back_online": { "name": "De retour", "when": "Quand la radio est de nouveau entendue après un silence." },
-          "battery_low": { "name": "Batterie faible", "when": "Quand la batterie reste sous cette tension." },
-          "battery_falling": { "name": "Batterie en baisse", "when": "Quand la batterie baisse plus vite que cela en une journée." },
-          "rebooted": { "name": "Redémarrage", "when": "Quand la radio redémarre." },
-          "temperature": { "name": "Température", "when": "Quand la température passe sous la limite basse ou au-dessus de la limite haute." },
-          "noise_high": { "name": "Bruit élevé", "when": "Quand le niveau de bruit reste au-dessus de cette valeur." },
-          "clock": { "name": "Dérive d'horloge", "when": "Quand l'horloge de la radio s'écarte de plus que cela." },
-          "observer_offline": { "name": "Observateur hors ligne", "when": "Quand l'observateur n'envoie aucun rapport d'état depuis ce délai." }
+          "gone_quiet": {
+            "name": "Silence",
+            "when": "Quand la radio n'a pas été entendue depuis ce délai."
+          },
+          "back_online": {
+            "name": "De retour",
+            "when": "Quand la radio est de nouveau entendue après un silence."
+          },
+          "battery_low": {
+            "name": "Batterie faible",
+            "when": "Quand la batterie reste sous cette tension."
+          },
+          "battery_falling": {
+            "name": "Batterie en baisse",
+            "when": "Quand la batterie baisse plus vite que cela en une journée."
+          },
+          "rebooted": {
+            "name": "Redémarrage",
+            "when": "Quand la radio redémarre."
+          },
+          "temperature": {
+            "name": "Température",
+            "when": "Quand la température passe sous la limite basse ou au-dessus de la limite haute."
+          },
+          "noise_high": {
+            "name": "Bruit élevé",
+            "when": "Quand le niveau de bruit reste au-dessus de cette valeur."
+          },
+          "clock": {
+            "name": "Dérive d'horloge",
+            "when": "Quand l'horloge de la radio s'écarte de plus que cela."
+          },
+          "observer_offline": {
+            "name": "Observateur hors ligne",
+            "when": "Quand l'observateur n'envoie aucun rapport d'état depuis ce délai."
+          }
         },
         "reason": {
           "observerNoData": "Cet observateur ne remonte pas {{what}}.",

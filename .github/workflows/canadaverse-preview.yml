@@ -1,0 +1,65 @@
+name: Build Canadaverse preview bundle
+
+on:
+  push:
+    tags: ["v*-n30nex.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'n30nex/beacon-web-contributions'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build preview
+        env:
+          VITE_API_BASE: /beacon-dev/api/v1
+          VITE_WS_URL: wss://canadaverse.org/beacon-dev/ws
+          VITE_CHANGELOG_URL: /beacon-dev/source.html
+        run: |
+          npm run build -- --base=/beacon-dev/
+          node --input-type=module <<'JS'
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { brotliCompressSync, gzipSync, constants } from 'node:zlib';
+          for (const file of readdirSync('dist/assets')) {
+            if (!/\.(js|css)$/.test(file)) continue;
+            const path = join('dist/assets', file);
+            const data = readFileSync(path);
+            writeFileSync(path + '.gz', gzipSync(data, { level: 9 }));
+            writeFileSync(path + '.br', brotliCompressSync(data, { params: { [constants.BROTLI_PARAM_QUALITY]: 9 } }));
+          }
+          JS
+          mkdir preview-output
+          tar -cf preview-output/web-dist.tar -C dist .
+          git archive --format=tar HEAD -o preview-output/web-source.tar
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          out = pathlib.Path("preview-output")
+          revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          result = {
+              "revision": revision,
+              "tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], text=True).strip(),
+              "version": json.loads(pathlib.Path("package.json").read_text())["version"],
+              "base": "/beacon-dev/",
+              "environment": {k: os.environ[k] for k in ("VITE_API_BASE", "VITE_WS_URL", "VITE_CHANGELOG_URL")},
+              "archives": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in out.glob("*.tar")},
+              "assets": {str(p.relative_to("dist")): hashlib.sha256(p.read_bytes()).hexdigest()
+                         for p in pathlib.Path("dist").rglob("*") if p.is_file()},
+          }
+          (out / "artifact.json").write_text(json.dumps(result, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canadaverse-preview-${{ github.sha }}
+          path: preview-output/
+          if-no-files-found: error
+          retention-days: 7

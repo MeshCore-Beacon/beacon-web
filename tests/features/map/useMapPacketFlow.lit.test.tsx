@@ -122,6 +122,18 @@ const ORDER = [
 ];
 
 describe("useMapPacketFlow lit nodes", () => {
+  it("bounds worker updates on a 120 Hz screen without slowing hop timing", () => {
+    const { emit, sources, lastLit } = setup();
+    emit([hop("r1", -75, 45), hop("r2", -74, 45)]);
+    const data = sources.get(LIVE_LIT_SOURCE_ID)!.setData;
+    data.mockClear();
+    for (let t = 0; t <= 1000; t += 1000 / 120) frame(t);
+    expect(data.mock.calls.length).toBeLessThanOrEqual(31);
+    expect(data.mock.calls.length).toBeGreaterThanOrEqual(24);
+    frame(1500);
+    expect(lastLit()!.features).toEqual([]);
+  });
+
   it("stacks trail < lit labels < lit icons < dot halo < dot, also after a basemap switch", () => {
     const { layers, sources, view } = setup();
     expect(layers).toEqual(ORDER);
