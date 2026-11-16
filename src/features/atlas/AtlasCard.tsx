@@ -496,8 +496,9 @@ export function AtlasCard({
           )}
           {footer(
             node.lastSeen > 0 && (
-              <span className="min-w-0 truncate">
-                <span>{t("atlas.lastSeen")}</span> <Timestamp value={node.lastSeen} />
+              <span className="flex min-w-0 items-baseline gap-1">
+                <span className="truncate">{t("atlas.lastSeen")}</span>
+                <Timestamp value={node.lastSeen} className="shrink-0" />
               </span>
             ),
             `${meanHops} · ${neighbors}`,
