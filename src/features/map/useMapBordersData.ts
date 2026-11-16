@@ -29,19 +29,19 @@ export function mergeBorders(entries: { iata: string; border: IataBorder | null 
 }
 
 // Fetch the border for each active IATA (only while `enabled`), then merge into one collection.
-// Cache geometry for an hour; missing borders can appear after an operator imports a snapshot.
+// Treat geometry as fresh for an hour; missing borders can appear after an operator imports a snapshot.
 export function useMapBordersData(iataCodes: string[], enabled: boolean): BorderFeatureCollection {
   const results = useQueries({
-    queries: iataCodes.map((iata) => ({
+    // Removing this view's subscriptions lets Query cancel unused reads without disrupting other views.
+    queries: (enabled ? iataCodes : []).map((iata) => ({
       queryKey: ["iata-border", iata],
-      queryFn: () => getIataBorder(iata),
-      enabled,
+      queryFn: ({ signal }) => getIataBorder(iata, signal),
       staleTime: (query: { state: { data: unknown } }) => query.state.data ? 3_600_000 : 60_000,
     })),
   });
 
   // Keep the collection stable between renders, but replace geometry after a successful refresh.
-  // disabled queries keep their cached data, so an off toggle has to empty the collection itself
+  // an off toggle hides the collection while completed query results remain in the shared cache
   const sig = enabled ? iataCodes.map((iata, i) => `${iata}:${idOf(results[i]?.data)}`).join("|") : "off";
   return useMemo(
     () => mergeBorders(enabled ? iataCodes.map((iata, i) => ({ iata, border: results[i]?.data ?? null })) : []),

@@ -142,9 +142,9 @@ export function getIatas(): Promise<IataCode[]> {
 
 // An IATA's GeoJSON border, or null when none is configured. Can't use request(): the endpoint
 // answers 204 (empty body) or a literal `null` for "no border", and request() always parses JSON.
-export async function getIataBorder(iata: string): Promise<IataBorder | null> {
+export async function getIataBorder(iata: string, signal?: AbortSignal): Promise<IataBorder | null> {
   const url = new URL(`${API_BASE}/iatas/${iata}/border`, window.location.origin);
-  const res = await apiFetch(url);
+  const res = await apiFetch(url, signal);
   if (!res.ok) throw await errorFrom(res);
   noteRequestOk();
   if (res.status === 204) return null;
