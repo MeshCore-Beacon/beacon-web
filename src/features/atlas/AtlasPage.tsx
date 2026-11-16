@@ -42,6 +42,12 @@ type Matches =
   | { kind: "node"; items: NodeSummary[]; hasMore: boolean }
   | { kind: "observer"; items: ObserverDirectoryItem[]; hasMore: boolean };
 
+function without(views: Record<string, AtlasView>, key: string): Record<string, AtlasView> {
+  const next = { ...views };
+  delete next[key];
+  return next;
+}
+
 // Global by design: pins are radio identities, so the header region picker does not apply here.
 export function AtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
@@ -50,10 +56,11 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [field, setField] = useState("name");
-  // One card at a time is away from the view it opens on.
-  const [open, setOpen] = useState<{ key: string; view: AtlasView } | null>(null);
-  const viewOf = (pin: AtlasPin) => (open?.key === pinKey(pin) ? open.view : homeView(pin));
-  const setView = (pin: AtlasPin, view: AtlasView) => setOpen(view === homeView(pin) ? null : { key: pinKey(pin), view });
+  // Each card keeps the view picked this session; only the pin saves it as where the card opens.
+  const [open, setOpen] = useState<Record<string, AtlasView>>({});
+  const viewOf = (pin: AtlasPin) => open[pinKey(pin)] ?? homeView(pin);
+  const setView = (pin: AtlasPin, view: AtlasView) =>
+    setOpen((current) => (view === homeView(pin) ? without(current, pinKey(pin)) : { ...current, [pinKey(pin)]: view }));
   // Switching the field changes what the box means, so stale text must not carry over.
   const changeField = (value: string) => {
     setField(value);
@@ -120,7 +127,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? withTelemetryTiles(other, tiles) : other)) }));
   const pinView = (pin: AtlasPin, view: AtlasView) => {
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? withView(other, view) : other)) }));
-    setOpen((current) => (current?.key === pinKey(pin) ? null : current));
+    setOpen((current) => without(current, pinKey(pin)));
   };
   // An observer pin whose key now resolves to a node takes that node's place in its own slot, and
   // keeps opening on the Observer view it had.
@@ -155,7 +162,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const [notice, setNotice] = useState<ImportNotice | null>(null);
   const applyImport = (result: AtlasImport) => {
     update(() => result.atlas);
-    setOpen(null);
+    setOpen({});
     setPendingImport(null);
     setNotice({ kind: "imported", count: result.atlas.pins.length, skipped: result.skipped });
   };

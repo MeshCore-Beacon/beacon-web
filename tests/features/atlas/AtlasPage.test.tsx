@@ -340,18 +340,16 @@ describe("Atlas page", () => {
       expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
     });
 
-    it("sends a card back to its pinned view when another card leaves its own", async () => {
+    it("leaves a card on the view it was switched to when another card switches", async () => {
       seed([{ kind: "node", ...pin, view: "heard" }, { kind: "node", ...second }]);
       mount();
       const first = await card("Renamed repeater");
       const other = await card("Second");
       fireEvent.click(tab(first, "Analytics"));
-      expect(tab(first, "Analytics")).toHaveAttribute("aria-pressed", "true");
       fireEvent.click(tab(other, "Heard by"));
-      expect(tab(first, "Heard by")).toHaveAttribute("aria-pressed", "true");
+      expect(tab(first, "Analytics")).toHaveAttribute("aria-pressed", "true");
       expect(tab(other, "Heard by")).toHaveAttribute("aria-pressed", "true");
-      fireEvent.click(tab(first, "Analytics"));
-      expect(tab(other, "Analytics")).toHaveAttribute("aria-pressed", "true");
+      expect(stored().pins.map((p: { view?: string }) => p.view)).toEqual(["heard", undefined]);
     });
 
     it("keeps the view through a relink and an add from search", async () => {
@@ -477,7 +475,7 @@ describe("Atlas page", () => {
     expect(await screen.findByText("Observer")).toHaveClass("inline-flex");
   });
 
-  it("keeps one card away from its default view at a time", async () => {
+  it("lets every card stay on its own view", async () => {
     vi.mocked(api.getNode).mockImplementation(async (id) => ({ ...(id === second.id ? { ...node, ...second } : node), isObserver: true, observerId }));
     vi.mocked(api.getObserver).mockResolvedValue({ id: observerId, status: "online", publicKey: pin.publicKey } as never);
     save([pin, second]);
@@ -487,18 +485,18 @@ describe("Atlas page", () => {
     expect(within(first).getByRole("button", { name: "Observer" })).toHaveAttribute("aria-pressed", "true");
     const other = await card("Second");
     fireEvent.click(within(other).getByRole("button", { name: "Heard by" }));
-    expect(within(first).getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(first).getByRole("button", { name: "Observer" })).toHaveAttribute("aria-pressed", "true");
     expect(within(other).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("keeps one heard-by open, saves reordering, removal and the range", async () => {
+  it("keeps both heard-by views open, saves reordering, removal and the range", async () => {
     save([pin, second]);
     mount();
     const first = await card("Renamed repeater");
     const next = await card("Second");
     fireEvent.click(within(first).getByRole("button", { name: "Heard by" }));
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
-    expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
     expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder, or use the arrow keys" }), { key: "ArrowRight" });
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(second.publicKey);
