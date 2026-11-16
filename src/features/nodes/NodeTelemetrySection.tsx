@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Section } from "../../components/DetailPanel";
+import { useDisplayUnits } from "../../hooks/useFeatures";
+import { tempSymbol } from "../../lib/units";
 import { Timestamp } from "../../components/Timestamp";
 import { ChartCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
@@ -22,6 +24,7 @@ const RANGES: { value: NodeTelemetryRange; key: "24h" | "7d" | "30d" }[] = [
 export default function NodeTelemetrySection({ node, onViewObserver, extra }: { node: Node; onViewObserver?: (observerId: string) => void; extra?: ReactNode }) {
   const { t } = useTranslation();
   const colors = useChartColors();
+  const { temperature: tempUnit } = useDisplayUnits();
   const [range, setRange] = useState<NodeTelemetryRange>("168h");
   // The charts last drawn. Kept so a failed range change leaves them on screen, and so the
   // section knows it has shown a chart since it mounted.
@@ -37,11 +40,11 @@ export default function NodeTelemetrySection({ node, onViewObserver, extra }: { 
     () => (source
       ? buildNodeCharts(source, colors, {
           battery: t("nodeDetail.telemetry.battery"),
-          temperature: t("nodeDetail.telemetry.temperature"),
+          temperature: t("nodeDetail.telemetry.temperature", { unit: tempSymbol(tempUnit) }),
           noise: t("nodeDetail.telemetry.noise"),
-        })
+        }, tempUnit)
       : {}),
-    [source, colors, t],
+    [source, colors, t, tempUnit],
   );
   const drawn = Object.values(charts).some(Boolean);
   if (hasData && drawn && data !== shown) setShown(data!);
@@ -71,7 +74,7 @@ export default function NodeTelemetrySection({ node, onViewObserver, extra }: { 
   const latest = polling.data?.latestReadingAt;
   const cards: [string, keyof typeof charts, string][] = [
     ["battery", "battery", t("nodeDetail.telemetry.battery")],
-    ["temperature", "temperature", t("nodeDetail.telemetry.temperature")],
+    ["temperature", "temperature", t("nodeDetail.telemetry.temperature", { unit: tempSymbol(tempUnit) })],
     ["noise", "noise", t("nodeDetail.telemetry.noise")],
     ["airtime", "airtime", t("nodeDetail.telemetry.airtime")],
   ];

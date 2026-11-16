@@ -245,3 +245,20 @@ describe("filterByNodeType", () => {
     expect(out.features).toEqual([]);
   });
 });
+
+describe("nodesToFeatureCollection telemetry labels", () => {
+  const nodes = [node({ id: "a" }), node({ id: "b" })];
+
+  it("sets telemetry props on the labelled feature only", () => {
+    const fc = nodesToFeatureCollection(nodes, new Map([["a", { text: "4.08V  38m", old: true }]]));
+    expect(fc.features[0]!.properties.telemetry).toBe("4.08V  38m");
+    expect(fc.features[0]!.properties.telemetryOld).toBe(true);
+    expect("telemetry" in fc.features[1]!.properties).toBe(false);
+    expect("telemetryOld" in fc.features[1]!.properties).toBe(false);
+  });
+
+  it("leaves the props absent without a label map", () => {
+    const fc = nodesToFeatureCollection(nodes);
+    expect("telemetry" in fc.features[0]!.properties).toBe(false);
+  });
+});
