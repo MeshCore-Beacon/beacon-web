@@ -415,8 +415,8 @@ export function getNodeActivity(nodeId: string, range: string, signal?: AbortSig
   return request(`/nodes/${nodeId}/activity`, { range }, signal);
 }
 
-export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {
-  return request(`/nodes/${nodeId}/neighbors`);
+export function getNodeNeighbors(nodeId: string, signal?: AbortSignal): Promise<NodeNeighbor[]> {
+  return request(`/nodes/${nodeId}/neighbors`, undefined, signal);
 }
 
 // stats endpoints

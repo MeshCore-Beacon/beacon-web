@@ -155,7 +155,7 @@ describe("NodeDetailPanel neighbors", () => {
     expect(await screen.findByText("Neighbors")).toBeInTheDocument();
     expect(await screen.findByText("Neighbor A")).toBeInTheDocument();
     expect(screen.getByText("Neighbor B")).toBeInTheDocument();
-    expect(mockGetNodeNeighbors).toHaveBeenCalledWith("node-self");
+    expect(mockGetNodeNeighbors).toHaveBeenCalledWith("node-self", expect.any(AbortSignal));
   });
 
   it("navigates to a neighbor when its row is clicked", async () => {

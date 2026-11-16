@@ -202,7 +202,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   // (same key), so selecting a node — which opens the panel — usually has this already warm.
   const { data: focusNeighbors } = useQuery({
     queryKey: ["node-neighbors", selectedNodeId],
-    queryFn: () => getNodeNeighbors(selectedNodeId!),
+    queryFn: ({ signal }) => getNodeNeighbors(selectedNodeId!, signal),
     enabled: shownNeighborLines === "selected" && !!selectedNodeId,
     staleTime: 30_000,
   });
