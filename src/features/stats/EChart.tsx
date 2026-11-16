@@ -32,10 +32,18 @@ export function EChart({ option, className, style, onEvents, onInit }: EChartPro
     const chart = echarts.init(elRef.current, null, { renderer: "canvas", locale });
     chartRef.current = chart;
     onInitRef.current?.(chart);
-    const ro = new ResizeObserver(() => chart.resize());
+    let resizeFrame: number | null = null;
+    const ro = new ResizeObserver(() => {
+      if (resizeFrame !== null) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        chart.resize();
+      });
+    });
     ro.observe(elRef.current);
     return () => {
       ro.disconnect();
+      if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       chart.dispose();
       chartRef.current = null;
     };
