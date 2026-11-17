@@ -120,9 +120,6 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
   // Handed to the lazy chart section so it sits inside it, without that chunk importing it.
   const requestBlock = canRequest && !!node && isPolledNodeType(node.nodeTypeName) ? <RequestTelemetry key={node.id} node={node} /> : null;
   const telemetryInfo = requestBlock ? [t("nodeDetail.telemetry.requestIntro"), t("nodeDetail.telemetry.passwordNotice")] : undefined;
-  const detailsSummary = node
-    ? [hasLocation && `${node.lat!.toFixed(2)}, ${node.lng!.toFixed(2)}`, node.minFirmwareVersion && `fw ${node.minFirmwareVersion}`].filter(Boolean).join(" · ")
-    : "";
   const LINK = "font-mono text-[11px] text-primary hover:underline";
 
   return (
@@ -182,7 +179,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             </div>
             </Section>
 
-            <FoldSection id="node-details" title={t("nodeDetail.details")} summary={detailsSummary}>
+            <Section title={t("nodeDetail.details")}>
               {(hasLocation || node.locationSource) && (
                 <>
                   <div className={SUBHEAD}>{t("nodeDetail.location")}</div>
@@ -213,7 +210,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                   />
                 )}
               </div>
-            </FoldSection>
+            </Section>
 
             {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
 

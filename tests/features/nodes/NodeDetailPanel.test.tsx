@@ -434,7 +434,7 @@ describe("NodeDetailPanel layout", () => {
     expect(summary).toHaveTextContent(/Last seen/);
   });
 
-  it("puts Details and MeshMapper under the summary and folds every section by default", async () => {
+  it("keeps Summary and Details open, puts MeshMapper next and folds the rest by default", async () => {
     setPolling(true);
     mockGetNode.mockResolvedValue({ ...node, minFirmwareVersion: "1.14.0", lat: 45.4215, lng: -75.6972, locationSource: "advert", meshmapper: { iata: "YOW", fetchedAt: 1, site: { hardware: "RAK4631" }, carpeater: false, admins: [], scopes: [] } });
     renderPanel();
@@ -443,22 +443,20 @@ describe("NodeDetailPanel layout", () => {
     for (let i = 1; i < titles.length; i++) {
       expect(titles[i - 1]!.compareDocumentPosition(titles[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
-    expect(titles[0]!.closest("details")).toBeNull();
-    for (const title of titles.slice(1)) expect(title.closest("details")).not.toHaveAttribute("open");
-    const fold = screen.getByText("Details").closest("details")!;
-    expect(fold.querySelector("summary")).toHaveTextContent("45.42, -75.70 · fw 1.14.0");
-    expect(fold).toContainElement(screen.getByText("Capabilities"));
+    for (const title of titles.slice(0, 2)) expect(title.closest("details")).toBeNull();
+    for (const title of titles.slice(2)) expect(title.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Capabilities")).toBeVisible();
     expect(screen.getByText("Telemetry").closest("summary")).toHaveTextContent(/Polled · /);
   });
 
   it("remembers a fold left open", async () => {
     const first = renderPanel();
-    const summary = (await screen.findByText("Details")).closest("summary")!;
+    const summary = (await screen.findByText("Neighbors")).closest("summary")!;
     fireEvent.click(summary);
     await waitFor(() => expect(summary.closest("details")).toHaveAttribute("open"));
     first.unmount();
     renderPanel();
-    expect((await screen.findByText("Details")).closest("details")).toHaveAttribute("open");
+    expect((await screen.findByText("Neighbors")).closest("details")).toHaveAttribute("open");
   });
 
   it("keeps View on map in the summary", async () => {
