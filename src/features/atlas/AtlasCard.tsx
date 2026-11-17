@@ -194,7 +194,8 @@ export function AtlasCard({
   const upgradeTo = useQuery({
     queryKey: ["atlas-observer-node", pin.kind === "observer" ? (observer?.publicKey ?? null) : null],
     queryFn: ({ signal }) => resolveObserverNode(observer!, signal),
-    enabled: pin.kind === "observer" && active && !!observer?.publicKey,
+    // A cached key survives a rate limit; poll it only while the observer's own reads are enabled.
+    enabled: pin.kind === "observer" && obs.observer.isEnabled && !!observer?.publicKey,
     staleTime: ATLAS_REFRESH_MS,
     refetchInterval: ATLAS_REFRESH_MS,
     refetchIntervalInBackground: false,

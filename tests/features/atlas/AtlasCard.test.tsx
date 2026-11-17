@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AtlasCard } from "../../../src/features/atlas/AtlasCard";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
+import { noteRateLimited, noteRequestOk } from "../../../src/api/rate-limit";
+import { ATLAS_REFRESH_MS } from "../../../src/features/atlas/useAtlas";
 import { formatHex } from "../../../src/lib/formatters";
 import type { Node } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
@@ -535,6 +537,31 @@ describe("AtlasCard", () => {
       expect(screen.getByRole("button", { name: "Réinitialiser les tuiles" })).toBeInTheDocument();
       await act(() => i18n.changeLanguage("en"));
     });
+  });
+
+  it("pauses an observer's node lookup during Retry-After and adopts a match after expiry", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
+    vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
+    const card = mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+    const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+    try {
+      await tick(10);
+      expect(api.getNodesPage).toHaveBeenCalledTimes(1);
+      act(() => noteRateLimited(3 * ATLAS_REFRESH_MS));
+      await tick(2 * ATLAS_REFRESH_MS);
+      expect(api.getNodesPage).toHaveBeenCalledTimes(1);
+      vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
+      await tick(ATLAS_REFRESH_MS);
+      await tick(10);
+      expect(handlers.onUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: node.id }), observerId);
+    } finally {
+      card.unmount();
+      noteRequestOk();
+      vi.useRealTimers();
+    }
   });
 
   it("upgrades an observer-only pin to a node pin when its key now resolves to a node", async () => {
