@@ -90,7 +90,7 @@ describe("AtlasCard", () => {
     expect(screen.getByText("Active hours")).toBeInTheDocument();
     expect(screen.getByText("1/24")).toBeInTheDocument();
     expect(screen.getByText("24h")).toBeInTheDocument();
-    expect(screen.getByText("Mean hops 2.0 · Neighbors (4)")).toBeInTheDocument();
+    expect(screen.getByText("2.0 hops · 4 neighbors")).toBeInTheDocument();
     expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
     expect(screen.queryByText(/battery|telemetry/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Renamed repeater" }));
@@ -143,15 +143,36 @@ describe("AtlasCard", () => {
 
   it("gives the Analytics view a one-line footer and lists every fact in the tip", async () => {
     mount();
-    const footer = (await screen.findByText("Last seen")).closest("[data-card-footer]") as HTMLElement;
+    const footer = (await screen.findByText("Heard")).closest("[data-card-footer]") as HTMLElement;
     expect(footer).not.toHaveClass("flex-wrap");
-    expect(within(footer).getByText("Last seen").parentElement).toHaveClass("truncate");
-    expect(await within(footer).findByText("Mean hops 2.0 · Neighbors (4)")).toHaveClass("truncate");
+    expect(within(footer).getByText("Heard").parentElement).toHaveTextContent(/^Heard · 0s ago$/);
+    expect(await within(footer).findByText("2.0 hops · 4 neighbors")).toHaveClass("truncate");
     const tip = within(footer).getByText(/More information:/);
     expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
     expect(tip).toHaveTextContent("Mean hops 2.0");
     expect(tip).toHaveTextContent("Neighbors (4)");
     expect(tip).toHaveTextContent("Stored observations of packets");
+  });
+
+  it("lights the Analytics dot only when the node was heard inside the window", async () => {
+    const first = mount();
+    const lit = (await screen.findByText("Heard")).closest("[data-card-footer]")!.querySelector("[data-fresh]")!;
+    expect(lit).toHaveAttribute("data-fresh", "true");
+    expect(lit).toHaveClass("bg-green");
+    first.unmount();
+    client.clear();
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, lastSeen: Date.now() - 30 * 3_600_000 });
+    mount();
+    const dim = (await screen.findByText("Heard")).closest("[data-card-footer]")!.querySelector("[data-fresh]")!;
+    expect(dim).toHaveAttribute("data-fresh", "false");
+    expect(dim).toHaveClass("bg-text-dim/30");
+  });
+
+  it("leaves the hops out of the Analytics footer when there are none", async () => {
+    vi.mocked(api.getNodeActivity).mockResolvedValue({ ...nodeActivity, summary: { ...nodeActivity.summary, hopAvg: null } } as never);
+    mount();
+    expect(await screen.findByText("4 neighbors")).toBeInTheDocument();
+    expect(screen.queryByText(/hops/)).not.toBeInTheDocument();
   });
 
   it("fills its grid row so neighbouring cards stay the same height whatever their titles wrap to", async () => {
@@ -304,6 +325,7 @@ describe("AtlasCard", () => {
     expect(footer).not.toHaveClass("flex-wrap");
     expect(screen.getByText("Online").parentElement).toHaveClass("truncate");
     expect(screen.getByText("Online").parentElement).toHaveTextContent(/^Online · 1m ago$/);
+    expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "true");
     expect(within(footer).getByText("915 MHz · SF11")).toHaveClass("truncate");
     const tip = within(footer).getByText(/More information:/);
     expect(tip).toHaveTextContent(/Online · Last status \d{4}-\d{2}-\d{2}/);
@@ -704,23 +726,44 @@ describe("AtlasCard", () => {
       expect(dot.getAttribute("x1")).toBe("60");
     });
 
-    it("says who polls it and when the last reading was", async () => {
+    it("says when it was polled, with a lit dot, and who polls it on the right", async () => {
       mount({ view: "telemetry" });
-      expect((await screen.findAllByText(/Polled by Ridge listener/))[0]).toBeInTheDocument();
-      expect(screen.getAllByText(/Last reading/)[0]).toBeInTheDocument();
+      const footer = (await screen.findByText("Polled")).closest("[data-card-footer]") as HTMLElement;
+      expect(footer).not.toHaveClass("flex-wrap");
+      expect(within(footer).getByText("Polled").parentElement).toHaveTextContent(/^Polled · 12m ago$/);
+      expect(within(footer).getByText("by Ridge listener")).toHaveClass("truncate");
+      expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "true");
+      const tip = within(footer).getByText(/More information:/);
+      expect(tip).toHaveTextContent("Polled by Ridge listener");
+      expect(tip).toHaveTextContent(/Last reading \d{4}-\d{2}-\d{2}/);
     });
 
-    it("says it is not being polled when polling stopped", async () => {
+    it("says it is not polled, with a dim dot and nothing on the right, when polling stopped", async () => {
       vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null, latestReadingAt: Date.now() - 3 * 86_400_000 }));
       mount({ view: "telemetry" });
-      expect((await screen.findAllByText(/Not being polled right now/))[0]).toBeInTheDocument();
+      const footer = (await screen.findByText("Not polled")).closest("[data-card-footer]") as HTMLElement;
+      expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "false");
+      expect(within(footer).queryByText(/^by /)).not.toBeInTheDocument();
+      expect(within(footer).getByText(/More information:/)).toHaveTextContent("Not being polled right now");
     });
 
     // The server's polled flag means a reading was ever stored; only an assigned poller means it is polled now.
-    it("says it is not being polled when readings exist but nobody is assigned", async () => {
+    it("says it is not polled when readings exist but nobody is assigned", async () => {
       vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: true, poller: null, latestReadingAt: Date.now() - 3 * 86_400_000 }));
       mount({ view: "telemetry" });
-      expect((await screen.findAllByText(/Not being polled right now/))[0]).toBeInTheDocument();
+      expect(await screen.findByText("Not polled")).toBeInTheDocument();
+    });
+
+    it("keeps the battery line off Analytics after the Telemetry tab loaded the same readings", async () => {
+      const { rerender } = mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      rerender(
+        <QueryClientProvider client={client}>
+          <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} {...handlers} />
+        </QueryClientProvider>,
+      );
+      await screen.findByText("Observations");
+      expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
     });
 
     it("asks for 72h on a 3d card when the server supports it", async () => {

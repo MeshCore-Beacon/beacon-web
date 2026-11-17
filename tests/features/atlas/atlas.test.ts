@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTelemetryTiles, withTiles, withView, homeView, DEFAULT_TELEMETRY_TILES, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, type NodePin } from "../../../src/features/atlas/atlas";
+import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTelemetryTiles, withTiles, withView, homeView, DEFAULT_TELEMETRY_TILES, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT_MAX, type NodePin } from "../../../src/features/atlas/atlas";
 import type { NodeActivity } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
@@ -45,7 +45,8 @@ describe("saved Atlas", () => {
     for (const value of [null, "{", "[]", '{"version":3}', old, '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
     const pins = [{ ...nodePin, publicKey: "abcd" }, { ...nodePin, id: "../unsafe" }, ...Array.from({ length: 20 }, (_, i) => ({ ...nodePin, publicKey: i.toString(16).padStart(64, "0") }))];
     const result = parseAtlas(JSON.stringify({ version: 2, range: "30d", pins }));
-    expect(result.pins).toHaveLength(ATLAS_LIMIT);
+    // Loading keeps every saved card up to the highest cap a server allows; the page enforces its own.
+    expect(result.pins).toHaveLength(20);
     expect(result.range).toBe("24h");
   });
   it("round-trips version 2 pins of both kinds, keeps the observer hint, and drops unknown kinds", () => {
@@ -62,8 +63,8 @@ describe("saved Atlas", () => {
   });
   it("dedupes observer pins by id and caps both kinds together at the limit", () => {
     const observer = (n: number) => ({ kind: "observer", observerId: `${String(n).padStart(8, "0")}-0000-4000-8000-000000000000`, name: `L${n}` });
-    const pins = [observer(1), observer(1), ...Array.from({ length: 14 }, (_, i) => observer(i + 2))];
-    expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins).toHaveLength(ATLAS_LIMIT);
+    const pins = [observer(1), observer(1), ...Array.from({ length: ATLAS_LIMIT_MAX + 5 }, (_, i) => observer(i + 2))];
+    expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins).toHaveLength(ATLAS_LIMIT_MAX);
   });
 });
 

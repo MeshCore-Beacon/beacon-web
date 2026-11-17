@@ -57,6 +57,9 @@ describe("NodeDetailPanel request block", () => {
     mount();
     expect(await screen.findByRole("button", { name: "Request telemetry" })).toBeInTheDocument();
     expect(screen.getByText("Telemetry")).toBeInTheDocument();
+    const tip = screen.getByText("Telemetry").closest("summary")!.querySelector(".sr-only")!;
+    expect(tip).toHaveTextContent("Ask Beacon to have this repeater polled");
+    expect(tip).toHaveTextContent("Never enter an admin password.");
   });
 
   it("appears inside the Telemetry area when polling is on but nothing was ever polled", async () => {

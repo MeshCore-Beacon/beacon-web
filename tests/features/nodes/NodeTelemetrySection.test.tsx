@@ -92,7 +92,7 @@ describe("NodeTelemetrySection", () => {
     renderSection();
     expect(await screen.findByText(/HOWL V4\.2.*waiting for the first reading/)).toBeInTheDocument();
     expect(screen.queryAllByTestId("chart")).toHaveLength(0);
-    expect(screen.queryByRole("group")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Telemetry range" })).not.toBeInTheDocument();
   });
 
   it("draws four charts with full data, defaulting to 7d", async () => {
@@ -102,7 +102,9 @@ describe("NodeTelemetrySection", () => {
     expect(await screen.findAllByTestId("chart")).toHaveLength(4);
     expect(mockTelemetry.mock.calls[0]?.[1]).toBe("168h");
     expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("1 standby")).toBeInTheDocument();
+    const line = screen.getByText("1 standby").closest("[data-poll-line]") as HTMLElement;
+    expect(line).toHaveTextContent(/^Polled · .+ · by HOWL V4\.2 · 1 standby$/);
+    expect(line.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "true");
   });
 
   it("titles the airtime chart as percent of time, in every language", async () => {

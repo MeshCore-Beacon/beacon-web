@@ -33,7 +33,13 @@ function setup() {
   const mount = () => render(<NodeDetailPanel nodeId="a" onClose={() => {}} onViewObserver={() => {}} />, { wrapper });
   return { client, replies, calls, mount };
 }
-const section = (key: string) => within(screen.getByText(i18n.t(key)).parentElement!);
+const section = (key: string) => within(screen.getByText(i18n.t(key)).closest("details")!);
+const openSections = () => {
+  for (const key of ["nodeDetail.neighbors", "nodeDetail.recentPackets"]) {
+    const summary = screen.getByText(i18n.t(key)).closest("summary")!;
+    if (!summary.closest("details")!.open) fireEvent.click(summary);
+  }
+};
 const retry = (key: string) => screen.getByRole("button", { name: i18n.t("nodeDetail.retrySection", { section: i18n.t(key) }) });
 
 beforeEach(async () => { await i18n.changeLanguage("en"); });
@@ -85,6 +91,7 @@ describe("node detail query states", () => {
     replies.observations = () => new Promise((resolve) => { finishObservations = resolve; });
     mount();
     await screen.findByText("Node A");
+    openSections();
     expect(screen.queryByText(i18n.t("nodeDetail.noNeighbors"))).not.toBeInTheDocument();
     expect(screen.queryByText(i18n.t("nodeDetail.noRecentPackets"))).not.toBeInTheDocument();
     expect(section("nodeDetail.neighbors").getByRole("status")).toHaveTextContent(i18n.t("common.loading"));
@@ -100,6 +107,7 @@ describe("node detail query states", () => {
     replies.neighbors = replies.observations = async () => failure();
     mount();
     await screen.findByText("Node A");
+    openSections();
     expect(await screen.findAllByRole("alert")).toHaveLength(2);
     expect(screen.queryByText(i18n.t("nodeDetail.noNeighbors"))).not.toBeInTheDocument();
     expect(screen.queryByText(i18n.t("nodeDetail.noRecentPackets"))).not.toBeInTheDocument();
@@ -121,6 +129,8 @@ describe("node detail query states", () => {
     client.setQueryData(["node-observations", "a"], { ...emptyObservations, items: [{ id: 1, packetHash: "packet-a", payloadTypeName: "ADVERT", iata: "YKF", heardAt: 2, snr: 10, rssi: -80, hopCount: 1 }] }, old);
     replies.node = replies.neighbors = replies.observations = async () => failure();
     mount();
+    await screen.findByText("Cached node");
+    openSections();
     await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(3));
     expect(screen.getByText("Cached node")).toBeInTheDocument();
     expect(screen.getByText("Cached neighbor")).toBeInTheDocument();
@@ -137,6 +147,8 @@ describe("node detail query states", () => {
     client.setQueryData(["node-observations", "a"], emptyObservations, old);
     replies.neighbors = replies.observations = async () => failure();
     mount();
+    await screen.findByText("Node A");
+    openSections();
     await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(2));
     expect(screen.queryByText(i18n.t("nodeDetail.noNeighbors"))).not.toBeInTheDocument();
     expect(screen.queryByText(i18n.t("nodeDetail.noRecentPackets"))).not.toBeInTheDocument();

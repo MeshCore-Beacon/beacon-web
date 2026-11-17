@@ -3,7 +3,10 @@ import type { Node, NodeActivity, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
 export const ATLAS_KEY = "beacon-atlas-v2";
-export const ATLAS_LIMIT = 12;
+// The cap a server that does not send limits.atlas enforces.
+export const ATLAS_LIMIT_FALLBACK = 12;
+// The highest cap a server can set; loading keeps up to this many and the page enforces the server's.
+export const ATLAS_LIMIT_MAX = 100;
 export type AtlasRange = "24h" | "3d";
 // The metrics an Observer view tile can show. A pin stores its four only when they differ from the default.
 export const OBSERVER_TILES = ["airtime", "battery", "uptime", "types", "packets", "snr", "rssi", "noise", "queue", "errors"] as const;
@@ -43,7 +46,7 @@ export function parseAtlas(raw: string | null): SavedAtlas {
       const pin = toPin(entry);
       if (!pin || pins.some((other) => pinKey(other) === pinKey(pin))) continue;
       pins.push(pin);
-      if (pins.length === ATLAS_LIMIT) break;
+      if (pins.length === ATLAS_LIMIT_MAX) break;
     }
     return { version: 2, range: value.range === "3d" ? "3d" : "24h", pins };
   } catch { return empty; }
@@ -61,8 +64,8 @@ export const atlasFileName = (now = new Date()) => `beacon-atlas-${now.toISOStri
 
 export interface AtlasImport { atlas: SavedAtlas; skipped: number }
 
-// null when the text is not an Atlas export. Pins go through the same checks, dedupe and cap as a restore.
-export function readAtlasFile(text: string): AtlasImport | null {
+// null when the text is not an Atlas export. Pins go through the same checks and dedupe as a restore, then the cap.
+export function readAtlasFile(text: string, limit = ATLAS_LIMIT_FALLBACK): AtlasImport | null {
   if (text.length > ATLAS_FILE_MAX_BYTES) return null;
   let value: { format?: unknown; pins?: unknown };
   try {
@@ -71,7 +74,8 @@ export function readAtlasFile(text: string): AtlasImport | null {
     return null;
   }
   if (!value || typeof value !== "object" || value.format !== ATLAS_FILE_FORMAT || !Array.isArray(value.pins)) return null;
-  const atlas = parseAtlas(JSON.stringify(value));
+  const parsed = parseAtlas(JSON.stringify(value));
+  const atlas = { ...parsed, pins: parsed.pins.slice(0, limit) };
   return { atlas, skipped: value.pins.length - atlas.pins.length };
 }
 

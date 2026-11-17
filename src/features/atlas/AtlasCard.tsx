@@ -11,6 +11,7 @@ import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
 import { formatTemp } from "../../lib/units";
 import { useDisplayUnits } from "../../hooks/useFeatures";
+import { useTick } from "../../hooks/useTick";
 import type { Observation } from "../../types/api";
 import type { NodeSummary } from "../nodes/types";
 import { deriveObserverStatus } from "../observers/observer-status";
@@ -77,6 +78,7 @@ const TELEMETRY_LABEL: Record<TelemetryTile, string> = {
 };
 // Accents belong to the slot, so a card keeps its colours whatever its tiles show.
 const SLOT_ACCENT = [0, 3, 2, 1];
+const RANGE_MS: Record<AtlasRange, number> = { "24h": 86_400_000, "3d": 259_200_000 };
 
 // Icon-only header actions share one box so the row stays even.
 const ICON_BOX = "flex h-[26px] w-7 shrink-0 items-center justify-center";
@@ -146,6 +148,7 @@ export function AtlasCard({
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
+  const now = useTick(ATLAS_REFRESH_MS);
   const tab = useTelemetryTab(node?.id ?? null, node?.nodeTypeName, active, requested === "analytics" || requested === "telemetry");
   // A card with the Telemetry tab shows the polled readings there; the one-line summary is for a card without it.
   const readings = useAtlasReadings(node?.id ?? null, node?.nodeTypeName, active && requested === "analytics" && !tab.available && !tab.settling);
@@ -287,13 +290,24 @@ export function AtlasCard({
 
   // One line that never wraps: the right side gives way first, then the left, a failure never does,
   // and the tip carries every fact in full.
-  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[], wrap = false) => (
-    <div data-card-footer className={`flex gap-3 font-mono text-[11px] text-text-muted ${wrap ? "items-start" : "items-center whitespace-nowrap"}`}>
+  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[]) => (
+    <div data-card-footer className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
       {left}
       {state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
       {right !== "" && <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>}
       <span className="flex shrink-0"><InfoTip text={tip} /></span>
     </div>
+  );
+
+  // Every footer leads with the same shape: a dot (lit while the fact is fresh), what it is, and how long ago.
+  const lead = (fresh: boolean | null, label: string, at: number | null | undefined) => (
+    <span className="flex min-w-0 items-center gap-1.5">
+      {fresh !== null && <span aria-hidden data-fresh={String(fresh)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? "bg-green" : "bg-text-dim/30"}`} />}
+      <span className="min-w-0 truncate">
+        <span>{label}</span>
+        {at != null && <>{" · "}<Timestamp value={at} /></>}
+      </span>
+    </span>
   );
 
   const retry = (refetch: () => Promise<unknown>) => (
@@ -312,6 +326,8 @@ export function AtlasCard({
   const statusLabel = status && t(status === "online" ? "atlas.online" : "atlas.offline");
   const meanHops = `${t("atlas.meanHops")} ${average(sample.hops)}`;
   const neighbors = node ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : "";
+  const heardFresh = !!node && node.lastSeen > 0 && now - node.lastSeen <= RANGE_MS[range];
+  const hopsAndNeighbors = [sample.hops !== null && t("atlas.hops", { value: average(sample.hops) }), node && t("atlas.neighbors", { count: node.knownNeighborCount })].filter(Boolean).join(" · ");
   const free = OBSERVER_TILES.filter((id) => !tiles.includes(id)).map((id) => ({ value: id, label: t(TILE_LABEL[id]) }));
   const telemetryTiles = nodePin?.telemetryTiles ?? DEFAULT_TELEMETRY_TILES;
   const telSample = tel.sample;
@@ -495,16 +511,12 @@ export function AtlasCard({
             <p aria-label={t("atlas.readingsLabel")} className="font-mono text-[11px] leading-4 text-text-muted">{readings}</p>
           )}
           {footer(
-            node.lastSeen > 0 && (
-              <span className="min-w-0 truncate">
-                <span>{t("atlas.lastSeen")}</span> <Timestamp value={node.lastSeen} />
-              </span>
-            ),
-            `${meanHops} · ${neighbors}`,
+            node.lastSeen > 0 && lead(heardFresh, t("atlas.heard"), node.lastSeen),
+            hopsAndNeighbors,
             activity,
             [
               node.lastSeen > 0 && `${t("atlas.lastSeen")} ${formatAbsolute(node.lastSeen)}`,
-              meanHops,
+              sample.hops !== null && meanHops,
               neighbors,
               activity.unsupported && t("atlas.activityUnsupported"),
               t("atlas.sampleHelp"),
@@ -556,20 +568,12 @@ export function AtlasCard({
         <div ref={body} className="flex flex-1 flex-col gap-3">
           <div className="grid flex-1 grid-cols-2 gap-3">{telemetryTiles.map((id, slot) => <Fragment key={id}>{telemetryTile(id, slot)}</Fragment>)}</div>
           {footer(
-            (pollState || lastReading != null) && (
-              <span className="flex min-w-0 flex-1 flex-wrap gap-x-3">
-                {pollState && <span className="min-w-0 break-words">{pollState}</span>}
-                {lastReading != null && (
-                  <span className="whitespace-nowrap">
-                    <span>{t("atlas.telemetry.lastReading")}</span> <Timestamp value={lastReading} />
-                  </span>
-                )}
-              </span>
-            ),
-            "",
+            tab.polling
+              ? lead(polledNow, t(polledNow ? "atlas.telemetry.polledShort" : "atlas.telemetry.notPolledShort"), polledNow ? lastReading : null)
+              : lastReading != null && lead(null, t("atlas.telemetry.lastReading"), lastReading),
+            polledNow && pollerName ? t("atlas.telemetry.byPoller", { name: pollerName }) : "",
             tel,
             [pollState, lastReading != null && `${t("atlas.telemetry.lastReading")} ${formatAbsolute(lastReading)}`, t("atlas.telemetry.help")],
-            true,
           )}
         </div>
       )}
@@ -577,16 +581,9 @@ export function AtlasCard({
         <div ref={body} className="flex flex-1 flex-col gap-3">
           <div className="grid flex-1 grid-cols-2 gap-3">{tiles.map((id, slot) => <Fragment key={id}>{observerTile(id, slot)}</Fragment>)}</div>
           {footer(
-            (status || observer?.lastStatusAt != null) && (
-              <span className="flex min-w-0 items-center gap-1.5">
-                {status && <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${status === "online" ? "bg-green" : "bg-text-dim/30"}`} />}
-                <span className="min-w-0 truncate">
-                  {statusLabel && <span>{statusLabel}</span>}
-                  {statusLabel && observer?.lastStatusAt != null && " · "}
-                  {observer?.lastStatusAt != null && <Timestamp value={observer.lastStatusAt} />}
-                </span>
-              </span>
-            ),
+            statusLabel
+              ? lead(status === "online", statusLabel, observer?.lastStatusAt)
+              : observer?.lastStatusAt != null && lead(null, t("atlas.lastStatus"), observer.lastStatusAt),
             radioShort ?? radio,
             obs,
             [

@@ -38,7 +38,7 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("RequestTelemetry", () => {
-  it("offers the form with the notice, the count and a masked guest password", async () => {
+  it("offers the form with a short warning, the count by the button and a masked guest password", async () => {
     vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ id: "x", node: { id: "other", publicKey: "dd", name: "Other" } })] });
     mount();
     expect(await screen.findByRole("button", { name: "Request telemetry" })).toBeEnabled();
@@ -46,8 +46,9 @@ describe("RequestTelemetry", () => {
     expect(field).toHaveAttribute("type", "password");
     expect(field).toHaveAttribute("autocomplete", "off");
     expect(field).toHaveAttribute("maxlength", "15");
-    expect(screen.getByText(NOTICE)).toBeInTheDocument();
-    expect(screen.getByText("1 of 3 requests used")).toBeInTheDocument();
+    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
+    expect(screen.getByText("Guest password only, never admin.")).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 used").parentElement).toBe(screen.getByRole("button", { name: "Request telemetry" }).parentElement);
     fireEvent.click(screen.getByRole("button", { name: "Show password" }));
     expect(field).toHaveAttribute("type", "text");
   });
@@ -73,8 +74,9 @@ describe("RequestTelemetry", () => {
   it("shows the status in words and a link to the profile once requested", async () => {
     vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [req({ status: "login_failed" })] });
     mount();
-    expect(await screen.findByText("Stopped: password refused")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Manage in profile" })).toBeInTheDocument();
+    const status = await screen.findByText("Stopped: password refused");
+    expect(status.closest("[data-request-line]")).toContainElement(screen.getByRole("button", { name: "Manage in profile" }));
+    expect(screen.queryByText("Telemetry requested")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request telemetry" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Guest password (optional)")).not.toBeInTheDocument();
   });

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Section, Field } from "../../components/DetailPanel";
-import { IataChip } from "../../components/IataChip";
+import { FoldSection, Field } from "../../components/DetailPanel";
+import { formatAbsolute } from "../../lib/formatters";
 import { Timestamp } from "../../components/Timestamp";
 import type { MeshMapperRepeater, MeshMapperScope } from "./types";
 
@@ -35,7 +35,15 @@ export function MeshMapperSection({ mm }: { mm: MeshMapperRepeater }) {
     : null;
 
   return (
-    <Section title={t("nodeDetail.meshmapper")}>
+    <FoldSection
+      id="node-meshmapper"
+      title={t("nodeDetail.meshmapper")}
+      summary={[mm.iata, mm.scopes.length > 0 && t("nodeDetail.scopesCount", { count: mm.scopes.length })].filter(Boolean).join(" · ")}
+      info={[
+        mm.iata ? t("nodeDetail.fromMeshMapperIn", { iata: mm.iata }) : t("nodeDetail.fromMeshMapper"),
+        `${t("nodeDetail.updated")} ${formatAbsolute(mm.fetchedAt)}`,
+      ]}
+    >
       <div className="flex flex-col gap-0.5 font-mono text-[13px]">
         {(site.hardware || site.power || site.powerSource) && (
           <div className="flex flex-wrap gap-x-4 gap-y-0.5">
@@ -81,11 +89,6 @@ export function MeshMapperSection({ mm }: { mm: MeshMapperRepeater }) {
         )}
         {site.notes && <p className="mt-1 text-text-muted whitespace-pre-line break-words">{site.notes}</p>}
       </div>
-      <div className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-text-dim">
-        <span>{t("nodeDetail.fromMeshMapper")}</span>
-        {mm.iata && <IataChip>{mm.iata}</IataChip>}
-        <span className="ml-auto">{t("nodeDetail.updated")} <Timestamp value={mm.fetchedAt} /></span>
-      </div>
-    </Section>
+    </FoldSection>
   );
 }

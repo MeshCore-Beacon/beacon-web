@@ -77,6 +77,16 @@ describe("Atlas page, signed in", () => {
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].id).toBe(NO_NODE_ID);
   });
 
+  it("says how many cards to remove when the server refuses an Atlas over its cap", async () => {
+    const pin = (n: number) => ({ kind: "node" as const, publicKey: String(n).repeat(64), id: null, name: `R${n}`, observerId: null });
+    vi.mocked(me.atlas).mockResolvedValue({ revision: 2, range: "24h", limit: 1, pins: [pin(1), pin(2), pin(3)] });
+    vi.mocked(me.putAtlas).mockRejectedValue(new ApiError(422, "invalid_input", "at most 1 pins"));
+    mount();
+    const remove = await screen.findAllByRole("button", { name: "Remove" });
+    fireEvent.click(remove[0]!);
+    expect(await screen.findByText("This server allows 1 card. Remove 1 more to save your Atlas to your account.")).toBeTruthy();
+  });
+
   it("an id recovered by a card stays on screen only: no write, no request", async () => {
     vi.mocked(me.atlas).mockResolvedValue({ revision: 2, range: "24h", limit: 12, pins: [{ kind: "node", publicKey, id: second, name: "Hilltop", observerId: null }] });
     vi.mocked(api.getNode).mockImplementation(async (nodeId) => {
