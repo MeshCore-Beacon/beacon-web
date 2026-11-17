@@ -8,7 +8,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { Tooltip } from "../../components/Tooltip";
-import { useAtlasLimit } from "../../hooks/useFeatures";
+import { useAtlasLimit, useFeaturesLoading } from "../../hooks/useFeatures";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { formatHex } from "../../lib/formatters";
 import { nodeSearchParams } from "../nodes/node-search";
@@ -87,6 +87,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   });
 
   const limit = useAtlasLimit();
+  const infoPending = useFeaturesLoading();
   const full = saved.pins.length >= limit;
   const fields: SearchFieldOption[] = [
     { value: "name", label: t("nodeFilters.fieldName") },
@@ -171,7 +172,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const chooseFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (!file) return;
+    if (!file || infoPending) return;
     setNotice(null);
     setPendingImport(null);
     const result = file.size > ATLAS_FILE_MAX_BYTES ? null : readAtlasFile(await file.text().catch(() => ""), limit);
@@ -210,13 +211,14 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
         </button>
       </Tooltip>
       <Tooltip label={t("atlas.importHelp")}>
-        <button type="button" className={ACTION_BUTTON_CLASS} onClick={() => fileInput.current?.click()}>
+        <button type="button" className={ACTION_BUTTON_CLASS} disabled={infoPending} onClick={() => fileInput.current?.click()}>
           {t("atlas.import")}
         </button>
       </Tooltip>
       <input
         ref={fileInput}
         type="file"
+        disabled={infoPending}
         accept="application/json,.json"
         className="hidden"
         aria-label={t("atlas.importFile")}

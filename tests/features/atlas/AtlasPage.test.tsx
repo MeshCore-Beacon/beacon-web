@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AtlasPage } from "../../../src/features/atlas/AtlasPage";
 import { ATLAS_KEY, loadAtlasNode } from "../../../src/features/atlas/atlas";
 import * as api from "../../../src/api/client";
@@ -254,8 +254,56 @@ describe("Atlas page", () => {
 
   describe("export and import", () => {
     const file = (pins: unknown[]) => new File([JSON.stringify({ format: "beacon-atlas", version: 2, range: "3d", pins })], "atlas.json", { type: "application/json" });
-    const choose = (value: File) => fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [value] } });
+    const choose = async (value: File) => {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
+      fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [value] } });
+    };
     const stored = () => JSON.parse(localStorage.getItem(ATLAS_KEY)!);
+
+    const importedPins = Array.from({ length: 20 }, (_, i) => ({
+      kind: "node", id: `${String(i + 1).padStart(8, "0")}-1111-4111-8111-111111111111`,
+      publicKey: i.toString(16).padStart(64, "0"), name: `Fixture ${i + 1}`,
+    }));
+
+    it.each([2, 20])("waits for initial metadata before importing with server limit %i", async (limit) => {
+      let finish!: (info: Awaited<ReturnType<typeof api.getServerInfo>>) => void;
+      vi.mocked(api.getServerInfo).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+      mount();
+      const button = screen.getByRole("button", { name: "Import" });
+      expect(button).toBeDisabled();
+      expect(screen.getByLabelText("Atlas file to import")).toBeDisabled();
+      // A forced change event must not bypass the disabled picker.
+      await act(async () => { fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [file(importedPins)] } }); });
+      expect(JSON.parse(localStorage.getItem(ATLAS_KEY) ?? '{"pins":[]}').pins).toEqual([]);
+      await act(async () => { finish({ minAppVersion: null, minWebVersion: null, serverVersion: "2.3.0", limits: { atlas: limit } }); });
+      await waitFor(() => expect(button).toBeEnabled());
+      await choose(file(importedPins));
+      await waitFor(() => expect(stored().pins).toEqual(importedPins.slice(0, limit)));
+      expect(screen.getByText(new RegExp(`Imported ${limit} cards`))).toBeInTheDocument();
+    });
+
+    it.each(["old server", "failed metadata"])("keeps the compatibility fallback after %s settles", async (kind) => {
+      if (kind === "failed metadata") vi.mocked(api.getServerInfo).mockRejectedValue(new Error("offline"));
+      mount();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
+      await choose(file(importedPins));
+      await waitFor(() => expect(stored().pins).toEqual(importedPins.slice(0, 12)));
+      expect(screen.getByText("Imported 12 cards. 8 entries skipped (duplicate, invalid or over the limit).")).toBeInTheDocument();
+    });
+
+    it("keeps import unavailable while initial metadata is paused offline", async () => {
+      onlineManager.setOnline(false);
+      const view = mount();
+      try {
+        expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
+        await act(async () => { fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [file(importedPins)] } }); });
+        expect(api.getServerInfo).not.toHaveBeenCalled();
+        expect(JSON.parse(localStorage.getItem(ATLAS_KEY) ?? '{"pins":[]}').pins).toEqual([]);
+      } finally {
+        view.unmount();
+        onlineManager.setOnline(true);
+      }
+    });
 
     it("downloads the saved Atlas as a dated file, and has nothing to export when empty", async () => {
       const createObjectURL = vi.fn<(blob: Blob) => string>(() => "blob:atlas");
@@ -274,7 +322,7 @@ describe("Atlas page", () => {
     it("loads a file straight into an empty Atlas", async () => {
       mount();
       expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
-      choose(file([{ kind: "node", ...pin }]));
+      await choose(file([{ kind: "node", ...pin }]));
       expect(await screen.findByText("Imported 1 card.")).toBeInTheDocument();
       expect(stored()).toEqual({ version: 2, range: "3d", pins: [{ kind: "node", ...pin }] });
     });
@@ -282,12 +330,12 @@ describe("Atlas page", () => {
     it("asks before replacing saved cards, and keeps them on Cancel", async () => {
       save([pin]);
       mount();
-      choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
+      await choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
       const prompt = await screen.findByRole("alertdialog", { name: "Replace your Atlas?" });
       expect(prompt).toHaveTextContent("Replace your 1 saved card with the 1 in this file?");
       fireEvent.click(within(prompt).getByRole("button", { name: "Cancel" }));
       expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
-      choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
+      await choose(file([{ kind: "node", ...second }, { kind: "node", id: "bad" }]));
       fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Replace" }));
       expect(stored().pins).toEqual([{ kind: "node", ...second }]);
       expect(screen.getByText("Imported 1 card. 1 entry skipped (duplicate, invalid or over the limit).")).toBeInTheDocument();
@@ -296,7 +344,7 @@ describe("Atlas page", () => {
     it("refuses a file that is not an Atlas export without touching saved cards", async () => {
       save([pin]);
       mount();
-      choose(new File(["{\"version\":2,\"pins\":[]}"], "other.json"));
+      await choose(new File(["{\"version\":2,\"pins\":[]}"], "other.json"));
       expect(await screen.findByText(/not a Beacon Atlas export/)).toBeInTheDocument();
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
       expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
@@ -408,6 +456,7 @@ describe("Atlas page", () => {
       first.unmount();
       localStorage.clear();
       mount();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
       fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [new File([text], "atlas.json", { type: "application/json" })] } });
       expect(await screen.findByText("Imported 1 card.")).toBeInTheDocument();
       expect(stored().pins).toEqual([{ kind: "node", ...pin, view: "heard" }]);
@@ -481,6 +530,7 @@ describe("Atlas page", () => {
       first.unmount();
       localStorage.clear();
       mount();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
       fireEvent.change(screen.getByLabelText("Atlas file to import"), { target: { files: [new File([text], "atlas.json", { type: "application/json" })] } });
       expect(await screen.findByText("Imported 2 cards.")).toBeInTheDocument();
       expect(stored().pins).toEqual([{ ...observerPin, tiles }, { kind: "node", ...pin }]);
