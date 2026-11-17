@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ATLAS_LIMIT, NO_NODE_ID, type NodePin, type SavedAtlas } from "../../../src/features/atlas/atlas";
+import { NO_NODE_ID, type NodePin, type SavedAtlas } from "../../../src/features/atlas/atlas";
 import { fromServer, mergeAtlas, placeholderObserverId, toPut, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
 
 const key = (n: number) => n.toString(16).padStart(2, "0").repeat(32);
@@ -47,9 +47,9 @@ describe("fromServer", () => {
     expect(keys[placeholderObserverId(key(3))]).toBe(key(3));
   });
 
-  it("caps at the limit and drops duplicates", () => {
+  it("keeps every pin the server sends and drops duplicates", () => {
     const many = Array.from({ length: 14 }, (_, i) => ({ kind: "node" as const, publicKey: key(i + 1), id: uuid(i + 1), name: "x", observerId: null }));
-    expect(fromServer(doc(many), null, {}).atlas.pins).toHaveLength(ATLAS_LIMIT);
+    expect(fromServer(doc([...many, many[0]!]), null, {}).atlas.pins).toHaveLength(14);
   });
 });
 
@@ -75,54 +75,55 @@ describe("toPut", () => {
 
 describe("mergeAtlas", () => {
   it("uploads the local Atlas when the server is empty", () => {
-    const r = mergeAtlas(local([]), local([node(1), obs(2)], "3d"), {});
+    const r = mergeAtlas(local([]), local([node(1), obs(2)], "3d"), {}, 12);
     expect(r).toEqual({ atlas: local([node(1), obs(2)], "3d"), dropped: 0, upload: true });
   });
 
   it("uses the server Atlas when only it has pins", () => {
     const server = local([node(1)], "3d");
-    expect(mergeAtlas(server, local([]), {})).toEqual({ atlas: server, dropped: 0, upload: false });
+    expect(mergeAtlas(server, local([]), {}, 12)).toEqual({ atlas: server, dropped: 0, upload: false });
   });
 
   it("is empty when both are", () => {
-    expect(mergeAtlas(local([]), local([]), {})).toEqual({ atlas: local([]), dropped: 0, upload: false });
+    expect(mergeAtlas(local([]), local([]), {}, 12)).toEqual({ atlas: local([]), dropped: 0, upload: false });
   });
 
   it("puts server pins first, then local pins it does not hold, and keeps the server range", () => {
-    const r = mergeAtlas(local([node(1), node(2)], "3d"), local([node(3), node(1), obs(4)]), {});
+    const r = mergeAtlas(local([node(1), node(2)], "3d"), local([node(3), node(1), obs(4)]), {}, 12);
     expect(r.atlas.pins.map((p) => (p.kind === "node" ? p.publicKey : p.observerId))).toEqual([key(1), key(2), key(3), uuid(104)]);
     expect(r.atlas.range).toBe("3d");
     expect(r).toMatchObject({ dropped: 0, upload: true });
   });
 
   it("does not upload when the server already holds everything local", () => {
-    const r = mergeAtlas(local([node(1), node(2)]), local([node(2)]), {});
+    const r = mergeAtlas(local([node(1), node(2)]), local([node(2)]), {}, 12);
     expect(r).toMatchObject({ dropped: 0, upload: false });
     expect(r.atlas.pins).toHaveLength(2);
   });
 
   it("counts the local pins that did not fit", () => {
     const server = local(Array.from({ length: 10 }, (_, i) => node(i + 1)));
-    const r = mergeAtlas(server, local([node(20), node(21), node(22), node(5)]), {});
-    expect(r.atlas.pins).toHaveLength(ATLAS_LIMIT);
+    const r = mergeAtlas(server, local([node(20), node(21), node(22), node(5)]), {}, 12);
+    expect(r.atlas.pins).toHaveLength(12);
     expect(r).toMatchObject({ dropped: 1, upload: true });
+    expect(mergeAtlas(server, local([node(20), node(21), node(22)]), {}, 20)).toMatchObject({ dropped: 0 });
   });
 
   it("counts nothing dropped and no upload when the server list is full", () => {
     const server = local(Array.from({ length: 12 }, (_, i) => node(i + 1)));
-    expect(mergeAtlas(server, local([node(20)]), {})).toMatchObject({ dropped: 1, upload: false });
+    expect(mergeAtlas(server, local([node(20)]), {}, 12)).toMatchObject({ dropped: 1, upload: false });
   });
 
   it("treats a local observer as held when the server has that radio as a node", () => {
     const server = local([node(1, { observerId: uuid(101) })]);
-    expect(mergeAtlas(server, local([obs(1)]), {}).atlas.pins).toHaveLength(1);
+    expect(mergeAtlas(server, local([obs(1)]), {}, 12).atlas.pins).toHaveLength(1);
   });
 
   it("treats a local observer as held when the server has the same radio under a known key", () => {
     const placeholder = placeholderObserverId(key(2));
     const server = local([{ kind: "observer", observerId: placeholder, name: "A" }]);
     const keys = { [placeholder]: key(2), [uuid(102)]: key(2) };
-    expect(mergeAtlas(server, local([obs(2)]), keys).atlas.pins).toHaveLength(1);
+    expect(mergeAtlas(server, local([obs(2)]), keys, 12).atlas.pins).toHaveLength(1);
   });
 
   it("treats a local node as held when the server has its radio as an observer pin", () => {

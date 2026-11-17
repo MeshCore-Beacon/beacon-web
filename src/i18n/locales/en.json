@@ -1027,6 +1027,8 @@
       "syncedToAccount": "Synced to your account",
       "conflict": "Atlas was changed on another device. Showing the latest.",
       "syncFailed": "Could not save the Atlas to your account. Your change is kept on this device.",
+      "overLimit_one": "This server allows {{count}} card. Remove {{remove}} more to save your Atlas to your account.",
+      "overLimit_other": "This server allows {{count}} cards. Remove {{remove}} more to save your Atlas to your account.",
       "loadFailed": "Could not load the Atlas from your account. Showing this device's copy.",
       "mergeDropped_one": "{{count}} card from this device did not fit in your account Atlas.",
       "mergeDropped_other": "{{count}} cards from this device did not fit in your account Atlas.",

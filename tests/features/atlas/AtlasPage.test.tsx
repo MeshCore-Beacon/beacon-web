@@ -20,6 +20,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getObserver: vi.fn(),
   getObserverActivity: vi.fn(),
   getObserverTelemetry: vi.fn(),
+  getServerInfo: vi.fn(),
 }));
 
 const pin = { id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -49,6 +50,7 @@ const typeSearch = (value: string) => fireEvent.change(screen.getByRole("textbox
 const card = (name: string) => screen.findByRole("button", { name }).then((button) => button.closest("[data-atlas-card]") as HTMLElement);
 
 beforeEach(() => {
+  vi.mocked(api.getServerInfo).mockResolvedValue({ minAppVersion: null, minWebVersion: null, serverVersion: "2.3.0" });
   vi.clearAllMocks();
   localStorage.clear();
   vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
@@ -164,6 +166,24 @@ describe("Atlas page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Public Key" }));
     expect(screen.getByRole("textbox", { name: "Find a node" })).toHaveValue("");
     expect(screen.queryByRole("button", { name: "Add Renamed repeater" })).not.toBeInTheDocument();
+  });
+
+  it("takes its cap from the server", async () => {
+    vi.mocked(api.getServerInfo).mockResolvedValue({ minAppVersion: null, minWebVersion: null, serverVersion: "2.3.0", limits: { atlas: 2 } });
+    save(Array.from({ length: 2 }, (_, i) => ({ ...pin, id: `${i.toString().padStart(8, "0")}-1111-4111-8111-111111111111`, publicKey: i.toString(16).padStart(64, "0") })));
+    mount();
+    expect(await screen.findByText("2 / 2 saved")).toBeInTheDocument();
+    typeSearch("repeater");
+    expect(await screen.findByRole("button", { name: "Add Renamed repeater" }, { timeout: 4000 })).toBeDisabled();
+    expect(screen.getByText(/All 2 slots are in use/)).toBeInTheDocument();
+  });
+
+  it("keeps cards over a lowered cap and takes no more", async () => {
+    vi.mocked(api.getServerInfo).mockResolvedValue({ minAppVersion: null, minWebVersion: null, serverVersion: "2.3.0", limits: { atlas: 1 } });
+    save([pin, second]);
+    mount();
+    expect(await screen.findByText("2 / 1 saved")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
   });
 
   it("refuses a thirteenth pin from the UI", async () => {

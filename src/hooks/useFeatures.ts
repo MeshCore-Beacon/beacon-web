@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getServerInfo } from "../api/client";
+import { ATLAS_LIMIT_FALLBACK, ATLAS_LIMIT_MAX } from "../features/atlas/atlas";
 import type { DistanceUnit, TemperatureUnit } from "../lib/units";
 
 export interface Features {
@@ -46,6 +47,12 @@ export function useFeatures(): Features {
     alertDelivery: f.alertDelivery === "push" || f.alertDelivery === "email" ? f.alertDelivery : undefined,
     portalUrl: typeof f.portalUrl === "string" && f.portalUrl !== "" ? f.portalUrl : undefined,
   };
+}
+
+// The Atlas card cap from /info, or 12 when an older server does not send one.
+export function useAtlasLimit(): number {
+  const n = useInfo().data?.limits?.atlas;
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= ATLAS_LIMIT_MAX ? n : ATLAS_LIMIT_FALLBACK;
 }
 
 // The instance's display units from /info; Celsius and metric when absent or unrecognised.

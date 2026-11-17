@@ -1032,6 +1032,8 @@
       "syncedToAccount": "Synchronisé avec votre compte",
       "conflict": "L'Atlas a été modifié sur un autre appareil. Affichage de la dernière version.",
       "syncFailed": "Impossible d'enregistrer l'Atlas sur votre compte. Votre modification est conservée sur cet appareil.",
+      "overLimit_one": "Ce serveur permet {{count}} carte. Retirez-en encore {{remove}} pour enregistrer votre Atlas dans votre compte.",
+      "overLimit_other": "Ce serveur permet {{count}} cartes. Retirez-en encore {{remove}} pour enregistrer votre Atlas dans votre compte.",
       "loadFailed": "Impossible de charger l'Atlas depuis votre compte. Affichage de la copie de cet appareil.",
       "mergeDropped_one": "{{count}} carte de cet appareil n'a pas tenu dans l'Atlas de votre compte.",
       "mergeDropped_many": "{{count}} cartes de cet appareil n'ont pas tenu dans l'Atlas de votre compte.",

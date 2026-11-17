@@ -1,4 +1,4 @@
-import { ATLAS_LIMIT, NO_NODE_ID, parseAtlas, pinKey, type AtlasPin, type NodePin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas, type TelemetryTile } from "./atlas";
+import { NO_NODE_ID, parseAtlas, pinKey, type AtlasPin, type NodePin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas, type TelemetryTile } from "./atlas";
 
 // The account document, as /me/atlas answers it. Times and ids follow the API contract.
 export interface ServerNodePin { kind: "node"; publicKey: string; id: string | null; name: string; observerId: string | null; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
@@ -89,11 +89,11 @@ export interface MergeResult { atlas: SavedAtlas; dropped: number; upload: boole
 
 // First sign-in: server pins first, then local pins it does not hold, up to the limit. `upload` says
 // whether the result differs from the server copy.
-export function mergeAtlas(server: SavedAtlas, local: SavedAtlas, keys: ObserverKeys): MergeResult {
+export function mergeAtlas(server: SavedAtlas, local: SavedAtlas, keys: ObserverKeys, limit: number): MergeResult {
   if (local.pins.length === 0) return { atlas: server, dropped: 0, upload: false };
-  if (server.pins.length === 0) return { atlas: { ...local, pins: local.pins.slice(0, ATLAS_LIMIT) }, dropped: Math.max(0, local.pins.length - ATLAS_LIMIT), upload: true };
+  if (server.pins.length === 0) return { atlas: { ...local, pins: local.pins.slice(0, limit) }, dropped: Math.max(0, local.pins.length - limit), upload: true };
   const extra = local.pins.filter((pin) => !held(pin, server.pins, keys));
-  const room = Math.max(0, ATLAS_LIMIT - server.pins.length);
+  const room = Math.max(0, limit - server.pins.length);
   return {
     atlas: { ...server, pins: [...server.pins, ...extra.slice(0, room)] },
     dropped: Math.max(0, extra.length - room),
