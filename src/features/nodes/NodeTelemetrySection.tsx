@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Section } from "../../components/DetailPanel";
+import { FoldSection } from "../../components/DetailPanel";
 import { useDisplayUnits } from "../../hooks/useFeatures";
 import { tempSymbol } from "../../lib/units";
 import { Timestamp } from "../../components/Timestamp";
@@ -50,9 +50,20 @@ export default function NodeTelemetrySection({ node, onViewObserver, extra, info
   if (hasData && drawn && data !== shown) setShown(data!);
   const seenData = shown !== null;
 
+  const summaryPoller = polling.data?.poller ?? null;
+  const summaryLatest = polling.data?.latestReadingAt;
+  // What a closed fold still says: whether it is polled and how fresh the last reading is.
+  const pollSummary = summaryPoller || summaryLatest != null ? (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${summaryPoller ? "bg-green" : "bg-text-dim/30"}`} />
+      {t(summaryPoller ? "nodeDetail.telemetry.polledShort" : "nodeDetail.telemetry.lastReading")}
+      {summaryLatest != null && <>{" · "}<Timestamp value={summaryLatest} /></>}
+    </span>
+  ) : undefined;
+
   // The request block lives here so it shares the Telemetry heading; with nothing else to show it stands alone.
   const extraBlock = extra ? <div className="mt-3 border-t border-border-subtle pt-2">{extra}</div> : null;
-  const bare = extra ? <Section title={t("nodeDetail.telemetry.title")} info={info}>{extra}</Section> : null;
+  const bare = extra ? <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={info} summary={pollSummary}>{extra}</FoldSection> : null;
 
   // No route on this server, or the first load failed: nothing to show and nothing to apologise for.
   if (telemetry.unsupported || (telemetry.isError && !seenData)) return bare;
@@ -63,10 +74,10 @@ export default function NodeTelemetrySection({ node, onViewObserver, extra, info
   const polled = !!(data?.polled || polling.data?.polled || seenData);
   if (!hasData && !polled) {
     return (
-      <Section title={t("nodeDetail.telemetry.title")} info={info}>
+      <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={info} summary={pollSummary}>
         <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.telemetry.waiting", { name: poller!.name })}</div>
         {extraBlock}
-      </Section>
+      </FoldSection>
     );
   }
 
@@ -79,7 +90,7 @@ export default function NodeTelemetrySection({ node, onViewObserver, extra, info
     ["airtime", "airtime", t("nodeDetail.telemetry.airtime")],
   ];
   return (
-    <Section title={t("nodeDetail.telemetry.title")} info={info}>
+    <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={info} summary={pollSummary}>
       <Segmented
         size="xs"
         ariaLabel={t("nodeDetail.telemetry.range")}
@@ -123,6 +134,6 @@ export default function NodeTelemetrySection({ node, onViewObserver, extra, info
         </div>
       )}
       {extraBlock}
-    </Section>
+    </FoldSection>
   );
 }

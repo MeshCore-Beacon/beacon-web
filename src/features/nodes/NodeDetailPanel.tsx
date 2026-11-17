@@ -182,45 +182,6 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             </div>
             </Section>
 
-            {showTelemetry ? (
-              <Suspense fallback={null}>
-                <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} extra={requestBlock} info={telemetryInfo} />
-              </Suspense>
-            ) : requestBlock && <Section title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</Section>}
-
-            <Section title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
-              {neighbors && neighbors.length > 0 ? (
-                <div className="flex flex-col gap-1.5">
-                  {neighbors.map((n) => (
-                    // the endpoint returns one row per (neighbor, iata), so the node id alone repeats
-                    <NodeNeighborRow
-                      key={`${n.id}-${n.iata}`}
-                      neighbor={n}
-                      onClick={onViewNode ? () => onViewNode(n.id) : undefined}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noNeighbors")}</div>
-              )}
-            </Section>
-
-            <Section title={t("nodeDetail.recentPackets")}>
-              {observations && observations.items.length > 0 ? (
-                <div className="flex flex-col gap-1.5">
-                  {observations.items.map((obs) => (
-                    <NodeObservationRow
-                      key={obs.id}
-                      obs={obs}
-                      onClick={onAnalyzePacket ? () => onAnalyzePacket(obs.packetHash) : undefined}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noRecentPackets")}</div>
-              )}
-            </Section>
-
             <FoldSection id="node-details" title={t("nodeDetail.details")} summary={detailsSummary}>
               {(hasLocation || node.locationSource) && (
                 <>
@@ -255,6 +216,50 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             </FoldSection>
 
             {node.meshmapper && <MeshMapperSection mm={node.meshmapper} />}
+
+            {showTelemetry ? (
+              <Suspense fallback={null}>
+                <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} extra={requestBlock} info={telemetryInfo} />
+              </Suspense>
+            ) : requestBlock && <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</FoldSection>}
+
+            <FoldSection id="node-neighbors" title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
+              {neighbors && neighbors.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {neighbors.map((n) => (
+                    // the endpoint returns one row per (neighbor, iata), so the node id alone repeats
+                    <NodeNeighborRow
+                      key={`${n.id}-${n.iata}`}
+                      neighbor={n}
+                      onClick={onViewNode ? () => onViewNode(n.id) : undefined}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noNeighbors")}</div>
+              )}
+            </FoldSection>
+
+            <FoldSection
+              id="node-packets"
+              title={t("nodeDetail.recentPackets")}
+              summary={observations && observations.items.length > 0 ? <Timestamp value={observations.items[0]!.heardAt} /> : undefined}
+            >
+              {observations && observations.items.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {observations.items.map((obs) => (
+                    <NodeObservationRow
+                      key={obs.id}
+                      obs={obs}
+                      onClick={onAnalyzePacket ? () => onAnalyzePacket(obs.packetHash) : undefined}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noRecentPackets")}</div>
+              )}
+            </FoldSection>
+
         </>
       )}
     </DetailPanel>

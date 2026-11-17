@@ -38,7 +38,7 @@ function readFolds(): Record<string, boolean> {
 }
 
 // A section for reference info: closed by default, a one-line summary when closed, and remembered per id.
-export function FoldSection({ id, title, summary, info, children }: { id: string; title: ReactNode; summary?: string; info?: InfoLines; children: ReactNode }) {
+export function FoldSection({ id, title, summary, info, children }: { id: string; title: ReactNode; summary?: ReactNode; info?: InfoLines; children: ReactNode }) {
   const [open, setOpen] = useState(() => readFolds()[id] === true);
   const toggle = (next: boolean) => {
     if (next === open) return;

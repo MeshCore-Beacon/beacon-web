@@ -92,7 +92,7 @@ describe("NodeTelemetrySection", () => {
     renderSection();
     expect(await screen.findByText(/HOWL V4\.2.*waiting for the first reading/)).toBeInTheDocument();
     expect(screen.queryAllByTestId("chart")).toHaveLength(0);
-    expect(screen.queryByRole("group")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Telemetry range" })).not.toBeInTheDocument();
   });
 
   it("draws four charts with full data, defaulting to 7d", async () => {
