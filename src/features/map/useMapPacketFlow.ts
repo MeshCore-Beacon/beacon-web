@@ -98,6 +98,18 @@ export function useMapPacketFlow(
 
   const startLoop = useCallback(() => {
     if (rafRef.current != null) return;
+    // setData wakes a map worker. Clear a source once when its last visible feature leaves.
+    const populated = new Set<string>();
+    function paint(sourceId: string, data: FeatureCollection) {
+      const empty = data.features.length === 0;
+      if (empty && !populated.has(sourceId)) return;
+      const source = mapRef.current?.getSource(sourceId) as GeoJSONSource | undefined;
+      if (!source) return;
+      source.setData(data);
+      if (empty) populated.delete(sourceId);
+      else populated.add(sourceId);
+    }
+
     // light hop k of a flow at the moment the dot reached it; unknown nodes stay dark
     function lightHop(p: Flow, k: number) {
       const id = p.ids[k];
@@ -116,7 +128,6 @@ export function useMapPacketFlow(
     }
 
     function frame() {
-      const map = mapRef.current;
       const now = performance.now();
 
       const dots: Feature<Point>[] = [];
@@ -131,6 +142,10 @@ export function useMapPacketFlow(
         const headT = Math.min(t, nSeg);
         // full while the dot is travelling, then eases out after it reaches the end
         const fade = t > nSeg ? Math.max(0, 1 - (now - (p.start + nSeg * PACKET_FLOW_HOP_MS)) / PACKET_FLOW_TRAIL_FADE_MS) : 1;
+        if (fade === 0) {
+          flowsRef.current.splice(i, 1);
+          continue;
+        }
 
         const coords = trailCoords(p.coords, headT);
         if (coords.length >= 2) {
@@ -139,12 +154,11 @@ export function useMapPacketFlow(
         if (t <= nSeg) {
           dots.push({ type: "Feature", properties: { r: 5, a: 1 }, geometry: { type: "Point", coordinates: posAtHop(p.coords, headT) } });
         }
-        if (t > nSeg && fade <= 0) flowsRef.current.splice(i, 1);
       }
 
-      (map?.getSource(PACKET_FLOW_TRAIL_SOURCE_ID) as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: lines });
-      (map?.getSource(PACKET_FLOW_DOT_SOURCE_ID) as GeoJSONSource | undefined)?.setData({ type: "FeatureCollection", features: dots });
-      (map?.getSource(LIVE_LIT_SOURCE_ID) as GeoJSONSource | undefined)?.setData(litFeatureCollection(litRef.current, now));
+      paint(PACKET_FLOW_TRAIL_SOURCE_ID, { type: "FeatureCollection", features: lines });
+      paint(PACKET_FLOW_DOT_SOURCE_ID, { type: "FeatureCollection", features: dots });
+      paint(LIVE_LIT_SOURCE_ID, litFeatureCollection(litRef.current, now));
 
       const busy = flowsRef.current.length > 0 || litRef.current.size > 0;
       rafRef.current = busy ? requestAnimationFrame(frame) : null;
