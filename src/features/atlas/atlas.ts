@@ -37,7 +37,7 @@ export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : 
 export function parseAtlas(raw: string | null): SavedAtlas {
   const empty: SavedAtlas = { version: 2, range: "24h", pins: [] };
   try {
-    if (!raw || raw.length > 32_000) return empty;
+    if (!raw || raw.length > ATLAS_FILE_MAX_BYTES) return empty;
     const value = JSON.parse(raw);
     const list = value?.version === 2 ? value.pins : null;
     if (!Array.isArray(list)) return empty;
