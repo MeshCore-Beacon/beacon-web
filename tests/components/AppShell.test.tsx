@@ -349,10 +349,11 @@ describe("AppShell on a phone", () => {
   });
 
   it("shrinks the stale badge to a dot and the age so the instance name keeps its room", () => {
+    vi.spyOn(Date, "now").mockReturnValue(10_000);
     const media = window.matchMedia("(max-width: 767px)");
     vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ ...media, media: query, matches: query === "(max-width: 767px)" }));
     vi.mocked(getIatas).mockResolvedValue([]);
-    const stale = { onStatusChange: () => () => {}, getStatus: () => "connecting", getLastEventTimestamp: () => Date.now() - 5000 } as unknown as WsManager;
+    const stale = { onStatusChange: () => () => {}, getStatus: () => "connecting", getLastEventTimestamp: () => 5_000 } as unknown as WsManager;
     renderShell(() => {}, stale);
     const badge = screen.getByRole("status", { name: "STALE 5s" });
     expect(badge).toHaveTextContent(/^5s$/);
