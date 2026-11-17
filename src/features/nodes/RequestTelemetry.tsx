@@ -18,7 +18,7 @@ function ManageLink() {
   const { t } = useTranslation();
   const { open } = useView();
   return (
-    <button type="button" onClick={() => open("profile")} className="block font-mono text-[11px] text-primary hover:underline">
+    <button type="button" onClick={() => open("profile")} className="font-mono text-[11px] text-primary hover:underline">
       {t("nodeDetail.telemetry.manage")}
     </button>
   );
@@ -54,12 +54,9 @@ function RequestForm({ node }: { node: { id: string; publicKey: string } }) {
   if (existing) {
     const line = requestLine(t, existing);
     return (
-      <div className="flex flex-col gap-1 font-mono text-[13px]">
-        <div className="text-[11px] uppercase tracking-wider text-text-muted">{t("nodeDetail.telemetry.requested")}</div>
-        <div className="flex items-start gap-2 text-text-normal">
-          <StatusDot tone={line.tone} />
-          <span>{line.text}</span>
-        </div>
+      <div data-request-line className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[13px] text-text-normal">
+        <StatusDot tone={line.tone} />
+        <span>{line.text}</span>
         <ManageLink />
       </div>
     );
@@ -75,7 +72,6 @@ function RequestForm({ node }: { node: { id: string; publicKey: string } }) {
         create.mutate(pw);
       }}
     >
-      <p className="font-mono text-[12px] text-text-muted">{t("nodeDetail.telemetry.requestIntro")}</p>
       <PasswordField
         label={t("nodeDetail.telemetry.guestPassword")}
         name="guestPassword"
@@ -85,12 +81,14 @@ function RequestForm({ node }: { node: { id: string; publicKey: string } }) {
         onChange={setPassword}
         disabled={create.isPending || full}
       />
-      <p className="font-mono text-[11px] text-text-muted">{t("nodeDetail.telemetry.passwordNotice")}</p>
-      <p className="font-mono text-[11px] text-text-muted">{t("nodeDetail.telemetry.used", { used, limit })}</p>
+      <p className="font-mono text-[11px] text-warn">{t("nodeDetail.telemetry.passwordHint")}</p>
       {full && <FormStatus>{t("nodeDetail.telemetry.limitReached")}</FormStatus>}
-      <FormButton busy={create.isPending} busyLabel={t("nodeDetail.telemetry.requesting")} disabled={full} className="self-start">
-        {t("nodeDetail.telemetry.request")}
-      </FormButton>
+      <div className="flex items-center gap-3">
+        <FormButton busy={create.isPending} busyLabel={t("nodeDetail.telemetry.requesting")} disabled={full}>
+          {t("nodeDetail.telemetry.request")}
+        </FormButton>
+        <span className="font-mono text-[11px] text-text-muted">{t("nodeDetail.telemetry.usedShort", { used, limit })}</span>
+      </div>
       {create.isError && <FormStatus kind="error">{requestErrorText(t, create.error)}</FormStatus>}
     </form>
   );

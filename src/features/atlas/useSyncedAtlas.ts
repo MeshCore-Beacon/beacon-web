@@ -4,6 +4,7 @@ import { me } from "../../api/auth";
 import { useFeatures } from "../../hooks/useFeatures";
 import { useSession } from "../../hooks/useSession";
 import type { SavedAtlas } from "./atlas";
+import { ATLAS_LIMIT_FALLBACK } from "./atlas";
 import { fromServer, mergeAtlas, OWNER_KEY, syncedMarker, toPut, type ObserverKeys, type ServerAtlas } from "./atlasSync";
 import { useSavedAtlas } from "./useSavedAtlas";
 
@@ -19,6 +20,12 @@ const markSynced = (userId: string) => {
   try { localStorage.setItem(syncedMarker(userId), String(Date.now())); } catch { /* storage blocked */ }
 };
 const isConflict = (error: unknown) => (error as { status?: unknown } | null)?.status === 409;
+// The cap a refused save named, from the server's "at most N pins".
+const refusedCap = (error: unknown): number | null => {
+  const e = error as { status?: unknown; message?: unknown } | null;
+  const m = e?.status === 422 && typeof e.message === "string" ? /^at most (\d+) pins$/.exec(e.message) : null;
+  return m ? Number(m[1]) : null;
+};
 
 // The saved Atlas, kept on the account while signed in. Signed out it is the local hook, untouched.
 export function useSyncedAtlas() {
@@ -101,7 +108,9 @@ export function useSyncedAtlas() {
             setNotice(tRef.current("atlas.conflict"));
           } else {
             revision.current = isConflict(error) ? null : revision.current;
-            setNotice(tRef.current("atlas.syncFailed"));
+            const cap = refusedCap(error);
+            const over = cap === null ? 0 : baseRef.current.latest().pins.length - cap;
+            setNotice(over > 0 ? tRef.current("atlas.overLimit", { count: cap!, remove: over }) : tRef.current("atlas.syncFailed"));
           }
         }
       }
@@ -134,7 +143,7 @@ export function useSyncedAtlas() {
         let next = server.atlas;
         let upload = false;
         if (!marked && !foreign) {
-          const merged = mergeAtlas(server.atlas, local, server.keys);
+          const merged = mergeAtlas(server.atlas, local, server.keys, doc.limit > 0 ? doc.limit : ATLAS_LIMIT_FALLBACK);
           if (merged.dropped > 0) setNotice(tRef.current("atlas.mergeDropped", { count: merged.dropped }));
           next = merged.atlas;
           upload = merged.upload;

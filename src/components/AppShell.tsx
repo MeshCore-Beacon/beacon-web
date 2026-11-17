@@ -10,16 +10,16 @@ import { useRateLimit } from "../hooks/useRateLimit";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
 import { BottomNav } from "./BottomNav";
-import { LanguageOptions, LanguagePicker } from "./LanguagePicker";
+import { LanguageOptions } from "./LanguagePicker";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
 import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL, BANNER } from "../lib/constants";
 import { InstanceBanner } from "./InstanceBanner";
-import { AccountEntry, AccountMenuItems } from "../features/account/AccountMenu";
+import { AccountMenuItems } from "../features/account/AccountMenu";
 import type { WsManager } from "../api/ws-manager";
 
-// header widgets: WS status, region picker, theme picker
+// header widgets: WS status, region picker, settings menu
 
 function LiveBadge({ wsManager, compact = false }: { wsManager: WsManager; compact?: boolean }) {
   const { t } = useTranslation();
@@ -138,7 +138,7 @@ function RegionSelector() {
 
   return (
     <Dropdown
-      align="left-below-md"
+      align="left"
       width="w-60"
       renderTrigger={({ toggle }) => (
         <button
@@ -322,33 +322,6 @@ function RegionSelectorPanel() {
   );
 }
 
-function ThemePicker() {
-  const { t } = useTranslation();
-  const { themeId, themes } = useTheme();
-  const current = themes.find((t) => t.id === themeId);
-
-  return (
-    <Dropdown
-      renderTrigger={({ toggle }) => (
-        <button
-          type="button"
-          aria-label={t("theme.label")}
-          className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-2 py-1 text-text-muted font-mono text-[11px] hover:text-text-normal hover:border-text-dim transition-colors"
-          onClick={toggle}
-        >
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0 border border-text-normal/20"
-            style={{ background: current?.vars["--palette-primary"] }}
-          />
-          <span className="text-text-dim text-[11px]">▾</span>
-        </button>
-      )}
-    >
-      {(close) => <ThemeOptions onPick={close} />}
-    </Dropdown>
-  );
-}
-
 function ThemeOptions({ onPick }: { onPick?: () => void }) {
   const { themeId, themes, setThemeId } = useTheme();
   return (
@@ -393,7 +366,7 @@ function GitHubLink() {
 
 const MENU_GROUP = "px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim";
 
-// Phones fold theme, language and the repo link into one menu so the header stays a single row.
+// Account, theme, language and the repo link share one menu so the header stays a single row.
 function SettingsMenu() {
   const { t } = useTranslation();
   return (
@@ -445,34 +418,17 @@ export function AppShell({ activeTab, onTabChange, wsManager, children }: AppShe
   return (
     <div className="flex flex-col h-dvh">
       <InstanceBanner text={BANNER} />
-      {isMobile ? (
-        <header className="flex items-center gap-2 px-3 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
-          <BeaconWordmark iconSize={20} textClassName="text-sm" className="min-w-0" />
-          <div className="shrink-0">
-            <RegionSelector />
-          </div>
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            <RateLimitBadge />
-            <LiveBadge wsManager={wsManager} compact />
-            <SettingsMenu />
-          </div>
-        </header>
-      ) : (
-        <header className="flex items-center gap-3 px-4 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
-          <BeaconWordmark iconSize={22} textClassName="text-sm truncate" className="min-w-0" />
-          <div className="ml-auto flex items-center gap-3">
-            <RegionSelector />
-            <ThemePicker />
-            <LanguagePicker />
-          </div>
-          <div className="flex items-center gap-3">
-            <LiveBadge wsManager={wsManager} />
-            <RateLimitBadge />
-            <GitHubLink />
-          </div>
-          <AccountEntry />
-        </header>
-      )}
+      <header className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 min-h-[42px] bg-bg-surface border-b border-border shrink-0">
+        <BeaconWordmark iconSize={isMobile ? 20 : 22} textClassName={isMobile ? "text-sm" : "text-sm truncate"} className="min-w-0" />
+        <div className="shrink-0">
+          <RegionSelector />
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-3">
+          <RateLimitBadge />
+          <LiveBadge wsManager={wsManager} compact={isMobile} />
+          <SettingsMenu />
+        </div>
+      </header>
 
       <nav className="hidden md:flex bg-bg-surface border-b border-border px-4 shrink-0" role="tablist">
         {ENABLED_TABS.map((tab) => (

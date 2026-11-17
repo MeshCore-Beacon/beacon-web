@@ -2,8 +2,7 @@
   "name": "Svenska",
   "translation": {
     "language": {
-      "label": "Språk",
-      "help": "Välj ett språk."
+      "label": "Språk"
     },
     "tabs": {
       "Packets": "Paket",
@@ -256,6 +255,11 @@
     },
     "nodeDetail": {
       "viewOnMap": "Visa på karta",
+      "lastSeen": "Senast sedd",
+      "details": "Detaljer",
+      "scopesCount_one": "{{count}} scope",
+      "scopesCount_other": "{{count}} scopes",
+      "fromMeshMapperIn": "Från MeshMapper ({{iata}})",
       "title": "Noddetaljer",
       "copyLink": "Kopiera nodlänk",
       "notFound": "Noden hittades inte",
@@ -282,8 +286,10 @@
       "neighbors": "Grannar",
       "neighborsCount": "Grannar ({{count}})",
       "noNeighbors": "Inga kända grannar",
-      "recentPackets": "Senaste paket",
-      "noRecentPackets": "Inga senaste paket",
+      "recentPackets": "Skickade paket",
+      "noRecentPackets": "Inga skickade paket",
+      "packetsSentInfo": "Annonser och inloggningsförfrågningar som den här noden skickat. Andra paket anger inte avsändaren i sin helhet, så de kan inte listas här.",
+      "packetsSentExpire": "Äldre paket försvinner efter serverns lagringstid.",
       "observations_one": "{{formatted}} obs",
       "observations_other": "{{formatted}} obs",
       "hops": "Hopp",
@@ -305,9 +311,11 @@
         "requestIntro": "Be Beacon låta en frivillig observatör som hör den här repeatern avläsa dess batteri och radiostatistik.",
         "guestPassword": "Gästlösenord (valfritt)",
         "passwordNotice": "Gästlösenordet delas med frivilliga observatörer så att de kan be repeatern om dess statistik. Ange aldrig ett administratörslösenord.",
-        "used": "{{used}} av {{limit}} begäran använda",
         "limitReached": "Du har använt alla dina begäran. Ta bort en i din profil för att begära en till.",
-        "requested": "Telemetri begärd",
+        "polledShort": "Avläst",
+        "by": "av",
+        "passwordHint": "Endast gästlösenord, aldrig admin.",
+        "usedShort": "{{used}} av {{limit}} använda",
         "manage": "Hantera i profilen"
       }
     },
@@ -958,9 +966,15 @@
       "syncedToAccount": "Synkad med ditt konto",
       "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",
       "syncFailed": "Det gick inte att spara Atlas på ditt konto. Din ändring finns kvar på den här enheten.",
+      "overLimit_one": "Den här servern tillåter {{count}} kort. Ta bort {{remove}} till för att spara din Atlas i ditt konto.",
+      "overLimit_other": "Den här servern tillåter {{count}} kort. Ta bort {{remove}} till för att spara din Atlas i ditt konto.",
       "loadFailed": "Det gick inte att läsa in Atlas från ditt konto. Visar den här enhetens kopia.",
       "mergeDropped_one": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
       "mergeDropped_other": "{{count}} kort från den här enheten fick inte plats i kontots Atlas.",
+      "heard": "Hörd",
+      "hops": "{{value}} hopp",
+      "neighbors_one": "{{count}} granne",
+      "neighbors_other": "{{count}} grannar",
       "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet",
       "viewTelemetry": "Telemetri",
       "telemetry": {
@@ -975,6 +989,9 @@
         "polledBy": "Avläses av {{name}}",
         "polled": "Avläses",
         "notPolled": "Avläses inte just nu",
+        "polledShort": "Avläst",
+        "notPolledShort": "Avläses inte",
+        "byPoller": "av {{name}}",
         "lastReading": "Senaste värdet",
         "help": "Värden som Beacon har hämtat från den här repeatern, över det valda fönstret. Sändtid är andelen av tiden som gått åt till att sända och ta emot. Paket och fel räknas per timme. Signal är det senaste SNR och RSSI som repeatern rapporterade. Med få värden ritas punkterna som prickar."
       }

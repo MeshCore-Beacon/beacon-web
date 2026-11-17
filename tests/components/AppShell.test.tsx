@@ -50,9 +50,9 @@ describe("AppShell", () => {
     const onTabChange = vi.fn();
     renderShell(onTabChange);
 
-    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Langue: Français" })).toHaveAttribute("aria-expanded", "false"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Réglages" })).toHaveAttribute("aria-expanded", "false"));
     expect(screen.getAllByRole("tab", { name: "Paquets" })[0]).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("EN DIRECT")).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("fr");
@@ -113,7 +113,7 @@ describe("region picker filter", () => {
 
   it("searches the translated all-regions label and retains raw IATA values", async () => {
     renderShell();
-    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
     fireEvent.click(await screen.findByRole("button", { name: /Région/ }));
     await screen.findByText("Western Canada");
@@ -301,13 +301,32 @@ describe("rate limit badge", () => {
 });
 
 describe("AppShell region picker alignment", () => {
-  it("opens rightward only below md so the desktop row's controls stay visible", async () => {
+  it("opens rightward, since the picker sits by the wordmark on every layout", async () => {
     vi.mocked(getIatas).mockResolvedValue([]);
     renderShell();
     fireEvent.click(screen.getByRole("button", { name: /Region/ }));
     const panel = screen.getByPlaceholderText("Search region or area code…").closest(".absolute")!;
     expect(panel.className).toContain("left-0");
-    expect(panel.className).toContain("md:right-0");
+    expect(panel.className).not.toContain("right-0");
+  });
+});
+
+describe("AppShell on desktop", () => {
+  it("puts region by the wordmark and folds theme, language and GitHub into the settings menu", () => {
+    vi.mocked(getIatas).mockResolvedValue([]);
+    renderShell();
+    const header = screen.getByRole("banner");
+    const region = screen.getByRole("button", { name: /Region/ });
+    const settings = screen.getByRole("button", { name: "Settings" });
+    expect(header.firstElementChild!.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(region.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("LIVE")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Language:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Theme" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+    fireEvent.click(settings);
+    expect(screen.getByRole("link", { name: "GitHub" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Français", exact: true })).toBeInTheDocument();
   });
 });
 

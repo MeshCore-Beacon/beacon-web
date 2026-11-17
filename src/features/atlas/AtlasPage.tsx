@@ -8,6 +8,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { Tooltip } from "../../components/Tooltip";
+import { useAtlasLimit } from "../../hooks/useFeatures";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { formatHex } from "../../lib/formatters";
 import { nodeSearchParams } from "../nodes/node-search";
@@ -18,7 +19,7 @@ import type { ObserverDirectoryItem } from "../observers/types";
 import { Card } from "../stats/cards";
 import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions } from "./AtlasCard";
-import { ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT, atlasFile, atlasFileName, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTelemetryTiles, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
+import { ATLAS_FILE_MAX_BYTES, atlasFile, atlasFileName, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTelemetryTiles, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { useCardDrag } from "./useCardDrag";
 import { useSyncedAtlas } from "./useSyncedAtlas";
 
@@ -42,6 +43,12 @@ type Matches =
   | { kind: "node"; items: NodeSummary[]; hasMore: boolean }
   | { kind: "observer"; items: ObserverDirectoryItem[]; hasMore: boolean };
 
+function without(views: Record<string, AtlasView>, key: string): Record<string, AtlasView> {
+  const next = { ...views };
+  delete next[key];
+  return next;
+}
+
 // Global by design: pins are radio identities, so the header region picker does not apply here.
 export function AtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
@@ -50,10 +57,11 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [field, setField] = useState("name");
-  // One card at a time is away from the view it opens on.
-  const [open, setOpen] = useState<{ key: string; view: AtlasView } | null>(null);
-  const viewOf = (pin: AtlasPin) => (open?.key === pinKey(pin) ? open.view : homeView(pin));
-  const setView = (pin: AtlasPin, view: AtlasView) => setOpen(view === homeView(pin) ? null : { key: pinKey(pin), view });
+  // Each card keeps the view picked this session; only the pin saves it as where the card opens.
+  const [open, setOpen] = useState<Record<string, AtlasView>>({});
+  const viewOf = (pin: AtlasPin) => open[pinKey(pin)] ?? homeView(pin);
+  const setView = (pin: AtlasPin, view: AtlasView) =>
+    setOpen((current) => (view === homeView(pin) ? without(current, pinKey(pin)) : { ...current, [pinKey(pin)]: view }));
   // Switching the field changes what the box means, so stale text must not carry over.
   const changeField = (value: string) => {
     setField(value);
@@ -78,7 +86,8 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     staleTime: 30_000,
   });
 
-  const full = saved.pins.length >= ATLAS_LIMIT;
+  const limit = useAtlasLimit();
+  const full = saved.pins.length >= limit;
   const fields: SearchFieldOption[] = [
     { value: "name", label: t("nodeFilters.fieldName") },
     { value: "pubkey", label: t("nodeFilters.fieldPubkey") },
@@ -120,7 +129,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? withTelemetryTiles(other, tiles) : other)) }));
   const pinView = (pin: AtlasPin, view: AtlasView) => {
     update((value) => ({ ...value, pins: value.pins.map((other) => (pinKey(other) === pinKey(pin) && other.kind === "node" ? withView(other, view) : other)) }));
-    setOpen((current) => (current?.key === pinKey(pin) ? null : current));
+    setOpen((current) => without(current, pinKey(pin)));
   };
   // An observer pin whose key now resolves to a node takes that node's place in its own slot, and
   // keeps opening on the Observer view it had.
@@ -155,7 +164,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const [notice, setNotice] = useState<ImportNotice | null>(null);
   const applyImport = (result: AtlasImport) => {
     update(() => result.atlas);
-    setOpen(null);
+    setOpen({});
     setPendingImport(null);
     setNotice({ kind: "imported", count: result.atlas.pins.length, skipped: result.skipped });
   };
@@ -165,7 +174,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     if (!file) return;
     setNotice(null);
     setPendingImport(null);
-    const result = file.size > ATLAS_FILE_MAX_BYTES ? null : readAtlasFile(await file.text().catch(() => ""));
+    const result = file.size > ATLAS_FILE_MAX_BYTES ? null : readAtlasFile(await file.text().catch(() => ""), limit);
     if (!result || result.atlas.pins.length === 0) setNotice({ kind: "invalid" });
     else if (saved.pins.length === 0) applyImport(result);
     else setPendingImport(result);
@@ -232,11 +241,11 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
           onFieldChange={changeField}
           inputLabel={t("atlas.search")}
         />
-        {!isMobile && <InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: ATLAS_LIMIT })} />}
+        {!isMobile && <InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: limit })} />}
         <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] text-text-muted">
           <Tooltip label={t(synced ? "atlas.syncedToAccount" : "atlas.localOnly")}>
             <span className={`rounded-sm border px-2.5 py-1 ${full ? "border-warn/15 bg-warn/7 text-warn" : "border-border bg-bg-surface"}`}>
-              {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.pins.length, limit: ATLAS_LIMIT })}
+              {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.pins.length, limit: limit })}
             </span>
           </Tooltip>
           {storageFailed && <span role="status" className="text-warn">{t("atlas.storageFailed")}</span>}
@@ -343,12 +352,12 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                 {results.data?.hasMore && !hint && (
                   <p className="mt-1 text-text-muted">{t("atlas.refine", { limit: SEARCH_LIMIT })}</p>
                 )}
-                {full && !hint && <p className="mt-1 text-warn">{t("atlas.limitReached", { limit: ATLAS_LIMIT })}</p>}
+                {full && !hint && <p className="mt-1 text-warn">{t("atlas.limitReached", { limit: limit })}</p>}
               </div>
             </Card>
           )}
           {saved.pins.length === 0 ? (
-            <EmptyState title={t("atlas.emptyTitle")} subtitle={t("atlas.emptyDescription", { limit: ATLAS_LIMIT })} />
+            <EmptyState title={t("atlas.emptyTitle")} subtitle={t("atlas.emptyDescription", { limit: limit })} />
           ) : (
             <div className="grid gap-3.5 md:grid-cols-2 xl:grid-cols-3">
               {saved.pins.map((pin, index) => (
