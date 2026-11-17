@@ -243,6 +243,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             <FoldSection
               id="node-packets"
               title={t("nodeDetail.recentPackets")}
+              info={[t("nodeDetail.packetsSentInfo"), t("nodeDetail.packetsSentExpire")]}
               summary={observations && observations.items.length > 0 ? <Timestamp value={observations.items[0]!.heardAt} /> : undefined}
             >
               {observations && observations.items.length > 0 ? (

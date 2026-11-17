@@ -270,12 +270,15 @@ describe("NodeDetailPanel View on map", () => {
   });
 });
 
-describe("NodeDetailPanel recent packets", () => {
-  it("labels the expiring packet list as recent packets", async () => {
+describe("NodeDetailPanel packets sent", () => {
+  it("labels the list as packets the node sent and explains why only some show", async () => {
     renderPanel();
-    expect(await screen.findByText("Recent packets")).toBeInTheDocument();
-    expect(await screen.findByText("No recent packets")).toBeInTheDocument();
-    expect(screen.queryByText("Observations")).not.toBeInTheDocument();
+    const title = await screen.findByText("Packets sent");
+    expect(await screen.findByText("No packets sent")).toBeInTheDocument();
+    expect(screen.queryByText("Recent packets")).not.toBeInTheDocument();
+    const tip = title.closest("summary")!.querySelector(".sr-only")!;
+    expect(tip).toHaveTextContent("Adverts and login requests this node sent.");
+    expect(tip).toHaveTextContent("Other packets don't name their sender in full");
   });
 });
 
@@ -292,7 +295,7 @@ describe("NodeDetailPanel in French", () => {
     expect(screen.getByText("+20 s en avance")).toBeInTheDocument();
     expect(screen.getByText("Voisins (2)")).toBeInTheDocument();
     expect(await screen.findByText("Aucun voisin connu")).toBeInTheDocument();
-    expect(screen.getByText("Aucun paquet récent")).toBeInTheDocument();
+    expect(screen.getByText("Aucun paquet envoyé")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copier la clé publique" })).toBeInTheDocument();
   });
 
@@ -436,7 +439,7 @@ describe("NodeDetailPanel layout", () => {
     mockGetNode.mockResolvedValue({ ...node, minFirmwareVersion: "1.14.0", lat: 45.4215, lng: -75.6972, locationSource: "advert", meshmapper: { iata: "YOW", fetchedAt: 1, site: { hardware: "RAK4631" }, carpeater: false, admins: [], scopes: [] } });
     renderPanel();
     await screen.findByRole("button", { name: "Poller" });
-    const titles = ["Summary", "Details", "MeshMapper", "Telemetry", "Neighbors", "Recent packets"].map((text) => screen.getByText(text));
+    const titles = ["Summary", "Details", "MeshMapper", "Telemetry", "Neighbors", "Packets sent"].map((text) => screen.getByText(text));
     for (let i = 1; i < titles.length; i++) {
       expect(titles[i - 1]!.compareDocumentPosition(titles[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
