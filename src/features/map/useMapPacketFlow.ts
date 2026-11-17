@@ -98,18 +98,6 @@ export function useMapPacketFlow(
 
   const startLoop = useCallback(() => {
     if (rafRef.current != null) return;
-    // setData wakes a map worker. Clear a source once when its last visible feature leaves.
-    const populated = new Set<string>();
-    function paint(sourceId: string, data: FeatureCollection) {
-      const empty = data.features.length === 0;
-      if (empty && !populated.has(sourceId)) return;
-      const source = mapRef.current?.getSource(sourceId) as GeoJSONSource | undefined;
-      if (!source) return;
-      source.setData(data);
-      if (empty) populated.delete(sourceId);
-      else populated.add(sourceId);
-    }
-
     // light hop k of a flow at the moment the dot reached it; unknown nodes stay dark
     function lightHop(p: Flow, k: number) {
       const id = p.ids[k];
@@ -125,6 +113,18 @@ export function useMapPacketFlow(
         crossedAt: p.start + k * PACKET_FLOW_HOP_MS,
         seq: ++seqRef.current,
       });
+    }
+
+    // setData wakes a map worker. Clear a source once when its last visible feature leaves.
+    const populated = new Set<string>();
+    function paint(sourceId: string, data: FeatureCollection) {
+      const empty = data.features.length === 0;
+      if (empty && !populated.has(sourceId)) return;
+      const source = mapRef.current?.getSource(sourceId) as GeoJSONSource | undefined;
+      if (!source) return;
+      source.setData(data);
+      if (empty) populated.delete(sourceId);
+      else populated.add(sourceId);
     }
 
     function frame() {
