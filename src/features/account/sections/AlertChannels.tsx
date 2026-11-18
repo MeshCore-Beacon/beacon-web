@@ -35,7 +35,12 @@ export function AlertChannels({ channels, email, rulesOn }: { channels: Channels
   const ended = useSessionEnded();
   const save = useSessionMutation({
     mutationFn: ({ key, on }: { key: Key; on: boolean }) => alerts.putChannels(key === "email" ? { email: on } : { push: on }),
-    onSuccess: (next) => queryClient.setQueryData<AlertsResponse>(ALERTS_KEY, (d) => (d ? { ...d, channels: next } : d)),
+    // Drop an overview fetch that started before the save so it cannot undo it, then refetch.
+    onSuccess: async (next) => {
+      await queryClient.cancelQueries({ queryKey: ALERTS_KEY });
+      queryClient.setQueryData<AlertsResponse>(ALERTS_KEY, (d) => (d ? { ...d, channels: next } : d));
+      void queryClient.invalidateQueries({ queryKey: ALERTS_KEY });
+    },
     onError: ended,
   });
 

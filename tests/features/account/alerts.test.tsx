@@ -550,11 +550,14 @@ describe("alert channels", () => {
     fireEvent.click(emailSwitch());
     await waitFor(() => expect(emailSwitch()).not.toBeChecked());
     expect(putChannels()).toHaveBeenCalledWith({ email: false });
+    // The save refetches the overview, so the server now reports what it stored.
+    vi.mocked(alerts.get).mockResolvedValue(response({ channels: channels({ enabled: false }) }));
     await act(async () => answer(channels({ enabled: false })));
     await waitFor(() => expect(emailSwitch()).toBeEnabled());
     expect(emailSwitch()).not.toBeChecked();
 
     putChannels().mockResolvedValue(channels({ enabled: false }, { enabled: true }));
+    vi.mocked(alerts.get).mockResolvedValue(response({ channels: channels({ enabled: false }, { enabled: true }) }));
     fireEvent.click(pushSwitch());
     await waitFor(() => expect(pushSwitch()).toBeChecked());
     expect(putChannels()).toHaveBeenLastCalledWith({ push: true });
@@ -585,6 +588,22 @@ describe("alert channels", () => {
     c.unmount();
     await open(withRule(channels({ enabled: false }, { enabled: true })));
     expect(box().queryByText(noneReach)).toBeNull();
+  });
+
+  it("keeps a saved switch when an older overview fetch lands after the save", async () => {
+    await open(response({ channels: channels({ enabled: true }), targets: [repeater()] }));
+    let stale: (d: AlertsResponse) => void = () => {};
+    vi.mocked(alerts.get).mockImplementationOnce(() => new Promise((r) => { stale = r; }));
+    fireEvent.click(row("Hilltop", "gone_quiet").getByRole("switch"));
+    await waitFor(() => expect(alerts.get).toHaveBeenCalledTimes(2));
+
+    vi.mocked(alerts.get).mockResolvedValue(response({ channels: channels({ enabled: false }), targets: [repeater()] }));
+    putChannels().mockResolvedValue(channels({ enabled: false }));
+    fireEvent.click(emailSwitch());
+    await waitFor(() => expect(emailSwitch()).toBeEnabled());
+    await waitFor(() => expect(alerts.get).toHaveBeenCalledTimes(3));
+    await act(async () => stale(response({ channels: channels({ enabled: true }), targets: [repeater()] })));
+    expect(emailSwitch()).not.toBeChecked();
   });
 
   it("warns as soon as the last channel is switched off", async () => {
