@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { useAlerts } from "../../../hooks/useAlerts";
+import { useFeatures } from "../../../hooks/useFeatures";
 import { authErrorText } from "../errors";
 import { ALERT_KINDS } from "../alertRules";
 import { unavailableText } from "../unavailableReason";
@@ -69,6 +70,7 @@ export function AlertsSection({ user }: { user: User }) {
   const { t } = useTranslation();
   const ended = useSessionEnded();
   const list = useAlerts();
+  const { alertChannelsSent } = useFeatures();
   useEffect(() => {
     if (list.error) ended(list.error);
   }, [list.error, ended]);
@@ -82,7 +84,8 @@ export function AlertsSection({ user }: { user: User }) {
       {list.isError && <FormStatus kind="error">{authErrorText(t, list.error)}</FormStatus>}
       {data && (
         <>
-          <AlertChannels channels={data.channels} email={user.email} rulesOn={rulesOn} />
+          {/* An older server has no channel switches; its rules still work. */}
+          {alertChannelsSent && data.channels && <AlertChannels channels={data.channels} email={user.email} rulesOn={rulesOn} />}
           {data.targets.length === 0 ? (
             <p className="text-sm text-text-normal">
               {t("account.alerts.empty")} <Link to={{ search: "?tab=Atlas" }} className="text-primary hover:underline">{t("account.alerts.openAtlas")}</Link>

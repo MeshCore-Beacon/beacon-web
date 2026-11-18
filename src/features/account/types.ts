@@ -87,8 +87,9 @@ export interface AlertChannels {
   push: { available: boolean; enabled: boolean; hasDevice: boolean };
 }
 
+// channels is absent from servers older than the channel switches.
 export interface AlertsResponse {
-  channels: AlertChannels;
+  channels?: AlertChannels;
   targets: AlertTarget[];
 }
 

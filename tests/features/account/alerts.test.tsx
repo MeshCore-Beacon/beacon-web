@@ -46,7 +46,7 @@ const response = (over: Partial<AlertsResponse> = {}): AlertsResponse => ({ chan
 
 beforeEach(() => {
   resetMocks();
-  mocks.features = { ...mocks.features, alerts: true, alertChannels: { email: true, push: true } };
+  mocks.features = { ...mocks.features, alerts: true, alertChannels: { email: true, push: true }, alertChannelsSent: true };
   units.temperature = "c";
   vi.mocked(me.get).mockResolvedValue({ user });
   vi.mocked(me.sessions).mockResolvedValue({ sessions: [] });
@@ -593,5 +593,25 @@ describe("alert channels", () => {
     expect(box().queryByText(noneReach)).toBeNull();
     fireEvent.click(emailSwitch());
     expect(await box().findByText(noneReach)).toBeInTheDocument();
+  });
+});
+
+describe("older server without channel switches", () => {
+  // The overview shape servers sent before the channel switches.
+  const legacy = () => ({ delivery: "email", hasDevice: false, targets: [repeater({ rules: [rule()] }), plain()] }) as unknown as AlertsResponse;
+
+  it("hides the switches and keeps rules usable", async () => {
+    mocks.features = { ...mocks.features, alertChannels: { email: false, push: false }, alertChannelsSent: false };
+    const { region } = await open(legacy());
+    expect(screen.queryByRole("group", { name: "How alerts reach you" })).toBeNull();
+    expect(region.queryByText(/No alerts will reach you/)).toBeNull();
+    fireEvent.click(row("Hilltop", "battery_low").getByRole("switch"));
+    await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "battery_low", enabled: false })));
+  });
+
+  it("hides the switches when the overview has no channels even if info sends them", async () => {
+    await open(legacy());
+    expect(screen.queryByRole("group", { name: "How alerts reach you" })).toBeNull();
+    expect(block("Hilltop").getByTestId("alert-battery_low")).toBeInTheDocument();
   });
 });
