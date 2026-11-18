@@ -81,10 +81,20 @@ export interface AlertTarget {
   rules: AlertRule[];
 }
 
+// reason is "", server_off, portal_account or unverified_email; a channel reaches the user only when available and enabled.
+export interface AlertChannels {
+  email: { available: boolean; enabled: boolean; reason: string };
+  push: { available: boolean; enabled: boolean; hasDevice: boolean };
+}
+
 export interface AlertsResponse {
-  delivery: "push" | "email";
-  hasDevice: boolean;
+  channels: AlertChannels;
   targets: AlertTarget[];
+}
+
+export interface AlertChannelsPut {
+  email?: boolean;
+  push?: boolean;
 }
 
 export interface AlertRulePut {

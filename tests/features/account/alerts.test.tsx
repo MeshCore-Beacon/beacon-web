@@ -4,7 +4,7 @@ import { AccountViews } from "../../../src/features/account/AccountViews";
 import i18n from "../../../src/i18n";
 import { alerts, me } from "../../../src/api/auth";
 import { authError, mocks, renderAt, resetMocks, user } from "./helpers";
-import type { AlertRule, AlertTarget, AlertsResponse } from "../../../src/features/account/types";
+import type { AlertChannels, AlertRule, AlertTarget, AlertsResponse } from "../../../src/features/account/types";
 
 vi.mock("../../../src/api/auth", async (orig) => {
   const actual = await orig<typeof import("../../../src/api/auth")>();
@@ -15,7 +15,7 @@ vi.mock("../../../src/api/auth", async (orig) => {
       get: vi.fn(), setDisplayName: vi.fn(), changePassword: vi.fn(), changeEmail: vi.fn(),
       deleteAccount: vi.fn(), sessions: vi.fn(), endSession: vi.fn(), endOtherSessions: vi.fn(),
     },
-    alerts: { get: vi.fn(), putRule: vi.fn(), deleteRule: vi.fn() },
+    alerts: { get: vi.fn(), putRule: vi.fn(), deleteRule: vi.fn(), putChannels: vi.fn() },
   };
 });
 const units = vi.hoisted(() => ({ temperature: "c" as "c" | "f" }));
@@ -38,11 +38,15 @@ const plain = (): AlertTarget => repeater({
   id: null, publicKey: "ccdd", name: "Ridge", polled: false, available: ["gone_quiet", "back_online"],
   unavailable: { temperature: "This repeater does not report a temperature." }, unavailableCodes: { temperature: "no_data" },
 });
-const response = (over: Partial<AlertsResponse> = {}): AlertsResponse => ({ delivery: "email", hasDevice: true, targets: [repeater(), plain()], ...over });
+const channels = (email: Partial<AlertChannels["email"]> = {}, push: Partial<AlertChannels["push"]> = {}): AlertChannels => ({
+  email: { available: true, enabled: true, reason: "", ...email },
+  push: { available: true, enabled: false, hasDevice: false, ...push },
+});
+const response = (over: Partial<AlertsResponse> = {}): AlertsResponse => ({ channels: channels(), targets: [repeater(), plain()], ...over });
 
 beforeEach(() => {
   resetMocks();
-  mocks.features = { ...mocks.features, alerts: true, alertDelivery: "email" };
+  mocks.features = { ...mocks.features, alerts: true, alertChannels: { email: true, push: true } };
   units.temperature = "c";
   vi.mocked(me.get).mockResolvedValue({ user });
   vi.mocked(me.sessions).mockResolvedValue({ sessions: [] });
@@ -69,8 +73,8 @@ describe("collapsible radios", () => {
   const firingRule = (over: Partial<AlertRule> = {}) => rule({ state: "firing", ...over });
 
   it("starts collapsed with no switches in the tree, even with one radio", async () => {
-    const { region } = await open(response({ targets: [repeater()] }), true);
-    expect(region.queryAllByRole("switch")).toHaveLength(0);
+    await open(response({ targets: [repeater()] }), true);
+    expect(block("Hilltop").queryAllByRole("switch")).toHaveLength(0);
     expect(head("Hilltop")).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -135,21 +139,6 @@ describe("alerts section", () => {
     expect(alerts.get).not.toHaveBeenCalled();
   });
 
-  it("says where email alerts go", async () => {
-    const { region } = await open();
-    expect(region.getByText("Alerts are sent to a@example.org")).toBeInTheDocument();
-  });
-
-  it("says push alerts go to the app, with the sign-in line only without a device", async () => {
-    const { region, unmount } = await open(response({ delivery: "push", hasDevice: false }));
-    expect(region.getByText("Alerts are sent to the Beacon app on your phone")).toBeInTheDocument();
-    expect(region.getByText("Sign in to the Beacon app on a phone to receive them.")).toBeInTheDocument();
-    unmount();
-    const again = await open(response({ delivery: "push", hasDevice: true }));
-    expect(again.region.getByText("Alerts are sent to the Beacon app on your phone")).toBeInTheDocument();
-    expect(again.region.queryByText(/Sign in to the Beacon app/)).toBeNull();
-  });
-
   it("points to the Atlas tab when the Atlas is empty", async () => {
     const { region } = await open(response({ targets: [] }));
     expect(region.getByText(/set on radios in your Atlas/)).toBeInTheDocument();
@@ -159,7 +148,7 @@ describe("alerts section", () => {
   it("shows one block per target in order with rows in the table order and the always-on sentence", async () => {
     const { region } = await open();
     const heads = region.getAllByRole("group").map((g) => g.getAttribute("aria-label"));
-    expect(heads).toEqual(["Hilltop", "Ridge"]);
+    expect(heads.filter(Boolean)).toEqual(["Hilltop", "Ridge"]);
     const kinds = within(block("Hilltop").getByRole("list")).getAllByRole("listitem").map((li) => li.getAttribute("data-testid"));
     expect(kinds).toEqual(["alert-gone_quiet", "alert-back_online", "alert-battery_low", "alert-battery_falling", "alert-rebooted", "alert-temperature", "alert-noise_high", "alert-clock"]);
     expect(region.getByText(/always told when one of your telemetry requests needs attention/)).toBeInTheDocument();
@@ -499,5 +488,110 @@ describe("alerts section", () => {
       expect(await row("Hilltop", "rebooted").findByRole("alert")).toHaveTextContent(text);
       expect(within(block("Hilltop").getByTestId("alert-clock")).queryByRole("alert")).toBeNull();
     });
+  });
+});
+
+describe("alert channels", () => {
+  const box = () => within(screen.getByRole("group", { name: "How alerts reach you" }));
+  const emailSwitch = () => box().getByRole("switch", { name: "Email alerts" });
+  const pushSwitch = () => box().getByRole("switch", { name: "Push alerts" });
+  const putChannels = () => vi.mocked(alerts.putChannels);
+  const withRule = (c: AlertChannels) => response({ channels: c, targets: [repeater({ rules: [rule()] })] });
+  const noneReach = /No alerts will reach you/;
+
+  it("shows both switches as the user set them, with the email address", async () => {
+    await open(response({ channels: channels({ enabled: true }, { enabled: false }) }));
+    expect(emailSwitch()).toBeChecked();
+    expect(emailSwitch()).toBeEnabled();
+    expect(pushSwitch()).not.toBeChecked();
+    expect(pushSwitch()).toBeEnabled();
+    expect(box().getByText("To a@example.org")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["server_off", "This server doesn't send alert emails."],
+    ["portal_account", "Accounts that sign in through the portal have no email address here."],
+    ["unverified_email", "Confirm your email address to get alert emails."],
+  ])("disables email for %s and says why", async (reason, text) => {
+    await open(response({ channels: channels({ available: false, enabled: true, reason }) }));
+    expect(emailSwitch()).toBeDisabled();
+    expect(box().getByText(text)).toBeInTheDocument();
+    expect(box().queryByText(/^To /)).toBeNull();
+  });
+
+  it("falls back to a plain line for an email reason it does not know", async () => {
+    await open(response({ channels: channels({ available: false, reason: "brand_new" }) }));
+    expect(emailSwitch()).toBeDisabled();
+    expect(box().getByText("Alert emails aren't available.")).toBeInTheDocument();
+  });
+
+  it("disables push when the server does not offer it, without the push server note", async () => {
+    await open(response({ channels: channels({}, { available: false }) }));
+    expect(pushSwitch()).toBeDisabled();
+    expect(box().getByText("This server doesn't send push notifications.")).toBeInTheDocument();
+    expect(box().queryByText(/MeshCore Beacon push server/)).toBeNull();
+  });
+
+  it("keeps push usable without a device and asks for the app sign-in", async () => {
+    const { unmount } = await open(response({ channels: channels({}, { enabled: true, hasDevice: false }) }));
+    expect(pushSwitch()).toBeEnabled();
+    expect(pushSwitch()).toBeChecked();
+    expect(box().getByText("Sign in to the Beacon app on your phone to get push notifications.")).toBeInTheDocument();
+    expect(box().getByText("Push alerts are delivered via the MeshCore Beacon push server. It sees which server sent them, not what they say.")).toBeInTheDocument();
+    unmount();
+    await open(response({ channels: channels({}, { enabled: true, hasDevice: true }) }));
+    expect(box().queryByText(/Sign in to the Beacon app/)).toBeNull();
+  });
+
+  it("flips a switch at once, sends only that channel, and keeps the server's answer", async () => {
+    let answer: (c: AlertChannels) => void = () => {};
+    putChannels().mockImplementation(() => new Promise((r) => { answer = r; }));
+    await open();
+    fireEvent.click(emailSwitch());
+    await waitFor(() => expect(emailSwitch()).not.toBeChecked());
+    expect(putChannels()).toHaveBeenCalledWith({ email: false });
+    await act(async () => answer(channels({ enabled: false })));
+    await waitFor(() => expect(emailSwitch()).toBeEnabled());
+    expect(emailSwitch()).not.toBeChecked();
+
+    putChannels().mockResolvedValue(channels({ enabled: false }, { enabled: true }));
+    fireEvent.click(pushSwitch());
+    await waitFor(() => expect(pushSwitch()).toBeChecked());
+    expect(putChannels()).toHaveBeenLastCalledWith({ push: true });
+    await waitFor(() => expect(pushSwitch()).toBeEnabled());
+    expect(pushSwitch()).toBeChecked();
+  });
+
+  it("rolls the switch back and shows the error when the server refuses", async () => {
+    let fail: (e: unknown) => void = () => {};
+    putChannels().mockImplementation(() => new Promise((_, rej) => { fail = rej; }));
+    await open();
+    fireEvent.click(emailSwitch());
+    await waitFor(() => expect(emailSwitch()).not.toBeChecked());
+    await act(async () => fail(authError("service_unavailable", 503)));
+    await waitFor(() => expect(emailSwitch()).toBeChecked());
+    expect(box().getByRole("alert")).toHaveTextContent(/./);
+  });
+
+  it("warns only when rules are on and neither channel is on", async () => {
+    const a = await open(withRule(channels({ enabled: false }, { enabled: false })));
+    expect(box().getByText(noneReach)).toBeInTheDocument();
+    a.unmount();
+    const b = await open(withRule(channels({ available: false, reason: "server_off" }, { enabled: false })));
+    expect(box().getByText(noneReach)).toBeInTheDocument();
+    b.unmount();
+    const c = await open(response({ channels: channels({ enabled: false }, { enabled: false }) }));
+    expect(box().queryByText(noneReach)).toBeNull();
+    c.unmount();
+    await open(withRule(channels({ enabled: false }, { enabled: true })));
+    expect(box().queryByText(noneReach)).toBeNull();
+  });
+
+  it("warns as soon as the last channel is switched off", async () => {
+    putChannels().mockImplementation(() => new Promise(() => {}));
+    await open(withRule(channels({ enabled: true }, { enabled: false })));
+    expect(box().queryByText(noneReach)).toBeNull();
+    fireEvent.click(emailSwitch());
+    expect(await box().findByText(noneReach)).toBeInTheDocument();
   });
 });

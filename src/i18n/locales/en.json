@@ -1287,9 +1287,24 @@
         "off": "Off",
         "title": "Alerts",
         "loading": "Loading alerts…",
-        "toEmail": "Alerts are sent to {{email}}",
-        "toApp": "Alerts are sent to the Beacon app on your phone",
-        "noDevice": "Sign in to the Beacon app on a phone to receive them.",
+        "channels": {
+          "title": "How alerts reach you",
+          "email": "Email",
+          "push": "Push",
+          "emailLabel": "Email alerts",
+          "pushLabel": "Push alerts",
+          "emailTo": "To {{email}}",
+          "emailReasons": {
+            "server_off": "This server doesn't send alert emails.",
+            "portal_account": "Accounts that sign in through the portal have no email address here.",
+            "unverified_email": "Confirm your email address to get alert emails.",
+            "unavailable": "Alert emails aren't available."
+          },
+          "pushOff": "This server doesn't send push notifications.",
+          "noDevice": "Sign in to the Beacon app on your phone to get push notifications.",
+          "pushNote": "Push alerts are delivered via the MeshCore Beacon push server. It sees which server sent them, not what they say.",
+          "noneReach": "No alerts will reach you while email and push are both off."
+        },
         "empty": "Alerts are set on radios in your Atlas. Add a radio there first.",
         "openAtlas": "Open the Atlas tab",
         "always": "You are always told when one of your telemetry requests needs attention.",

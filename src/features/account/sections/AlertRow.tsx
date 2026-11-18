@@ -6,6 +6,7 @@ import { useSessionMutation } from "../../../hooks/useSessionMutation";
 import { alerts } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
 import { fieldClassRoomy } from "../../../components/form/fieldStyles";
+import { Switch } from "../../../components/form/Switch";
 import { ALERTS_KEY } from "../../../hooks/useAlerts";
 import { useDisplayUnits } from "../../../hooks/useFeatures";
 import { tempSymbol } from "../../../lib/units";
@@ -120,11 +121,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
           <span className="font-mono text-sm font-semibold text-text-bright">{name}</span>
           <p className="text-xs text-text-muted">{t(`account.alerts.kinds.${kind}.when`)}</p>
         </div>
-        <label className="-my-1.5 inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 font-mono text-xs text-text-muted">
-          <input type="checkbox" role="switch" aria-label={t("account.alerts.turnOn", { name })} checked={checked} disabled={blocked || save.isPending} onChange={toggle} className="peer sr-only" />
-          <span aria-hidden className="relative h-5 w-9 rounded-full border border-border bg-bg-raised transition-colors peer-checked:border-primary peer-checked:bg-primary peer-disabled:opacity-50 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-primary after:absolute after:left-0.5 after:top-0.5 after:h-3.5 after:w-3.5 after:rounded-full after:bg-text-muted after:transition-transform peer-checked:after:translate-x-4 peer-checked:after:bg-bg-base motion-reduce:transition-none motion-reduce:after:transition-none" />
-          <span aria-hidden className="w-6">{checked ? t("account.alerts.on") : t("account.alerts.off")}</span>
-        </label>
+        <Switch label={t("account.alerts.turnOn", { name })} checked={checked} disabled={blocked || save.isPending} onChange={toggle} stateText={checked ? t("account.alerts.on") : t("account.alerts.off")} />
       </div>
       {input && <div className="flex flex-wrap items-center gap-2">{input}{unit && <span className="font-mono text-xs text-text-muted">{unit}</span>}</div>}
       {blocked && <p className="text-xs text-text-muted">{t("account.alerts.backOnlineHint", { name: t("account.alerts.kinds.gone_quiet.name") })}</p>}

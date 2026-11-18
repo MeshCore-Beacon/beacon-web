@@ -1,7 +1,7 @@
 import { API_BASE } from "../lib/constants";
 import { parseRetryAfter } from "./rate-limit";
 import type {
-  AlertRule, AlertRulePut, AlertsResponse, AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, TelemetryRequest, TelemetryRequestList, TelemetryRequestPatch, UserResponse, VerifyStatus,
+  AlertChannels, AlertChannelsPut, AlertRule, AlertRulePut, AlertsResponse, AppCodeRequest, AppCodeResponse, CheckEmailStatus, PasswordSetStatus, RegisterRequest, Session, TelemetryRequest, TelemetryRequestList, TelemetryRequestPatch, UserResponse, VerifyStatus,
 } from "../features/account/types";
 import type { PutAtlas, ServerAtlas } from "../features/atlas/atlasSync";
 
@@ -90,4 +90,5 @@ export const alerts = {
   get: (signal?: AbortSignal) => authRequest<AlertsResponse>("GET", "/me/alerts", undefined, signal),
   putRule: (body: AlertRulePut) => authRequest<AlertRule>("PUT", "/me/alerts/rules", body),
   deleteRule: (id: string) => authRequest<void>("DELETE", `/me/alerts/rules/${encodeURIComponent(id)}`),
+  putChannels: (body: AlertChannelsPut) => authRequest<AlertChannels>("PUT", "/me/alerts/channels", body),
 };

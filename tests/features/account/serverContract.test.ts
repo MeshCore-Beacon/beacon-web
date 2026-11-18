@@ -38,7 +38,10 @@ afterEach(() => i18n.changeLanguage("en"));
 
 // GET /me/alerts as beacon-server sends it (api-contract.md, Alerts).
 const SERVER_ALERTS: AlertsResponse = {
-  delivery: "push", hasDevice: true,
+  channels: {
+    email: { available: false, enabled: true, reason: "unverified_email" },
+    push: { available: true, enabled: true, hasDevice: false },
+  },
   targets: [
     { id: "9b0a5f0e-5d0e-4a39-9a43-6a3c1f2f0001", kind: "node", publicKey: "ab".repeat(32), name: "Hilltop", polled: true,
       available: ["gone_quiet", "back_online"], unavailable: { temperature: "This repeater does not report a temperature." },
@@ -46,6 +49,13 @@ const SERVER_ALERTS: AlertsResponse = {
     { id: null, kind: "observer", publicKey: "cd".repeat(32), name: "North", polled: false, available: [], unavailable: {}, unavailableCodes: {}, rules: [] },
   ],
 };
+
+describe("alert channels", () => {
+  it("carry the email reason and the push device flag", () => {
+    expect(Object.keys(SERVER_ALERTS.channels.email).sort()).toEqual(["available", "enabled", "reason"]);
+    expect(Object.keys(SERVER_ALERTS.channels.push).sort()).toEqual(["available", "enabled", "hasDevice"]);
+  });
+});
 
 describe("alert targets", () => {
   it("carry an id (or null), polled and a code for every reason", () => {

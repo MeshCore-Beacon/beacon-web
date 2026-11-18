@@ -1174,9 +1174,24 @@
         "off": "Av",
         "title": "Aviseringar",
         "loading": "Läser in aviseringar…",
-        "toEmail": "Aviseringar skickas till {{email}}",
-        "toApp": "Aviseringar skickas till Beacon-appen på din telefon",
-        "noDevice": "Logga in i Beacon-appen på en telefon för att få dem.",
+        "channels": {
+          "title": "Hur aviseringar når dig",
+          "email": "E-post",
+          "push": "Push",
+          "emailLabel": "Aviseringar via e-post",
+          "pushLabel": "Push-aviseringar",
+          "emailTo": "Till {{email}}",
+          "emailReasons": {
+            "server_off": "Den här servern skickar inga aviseringar via e-post.",
+            "portal_account": "Konton som loggar in via portalen har ingen e-postadress här.",
+            "unverified_email": "Bekräfta din e-postadress för att få aviseringar via e-post.",
+            "unavailable": "Aviseringar via e-post är inte tillgängliga."
+          },
+          "pushOff": "Den här servern skickar inga push-notiser.",
+          "noDevice": "Logga in i Beacon-appen på din telefon för att få push-notiser.",
+          "pushNote": "Push-aviseringar levereras via MeshCore Beacons push-server. Den ser vilken server som skickade dem, inte vad de säger.",
+          "noneReach": "Inga aviseringar når dig så länge både e-post och push är avstängda."
+        },
         "empty": "Aviseringar ställs in på radioapparater i din Atlas. Lägg först till en radio.",
         "openAtlas": "Öppna fliken Atlas",
         "always": "Du får alltid besked när en av dina telemetribegäranden behöver uppmärksamhet.",
