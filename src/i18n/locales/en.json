@@ -1303,7 +1303,7 @@
           "pushOff": "This server doesn't send push notifications.",
           "noDevice": "Sign in to the Beacon app on your phone to get push notifications.",
           "pushNote": "Push alerts are delivered via the MeshCore Beacon push server. It sees which server sent them, not what they say.",
-          "noneReach": "No alerts will reach you while email and push are both off."
+          "noneReach": "No alerts can reach you right now."
         },
         "empty": "Alerts are set on radios in your Atlas. Add a radio there first.",
         "openAtlas": "Open the Atlas tab",

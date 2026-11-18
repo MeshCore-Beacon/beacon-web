@@ -1312,7 +1312,7 @@
           "pushOff": "Ce serveur n'envoie pas de notifications push.",
           "noDevice": "Connectez-vous à l'application Beacon sur votre téléphone pour recevoir les notifications push.",
           "pushNote": "Les alertes push passent par le serveur push MeshCore Beacon. Il voit quel serveur les a envoyées, pas ce qu'elles disent.",
-          "noneReach": "Aucune alerte ne vous parviendra tant que le courriel et le push sont tous deux désactivés."
+          "noneReach": "Aucune alerte ne peut vous parvenir pour le moment."
         },
         "empty": "Les alertes se règlent sur les radios de votre Atlas. Ajoutez d'abord une radio.",
         "openAtlas": "Ouvrir l'onglet Atlas",

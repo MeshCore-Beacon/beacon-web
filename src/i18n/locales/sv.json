@@ -1190,7 +1190,7 @@
           "pushOff": "Den här servern skickar inga push-notiser.",
           "noDevice": "Logga in i Beacon-appen på din telefon för att få push-notiser.",
           "pushNote": "Push-aviseringar levereras via MeshCore Beacons push-server. Den ser vilken server som skickade dem, inte vad de säger.",
-          "noneReach": "Inga aviseringar når dig så länge både e-post och push är avstängda."
+          "noneReach": "Inga aviseringar kan nå dig just nu."
         },
         "empty": "Aviseringar ställs in på radioapparater i din Atlas. Lägg först till en radio.",
         "openAtlas": "Öppna fliken Atlas",

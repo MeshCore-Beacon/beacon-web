@@ -497,7 +497,7 @@ describe("alert channels", () => {
   const pushSwitch = () => box().getByRole("switch", { name: "Push alerts" });
   const putChannels = () => vi.mocked(alerts.putChannels);
   const withRule = (c: AlertChannels) => response({ channels: c, targets: [repeater({ rules: [rule()] })] });
-  const noneReach = /No alerts will reach you/;
+  const noneReach = /No alerts can reach you/;
 
   it("shows both switches as the user set them, with the email address", async () => {
     await open(response({ channels: channels({ enabled: true }, { enabled: false }) }));
@@ -623,7 +623,7 @@ describe("older server without channel switches", () => {
     mocks.features = { ...mocks.features, alertChannels: { email: false, push: false }, alertChannelsSent: false };
     const { region } = await open(legacy());
     expect(screen.queryByRole("group", { name: "How alerts reach you" })).toBeNull();
-    expect(region.queryByText(/No alerts will reach you/)).toBeNull();
+    expect(region.queryByText(/No alerts can reach you/)).toBeNull();
     fireEvent.click(row("Hilltop", "battery_low").getByRole("switch"));
     await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "battery_low", enabled: false })));
   });
