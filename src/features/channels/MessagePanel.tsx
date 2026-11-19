@@ -103,11 +103,12 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
   const viewKey = `${channel?.id ?? ""}:${scope}`;
   const scrollAnchor = useRef<{ view?: string; count: number }>({ count: 0 });
   // pre-prepend scroll metrics, captured while a load-older fetch is in flight
-  const prepend = useRef<{ pending: boolean; prevHeight: number; prevTop: number }>({
+  const prepend = useRef<{ pending: boolean; prevHeight: number; oldest: string }>({
     pending: false,
     prevHeight: 0,
-    prevTop: 0,
+    oldest: "",
   });
+  const oldest = sorted[0] ? sorted[0].packetHash || String(sorted[0].id) : "";
 
   // reset scroll tracking on channel switch — adjust state during render, not in an effect
   const [prevView, setPrevView] = useState(viewKey);
@@ -125,16 +126,21 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
       if (isLoading) return;
       anchor.view = viewKey;
       anchor.count = sorted.length;
-      prepend.current = { pending: false, prevHeight: 0, prevTop: 0 };
+      prepend.current = { pending: false, prevHeight: 0, oldest: "" };
       if (el) el.scrollTop = el.scrollHeight;
       return;
     }
 
     if (prepend.current.pending) {
-      if (isFetchingNextPage) return;
-      // older page prepended — re-add its height to hold the read position (overflow-anchor is off)
+      if (isFetchingNextPage) {
+        // a live message grew the list below the reader; that height is not part of the prepend
+        if (el) prepend.current.prevHeight = el.scrollHeight;
+        return;
+      }
       prepend.current.pending = false;
-      if (el) el.scrollTop = prepend.current.prevTop + (el.scrollHeight - prepend.current.prevHeight);
+      // older page prepended: add its height to where the reader is now (overflow-anchor is off).
+      // A failed fetch prepends nothing and leaves the position alone.
+      if (el && oldest !== prepend.current.oldest) el.scrollTop += el.scrollHeight - prepend.current.prevHeight;
       anchor.count = sorted.length;
       return;
     }
@@ -144,14 +150,14 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
       el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
     anchor.count = sorted.length;
-  }, [sorted.length, viewKey, isLoading, isFetchingNextPage, userScrolled]);
+  }, [sorted.length, oldest, viewKey, isLoading, isFetchingNextPage, userScrolled]);
 
   const loadOlder = useCallback(() => {
     if (!hasNextPage || isFetching) return;
     const el = scrollContainerRef.current;
-    prepend.current = { pending: true, prevHeight: el?.scrollHeight ?? 0, prevTop: el?.scrollTop ?? 0 };
+    prepend.current = { pending: true, prevHeight: el?.scrollHeight ?? 0, oldest };
     void fetchNextPage();
-  }, [hasNextPage, isFetching, fetchNextPage]);
+  }, [hasNextPage, isFetching, fetchNextPage, oldest]);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
