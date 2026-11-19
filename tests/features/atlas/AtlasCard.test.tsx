@@ -144,16 +144,23 @@ describe("AtlasCard", () => {
   });
 
   it("gives the Analytics view a one-line footer and lists every fact in the tip", async () => {
-    mount();
-    const footer = (await screen.findByText("Heard")).closest("[data-card-footer]") as HTMLElement;
-    expect(footer).not.toHaveClass("flex-wrap");
-    expect(within(footer).getByText("Heard").parentElement).toHaveTextContent(/^Heard · 0s ago$/);
-    expect(await within(footer).findByText("2.0 hops · 4 neighbors")).toHaveClass("truncate");
-    const tip = within(footer).getByText(/More information:/);
-    expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
-    expect(tip).toHaveTextContent("Mean hops 2.0");
-    expect(tip).toHaveTextContent("Neighbors (4)");
-    expect(tip).toHaveTextContent("Stored observations of packets");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(node.lastSeen);
+    try {
+      mount();
+      const footer = (await screen.findByText("Heard")).closest("[data-card-footer]") as HTMLElement;
+      expect(footer).not.toHaveClass("flex-wrap");
+      expect(within(footer).getByText("Heard")).toHaveClass("truncate");
+      expect(within(footer).getByText("Heard").parentElement).toHaveTextContent(/^Heard · 0s ago$/);
+      expect(within(footer).getByText("0s ago").parentElement).toHaveClass("shrink-0");
+      expect(await within(footer).findByText("2.0 hops · 4 neighbors")).toHaveClass("truncate");
+      const tip = within(footer).getByText(/More information:/);
+      expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
+      expect(tip).toHaveTextContent("Mean hops 2.0");
+      expect(tip).toHaveTextContent("Neighbors (4)");
+      expect(tip).toHaveTextContent("Stored observations of packets");
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("lights the Analytics dot only when the node was heard inside the window", async () => {
@@ -325,7 +332,7 @@ describe("AtlasCard", () => {
     expect(screen.getByText("Online")).toBeInTheDocument();
     const footer = screen.getByText("Online").closest("[data-card-footer]") as HTMLElement;
     expect(footer).not.toHaveClass("flex-wrap");
-    expect(screen.getByText("Online").parentElement).toHaveClass("truncate");
+    expect(screen.getByText("Online")).toHaveClass("truncate");
     expect(screen.getByText("Online").parentElement).toHaveTextContent(/^Online · 1m ago$/);
     expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "true");
     expect(within(footer).getByText("915 MHz · SF11")).toHaveClass("truncate");
