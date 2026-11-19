@@ -58,7 +58,7 @@ export function NeighbourGraphTab() {
   // "now" so the freshness fade is pure at render time.
   const { data: neighbours, dataUpdatedAt } = useQuery({
     queryKey: ["node-neighbors", selectedId],
-    queryFn: () => getNodeNeighbors(selectedId!),
+    queryFn: ({ signal }) => getNodeNeighbors(selectedId!, signal),
     enabled: !!selectedId,
     staleTime: 30_000,
   });

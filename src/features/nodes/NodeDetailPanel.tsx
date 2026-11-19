@@ -123,7 +123,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
 
   const neighborsQuery = useQuery({
     queryKey: ["node-neighbors", nodeId],
-    queryFn: () => getNodeNeighbors(nodeId),
+    queryFn: ({ signal }) => getNodeNeighbors(nodeId, signal),
     staleTime: 30_000,
   });
 
