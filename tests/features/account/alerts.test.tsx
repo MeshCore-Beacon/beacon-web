@@ -72,10 +72,16 @@ describe("collapsible radios", () => {
   const head = (name: string) => within(screen.getByRole("group", { name })).getByRole("button", { name: new RegExp(name) });
   const firingRule = (over: Partial<AlertRule> = {}) => rule({ state: "firing", ...over });
 
-  it("starts collapsed with no switches in the tree, even with one radio", async () => {
-    await open(response({ targets: [repeater()] }), true);
-    expect(block("Hilltop").queryAllByRole("switch")).toHaveLength(0);
+  it("mounts only the rule editors for radios that have been opened", async () => {
+    await open(response(), true);
+    expect(block("Hilltop").queryAllByRole("switch", { hidden: true })).toHaveLength(0);
     expect(head("Hilltop")).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(head("Hilltop"));
+    expect(block("Hilltop").getAllByRole("switch")).toHaveLength(8);
+    expect(block("Ridge").queryAllByRole("switch", { hidden: true })).toHaveLength(0);
+    fireEvent.click(head("Hilltop"));
+    expect(block("Hilltop").queryAllByRole("switch")).toHaveLength(0);
+    expect(block("Hilltop").getAllByRole("switch", { hidden: true })).toHaveLength(8);
   });
 
   it("summarises none, one, several and firing", async () => {
