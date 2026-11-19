@@ -74,4 +74,13 @@ describe("App with account views", () => {
     expect(window.location.search).not.toContain("view=");
     expect(window.location.search).not.toContain("token=");
   });
+
+  it("keeps a mailed link's #token when a saved region is written into the URL", async () => {
+    vi.stubGlobal("localStorage", { getItem: (k: string) => (k === "beacon-region-selection" ? JSON.stringify({ regions: [], iatas: ["YOW"] }) : null), setItem: () => {}, removeItem: () => {} });
+    window.history.replaceState({}, "", "/?view=verify#token=abc");
+    render(<App />);
+    await screen.findByText("Account view content");
+    await vi.waitFor(() => expect(window.location.search).toContain("iata=YOW"));
+    expect(window.location.hash).toBe("#token=abc");
+  });
 });

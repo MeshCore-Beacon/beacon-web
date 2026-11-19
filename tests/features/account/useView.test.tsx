@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { useView } from "../../../src/features/account/useView";
 import { renderAt, searchOf } from "./helpers";
@@ -57,5 +57,24 @@ describe("useView", () => {
     act(() => fireEvent.click(screen.getByText("close")));
     const p = searchOf(screen.getByTestId("search"));
     expect([...p.keys()].sort()).toEqual(["lat", "tab"]);
+  });
+
+  it("keeps the token from the page's first URL after the fragment is gone", async () => {
+    window.history.replaceState({}, "", "/?view=verify#token=boot");
+    vi.resetModules();
+    const fresh = await import("../../../src/features/account/useView");
+    window.history.replaceState({}, "", "/?view=verify&iata=YOW");
+    expect(fresh.linkToken(window.location)).toBe("boot");
+    expect(fresh.linkToken({ search: "", hash: "#token=newer" })).toBe("newer");
+    expect(fresh.linkToken({ search: "?view=reset", hash: "" })).toBeNull();
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("keeps no startup token for a view that does not use one", async () => {
+    window.history.replaceState({}, "", "/?view=signin#token=boot");
+    vi.resetModules();
+    const fresh = await import("../../../src/features/account/useView");
+    expect(fresh.linkToken({ search: "?view=verify", hash: "" })).toBeNull();
+    window.history.replaceState({}, "", "/");
   });
 });

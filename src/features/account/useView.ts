@@ -20,6 +20,7 @@ export function useView(): {
   const view = asView(searchParams.get("view"));
 
   const open = useCallback((next: AccountView, params?: Record<string, string>) => {
+    startup = null;
     setSearchParams((prev) => {
       const out = new URLSearchParams(prev);
       for (const key of VIEW_PARAMS) out.delete(key);
@@ -30,6 +31,7 @@ export function useView(): {
   }, [setSearchParams]);
 
   const close = useCallback(() => {
+    startup = null;
     setSearchParams((prev) => {
       const out = new URLSearchParams(prev);
       for (const key of VIEW_PARAMS) out.delete(key);
@@ -41,9 +43,24 @@ export function useView(): {
 }
 
 // Mailed links carry the token in the fragment (`#token=…`); links sent earlier carry `?token=`.
-export function linkToken(location: { search: string; hash: string }): string | null {
+function tokenIn(location: { search: string; hash: string }): string | null {
   const fromHash = new URLSearchParams(location.hash.replace(/^#/, "")).get("token");
   return fromHash || new URLSearchParams(location.search).get("token");
+}
+
+// Read once at startup: a URL rewrite before the lazy view mounts would otherwise lose the fragment.
+// It is kept only for the verify or reset view the link opened, and dropped once any view opens or closes.
+function startupLink(location: { search: string; hash: string }): { view: string; token: string } | null {
+  const view = new URLSearchParams(location.search).get("view");
+  const token = tokenIn(location);
+  return token && (view === "verify" || view === "reset") ? { view, token } : null;
+}
+let startup = typeof window === "undefined" ? null : startupLink(window.location);
+
+export function linkToken(location: { search: string; hash: string }): string | null {
+  const own = tokenIn(location);
+  if (own) return own;
+  return startup && new URLSearchParams(location.search).get("view") === startup.view ? startup.token : null;
 }
 
 // Drops the token from both places (kept out of history once it is used), leaving the view open.
@@ -56,6 +73,7 @@ export function useClearToken(): () => void {
     current.current = location;
   });
   return useCallback(() => {
+    startup = null;
     const { pathname, search } = current.current;
     const out = new URLSearchParams(search);
     out.delete("token");

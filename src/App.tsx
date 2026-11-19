@@ -139,13 +139,15 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 function RegionUrlSync() {
   const { selection } = useRegionSelection();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const next = selectionToParams(selection, searchParams);
     if (next.toString() === searchParams.toString()) return;
-    setSearchParams(next, { replace: true, state: location.state });
-  }, [selection, searchParams, setSearchParams, location.state]);
+    // navigate, not setSearchParams: that drops the fragment, which carries a mailed link's token.
+    navigate({ search: `?${next}`, hash: location.hash }, { replace: true, state: location.state });
+  }, [selection, searchParams, navigate, location.hash, location.state]);
 
   return null;
 }
