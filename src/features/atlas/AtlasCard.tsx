@@ -306,7 +306,7 @@ export function AtlasCard({
       {fresh !== null && <span aria-hidden data-fresh={String(fresh)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? "bg-green" : "bg-text-dim/30"}`} />}
       <span className="flex min-w-0 items-baseline">
         <span className="truncate">{label}</span>
-        {at != null && <span className="shrink-0">{" · "}<Timestamp value={at} /></span>}
+        {at != null && <span className="shrink-0 whitespace-pre">{" · "}<Timestamp value={at} /></span>}
       </span>
     </span>
   );

@@ -151,7 +151,7 @@ describe("AtlasCard", () => {
       expect(footer).not.toHaveClass("flex-wrap");
       expect(within(footer).getByText("Heard")).toHaveClass("truncate");
       expect(within(footer).getByText("Heard").parentElement).toHaveTextContent(/^Heard · 0s ago$/);
-      expect(within(footer).getByText("0s ago").parentElement).toHaveClass("shrink-0");
+      expect(within(footer).getByText("0s ago").parentElement).toHaveClass("shrink-0", "whitespace-pre");
       expect(await within(footer).findByText("2.0 hops · 4 neighbors")).toHaveClass("truncate");
       const tip = within(footer).getByText(/More information:/);
       expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
