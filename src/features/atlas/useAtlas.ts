@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNodeActivity, isNotFound } from "../../api/client";
 import { useRateLimit } from "../../hooks/useRateLimit";
@@ -20,17 +20,8 @@ export const pollUnlessGone = (error: unknown) => (isNotFound(error) ? ATLAS_MIS
 // A 404 means this server has no such endpoint; nothing to poll for.
 export const pollUnlessMissing = (error: unknown) => (isNotFound(error) ? false : ATLAS_REFRESH_MS);
 
-// True while the API is throttling us. A timer marks the window over: the flag itself only clears on a
-// successful request, and a paused Atlas makes none.
 export function useThrottled() {
-  const until = useRateLimit();
-  const [ended, setEnded] = useState<number | null>(null);
-  useEffect(() => {
-    if (until === null) return;
-    const id = setTimeout(() => setEnded(until), Math.max(0, until - Date.now()));
-    return () => clearTimeout(id);
-  }, [until]);
-  return until !== null && ended !== until;
+  return useRateLimit() !== null;
 }
 
 // A null pin (an observer-only card) leaves the queries disabled. Activity waits for the node record,

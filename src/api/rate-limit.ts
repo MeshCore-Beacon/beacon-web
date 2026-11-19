@@ -50,6 +50,7 @@ export function rateLimitWaitMs(error: unknown): number | undefined {
 // App-wide "the API is throttling us" flag: fed by the fetch wrapper, read by the header badge.
 
 let limitedUntil: number | null = null;
+let expiry: ReturnType<typeof setTimeout> | undefined;
 const listeners = new Set<() => void>();
 
 function notify(): void {
@@ -60,13 +61,21 @@ export function noteRateLimited(retryAfterMs: number = RATE_LIMIT_DEFAULT_MS): v
   const until = Date.now() + retryAfterMs;
   if (limitedUntil !== null && until <= limitedUntil) return;
   limitedUntil = until;
+  clearTimeout(expiry);
+  expiry = setTimeout(clearRateLimit, retryAfterMs);
+  notify();
+}
+
+function clearRateLimit(): void {
+  if (limitedUntil === null) return;
+  clearTimeout(expiry);
+  expiry = undefined;
+  limitedUntil = null;
   notify();
 }
 
 export function noteRequestOk(): void {
-  if (limitedUntil === null) return;
-  limitedUntil = null;
-  notify();
+  clearRateLimit();
 }
 
 export function getRateLimitedUntil(): number | null {
