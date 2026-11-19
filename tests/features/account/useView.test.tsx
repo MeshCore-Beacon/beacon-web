@@ -66,6 +66,15 @@ describe("useView", () => {
     window.history.replaceState({}, "", "/?view=verify&iata=YOW");
     expect(fresh.linkToken(window.location)).toBe("boot");
     expect(fresh.linkToken({ search: "", hash: "#token=newer" })).toBe("newer");
+    expect(fresh.linkToken({ search: "?view=reset", hash: "" })).toBeNull();
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("keeps no startup token for a view that does not use one", async () => {
+    window.history.replaceState({}, "", "/?view=signin#token=boot");
+    vi.resetModules();
+    const fresh = await import("../../../src/features/account/useView");
+    expect(fresh.linkToken({ search: "?view=verify", hash: "" })).toBeNull();
     window.history.replaceState({}, "", "/");
   });
 });

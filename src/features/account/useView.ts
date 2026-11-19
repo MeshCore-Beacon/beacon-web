@@ -20,6 +20,7 @@ export function useView(): {
   const view = asView(searchParams.get("view"));
 
   const open = useCallback((next: AccountView, params?: Record<string, string>) => {
+    startup = null;
     setSearchParams((prev) => {
       const out = new URLSearchParams(prev);
       for (const key of VIEW_PARAMS) out.delete(key);
@@ -30,6 +31,7 @@ export function useView(): {
   }, [setSearchParams]);
 
   const close = useCallback(() => {
+    startup = null;
     setSearchParams((prev) => {
       const out = new URLSearchParams(prev);
       for (const key of VIEW_PARAMS) out.delete(key);
@@ -47,10 +49,18 @@ function tokenIn(location: { search: string; hash: string }): string | null {
 }
 
 // Read once at startup: a URL rewrite before the lazy view mounts would otherwise lose the fragment.
-let startupToken: string | null = typeof window === "undefined" ? null : tokenIn(window.location);
+// It is kept only for the verify or reset view the link opened, and dropped once any view opens or closes.
+function startupLink(location: { search: string; hash: string }): { view: string; token: string } | null {
+  const view = new URLSearchParams(location.search).get("view");
+  const token = tokenIn(location);
+  return token && (view === "verify" || view === "reset") ? { view, token } : null;
+}
+let startup = typeof window === "undefined" ? null : startupLink(window.location);
 
 export function linkToken(location: { search: string; hash: string }): string | null {
-  return tokenIn(location) || startupToken;
+  const own = tokenIn(location);
+  if (own) return own;
+  return startup && new URLSearchParams(location.search).get("view") === startup.view ? startup.token : null;
 }
 
 // Drops the token from both places (kept out of history once it is used), leaving the view open.
@@ -63,7 +73,7 @@ export function useClearToken(): () => void {
     current.current = location;
   });
   return useCallback(() => {
-    startupToken = null;
+    startup = null;
     const { pathname, search } = current.current;
     const out = new URLSearchParams(search);
     out.delete("token");
