@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { NodeDetailPanel } from "../../../src/features/nodes/NodeDetailPanel";
@@ -147,6 +147,23 @@ describe("NodeDetailPanel neighbors", () => {
     await screen.findByText("Self Node");
     expect(screen.queryByText("Possibly foreign")).not.toBeInTheDocument();
   });
+  it("dashes a missing signal on a sent packet and keeps a real zero", async () => {
+    const sent = { packetHash: "aa", payloadType: 4, iata: "YOW", heardAt: 1000 };
+    mockGetNodeObservations.mockResolvedValue({ items: [
+      { ...sent, id: 1, payloadTypeName: "ADVERT", snr: null },
+      { ...sent, id: 2, payloadTypeName: "ANON_REQ", snr: 0, rssi: 0 },
+    ], nextCursor: null, hasMore: false });
+    renderPanel();
+    const stat = async (type: string, label: string) => {
+      const row = (await screen.findByText(type)).parentElement!.parentElement!;
+      return within(row).getByText(label).nextElementSibling!;
+    };
+    expect(await stat("ADVERT", "SNR")).toHaveTextContent(/^—$/);
+    expect(await stat("ADVERT", "RSSI")).toHaveTextContent(/^—$/);
+    expect(await stat("ANON_REQ", "SNR")).toHaveTextContent(/^0\.00$/);
+    expect(await stat("ANON_REQ", "RSSI")).toHaveTextContent(/^0$/);
+  });
+
   it("lists each neighbor's name in a Neighbors section", async () => {
     mockGetNodeNeighbors.mockResolvedValue([neighbor("n-1", "Neighbor A"), neighbor("n-2", "Neighbor B")]);
 

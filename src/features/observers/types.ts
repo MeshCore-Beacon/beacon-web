@@ -43,8 +43,8 @@ export interface AdvertObservation {
   payloadTypeName: string;
   iata: string;
   heardAt: number; // epoch ms
-  rssi?: number;
-  snr?: number;
+  rssi?: number | null;
+  snr?: number | null;
   hopCount?: number;
   nodeName?: string;
   nodePublicKey?: string;

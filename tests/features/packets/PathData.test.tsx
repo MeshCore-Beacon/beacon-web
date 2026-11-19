@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { ResolvedHopBlock } from "../../../src/features/packets/PathData";
+import { HopSnr, ResolvedHopBlock } from "../../../src/features/packets/PathData";
 import i18n from "../../../src/i18n";
 import type { ResolvedHop } from "../../../src/types/api";
 
@@ -122,5 +122,16 @@ describe("ResolvedHopBlock (mobile)", () => {
     fireEvent.click(screen.getByText("ABC1"));
     expect(screen.getByText("Repeater A")).toBeInTheDocument();
     expect(onViewNode).not.toHaveBeenCalled();
+  });
+});
+
+describe("HopSnr", () => {
+  it("shows a real 0 dB and a placeholder for a missing value", () => {
+    const { container, rerender } = render(<HopSnr snr={0} />);
+    expect(container).toHaveTextContent(/^0\.00 dB$/);
+    rerender(<HopSnr snr={null} />);
+    expect(container).toHaveTextContent(/^-$/);
+    rerender(<HopSnr snr={undefined} />);
+    expect(container).toHaveTextContent(/^-$/);
   });
 });

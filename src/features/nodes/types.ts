@@ -147,8 +147,8 @@ export interface NodeObservation {
   payloadTypeName: string;
   iata: string;
   heardAt: number; // epoch ms
-  rssi?: number;
-  snr?: number;
+  rssi?: number | null;
+  snr?: number | null;
   hopCount?: number;
 }
 

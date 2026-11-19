@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useSearchParams } from "react-router-dom";
 import { RouteDetailPanel } from "../../../src/features/routes/RouteDetailPanel";
@@ -103,6 +103,17 @@ describe("route detail", () => {
     vi.mocked(getRouteEvidence).mockResolvedValue({ ...page, items: [], hasMore: false });
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+  });
+
+  it("shows a real 0 dB and dashes a missing SNR or RSSI without a unit", async () => {
+    mount();
+    const zero = (await screen.findByText("0.00")).parentElement!;
+    expect(zero).toHaveTextContent("SNR 0.00 dB · RSSI —");
+    cleanup();
+    vi.mocked(getRouteEvidence).mockResolvedValue({ ...page, items: [{ ...page.items[0]!, snr: null, rssi: 0 }], hasMore: false });
+    mount();
+    const missing = (await screen.findByText("Garden")).nextElementSibling!;
+    expect(missing).toHaveTextContent("SNR — · RSSI 0 dBm");
   });
 
   it("colours a good SNR report the same way every other SNR cell does", async () => {

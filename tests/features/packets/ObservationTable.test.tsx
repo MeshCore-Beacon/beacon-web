@@ -91,6 +91,16 @@ describe("ObservationTable", () => {
     expect(cell.className).toContain("text-danger");
   });
 
+  it("dashes a missing signal and keeps a real zero", () => {
+    render(<ObservationTable observations={[obs(1, { snr: null, rssi: undefined }), obs(2, { snr: 0, rssi: 0 })]} selectedId={null} onSelect={() => {}} />);
+    const cells = (row: number) => within(screen.getAllByRole("row")[row]!).getAllByRole("cell");
+    expect(cells(1)[3]).toHaveTextContent(/^—$/);
+    expect(cells(1)[4]).toHaveTextContent(/^—$/);
+    expect(cells(2)[3]).toHaveTextContent(/^0\.00$/);
+    expect(cells(2)[3]!.className).toContain("text-danger");
+    expect(cells(2)[4]).toHaveTextContent(/^0$/);
+  });
+
   it("colors a null SNR as dim", () => {
     render(<ObservationTable observations={[obs(1, { snr: undefined })]} selectedId={null} onSelect={() => {}} />);
     const row = screen.getAllByRole("row")[1]!;

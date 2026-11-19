@@ -49,6 +49,19 @@ describe("ObservationCard", () => {
     expect(tokens(container.firstElementChild!)).toContain(cls);
   });
 
+  it("dashes a missing signal and keeps a real zero", () => {
+    const stat = (label: string) => screen.getByText(label).nextElementSibling!;
+    const missing = render(<ObservationCard observation={obs({ snr: null, rssi: null })} />);
+    expect(stat("SNR")).toHaveTextContent(/^—$/);
+    expect(stat("RSSI")).toHaveTextContent(/^—$/);
+    expect(tokens(missing.container.firstElementChild!)).toContain("border-l-primary");
+    missing.unmount();
+    const zero = render(<ObservationCard observation={obs({ snr: 0, rssi: 0 })} />);
+    expect(stat("SNR")).toHaveTextContent(/^0\.00$/);
+    expect(stat("RSSI")).toHaveTextContent(/^0$/);
+    expect(tokens(zero.container.firstElementChild!)).toContain("border-l-danger");
+  });
+
   it("keeps a neutral edge when SNR is unknown", () => {
     const { container } = render(<ObservationCard observation={obs()} />);
     expect(tokens(container.firstElementChild!)).toContain("border-l-primary");
