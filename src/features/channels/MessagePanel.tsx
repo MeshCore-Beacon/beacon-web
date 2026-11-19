@@ -27,6 +27,8 @@ function senderColor(name: string): string {
   return SENDER_COLORS[Math.abs(h) % SENDER_COLORS.length] ?? "text-primary";
 }
 
+const receiptOrder = (msg: ChannelMessage) => (typeof msg.id === "number" ? msg.id : Number.MAX_SAFE_INTEGER);
+
 // Packet hash also identifies messages delivered by older servers without a live ID.
 function MessageRow({ msg, heardCount, onAnalyze }: { msg: ChannelMessage; heardCount?: number; onAnalyze?: (hash: string) => void }) {
   const { t } = useTranslation();
@@ -81,7 +83,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     staleTime: 30_000,
   });
 
-  // Preserve server receipt order across pages; sender clocks are untrusted.
+  // flatten order is irrelevant: the id sort below restores chat order
   const messages = useMemo(() => {
     const unique = new Map<string, ChannelMessage>();
     for (const page of data?.pages ?? []) {
@@ -90,8 +92,9 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     return [...unique.values()];
   }, [data]);
 
+  // Ids follow server receipt order; sender clocks are untrusted. A live message without an id stays last.
   const sorted = useMemo(
-    () => [...messages].reverse(),
+    () => [...messages].sort((a, b) => receiptOrder(a) - receiptOrder(b)),
     [messages],
   );
 

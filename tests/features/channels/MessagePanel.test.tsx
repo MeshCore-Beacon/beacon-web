@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type InfiniteData } from "@tanstack/react-query";
 import { MessagePanel } from "../../../src/features/channels/MessagePanel";
 import type { ChannelMessage, ChannelSummary } from "../../../src/features/channels/types";
+import type { CursorPage } from "../../../src/types/api";
 import i18n from "../../../src/i18n";
 import { getChannelMessagesPage } from "../../../src/api/client";
 
@@ -178,4 +179,30 @@ it("does not pin an older future-dated message after newer arrivals", async () =
   const older = await screen.findByText("Old receipt with wrong clock");
   const newer = screen.getByText("New receipt");
   expect(older.compareDocumentPosition(newer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("keeps a live message below the loaded history, with or without an id", async () => {
+  vi.mocked(getChannelMessagesPage).mockResolvedValueOnce({ items: [
+    { ...restMsg, id: 3, packetHash: "third", content: "Third" },
+    { ...restMsg, id: 2, packetHash: "second", content: "Second" },
+  ], hasMore: false, nextCursor: null });
+  const scrollTo = Element.prototype.scrollTo;
+  Element.prototype.scrollTo = vi.fn();
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(<QueryClientProvider client={qc}><MessagePanel channel={channel} heardCounts={{}} regionKey="*" /></QueryClientProvider>);
+  await screen.findByText("Third");
+  // ChannelList appends a live arrival to the end of the newest page.
+  const arrive = (message: ChannelMessage) => act(() => {
+    qc.setQueryData<InfiniteData<CursorPage<ChannelMessage>>>(["channel-messages", channel.id, "*", ""], (old) => old && ({
+      ...old, pages: old.pages.map((page, i) => i === 0 ? { ...page, items: [...page.items, message] } : page),
+    }));
+  });
+  arrive({ ...restMsg, id: 4, packetHash: "live", content: "Live with id" });
+  arrive({ ...liveMsgA, packetHash: "live-old-server", content: "Live without id" });
+  await screen.findByText("Live without id");
+  const order = ["Second", "Third", "Live with id", "Live without id"].map((text) => screen.getByText(text));
+  for (let i = 1; i < order.length; i++) {
+    expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
+  Element.prototype.scrollTo = scrollTo;
 });
