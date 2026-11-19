@@ -81,7 +81,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     staleTime: 30_000,
   });
 
-  // flatten order is irrelevant — the ascending sort below restores chat order from newest-first pages
+  // Preserve server receipt order across pages; sender clocks are untrusted.
   const messages = useMemo(() => {
     const unique = new Map<string, ChannelMessage>();
     for (const page of data?.pages ?? []) {
@@ -91,7 +91,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
   }, [data]);
 
   const sorted = useMemo(
-    () => [...(messages ?? [])].sort((a, b) => a.sentAt - b.sentAt),
+    () => [...messages].reverse(),
     [messages],
   );
 
