@@ -120,7 +120,7 @@ export function homeView(pin: AtlasPin): AtlasView {
 function toPin(raw: unknown): AtlasPin | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
-  const name = typeof value.name === "string" ? value.name.slice(0, 160) : "";
+  const name = typeof value.name === "string" ? [...value.name].slice(0, 160).join("") : "";
   const kind = value.kind;
   const tiles = toTiles(value.tiles);
   if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name, ...(tiles && { tiles }) } : null;

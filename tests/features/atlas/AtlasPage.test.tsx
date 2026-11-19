@@ -197,6 +197,23 @@ describe("Atlas page", () => {
     expect(screen.getByText(/All 12 slots are in use/)).toBeInTheDocument();
   });
 
+  it("keeps Unicode names on existing nodes and newly appended observers", async () => {
+    const nodeName = "\u{1f600}".repeat(160);
+    const observerName = "A".repeat(159) + "\u{1f600}";
+    save([{ ...pin, name: nodeName }]);
+    const namedListener = { ...listener, displayName: observerName };
+    vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([namedListener]));
+    vi.mocked(api.getObserver).mockResolvedValue({ ...namedListener, publicKey: "" } as never);
+    mount();
+    await pickField("Observer");
+    typeSearch("listener");
+    fireEvent.click(await screen.findByRole("button", { name: `Add ${observerName}` }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins).toEqual([
+      { kind: "node", ...pin, name: nodeName },
+      { kind: "observer", observerId, name: observerName },
+    ]));
+  });
+
   it("searches observers by name and saves a node pin when the observer's key belongs to a node", async () => {
     vi.mocked(api.getObserverDirectoryPage).mockResolvedValue(directory([listener]));
     vi.mocked(api.getObserver).mockResolvedValue({ ...listener, publicKey: pin.publicKey } as never);
