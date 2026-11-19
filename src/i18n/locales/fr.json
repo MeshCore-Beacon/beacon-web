@@ -668,6 +668,9 @@
       }
     },
     "nodeFilters": {
+      "exportCsvResult": "CSV enregistré. Nœuds chargés : {{count}}. Ce fichier ne représente pas tout le réseau.",
+      "exportLoaded": "Exporter les nœuds chargés (CSV)",
+      "exportLoadedHelp": "Exporte uniquement les nœuds déjà chargés pour ces filtres. Faites défiler pour en charger davantage ; ceci n’est pas un export complet de la base.",
       "label": "Filtres des nœuds",
       "type": "Type",
       "multibytePaths": "Chemins multi-octets",

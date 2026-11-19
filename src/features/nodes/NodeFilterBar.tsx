@@ -23,6 +23,8 @@ interface NodeFilterBarProps {
   scopeFilter: string;
   onScopeChange: (s: string) => void;
   scopeOptions: string[];
+  onExportCsv?: () => void;
+  exportCsvDisabled?: boolean;
 }
 
 export function NodeFilterBar({
@@ -39,6 +41,8 @@ export function NodeFilterBar({
   scopeFilter,
   onScopeChange,
   scopeOptions,
+  onExportCsv,
+  exportCsvDisabled,
 }: NodeFilterBarProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -47,6 +51,9 @@ export function NodeFilterBar({
   if (sheetOpen && !isMobile) setSheetOpen(false);
 
   const activeCount = [typeFilter, pathsFilter, tracesFilter, scopeFilter].filter(Boolean).length;
+  const exportButton = onExportCsv && <button type="button" disabled={exportCsvDisabled} onClick={onExportCsv}
+    title={t("nodeFilters.exportLoadedHelp")} aria-label={t("nodeFilters.exportLoaded")}
+    className="shrink-0 rounded border border-border px-2 py-1 text-xs font-mono text-primary disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">CSV</button>;
   const clearAll = () => {
     onTypeChange("");
     onPathsChange("");
@@ -81,6 +88,7 @@ export function NodeFilterBar({
       <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0" role="toolbar" aria-label={t("nodeFilters.label")}>
         <SearchBar value={search} onChange={onSearchChange} fields={searchFields} field={searchField} onFieldChange={onSearchFieldChange} />
         <FiltersButton activeCount={activeCount} onClick={() => setSheetOpen(true)} />
+        {exportButton}
         {sheetOpen && (
           <FilterSheet onClose={() => setSheetOpen(false)} onClear={activeCount > 0 ? clearAll : undefined}>
             {controls(true)}
@@ -107,6 +115,7 @@ export function NodeFilterBar({
       <span className="text-border text-sm mx-0.5" aria-hidden>│</span>
 
       {controls(false)}
+      {exportButton}
     </div>
   );
 }

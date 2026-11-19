@@ -26,6 +26,7 @@ import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 import { EmojiText } from "../../components/EmojiText";
 import { MAX_PAGE_SIZE } from "../../lib/constants";
+import { downloadNodeCsv } from "./node-csv";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 const NAME_SORT: TableSort = { id: "name", direction: "asc" };
@@ -101,6 +102,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
 }
 
 export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
+  const [csvNotice, setCsvNotice] = useState<{ count: number; key: readonly unknown[] } | null>(null);
   const { t } = useTranslation();
   const { iatas, regionKey, isResolved } = useRegion();
   const queryClient = useQueryClient();
@@ -276,8 +278,13 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          onExportCsv={() => { downloadNodeCsv(nodes); setCsvNotice({ count: nodes.length, key: queryKey }); }}
+          exportCsvDisabled={!nodes.length || isLoading || isPaging || isError || isResolved === false}
         />
 
+        {csvNotice?.key === queryKey && <p role="status" className="shrink-0 px-4 py-2 text-xs text-text-muted">
+          {t("nodeFilters.exportCsvResult", { count: csvNotice.count })}
+        </p>}
         <DataTable
           columns={columns}
           rows={nodes}
