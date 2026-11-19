@@ -595,7 +595,9 @@
     },
     "header": {
       "settings": "Réglages",
-      "github": "GitHub"
+      "github": "GitHub",
+      "about": "À propos",
+      "kofi": "Soutenir sur Ko-fi"
     },
     "channels": {
       "noMatches": "Aucun canal correspondant chargé.",

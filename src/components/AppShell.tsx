@@ -14,7 +14,7 @@ import { LanguageOptions } from "./LanguagePicker";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { BeaconWordmark } from "./BeaconWordmark";
 import { getIatas } from "../api/client";
-import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL, BANNER } from "../lib/constants";
+import { ENABLED_TABS, ENABLED_THEME_IDS, selectableThemes, APP_NAME, GITHUB_URL, KOFI_URL, BANNER } from "../lib/constants";
 import { InstanceBanner } from "./InstanceBanner";
 import { AccountMenuItems } from "../features/account/AccountMenu";
 import type { WsManager } from "../api/ws-manager";
@@ -366,7 +366,7 @@ function GitHubLink() {
 
 const MENU_GROUP = "px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim";
 
-// Account, theme, language and the repo link share one menu so the header stays a single row.
+// Account, language, about links and theme share one menu so the header stays a single row.
 function SettingsMenu() {
   const { t } = useTranslation();
   return (
@@ -391,12 +391,23 @@ function SettingsMenu() {
           <AccountMenuItems onPick={close} />
           <div className={MENU_GROUP}>{t("language.label")}</div>
           <LanguageOptions onPick={close} />
-          <div className={`${MENU_GROUP} mt-1 border-t border-border-subtle`}>{t("theme.label")}</div>
-          <ThemeOptions onPick={close} />
-          <div className="mt-1 flex items-center gap-2 border-t border-border-subtle px-3 py-2 font-mono text-xs text-text-muted">
+          <div className={`${MENU_GROUP} mt-1 border-t border-border-subtle`}>{t("header.about")}</div>
+          <a
+            href={KOFI_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={close}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs font-mono text-text-muted hover:text-text-normal hover:bg-text-normal/3 transition-colors"
+          >
+            <span aria-hidden="true">☕</span>
+            {t("header.kofi")}
+          </a>
+          <div className="flex items-center gap-2 px-3 py-1.5 font-mono text-xs text-text-muted">
             <GitHubLink />
             <span>{APP_NAME} v{__APP_VERSION__}</span>
           </div>
+          <div className={`${MENU_GROUP} mt-1 border-t border-border-subtle`}>{t("theme.label")}</div>
+          <ThemeOptions onPick={close} />
         </>
       )}
     </Dropdown>

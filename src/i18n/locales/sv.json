@@ -579,7 +579,9 @@
     },
     "header": {
       "settings": "Inställningar",
-      "github": "GitHub"
+      "github": "GitHub",
+      "about": "Om",
+      "kofi": "Stöd på Ko-fi"
     },
     "channels": {
       "noMatches": "Inga matchande kanaler är inlästa.",
