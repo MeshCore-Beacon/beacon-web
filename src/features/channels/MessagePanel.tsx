@@ -209,7 +209,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
       {isError && <div role="alert" className="px-3 py-2 text-xs text-danger">{t("channelMessages.error")} <button type="button" disabled={isFetching} className="underline cursor-pointer" onClick={() => void refetch()}>{t("channelMessages.retry")}</button></div>}
 
       <div
-        className="flex-1 overflow-y-auto [overflow-anchor:none]"
+        className="relative flex-1 overflow-y-auto [overflow-anchor:none]"
         ref={scrollContainerRef}
         onScroll={handleScroll}
       >
