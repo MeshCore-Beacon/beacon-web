@@ -10,6 +10,9 @@ import {
   PACKET_FLOW_DOT_HALO_LAYER_ID,
   PACKET_FLOW_DOT_LAYER_ID,
   PACKET_FLOW_HOP_MS,
+  PACKET_FLOW_DOT_SOURCE_ID,
+  PACKET_FLOW_TRAIL_SOURCE_ID,
+  PACKET_FLOW_TRAIL_FADE_MS,
   LIVE_LIT_SOURCE_ID,
   LIVE_LIT_LABEL_LAYER_ID,
   LIVE_LIT_ICON_LAYER_ID,
@@ -167,6 +170,36 @@ describe("useMapPacketFlow lit nodes", () => {
     expect(lastLit()!.features).toHaveLength(1);
     view.rerender({ enabled: false, themeKey: "dark", resetKey: "other" });
     expect(lastLit()!.features).toEqual([]);
+  });
+
+  it("clears a finished dot once while the trail fades, then paints the next packet", () => {
+    const { emit, sources } = setup();
+    const dot = sources.get(PACKET_FLOW_DOT_SOURCE_ID)!.setData.mockClear();
+    const trail = sources.get(PACKET_FLOW_TRAIL_SOURCE_ID)!.setData.mockClear();
+    const route = [hop("r1", -75, 45), hop("r2", -74, 45)];
+    emit(route);
+    frame(PACKET_FLOW_HOP_MS / 2);
+    expect(dot.mock.lastCall?.[0].features[0].geometry.coordinates).toEqual([-74.5, 45]);
+    for (let dt = 40; dt <= PACKET_FLOW_TRAIL_FADE_MS; dt += 40) frame(PACKET_FLOW_HOP_MS + dt);
+    expect(dot.mock.calls.filter(([data]) => data.features.length === 0)).toHaveLength(1);
+    expect(trail.mock.calls.some(([data]) => data.features.some((f: { properties: { a: number } }) => f.properties.a > 0 && f.properties.a < 0.6))).toBe(true);
+    expect(trail.mock.lastCall?.[0].features).toEqual([]);
+    expect(rafs.size).toBe(0);
+
+    emit(route);
+    frame(now + PACKET_FLOW_HOP_MS / 2);
+    expect(dot.mock.lastCall?.[0].features[0].geometry.coordinates).toEqual([-74.5, 45]);
+    expect(trail.mock.lastCall?.[0].features).toHaveLength(1);
+  });
+
+  it("animates located hops outside the node index without sending empty lit-node updates", () => {
+    const { emit, sources } = setup();
+    const lit = sources.get(LIVE_LIT_SOURCE_ID)!.setData.mockClear();
+    emit([hop("unindexed-a", -75, 45), hop("unindexed-b", -74, 45)]);
+    frame(0);
+    frame(PACKET_FLOW_HOP_MS / 2);
+    expect(sources.get(PACKET_FLOW_DOT_SOURCE_ID)!.setData.mock.lastCall?.[0].features).toHaveLength(1);
+    expect(lit).not.toHaveBeenCalled();
   });
 
   it("selects the node when its lit icon is clicked", () => {
