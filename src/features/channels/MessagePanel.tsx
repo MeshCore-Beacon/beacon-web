@@ -172,8 +172,8 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
 
   return (
     <div className="relative flex-1 flex flex-col min-w-0 bg-bg-base">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
-        <div className="flex items-baseline gap-2 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 border-b border-border-subtle">
+        <div className="flex min-w-0 basis-full items-baseline gap-2 sm:basis-auto sm:flex-1">
           {onBack && (
             <button
               type="button"
@@ -191,7 +191,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
           </span>
           <span className="text-text-dim text-[11px] font-mono truncate">{t("channelMessages.hash", { hash: channel.channelHash })}</span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex max-w-full flex-wrap items-center gap-1 sm:shrink-0">
           {onScopeChange && <SelectDropdown label={t("channelMessages.scope")} value={scope} onChange={onScopeChange}
             allLabel={t("channelMessages.allScopes")} options={scopeNames.map((name) => ({ value: name, label: name }))} align="right" />}
           {channel.keyKnown ? (
