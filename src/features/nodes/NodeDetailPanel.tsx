@@ -1,9 +1,10 @@
 import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { getNode, getNodeObservations, getNodeNeighbors } from "../../api/client";
+import { getNode, getNodeObservations, getNodeNeighbors, isNotFound } from "../../api/client";
 import { Badge } from "../../components/Badge";
 import { DetailPanel, Section, Field, FoldSection } from "../../components/DetailPanel";
+import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { CopyButton } from "../../components/CopyButton";
 import { CopyLinkButton } from "../../components/CopyLinkButton";
 import { IataChip } from "../../components/IataChip";
@@ -84,6 +85,19 @@ function NodeObservationRow({ obs, onClick }: { obs: NodeObservation; onClick?: 
   );
 }
 
+function NodeQueryError({ section, previousData, isFetching, onRetry }: { section: string; previousData: boolean; isFetching: boolean; onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div role="alert" className="mb-2 space-y-1 font-mono text-[13px] text-danger">
+      <p>{t("common.loadFailed")}</p>
+      {previousData && <p className="text-text-muted">{t("nodeDetail.previousData")}</p>}
+      <button type="button" disabled={isFetching} aria-label={t("nodeDetail.retrySection", { section })} className={ACTION_BUTTON_CLASS} onClick={onRetry}>
+        {t("nodeDetail.retry")}
+      </button>
+    </div>
+  );
+}
+
 interface NodeDetailPanelProps {
   nodeId: string;
   onClose: () => void;
@@ -95,23 +109,28 @@ interface NodeDetailPanelProps {
 
 export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket, onViewOnMap }: NodeDetailPanelProps) {
   const { t } = useTranslation();
-  const { data: node, isLoading } = useQuery({
+  const nodeQuery = useQuery({
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
     staleTime: 30_000,
   });
 
-  const { data: observations } = useQuery({
+  const observationsQuery = useQuery({
     queryKey: ["node-observations", nodeId],
     queryFn: () => getNodeObservations(nodeId, { limit: 50 }),
     staleTime: 30_000,
   });
 
-  const { data: neighbors } = useQuery({
+  const neighborsQuery = useQuery({
     queryKey: ["node-neighbors", nodeId],
     queryFn: () => getNodeNeighbors(nodeId),
     staleTime: 30_000,
   });
+
+  const node = nodeQuery.data;
+  const observations = observationsQuery.data;
+  const neighbors = neighborsQuery.data;
+  const missing = nodeQuery.isError && isNotFound(nodeQuery.error);
 
   const hasLocation = hasMapLocation(node);
   const features = useFeatures();
@@ -128,8 +147,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
       onClose={onClose}
       collapsible
       headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel={t("nodeDetail.copyLink")} />}
-      isLoading={isLoading}
-      notFound={!node}
+      isLoading={nodeQuery.isPending}
+      notFound={missing || (nodeQuery.isSuccess && !node)}
       notFoundLabel={t("nodeDetail.notFound")}
       notFoundIcon={
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-border">
@@ -137,6 +156,9 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
         </svg>
       }
     >
+      {nodeQuery.isError && !missing && <div className="px-3 py-2.5">
+        <NodeQueryError section={t("nodeDetail.title")} previousData={!!node} isFetching={nodeQuery.isFetching} onRetry={() => void nodeQuery.refetch()} />
+      </div>}
       {node && (
         <>
           <Section title={t("nodeDetail.summary")} first>
@@ -221,7 +243,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
             ) : requestBlock && <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</FoldSection>}
 
             <FoldSection id="node-neighbors" title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
-              {neighbors && neighbors.length > 0 ? (
+              {neighborsQuery.isError && <NodeQueryError section={t("nodeDetail.neighbors")} previousData={!!neighbors?.length} isFetching={neighborsQuery.isFetching} onRetry={() => void neighborsQuery.refetch()} />}
+              {neighborsQuery.isPending ? <p role="status" className="font-mono text-[13px] text-text-dim">{t("common.loading")}</p> : neighbors && neighbors.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {neighbors.map((n) => (
                     // the endpoint returns one row per (neighbor, iata), so the node id alone repeats
@@ -232,7 +255,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                     />
                   ))}
                 </div>
-              ) : (
+              ) : !neighborsQuery.isError && (
                 <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noNeighbors")}</div>
               )}
             </FoldSection>
@@ -243,7 +266,8 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               info={[t("nodeDetail.packetsSentInfo"), t("nodeDetail.packetsSentExpire")]}
               summary={observations && observations.items.length > 0 ? <Timestamp value={observations.items[0]!.heardAt} /> : undefined}
             >
-              {observations && observations.items.length > 0 ? (
+              {observationsQuery.isError && <NodeQueryError section={t("nodeDetail.recentPackets")} previousData={!!observations?.items.length} isFetching={observationsQuery.isFetching} onRetry={() => void observationsQuery.refetch()} />}
+              {observationsQuery.isPending ? <p role="status" className="font-mono text-[13px] text-text-dim">{t("common.loading")}</p> : observations && observations.items.length > 0 ? (
                 <div className="flex flex-col gap-1.5">
                   {observations.items.map((obs) => (
                     <NodeObservationRow
@@ -253,7 +277,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                     />
                   ))}
                 </div>
-              ) : (
+              ) : !observationsQuery.isError && (
                 <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noRecentPackets")}</div>
               )}
             </FoldSection>
