@@ -128,6 +128,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
     }
 
     if (prepend.current.pending) {
+      if (isFetchingNextPage) return;
       // older page prepended — re-add its height to hold the read position (overflow-anchor is off)
       prepend.current.pending = false;
       if (el) el.scrollTop = prepend.current.prevTop + (el.scrollHeight - prepend.current.prevHeight);
@@ -140,7 +141,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
       el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
     anchor.count = sorted.length;
-  }, [sorted.length, viewKey, isLoading, userScrolled]);
+  }, [sorted.length, viewKey, isLoading, isFetchingNextPage, userScrolled]);
 
   const loadOlder = useCallback(() => {
     if (!hasNextPage || isFetching) return;
