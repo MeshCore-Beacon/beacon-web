@@ -163,12 +163,12 @@ it("divides advert rates by the hours the rollup actually covers", async () => {
 it("asks the server for flood-ranked advertisers by default and refetches direct-ranked from the toggle", async () => {
   mount();
   await screen.findByText("Old advertiser");
-  expect(vi.mocked(getTopAdvertisers).mock.calls[0]!.slice(2)).toEqual(["flood", 20]);
+  expect(vi.mocked(getTopAdvertisers).mock.calls[0]!.slice(2)).toEqual(["flood", 20, expect.any(AbortSignal)]);
   const sort = screen.getByRole("group", { name: "Sort advertisers by" });
   expect(within(sort).getByRole("button", { name: "Flood" })).toHaveAttribute("aria-pressed", "true");
   vi.mocked(getTopAdvertisers).mockResolvedValue([{ ...advertisers[0]!, nodeName: "Direct advertiser" }]);
   fireEvent.click(within(sort).getByRole("button", { name: "Direct" }));
   await screen.findByText("Direct advertiser");
-  expect(vi.mocked(getTopAdvertisers).mock.calls[1]!.slice(2)).toEqual(["direct", 20]);
+  expect(vi.mocked(getTopAdvertisers).mock.calls[1]!.slice(2)).toEqual(["direct", 20, expect.any(AbortSignal)]);
   expect(within(sort).getByRole("button", { name: "Direct" })).toHaveAttribute("aria-pressed", "true");
 });

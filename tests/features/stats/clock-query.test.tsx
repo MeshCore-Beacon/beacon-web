@@ -14,7 +14,7 @@ it("reuses the regional clock query and limit when only the language changes", a
   const { unmount } = render(<QueryClientProvider client={client}><ClockDriftTab /></QueryClientProvider>);
   await screen.findByText("No repeaters out of sync");
   expect(getClockDrift).toHaveBeenCalledOnce();
-  expect(getClockDrift).toHaveBeenCalledWith(["YVR"], 100);
+  expect(getClockDrift).toHaveBeenCalledWith(["YVR"], 100, expect.any(AbortSignal));
   await act(() => i18n.changeLanguage("fr"));
   expect(screen.getByText("Aucun répéteur désynchronisé")).toBeInTheDocument();
   expect(getClockDrift).toHaveBeenCalledOnce();

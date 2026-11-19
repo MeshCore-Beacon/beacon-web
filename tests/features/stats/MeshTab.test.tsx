@@ -239,5 +239,5 @@ it("asks for an empty region by slug rather than falling back to every IATA", as
   region.iatas = undefined; region.regionKey = "region:empty"; region.emptyRegion = "empty";
   mount(); await loaded();
   for (const call of vi.mocked(getStatsSeries).mock.calls) expect(call[2]).toEqual({ region: "empty" });
-  expect(getStatsNodeTypes).toHaveBeenCalledWith({ region: "empty" });
+  expect(getStatsNodeTypes).toHaveBeenCalledWith({ region: "empty" }, expect.any(AbortSignal));
 });
