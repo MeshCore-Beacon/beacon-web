@@ -652,6 +652,7 @@
       }
     },
     "nodeFilters": {
+      "exportCsv": "CSV",
       "exportCsvResult": "CSV sparad. Inlästa noder: {{count}}. Detta är inte en export av hela nätet.",
       "exportLoaded": "Exportera inlästa noder (CSV)",
       "exportLoadedHelp": "Exporterar bara noder som redan laddats för dessa filter. Rulla för att läsa in fler; detta är inte en fullständig databasexport.",

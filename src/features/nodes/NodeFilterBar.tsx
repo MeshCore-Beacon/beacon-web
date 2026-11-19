@@ -53,7 +53,7 @@ export function NodeFilterBar({
   const activeCount = [typeFilter, pathsFilter, tracesFilter, scopeFilter].filter(Boolean).length;
   const exportButton = onExportCsv && <button type="button" disabled={exportCsvDisabled} onClick={onExportCsv}
     title={t("nodeFilters.exportLoadedHelp")} aria-label={t("nodeFilters.exportLoaded")}
-    className="shrink-0 rounded border border-border px-2 py-1 text-xs font-mono text-primary disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">CSV</button>;
+    className="h-7 shrink-0 rounded border border-border px-2 text-[11px] font-mono text-primary disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">{t("nodeFilters.exportCsv")}</button>;
   const clearAll = () => {
     onTypeChange("");
     onPathsChange("");

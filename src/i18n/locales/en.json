@@ -688,6 +688,7 @@
       }
     },
     "nodeFilters": {
+      "exportCsv": "CSV",
       "exportCsvResult": "CSV saved. Loaded nodes: {{count}}. This is not a full-network export.",
       "exportLoaded": "Export loaded nodes (CSV)",
       "exportLoadedHelp": "Exports only the nodes currently loaded for these filters. Scroll to load more; this is not a full database export.",
