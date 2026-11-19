@@ -71,7 +71,7 @@ describe("NodeTable paging", () => {
   it("asks for nodes at the server's page cap, so a whole region takes a quarter of the requests", async () => {
     mount([node({ id: "node-a", name: "Node A" })]);
     await screen.findByText("Node A");
-    expect(vi.mocked(getNodesPage)).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ limit: 200 }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ limit: 200 }), expect.any(AbortSignal));
   });
 });
 
@@ -189,14 +189,14 @@ describe("NodeTable server order", () => {
         : sortedPage([node({ id: "b", name: "Bravo" }), node({ id: "a", name: "alpha 10" })], { hasMore: true, nextPageCursor: "s1:next" }),
     );
     await screen.findByText("alpha 10");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "name", order: "asc", limit: 200 }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "name", order: "asc", limit: 200 }), expect.any(AbortSignal));
     expect(names()).toEqual(["Bravo", "alpha 10"]); // as given, not re-sorted here
     await act(async () => new Promise((r) => setTimeout(r, 50)));
     expect(vi.mocked(getNodesPage)).toHaveBeenCalledTimes(1); // no eager paging
 
     fireEvent.scroll(screen.getByRole("table").parentElement!);
     await screen.findByText("Charlie");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ pageCursor: "s1:next", sort: "name" }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ pageCursor: "s1:next", sort: "name" }), expect.any(AbortSignal));
     expect(names()).toEqual(["Bravo", "alpha 10", "Charlie"]);
   });
 
@@ -219,7 +219,7 @@ describe("NodeTable server order", () => {
     await screen.findByText("Node lastSeen desc");
     fireEvent.click(header(/last heard/i)!);
     await screen.findByText("Node lastSeen asc");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "lastSeen", order: "asc" }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "lastSeen", order: "asc" }), expect.any(AbortSignal));
   });
 
   it("hides Last heard when the server's rows don't carry it", async () => {
@@ -261,7 +261,7 @@ describe("NodeTable server order", () => {
     scopes = ["#bc"];
     mountPages((p) => sortedPage([node({ id: "a", name: p?.scope ? `in ${p.scope}` : "any scope" })]));
     await screen.findByText("any scope");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ scope: undefined }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ scope: undefined }), expect.any(AbortSignal));
     fireEvent.click(screen.getAllByRole("button", { name: /scope/i })[0]!);
     fireEvent.click(await screen.findByRole("option", { name: "#bc" }));
     await screen.findByText("in #bc");
@@ -275,7 +275,7 @@ describe("NodeTable server order", () => {
     );
     await screen.findByText("Alpha"); // the second page came without a scroll
     expect(names()).toEqual(["Alpha", "Zulu"]);
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: undefined }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: undefined }), expect.any(AbortSignal));
     expect(header(/last heard/i)).not.toBeInTheDocument();
     fireEvent.click(header(/radio/i)!);
     expect(names()).toEqual(["Zulu", "Alpha"]);

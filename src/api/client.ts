@@ -225,6 +225,7 @@ export interface RouteCursor {
 
 export async function getKnownRoutesPage(
   params?: { iatas?: string[]; hopCount?: number; cursor?: RouteCursor; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<KnownRoute, RouteCursor>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
   const iatas = params?.iatas ?? [];
@@ -235,7 +236,7 @@ export async function getKnownRoutesPage(
     cursor: params?.cursor?.lastSeen,
     cursorId: params?.cursor?.id,
     limit,
-  });
+  }, signal);
   return toCursorPage(items, limit, (r) => ({ lastSeen: r.lastSeen, id: r.id }));
 }
 

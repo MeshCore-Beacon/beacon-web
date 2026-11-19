@@ -207,6 +207,16 @@ describe("getScopes", () => {
 });
 
 describe("getKnownRoutesPage", () => {
+  it("lets the caller abort an outstanding route page", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("fetch", vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    })));
+    const pending = getKnownRoutesPage({ iatas: ["YYC"] }, controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   const route: KnownRoute = {
     id: 7,
     iata: "YYC",

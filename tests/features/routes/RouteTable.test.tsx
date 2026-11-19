@@ -239,7 +239,7 @@ describe("RouteTable search", () => {
 
     expect(await screen.findByText("61")).toBeInTheDocument();
     expect(screen.getByText("62")).toBeInTheDocument();
-    expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["AAA", "BBB"] }));
+    expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["AAA", "BBB"] }), expect.any(AbortSignal));
     // the server filtered the page, so a short page waits for scroll instead of pulling more
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(mockGetKnownRoutesPage).toHaveBeenCalledTimes(1);
@@ -263,7 +263,7 @@ describe("RouteTable search", () => {
     expect(await screen.findByText("17")).toBeInTheDocument();
     expect(screen.queryByText("9")).not.toBeInTheDocument();
     expect(mockGetKnownRoutesPage.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(mockGetKnownRoutesPage).toHaveBeenLastCalledWith(expect.objectContaining({ iatas: ["AAA", "BBB"], cursor: { lastSeen: 5, id: 1 } }));
+    expect(mockGetKnownRoutesPage).toHaveBeenLastCalledWith(expect.objectContaining({ iatas: ["AAA", "BBB"], cursor: { lastSeen: 5, id: 1 } }), expect.any(AbortSignal));
   });
 
   it("pages every IATA and filters for a region too long to send", async () => {
@@ -276,7 +276,7 @@ describe("RouteTable search", () => {
 
     expect(await screen.findByText("17")).toBeInTheDocument();
     expect(screen.queryByText("9")).not.toBeInTheDocument();
-    expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: undefined }));
+    expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: undefined }), expect.any(AbortSignal));
   });
 
   it("shows a route's observation count in the list", async () => {
@@ -329,7 +329,7 @@ it("does not navigate on a region change with no route selected", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Change region" }));
 
-  await waitFor(() => expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["AAA"] })));
+  await waitFor(() => expect(mockGetKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["AAA"] }), expect.any(AbortSignal)));
   expect(keys.length).toBe(initialKeyCount);
 });
 
@@ -339,7 +339,7 @@ it("preserves a shared saved route while a named region resolves", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/?tab=Routes&regions=ontario&route=shared-key&routeIata=YOW"]}><RegionProvider defaultSelection={{ regions: ["ontario"], iatas: [] }}><RouteTable /></RegionProvider></MemoryRouter></QueryClientProvider>);
   await waitFor(() => expect(getRegion).toHaveBeenCalledWith(1));
-  await waitFor(() => expect(getKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["YOW"] })));
+  await waitFor(() => expect(getKnownRoutesPage).toHaveBeenCalledWith(expect.objectContaining({ iatas: ["YOW"] }), expect.any(AbortSignal)));
   expect(screen.getByTestId("saved-route-selection")).toHaveTextContent("shared-key");
   client.clear();
 });
