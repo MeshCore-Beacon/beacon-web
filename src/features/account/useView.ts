@@ -41,9 +41,16 @@ export function useView(): {
 }
 
 // Mailed links carry the token in the fragment (`#token=…`); links sent earlier carry `?token=`.
-export function linkToken(location: { search: string; hash: string }): string | null {
+function tokenIn(location: { search: string; hash: string }): string | null {
   const fromHash = new URLSearchParams(location.hash.replace(/^#/, "")).get("token");
   return fromHash || new URLSearchParams(location.search).get("token");
+}
+
+// Read once at startup: a URL rewrite before the lazy view mounts would otherwise lose the fragment.
+let startupToken: string | null = typeof window === "undefined" ? null : tokenIn(window.location);
+
+export function linkToken(location: { search: string; hash: string }): string | null {
+  return tokenIn(location) || startupToken;
 }
 
 // Drops the token from both places (kept out of history once it is used), leaving the view open.
@@ -56,6 +63,7 @@ export function useClearToken(): () => void {
     current.current = location;
   });
   return useCallback(() => {
+    startupToken = null;
     const { pathname, search } = current.current;
     const out = new URLSearchParams(search);
     out.delete("token");
