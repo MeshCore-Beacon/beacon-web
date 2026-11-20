@@ -972,6 +972,18 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
+      "alerts": {
+        "dialog": "Larm för {{name}}",
+        "on_one": "Larm: {{count}} på",
+        "on_other": "Larm: {{count}} på",
+        "firing_one": "Larm: {{count}} larmar",
+        "firing_other": "Larm: {{count}} larmar",
+        "signIn": "Logga in för att ställa in larm för den här radion.",
+        "notYet": "Larm är inte tillgängliga för den här radion ännu. Den måste först sparas i ditt kontos Atlas.",
+        "channels": "E-post och push ställs in i din profil.",
+        "noneReach": "Larm skickas inte förrän du slår på e-post eller push.",
+        "openProfile": "Öppna larminställningar"
+      },
       "syncedToAccount": "Synkad med ditt konto",
       "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",
       "syncFailed": "Det gick inte att spara Atlas på ditt konto. Din ändring finns kvar på den här enheten.",

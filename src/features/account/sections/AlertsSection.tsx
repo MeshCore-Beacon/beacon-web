@@ -1,15 +1,14 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { FormStatus } from "../../../components/form/FormStatus";
 import { useAlerts } from "../../../hooks/useAlerts";
 import { useFeatures } from "../../../hooks/useFeatures";
 import { authErrorText } from "../errors";
-import { ALERT_KINDS } from "../alertRules";
-import { unavailableText } from "../unavailableReason";
-import type { AlertKind, AlertTarget, User } from "../types";
+import { activeRules } from "../alertRules";
+import type { AlertTarget, User } from "../types";
 import { AlertChannels } from "./AlertChannels";
-import { AlertRow } from "./AlertRow";
+import { AlertRuleList } from "./AlertRuleList";
 import { ProfileSection } from "./ProfileSection";
 import { useSessionEnded } from "./useSessionEnded";
 
@@ -19,12 +18,7 @@ function TargetBlock({ target }: { target: AlertTarget }) {
   // Undefined until first opened. Keep visited editors mounted so a collapse preserves draft thresholds.
   const [open, setOpen] = useState<boolean>();
   const name = target.name || target.publicKey.slice(0, 8);
-  const has = (k: AlertKind) => target.available.includes(k);
-  const rules = new Map(target.rules.map((r) => [r.kind, r]));
-  const goneQuietOn = rules.get("gone_quiet")?.enabled === true;
-  const off = ALERT_KINDS.filter((k) => target.unavailable[k] !== undefined && !has(k));
-  const enabledRules = target.rules.filter((r) => r.enabled);
-  const firing = enabledRules.filter((r) => r.state === "firing");
+  const { on: enabledRules, firing } = activeRules(target);
   const count = enabledRules.length;
   const lead = firing.length === 0 ? null : firing.length === 1
     ? t("account.alerts.firing", { count: 1, name: t(`account.alerts.kinds.${firing[0]?.kind}.name`) })
@@ -53,15 +47,7 @@ function TargetBlock({ target }: { target: AlertTarget }) {
           </svg>
         </button>
       </h3>
-      <ul id={panelId} hidden={!open} className="flex flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle bg-bg-base px-3 sm:px-4">
-        {open !== undefined && ALERT_KINDS.filter(has).map((k) => <AlertRow key={`${k}:${rules.get(k)?.id}:${rules.get(k)?.threshold}:${rules.get(k)?.thresholdHigh}`} target={target} kind={k} rule={rules.get(k)} goneQuietOn={goneQuietOn} />)}
-        {open !== undefined && off.map((k) => (
-          <li key={k} className="flex flex-col gap-1 py-3 opacity-60">
-            <span className="font-mono text-sm font-semibold text-text-bright">{t(`account.alerts.kinds.${k}.name`)}</span>
-            <p className="text-xs text-text-muted">{unavailableText(t, k, target.unavailableCodes?.[k], target.unavailable[k] ?? "")}</p>
-          </li>
-        ))}
-      </ul>
+      <div id={panelId} hidden={!open}>{open !== undefined && <AlertRuleList target={target} />}</div>
     </div>
   );
 }
@@ -71,6 +57,12 @@ export function AlertsSection({ user }: { user: User }) {
   const ended = useSessionEnded();
   const list = useAlerts();
   const { alertChannelsSent } = useFeatures();
+  const [params] = useSearchParams();
+  const wanted = params.get("section") === "alerts";
+  // The Atlas alert dialog links here; this section sits well down the profile.
+  useEffect(() => {
+    if (wanted) document.getElementById("profile-alerts")?.scrollIntoView?.({ block: "start" });
+  }, [wanted]);
   useEffect(() => {
     if (list.error) ended(list.error);
   }, [list.error, ended]);

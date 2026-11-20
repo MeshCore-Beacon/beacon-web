@@ -1009,6 +1009,20 @@
       "perDay": "{{value}}/j"
     },
     "atlas": {
+      "alerts": {
+        "dialog": "Alertes pour {{name}}",
+        "on_one": "Alertes : {{count}} activée",
+        "on_many": "Alertes : {{count}} activées",
+        "on_other": "Alertes : {{count}} activées",
+        "firing_one": "Alertes : {{count}} en cours",
+        "firing_many": "Alertes : {{count}} en cours",
+        "firing_other": "Alertes : {{count}} en cours",
+        "signIn": "Connectez-vous pour définir des alertes pour cette radio.",
+        "notYet": "Les alertes ne sont pas encore disponibles pour cette radio. Elle doit d’abord être enregistrée dans l’Atlas de votre compte.",
+        "channels": "Le courriel et les notifications se règlent dans votre profil.",
+        "noneReach": "Les alertes ne seront pas envoyées tant que vous n’aurez pas activé le courriel ou les notifications.",
+        "openProfile": "Ouvrir les réglages d’alertes"
+      },
       "export": "Exporter",
       "exportHelp": "Enregistrer vos fiches dans un fichier à importer dans un autre navigateur ou l’app Beacon",
       "import": "Importer",

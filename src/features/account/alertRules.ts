@@ -1,11 +1,23 @@
 import type { TFunction } from "i18next";
-import type { AlertKind, AlertRule, AlertTarget } from "./types";
+import type { AlertChannels, AlertKind, AlertRule, AlertTarget } from "./types";
 import { fromDisplayTemp, tempSymbol, toDisplayTemp, type TemperatureUnit } from "../../lib/units";
 
 // The order of the plan's alert kinds table; rows follow it.
 export const ALERT_KINDS: AlertKind[] = [
   "gone_quiet", "back_online", "battery_low", "battery_falling", "rebooted", "temperature", "noise_high", "clock", "observer_offline",
 ];
+
+// The rules that are switched on, and the ones alerting now. Profile's summary and the Atlas bell both read these.
+export function activeRules(target: AlertTarget | undefined): { on: AlertRule[]; firing: AlertRule[] } {
+  const on = target?.rules.filter((r) => r.enabled) ?? [];
+  return { on, firing: on.filter((r) => r.state === "firing") };
+}
+
+// Push needs a registered device as well as its switch.
+export function channelReaches(channels: AlertChannels): boolean {
+  const { email, push } = channels;
+  return (email.available && email.enabled) || (push.available && push.enabled && push.hasDevice);
+}
 
 export function goneQuietHours(target: AlertTarget, current: number | null): number[] {
   const short = target.kind === "observer" || target.polled;

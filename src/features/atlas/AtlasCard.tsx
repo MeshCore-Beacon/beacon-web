@@ -21,6 +21,7 @@ import { useChartColors } from "../stats/chartTheme";
 import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
 import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
+import { AtlasAlertBell } from "./AtlasAlerts";
 import { TilePicker } from "./TilePicker";
 import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, useTelemetryTab } from "./useAtlas";
 import { DOT_LIMIT, sparkValues } from "./telemetry-sample";
@@ -249,6 +250,7 @@ export function AtlasCard({
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
+      <AtlasAlertBell pin={pin} name={name || formatHex(pin.kind === "node" ? (node?.id ?? pin.id) : pin.observerId)} observerKey={observer?.publicKey} box={ICON_BOX} />
       {views.length > 1 && (
         <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
           <button

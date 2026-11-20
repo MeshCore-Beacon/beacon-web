@@ -1008,6 +1008,18 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
+      "alerts": {
+        "dialog": "Alerts for {{name}}",
+        "on_one": "Alerts: {{count}} on",
+        "on_other": "Alerts: {{count}} on",
+        "firing_one": "Alerts: {{count}} firing",
+        "firing_other": "Alerts: {{count}} firing",
+        "signIn": "Sign in to set alerts for this radio.",
+        "notYet": "Alerts are not available for this radio yet. It has to be saved to your account's Atlas first.",
+        "channels": "Email and push are set in your profile.",
+        "noneReach": "Alerts will not be delivered until you turn on email or push.",
+        "openProfile": "Open alert settings"
+      },
       "export": "Export",
       "exportHelp": "Save your cards to a file you can import in another browser or the Beacon app",
       "import": "Import",

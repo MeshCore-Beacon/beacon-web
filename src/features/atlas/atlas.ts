@@ -1,4 +1,5 @@
 import { ApiError, getNode, getNodesPage, isNotFound } from "../../api/client";
+import type { AlertTarget } from "../account/types";
 import type { Node, NodeActivity, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
@@ -32,6 +33,17 @@ const isUuid = (value: unknown): value is string => typeof value === "string" &&
 export const NO_NODE_ID = "00000000-0000-0000-0000-000000000000";
 
 export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : pin.observerId);
+
+// The server answers one target per synced pin. A node goes by its key; an observer by its id, or by its
+// key once the card has loaded it, since a pin the server could not resolve carries a stand-in id.
+export function targetForPin(targets: AlertTarget[] | undefined, pin: AtlasPin, observerKey?: string | null): AlertTarget | undefined {
+  const key = (pin.kind === "node" ? pin.publicKey : observerKey)?.toLowerCase();
+  return targets?.find((target) => {
+    if (target.kind !== pin.kind) return false;
+    if (pin.kind === "observer" && target.id === pin.observerId) return true;
+    return !!key && target.publicKey.toLowerCase() === key;
+  });
+}
 
 // Only a version 2 payload loads; anything else is empty.
 export function parseAtlas(raw: string | null): SavedAtlas {
