@@ -171,3 +171,41 @@ describe("transport frames", () => {
     expect(frame.slice(ranges.payload!.start * 2, ranges.payload!.end * 2)).toBe("3b5c22");
   });
 });
+
+// On air: 26 02 28F4 11223344 00000000 00 A1B2C3, a 3-hop trace (A1 B2 C3) that reached 2 hops.
+describe("TRACE frames", () => {
+  const payload = "11223344" + "00000000" + "00" + "a1b2c3";
+  const trace = () => {
+    const d = makeDetail({ payloadType: PayloadType.TRACE, parsedPayload: { traceTag: "11223344" }, rawPayload: payload });
+    d.header.raw = "26";
+    return d;
+  };
+  const obs = (wirePathBytes?: string): Observation => ({ ...makeObs({ raw: "02", hashSize: 1, hopCount: 3, pathBytes: "a1b2c3" }), wirePathBytes });
+
+  it("rebuilds the transmitted frame from the wire path bytes", () => {
+    const d = trace();
+    const frame = buildObservationFrame(d, obs("28f4"));
+    expect(frame).toBe("26" + "02" + "28f4" + payload);
+    expect(frame.length / 2).toBe(16);
+    const r = computeFieldRanges(d, obs("28f4"), frame.length / 2);
+    expect(r.pathLength).toEqual({ start: 1, end: 2 });
+    expect(r.pathData).toEqual({ start: 2, end: 4 });
+    expect(r.payload).toEqual({ start: 4, end: 16 });
+  });
+
+  it("leaves the path slot empty for a trace that reached no hop", () => {
+    const d = trace();
+    const frame = buildObservationFrame(d, { ...obs(""), pathLength: { raw: "00", hashSize: 1, hopCount: 3 } });
+    expect(frame).toBe("26" + "00" + payload);
+    const r = computeFieldRanges(d, obs(""), frame.length / 2);
+    expect(r.pathData).toBeUndefined();
+    expect(r.payload).toEqual({ start: 2, end: 14 });
+  });
+
+  it("falls back to pathBytes on a server that sends no wire bytes", () => {
+    const d = trace();
+    const frame = buildObservationFrame(d, obs());
+    expect(frame).toBe("26" + "02" + "a1b2c3" + payload);
+    expect(computeFieldRanges(d, obs(), frame.length / 2).pathData).toEqual({ start: 2, end: 5 });
+  });
+});
