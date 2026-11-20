@@ -27,7 +27,8 @@ export function transportCodeHex(code: number): string {
 }
 
 // Reconstruct the full on-air frame for one observer:
-//   header.raw + transport codes + pathLength.raw + pathBytes + rawPayload
+//   header.raw + transport codes + pathLength.raw + path + rawPayload
+// The path is wirePathBytes when the server sends it (a TRACE, whose pathBytes are its payload hashes).
 // Header/payload are packet-scope (observer-independent); the path is per-observer.
 export function buildObservationFrame(detail: PacketDetail, obs: Observation | null): string {
   // Header and path-length are each one on-air byte that computeFieldRanges always reserves, so force
@@ -39,7 +40,7 @@ export function buildObservationFrame(detail: PacketDetail, obs: Observation | n
   const payload = detail.rawPayload ?? "";
   if (!obs) return header + payload;
   const pathLen = pad(obs.pathLength.raw);
-  const path = obs.pathBytes ?? "";
+  const path = obs.wirePathBytes ?? obs.pathBytes ?? "";
   return header + pathLen + path + payload;
 }
 
@@ -63,7 +64,7 @@ export function computeFieldRanges(
     ranges.pathLength = { start: offset, end: offset + 1 };
     offset += 1;
 
-    const pathByteCount = obs.pathLength.hashSize * obs.pathLength.hopCount;
+    const pathByteCount = obs.wirePathBytes != null ? obs.wirePathBytes.length / 2 : obs.pathLength.hashSize * obs.pathLength.hopCount;
     if (pathByteCount > 0) {
       ranges.pathData = { start: offset, end: offset + pathByteCount };
     }

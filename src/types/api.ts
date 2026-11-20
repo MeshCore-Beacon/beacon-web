@@ -71,6 +71,9 @@ export interface Observation {
   heardAt: number;
   pathLength: PathLength;
   pathBytes?: string;
+  // TRACE only: the bytes really in the path slot on air (one signal byte per hop reached, may be
+  // empty). Absent when they equal pathBytes and on older servers.
+  wirePathBytes?: string;
   rssi?: number | null;
   snr?: number | null;
   propagationTimeMs?: number;

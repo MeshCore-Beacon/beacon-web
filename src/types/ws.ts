@@ -70,6 +70,7 @@ export interface WsPacketObservation {
       sourceBroker: string;
       pathLength?: PathLength;
       pathBytes?: string;
+      wirePathBytes?: string; // TRACE only, same as REST Observation.wirePathBytes
       // per-hop resolved path; populated only when the connection opts in via configure{resolvePath},
       // null otherwise. Same shape as the REST Observation.resolvedPath.
       resolvedPath?: ResolvedHop[] | null;
