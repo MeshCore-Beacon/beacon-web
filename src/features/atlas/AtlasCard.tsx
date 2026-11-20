@@ -39,6 +39,7 @@ export interface AtlasActions {
 
 interface AtlasCardProps extends AtlasActions {
   pin: AtlasPin;
+  observerKey?: string; // an observer pin's public key as the account sync knows it
   range: AtlasRange;
   active: boolean;
   view: AtlasView;
@@ -128,6 +129,7 @@ function TypeMix({ types, colors, unknown, other }: { types: PayloadShare[]; col
 // A node that also observes gets a third view; an observer-only pin has just that view.
 export function AtlasCard({
   pin,
+  observerKey,
   range,
   active,
   view: requested,
@@ -250,7 +252,7 @@ export function AtlasCard({
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
-      <AtlasAlertBell pin={pin} name={name || formatHex(pin.kind === "node" ? (node?.id ?? pin.id) : pin.observerId)} observerKey={observer?.publicKey} box={ICON_BOX} />
+      <AtlasAlertBell pin={pin} name={name || formatHex(pin.kind === "node" ? (node?.id ?? pin.id) : pin.observerId)} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
       {views.length > 1 && (
         <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
           <button

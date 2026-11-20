@@ -28,7 +28,13 @@ function AlertsDialog({ name, target, list, onClose }: { name: string; target: A
   useEffect(() => {
     if (list.error) ended(list.error);
   }, [list.error, ended]);
-  // A saved row remounts and drops focus to the body, where the overlay's own Escape handler never hears the key.
+  // Opening is the moment the user looks, so ask again; a fetch already under way is left to finish.
+  const { refetch } = list;
+  const signedIn = !!user;
+  useEffect(() => {
+    if (signedIn) void refetch({ cancelRefetch: false });
+  }, [signedIn, refetch]);
+  // Safari leaves focus on the body after a click, where the overlay's own Escape handler never hears the key.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !e.defaultPrevented) onClose();

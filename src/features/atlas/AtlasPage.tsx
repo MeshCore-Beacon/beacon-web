@@ -52,7 +52,7 @@ function without(views: Record<string, AtlasView>, key: string): Record<string, 
 // Global by design: pins are radio identities, so the header region picker does not apply here.
 export function AtlasPage({ active = true, ...actions }: AtlasActions & { active?: boolean }) {
   const { t } = useTranslation();
-  const { saved, update, adjust, storageFailed, synced, notice: syncNotice, clearNotice } = useSyncedAtlas();
+  const { saved, update, adjust, storageFailed, synced, observerKeys, notice: syncNotice, clearNotice } = useSyncedAtlas();
   // Same single-row bar the other tabs use on a phone: the search shrinks, nothing wraps.
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
@@ -366,6 +366,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                 <div key={pinKey(pin)} data-atlas-card {...cardProps(index)}>
                   <AtlasCard
                     pin={pin}
+                    observerKey={pin.kind === "observer" ? observerKeys[pin.observerId] : undefined}
                     range={saved.range}
                     active={active}
                     view={viewOf(pin)}

@@ -14,6 +14,9 @@ export function useAlerts() {
     queryFn: ({ signal }) => alerts.get(signal),
     enabled: !!user && on,
     staleTime: 30_000,
+    // Firing states are worked out on the server, so an open page asks again; never from a hidden tab.
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     ...queryRetryDefaults,
   });
 }

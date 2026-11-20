@@ -68,6 +68,36 @@ const block = (name: string) => within(screen.getByRole("group", { name }));
 const row = (target: string, kind: string) => within(block(target).getByTestId(`alert-${kind}`));
 const put = () => vi.mocked(alerts.putRule);
 
+describe("focus through a save", () => {
+  it("moves focus to the same control when a saved row is replaced", async () => {
+    await open();
+    const created = rule({ id: "new", kind: "gone_quiet", threshold: 24 });
+    vi.mocked(alerts.putRule).mockResolvedValue(created);
+    vi.mocked(alerts.get).mockResolvedValue(response({ targets: [repeater({ rules: [created] }), plain()] }));
+    const before = row("Hilltop", "gone_quiet").getByRole("switch");
+    before.focus();
+    fireEvent.click(before);
+    await waitFor(() => expect(row("Hilltop", "gone_quiet").getByRole("switch")).toBeChecked());
+    const after = row("Hilltop", "gone_quiet").getByRole("switch");
+    expect(after).not.toBe(before);
+    await waitFor(() => expect(document.activeElement).toBe(after));
+  });
+
+  it("does not pull focus back to a row the user has left", async () => {
+    await open();
+    const created = rule({ id: "new", kind: "gone_quiet", threshold: 24 });
+    vi.mocked(alerts.putRule).mockResolvedValue(created);
+    vi.mocked(alerts.get).mockResolvedValue(response({ targets: [repeater({ rules: [created] }), plain()] }));
+    const before = row("Hilltop", "gone_quiet").getByRole("switch");
+    before.focus();
+    fireEvent.click(before);
+    const elsewhere = row("Ridge", "gone_quiet").getByRole("switch");
+    elsewhere.focus();
+    await waitFor(() => expect(row("Hilltop", "gone_quiet").getByRole("switch")).toBeChecked());
+    expect(document.activeElement).toBe(elsewhere);
+  });
+});
+
 describe("collapsible radios", () => {
   const head = (name: string) => within(screen.getByRole("group", { name })).getByRole("button", { name: new RegExp(name) });
   const firingRule = (over: Partial<AlertRule> = {}) => rule({ state: "firing", ...over });

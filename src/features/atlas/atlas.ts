@@ -34,13 +34,12 @@ export const NO_NODE_ID = "00000000-0000-0000-0000-000000000000";
 
 export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : pin.observerId);
 
-// The server answers one target per synced pin. A node goes by its key; an observer by its id, or by its
-// key once the card has loaded it, since a pin the server could not resolve carries a stand-in id.
+// The server answers one target per pinned key, and its kind can differ from the pin's: a node pin whose
+// node row is gone reads as an observer, an observer pin whose radio advertises reads as a node.
 export function targetForPin(targets: AlertTarget[] | undefined, pin: AtlasPin, observerKey?: string | null): AlertTarget | undefined {
   const key = (pin.kind === "node" ? pin.publicKey : observerKey)?.toLowerCase();
   return targets?.find((target) => {
-    if (target.kind !== pin.kind) return false;
-    if (pin.kind === "observer" && target.id === pin.observerId) return true;
+    if (pin.kind === "observer" && target.kind === "observer" && target.id === pin.observerId) return true;
     return !!key && target.publicKey.toLowerCase() === key;
   });
 }

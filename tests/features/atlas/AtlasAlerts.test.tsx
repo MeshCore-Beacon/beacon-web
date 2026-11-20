@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { AtlasCard } from "../../../src/features/atlas/AtlasCard";
 import { targetForPin } from "../../../src/features/atlas/atlas";
+import { fromServer } from "../../../src/features/atlas/atlasSync";
+import { ApiError } from "../../../src/api/client";
+import { ALERTS_KEY } from "../../../src/hooks/useAlerts";
 import * as api from "../../../src/api/client";
 import { alerts, me } from "../../../src/api/auth";
 import { Probe } from "../account/Probe";
@@ -160,9 +163,11 @@ describe("Atlas card alert bell", () => {
     expect(dialog.getByTestId("alert-battery_low")).toBeInTheDocument();
     expect(dialog.getByText("Temperature").closest("li")).toHaveClass("opacity-60");
     expect(dialog.queryByText(/Alerting since/)).not.toBeInTheDocument();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    const calls = vi.mocked(alerts.get).mock.calls.length;
     fireEvent.click(within(dialog.getByTestId("alert-gone_quiet")).getByRole("switch"));
     await waitFor(() => expect(alerts.putRule).toHaveBeenCalledWith(expect.objectContaining({ target: { kind: "node", publicKey: KEY.toUpperCase() }, kind: "gone_quiet", enabled: true })));
-    await waitFor(() => expect(alerts.get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(vi.mocked(alerts.get).mock.calls.length).toBeGreaterThan(calls));
   });
 
   it("matches an observer pin to the observer target by id", async () => {
@@ -184,7 +189,100 @@ describe("Atlas card alert bell", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("closes on Escape when focus has dropped to the body", async () => {
+  it("refetches when the dialog is opened again", async () => {
+    signedIn(response({ targets: [other] }));
+    mount();
+    const first = await openDialog();
+    expect(await first.findByText(/not available for this radio yet/)).toBeInTheDocument();
+    fireEvent.click(first.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    const before = vi.mocked(alerts.get).mock.calls.length;
+    vi.mocked(alerts.get).mockResolvedValue(response());
+    const dialog = await openDialog();
+    await waitFor(() => expect(alerts.get).toHaveBeenCalledTimes(before + 1));
+    expect(await dialog.findAllByRole("switch")).toHaveLength(3);
+  });
+
+  it("polls the one shared query about once a minute, and not in a hidden tab", async () => {
+    signedIn();
+    mount();
+    await screen.findByRole("button", { name: /^Alerts/ });
+    await waitFor(() => expect(alerts.get).toHaveBeenCalled());
+    const options = client.getQueryCache().find({ queryKey: ALERTS_KEY })!.observers[0]!.options;
+    expect(options.refetchInterval).toBe(60_000);
+    expect(options.refetchIntervalInBackground).toBeFalsy();
+  });
+
+  it("keeps a threshold being typed through a background refetch that changes another rule", async () => {
+    const low = rule({ enabled: false });
+    signedIn(response({ targets: [target({ rules: [low, rule({ id: "g", kind: "gone_quiet", threshold: 24 })] })] }));
+    mount();
+    const dialog = await openDialog();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    const input = within(dialog.getByTestId("alert-battery_low")).getByRole("textbox");
+    input.focus();
+    fireEvent.change(input, { target: { value: "3.7" } });
+    vi.mocked(alerts.get).mockResolvedValue(response({ targets: [target({ rules: [low, rule({ id: "g", kind: "gone_quiet", threshold: 24, state: "firing" })] })] }));
+    await client.invalidateQueries({ queryKey: ALERTS_KEY });
+    expect(await dialog.findByText(/Alerting since/)).toBeInTheDocument();
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveValue("3.7");
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("keeps focus in the dialog when a save replaces the focused row", async () => {
+    signedIn();
+    mount();
+    const dialog = await openDialog();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    const created = rule({ id: "new", kind: "gone_quiet", threshold: 24 });
+    vi.mocked(alerts.putRule).mockResolvedValue(created);
+    const before = within(dialog.getByTestId("alert-gone_quiet")).getByRole("switch");
+    before.focus();
+    vi.mocked(alerts.get).mockResolvedValue(response({ targets: [other, target({ rules: [created] })] }));
+    fireEvent.click(before);
+    await waitFor(() => expect(within(dialog.getByTestId("alert-gone_quiet")).getByRole("switch")).toBeChecked());
+    const after = within(dialog.getByTestId("alert-gone_quiet")).getByRole("switch");
+    expect(after).not.toBe(before);
+    await waitFor(() => expect(document.activeElement).toBe(after));
+    const overlay = screen.getByRole("dialog");
+    const close = dialog.getByRole("button", { name: "Close" });
+    const last = dialog.getByRole("button", { name: "Open alert settings" });
+    last.focus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+    expect(overlay.contains(document.activeElement)).toBe(true);
+  });
+
+  it("falls back to the dialog when the focused row is gone after a save", async () => {
+    signedIn();
+    mount();
+    const dialog = await openDialog();
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    const before = within(dialog.getByTestId("alert-gone_quiet")).getByRole("switch");
+    before.focus();
+    vi.mocked(alerts.get).mockResolvedValue(response({ targets: [other, target({ available: ["battery_low"] })] }));
+    fireEvent.click(before);
+    await waitFor(() => expect(dialog.queryByTestId("alert-gone_quiet")).not.toBeInTheDocument());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("dialog")));
+  });
+
+  it("finds the target of an observer the server no longer knows from the key the sync kept", async () => {
+    const lostKey = "9f".repeat(32);
+    const { atlas, keys } = fromServer({ revision: 3, range: "24h", limit: 12, pins: [{ kind: "observer", observerPublicKey: lostKey.toUpperCase(), observerId: null, name: "Lost listener" }] }, null, {});
+    const lost = atlas.pins[0]!;
+    expect(lost.kind).toBe("observer");
+    vi.mocked(api.getObserver).mockRejectedValue(new ApiError(404, "not_found", "x"));
+    signedIn(response({ targets: [target(), { ...watcher, id: null, publicKey: lostKey, name: "Lost listener", rules: [rule({ kind: "observer_offline", threshold: 60 })] }] }));
+    mount({ pin: lost, view: "observer", home: "observer", observerKey: lost.kind === "observer" ? keys[lost.observerId] : undefined });
+    expect(await screen.findByRole("button", { name: "Alerts: 1 on" })).toBeInTheDocument();
+    const dialog = await openDialog("Lost listener");
+    expect(dialog.getByTestId("alert-observer_offline")).toBeInTheDocument();
+  });
+
+  it("closes on Escape when focus is on the body", async () => {
     signedIn();
     mount();
     await openDialog();
@@ -253,16 +351,31 @@ describe("Atlas card alert bell", () => {
 });
 
 describe("targetForPin", () => {
-  it("matches a node by key whatever the case, and never across kinds", () => {
+  it("matches a node by key whatever the case", () => {
     expect(targetForPin([other, target()], pin)?.name).toBe("Hilltop");
-    expect(targetForPin([target({ kind: "observer" })], pin)).toBeUndefined();
+    expect(targetForPin([other], pin)).toBeUndefined();
     expect(targetForPin(undefined, pin)).toBeUndefined();
   });
 
-  it("matches an observer by id, or by its loaded key when the pin holds a stand-in id", () => {
+  it("matches a node pin the server answers as an observer: the node row is gone, the observer row is not", () => {
+    const asObserver = target({ id: observerId, kind: "observer", available: ["observer_offline"] });
+    expect(targetForPin([other, asObserver], pin)).toBe(asObserver);
+  });
+
+  it("matches an observer pin the server answers as a node, by the observer's key", () => {
+    const promoted = target({ publicKey: "cd".repeat(32), name: "Ridge listener" });
+    expect(targetForPin([target(), promoted], observerPin)).toBeUndefined();
+    expect(targetForPin([target(), promoted], observerPin, "CD".repeat(32))).toBe(promoted);
+  });
+
+  it("matches an observer by id, or by its key when the pin holds a stand-in id", () => {
     expect(targetForPin([target(), watcher], observerPin)?.name).toBe("Ridge listener");
     const gone = { ...watcher, id: null };
     expect(targetForPin([gone], observerPin)).toBeUndefined();
     expect(targetForPin([gone], observerPin, "CD".repeat(32))?.name).toBe("Ridge listener");
+  });
+
+  it("does not take a node target for an observer pin just because the ids are equal", () => {
+    expect(targetForPin([target({ id: observerId })], observerPin)).toBeUndefined();
   });
 });

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { me } from "../../api/auth";
+import { ALERTS_KEY } from "../../hooks/useAlerts";
 import { useFeatures } from "../../hooks/useFeatures";
 import { useSession } from "../../hooks/useSession";
 import type { SavedAtlas } from "./atlas";
@@ -38,6 +40,11 @@ export function useSyncedAtlas() {
   const userId = user?.id ?? null;
   const [syncedFor, setSyncedFor] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The keys ref as the page reads it: a card needs its observer's key to find its alert target.
+  const [observerKeys, setObserverKeys] = useState<ObserverKeys>({});
+  const queryClient = useQueryClient();
+  // Alert targets follow the account's pins, so every write or adoption of them makes the alerts answer old.
+  const pinsChanged = useCallback(() => void queryClient.invalidateQueries({ queryKey: ALERTS_KEY }), [queryClient]);
 
   // Everything below is read at send time, so refs: the queue always sends the latest of each.
   const revision = useRef<number | null>(null);
@@ -67,6 +74,7 @@ export function useSyncedAtlas() {
   const adopt = useCallback((doc: ServerAtlas) => {
     const { atlas, keys: next } = fromServer(doc, baseRef.current.latest(), keys.current, !telemetry.current);
     keys.current = next;
+    setObserverKeys(next);
     revision.current = doc.revision;
     baseRef.current.update(() => atlas);
     if (owner.current) setOwner(owner.current);
@@ -95,6 +103,7 @@ export function useSyncedAtlas() {
           // newer copy from another device meets a conflict instead of being overwritten.
           if (queued.current) revision.current = rev + 1;
           else adopt(doc);
+          pinsChanged();
           if (markWhenSent.current) {
             markSynced(markWhenSent.current);
             markWhenSent.current = null;
@@ -105,6 +114,7 @@ export function useSyncedAtlas() {
           const current = isConflict(error) ? (asDocument(error) ?? await me.atlas().catch(() => null)) : null;
           if (current && generation.current === mine) {
             adopt(current);
+            pinsChanged();
             setNotice(tRef.current("atlas.conflict"));
           } else {
             revision.current = isConflict(error) ? null : revision.current;
@@ -119,7 +129,7 @@ export function useSyncedAtlas() {
       // A change made under a newer sign-in while this one was finishing still needs sending.
       if (queued.current && !loading.current) void flush();
     }
-  }, [adopt]);
+  }, [adopt, pinsChanged]);
 
   // The full ownership-aware load and adoption. Also the only way to get a revision: a flush
   // without one comes back here, so a failed first load never ends in a blind write.
@@ -133,6 +143,7 @@ export function useSyncedAtlas() {
         const local = baseline.current ?? baseRef.current.latest();
         const server = fromServer(doc, local, {}, !telemetry.current);
         keys.current = server.keys;
+        setObserverKeys(server.keys);
         revision.current = doc.revision;
         let marked = true;
         try { marked = localStorage.getItem(syncedMarker(id)) !== null; } catch { /* storage blocked */ }
@@ -190,7 +201,7 @@ export function useSyncedAtlas() {
     baseline.current = baseRef.current.latest();
     load(userId);
     // Leaving a sign-in ends its synced state, so the same account signing back in is not "synced" before its load.
-    return () => { liveToken.current = null; generation.current += 1; loading.current = false; setSyncedFor(null); };
+    return () => { liveToken.current = null; generation.current += 1; loading.current = false; setSyncedFor(null); setObserverKeys({}); };
   }, [userId, load, token]);
 
   const update = (change: Change) => {
@@ -206,5 +217,5 @@ export function useSyncedAtlas() {
   // A card re-found under a new id, or an observer that turned out to be a node: the account already says so.
   const adjust = (change: Change) => { if (liveToken.current === token) base.update(change, !userId); };
 
-  return { saved: base.saved, update, adjust, storageFailed: base.storageFailed, synced: userId !== null && syncedFor === userId, notice, clearNotice: () => setNotice(null) };
+  return { saved: base.saved, update, adjust, storageFailed: base.storageFailed, observerKeys, synced: userId !== null && syncedFor === userId, notice, clearNotice: () => setNotice(null) };
 }

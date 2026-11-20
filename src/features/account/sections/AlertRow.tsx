@@ -115,7 +115,7 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
   const stateText = rule ? t(`account.alerts.state.${rule.state}`) : null;
 
   return (
-    <li data-testid={`alert-${kind}`} className="flex flex-col gap-2 py-3">
+    <li data-testid={`alert-${kind}`} data-alert-kind={kind} className="flex flex-col gap-2 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="font-mono text-sm font-semibold text-text-bright">{name}</span>
