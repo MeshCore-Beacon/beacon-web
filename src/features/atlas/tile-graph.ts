@@ -94,6 +94,9 @@ export function gapBridges(points: GraphPoint[]): GraphPoint[] {
   return out;
 }
 
+// The tooltip's heading: "Nov 22, 17:00" in the reader's language, in UTC like the axis.
+const tooltipTime = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
+
 export function tileGraphOption(
   points: GraphPoint[],
   c: ChartColors,
@@ -101,6 +104,8 @@ export function tileGraphOption(
 ): EChartsOption {
   const y = valueAxis(c, {
     scale: !o.zero,
+    // headroom, so a dot on the highest or lowest reading clears the frame
+    boundaryGap: o.zero ? [0, "6%"] : ["6%", "6%"],
     name: o.unit,
     nameTextStyle: { color: c.textMuted, fontSize: 10, align: "right" },
   });
@@ -112,10 +117,11 @@ export function tileGraphOption(
     tooltip: {
       trigger: "axis",
       ...tooltipStyle(c),
-      axisPointer: { type: "line", lineStyle: { color: c.primary } },
+      // A thin solid cursor: dashes are kept for gaps.
+      axisPointer: { type: "line", lineStyle: { color: c.textMuted, width: 1, type: "solid", opacity: 0.6 } },
       valueFormatter: (v: unknown) => (typeof v === "number" ? o.format(v) : (o.missing ?? "")),
     },
-    xAxis: timeAxis(c),
+    xAxis: { ...timeAxis(c), axisPointer: { label: { formatter: (p: { value: unknown }) => tooltipTime.format(Number(p.value)) } } },
     yAxis: o.axis ? { ...y, axisLabel: { ...y.axisLabel, formatter: o.axis } } : y,
     dataZoom: [
       { type: "inside" },
