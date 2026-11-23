@@ -269,7 +269,17 @@
       "previousData": "Showing previously loaded data.",
       "summary": "Summary",
       "copyKey": "Copy public key",
-      "viewObserver": "View observer →",
+      "view": "Node or observer view",
+      "viewNode": "Node",
+      "viewObserver": "Observer",
+      "observer": {
+        "readings": "Battery, noise and airtime come from this radio's own observer reports.",
+        "showReadings": "Show observer readings",
+        "openDashboard": "Open dashboard",
+        "range": "Observer readings range",
+        "device": "Device readings",
+        "loadFailed": "Could not load the observer."
+      },
       "location": "Location",
       "lat": "Lat",
       "lng": "Lng",
@@ -481,6 +491,8 @@
       "brokers": "Brokers",
       "copyLinkShort": "Copy link",
       "advertsHeard": "Adverts heard",
+      "nodeDetails": "Node details",
+      "nodeRecord": "Node record",
       "noAdverts": "No adverts heard",
       "unknownNode": "unknown",
       "hops": "Hops"
@@ -1423,7 +1435,8 @@
           "active": "Being polled",
           "login_failed": "Stopped: password refused",
           "admin_stopped": "Stopped: admin password",
-          "disabled": "Paused: the repeater has not been heard recently"
+          "disabled": "Paused: the repeater has not been heard recently",
+          "observer": "Stopped: this radio is an observer"
         },
         "reason": {
           "noObserver": "No observer can reach this repeater yet.",
@@ -1432,6 +1445,7 @@
           "blankFailed": "The repeater did not accept a blank or hello login. Enter a guest password.",
           "adminStopped": "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one.",
           "blankBlocked": "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password.",
+          "observer": "This radio is an observer and reports its own telemetry.",
           "offline_one": "Not heard by any observer for {{count}} day.",
           "offline_other": "Not heard by any observer for {{count}} days."
         },
@@ -1465,6 +1479,7 @@
           "request_limit": "You have used all of your telemetry requests.",
           "already_requested": "You already asked for this repeater.",
           "not_a_repeater": "Only repeaters and room servers can be polled.",
+          "observer_node": "Observers report their own telemetry.",
           "password_invalid": "The password must be 1 to 15 characters.",
           "password_invalid_stopped": "This request needs a guest password of 1 to 15 characters. It cannot be restarted with a blank login.",
           "no_password_blocked": "This repeater gives admin access without a password, so it cannot be polled this way",

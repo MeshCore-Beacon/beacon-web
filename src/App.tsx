@@ -23,10 +23,11 @@ import { VersionGate } from "./components/VersionGate";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { NodeTable } from "./features/nodes/NodeTable";
-import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
+import { NodeDetailPanel, type NodeView } from "./features/nodes/NodeDetailPanel";
 import { InvestigationPanel, type Investigation, type InvestigationTarget } from "./features/InvestigationPanels";
 import { ObserverPage } from "./features/observers/ObserverPage";
 import { observerDestination } from "./features/observers/observer-navigation";
+import { fetchObserverNode } from "./features/observers/observer-node";
 import { RouteTable } from "./features/routes/RouteTable";
 import { TraceList } from "./features/traces/TraceList";
 import { ChannelList } from "./features/channels/ChannelList";
@@ -207,6 +208,7 @@ function ViewLoading() {
 
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const features = useFeatures();
@@ -283,7 +285,10 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
+      // ?view=observer belongs to the docked node panel, which only survives a desktop move between Nodes and Map
+      const keepNodeView = !isMobile && (tab === "Nodes" || tab === "Map") && prev.get("view") === "observer";
       for (const key of VIEW_PARAMS) next.delete(key);
+      if (keepNodeView) next.set("view", "observer");
       if (tab !== "Routes") for (const key of ["route", "routeIata"]) next.delete(key);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
@@ -328,9 +333,21 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete(key);
+      if (next.get("view") === "observer") next.delete("view");
       return next;
     }, { replace: true });
   }, [setSearchParams]);
+
+  // The docked panel's Node | Observer choice. It counts only for the node the URL names, so picking another node starts on Node.
+  const nodeView: NodeView = searchParams.get("view") === "observer" && searchParams.get("node") === selectedNodeId ? "observer" : "node";
+  const setNodeView = useCallback((view: NodeView) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (view === "observer" && selectedNodeId) { next.set("node", selectedNodeId); next.set("view", "observer"); }
+      else if (next.get("view") === "observer") next.delete("view");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams, selectedNodeId]);
 
   const handleCloseNode = useCallback(() => {
     setSelectedNodeId(null);
@@ -338,7 +355,7 @@ function AppInner() {
   }, [dropSelectionParam, setSelectedNodeId]);
 
   // An observer opens its dashboard; a packet it was inspected from moves into the side drawer beside it.
-  const viewObserver = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
+  const openObserverDashboard = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
     setPanels([]);
     const origin = new URLSearchParams(searchParams);
     if (packet) {
@@ -354,6 +371,14 @@ function AppInner() {
     navigate({ search: "?" + next.toString() }, { state: { inspected: isMobile } });
   }, [navigate, searchParams, setPanels, isMobile]);
 
+  // An observer that is also a node opens the merged node panel on its Observer view, over whatever is open.
+  const viewObserver = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
+    fetchObserverNode(queryClient, id).then(
+      (node) => { if (node) openPanel({ kind: "node", id: node.id, view: "observer" }); else openObserverDashboard(id, packet); },
+      () => openObserverDashboard(id, packet),
+    );
+  }, [queryClient, openPanel, openObserverDashboard]);
+
   useEffect(() => {
     // Region slugs can't be expanded until region details load, so hold the subscription (an empty
     // list subscribes to nothing) and let RegionWatcher subscribe once useRegion resolves them.
@@ -365,7 +390,7 @@ function AppInner() {
   usePauseWhenHidden(wsManager);
 
   const tabContent: Record<string, React.ReactNode> = {
-    Atlas: <AtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
+    Atlas: <AtlasPage onViewNode={viewNode} onViewObserver={openObserverDashboard} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}
@@ -376,7 +401,7 @@ function AppInner() {
       />
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverPage wsManager={wsManager} onAnalyzePacket={handleAnalyze} />,
+    Observers: <ObserverPage wsManager={wsManager} onAnalyzePacket={handleAnalyze} onViewNode={viewNode} />,
     Routes: <RouteTable onAnalyzePacket={viewPacket} onViewObserver={viewObserver} onViewNode={viewNode} />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
@@ -422,12 +447,15 @@ function AppInner() {
               nodeId={selectedNodeId}
               onClose={handleCloseNode}
               onViewObserver={viewObserver}
+              onOpenObserverDashboard={openObserverDashboard}
+              view={nodeView}
+              onViewChange={setNodeView}
               onViewNode={setSelectedNodeId}
               onAnalyzePacket={viewPacket}
               onViewOnMap={canViewOnMap ? (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng) : undefined}
             />
           )}
-          {!viewOpen && panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
+          {!viewOpen && panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onOpenObserverDashboard={openObserverDashboard} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
         </div>
       </AppShell>
     </RegionProvider>

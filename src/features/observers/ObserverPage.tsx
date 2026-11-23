@@ -8,6 +8,9 @@ import { CopyButton } from "../../components/CopyButton";
 import { MinimizeButton } from "../../components/DetailPanel";
 import { EmptyState } from "../../components/EmptyState";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
+import { Badge } from "../../components/Badge";
+import { EmojiText } from "../../components/EmojiText";
+import { formatHex } from "../../lib/formatters";
 import { useScopes } from "../../hooks/useScopes";
 import { useTick } from "../../hooks/useTick";
 import { ObserverFilterBar } from "./ObserverFilterBar";
@@ -16,11 +19,28 @@ import { ObserverAdverts } from "./ObserverAdverts";
 import type { ObserverDirectorySort } from "./types";
 import { useObserverDirectory } from "./useObserverDirectory";
 import { observerDestination, observerRange } from "./observer-navigation";
+import { useObserverNode } from "./observer-node";
 import { Segmented } from "../stats/Segmented";
 import type { WsManager } from "../../api/ws-manager";
 const ObserverTab = lazy(() => import("../stats/ObserverTab").then(m => ({ default: m.ObserverTab })));
 
-export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsManager; onAnalyzePacket: (hash: string, observationId: number) => void }) {
+// The node record this observer's radio advertises as, linking to the merged node panel.
+function ObserverNodeRow({ observerId, onViewNode }: { observerId: string; onViewNode: (id: string) => void }) {
+  const { t } = useTranslation();
+  const { data: node } = useObserverNode(observerId);
+  if (!node) return null;
+  return <div className="mx-auto w-full max-w-[1600px] px-4 pt-4">
+    <section aria-label={t("observerPage.nodeRecord")} className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-bg-surface px-3.5 py-2">
+      <span className={`min-w-0 truncate font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "italic text-text-dim"}`}>
+        <EmojiText text={node.name ?? formatHex(node.id)} />
+      </span>
+      <Badge variant="default">{node.nodeTypeName}</Badge>
+      <button type="button" onClick={() => onViewNode(node.id)} className={`${ACTION_BUTTON_CLASS} ml-auto shrink-0`}>{t("observerPage.nodeDetails")}</button>
+    </section>
+  </div>;
+}
+
+export function ObserverPage({ wsManager, onAnalyzePacket, onViewNode }: { wsManager: WsManager; onAnalyzePacket: (hash: string, observationId: number) => void; onViewNode?: (id: string) => void }) {
   const [params, setParams] = useSearchParams();
   const { t } = useTranslation();
   const now = useTick(60_000);
@@ -101,6 +121,7 @@ export function ObserverPage({ wsManager, onAnalyzePacket }: { wsManager: WsMana
           </div>
         </div>
         <div className={`min-h-0 flex-1 overflow-auto ${minimized ? "hidden md:block" : ""}`}>
+        {onViewNode && <ObserverNodeRow observerId={id} onViewNode={onViewNode} />}
         <Suspense fallback={<p role="status" className="p-4">{t("common.loading")}</p>}>
           <ObserverTab range={range} selectedObserverId={id} onSelectObserver={select} wsManager={wsManager} actions={<>
             <CopyButton value={share.toString()} label={t("observerPage.copyLinkShort")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyLink")} className="justify-center py-1" />

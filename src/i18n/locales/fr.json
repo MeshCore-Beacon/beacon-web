@@ -274,7 +274,17 @@
       "previousData": "Affichage des données précédemment chargées.",
       "summary": "Résumé",
       "copyKey": "Copier la clé publique",
-      "viewObserver": "Voir l’observateur →",
+      "view": "Vue nœud ou observateur",
+      "viewNode": "Nœud",
+      "viewObserver": "Observateur",
+      "observer": {
+        "readings": "La batterie, le bruit et le temps d’antenne viennent des rapports d’observateur de cette radio.",
+        "showReadings": "Voir les mesures de l’observateur",
+        "openDashboard": "Ouvrir le tableau de bord",
+        "range": "Période des mesures de l’observateur",
+        "device": "Mesures de l’appareil",
+        "loadFailed": "Impossible de charger l’observateur."
+      },
       "location": "Position",
       "lat": "Lat",
       "lng": "Long",
@@ -454,6 +464,8 @@
       "brokers": "Courtiers",
       "copyLinkShort": "Copier le lien",
       "advertsHeard": "Annonces reçues",
+      "nodeDetails": "Détails du nœud",
+      "nodeRecord": "Fiche du nœud",
       "noAdverts": "Aucune annonce reçue",
       "unknownNode": "inconnu",
       "hops": "Sauts"
@@ -1439,7 +1451,8 @@
           "active": "Interrogé",
           "login_failed": "Arrêté : mot de passe refusé",
           "admin_stopped": "Arrêté : mot de passe administrateur",
-          "disabled": "En pause : le répéteur n’a pas été entendu récemment"
+          "disabled": "En pause : le répéteur n’a pas été entendu récemment",
+          "observer": "Arrêtée : cette radio est un observateur"
         },
         "reason": {
           "noObserver": "Aucun observateur ne peut encore atteindre ce répéteur.",
@@ -1448,6 +1461,7 @@
           "blankFailed": "Le répéteur n’a pas accepté une connexion vide ou « hello ». Saisissez un mot de passe invité.",
           "adminStopped": "Le répéteur a donné un accès administrateur avec ce mot de passe, donc Beacon l’a supprimé. Saisissez un mot de passe invité, jamais celui d’un administrateur.",
           "blankBlocked": "Ce répéteur donne un accès administrateur avec une connexion vide, donc Beacon ne l’interrogera pas sans mot de passe invité.",
+          "observer": "Cette radio est un observateur et envoie sa propre télémétrie.",
           "offline_one": "Aucun observateur ne l’a entendu depuis {{count}} jour.",
           "offline_many": "Aucun observateur ne l’a entendu depuis {{count}} jours.",
           "offline_other": "Aucun observateur ne l’a entendu depuis {{count}} jours."
@@ -1482,6 +1496,7 @@
           "request_limit": "Vous avez utilisé toutes vos demandes de télémétrie.",
           "already_requested": "Vous avez déjà fait une demande pour ce répéteur.",
           "not_a_repeater": "Seuls les répéteurs et les serveurs de salon peuvent être interrogés.",
+          "observer_node": "Les observateurs envoient leur propre télémétrie.",
           "password_invalid": "Le mot de passe doit comporter de 1 à 15 caractères.",
           "password_invalid_stopped": "Cette demande exige un mot de passe invité de 1 à 15 caractères. Elle ne peut pas repartir avec une connexion sans mot de passe.",
           "no_password_blocked": "Ce répéteur donne un accès administrateur sans mot de passe, il ne peut donc pas être interrogé de cette façon",

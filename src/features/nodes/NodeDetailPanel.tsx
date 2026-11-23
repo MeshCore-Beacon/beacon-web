@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { getNode, getNodeObservations, getNodeNeighbors, isNotFound } from "../../api/client";
@@ -19,10 +19,14 @@ import { EmojiText } from "../../components/EmojiText";
 import { useFeatures } from "../../hooks/useFeatures";
 import { useRequestsAvailable } from "../../hooks/useTelemetryRequests";
 import { RequestTelemetry } from "./RequestTelemetry";
+import { Segmented } from "../stats/Segmented";
 
 // Pulls in ECharts, so it stays out of the main bundle; mounted only for polled node types.
 import { isPolledNodeType } from "./polledType";
 const NodeTelemetrySection = lazy(() => import("./NodeTelemetrySection"));
+const NodeObserverSection = lazy(() => import("./NodeObserverSection"));
+
+export type NodeView = "node" | "observer";
 
 const SUBHEAD = "mt-2 mb-0.5 font-mono text-[10px] uppercase tracking-wider text-text-dim first:mt-0";
 
@@ -101,14 +105,23 @@ function NodeQueryError({ section, previousData, isFetching, onRetry }: { sectio
 interface NodeDetailPanelProps {
   nodeId: string;
   onClose: () => void;
+  // another observer, e.g. a poller; may open its node panel
   onViewObserver: (observerId: string) => void;
+  // this node's own observer dashboard; defaults to onViewObserver
+  onOpenObserverDashboard?: (observerId: string) => void;
   onViewNode?: (nodeId: string) => void;
-  onAnalyzePacket?: (hash: string) => void;
+  onAnalyzePacket?: (hash: string, observationId?: number) => void;
   onViewOnMap?: (lat: number, lng: number) => void;
+  // controlled when onViewChange is given (the docked panel keeps it in the URL), else local state
+  view?: NodeView;
+  onViewChange?: (view: NodeView) => void;
 }
 
-export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, onAnalyzePacket, onViewOnMap }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserverDashboard, onViewNode, onAnalyzePacket, onViewOnMap, view, onViewChange }: NodeDetailPanelProps) {
   const { t } = useTranslation();
+  const [localView, setLocalView] = useState<NodeView>(view ?? "node");
+  const requestedView = onViewChange ? view ?? "node" : localView;
+  const setView = onViewChange ?? setLocalView;
   const nodeQuery = useQuery({
     queryKey: ["node", nodeId],
     queryFn: () => getNode(nodeId),
@@ -134,10 +147,13 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
 
   const hasLocation = hasMapLocation(node);
   const features = useFeatures();
-  const showTelemetry = features.polling && !!node && isPolledNodeType(node.nodeTypeName);
+  // An observer reports its own readings over MQTT, so it is never polled or requested.
+  const observerId = node?.observerId ?? null;
+  const shownView: NodeView = observerId ? requestedView : "node";
+  const showTelemetry = features.polling && !!node && isPolledNodeType(node.nodeTypeName) && !observerId;
   const canRequest = useRequestsAvailable();
   // Handed to the lazy chart section so it sits inside it, without that chunk importing it.
-  const requestBlock = canRequest && !!node && isPolledNodeType(node.nodeTypeName) ? <RequestTelemetry key={node.id} node={node} /> : null;
+  const requestBlock = canRequest && !!node && isPolledNodeType(node.nodeTypeName) && !observerId ? <RequestTelemetry key={node.id} node={node} /> : null;
   const telemetryInfo = requestBlock ? [t("nodeDetail.telemetry.requestIntro"), t("nodeDetail.telemetry.passwordNotice")] : undefined;
   const LINK = "font-mono text-[11px] text-primary hover:underline";
 
@@ -146,7 +162,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
       title={t("nodeDetail.title")}
       onClose={onClose}
       collapsible
-      headerAction={<CopyLinkButton params={{ tab: "Nodes", node: nodeId }} ariaLabel={t("nodeDetail.copyLink")} />}
+      headerAction={<CopyLinkButton params={() => ({ tab: "Nodes", node: nodeId, view: shownView === "observer" ? "observer" : null })} ariaLabel={t("nodeDetail.copyLink")} />}
       isLoading={nodeQuery.isPending}
       notFound={missing || (nodeQuery.isSuccess && !node)}
       notFoundLabel={t("nodeDetail.notFound")}
@@ -184,23 +200,32 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               <div className="mt-1 font-mono text-[13px]">
                 <Field label={t("nodeDetail.lastSeen")} value={<Timestamp value={node.lastSeen} />} />
               </div>
-              {(node.observerId || (hasMapLocation(node) && onViewOnMap)) && (
+              {hasMapLocation(node) && onViewOnMap && (
                 <div className="mt-2 flex gap-4">
-                  {node.observerId && (
-                    <button type="button" onClick={() => onViewObserver(node.observerId!)} className={LINK}>
-                      {t("nodeDetail.viewObserver")}
-                    </button>
-                  )}
-                  {hasMapLocation(node) && onViewOnMap && (
-                    <button type="button" onClick={() => onViewOnMap(node.lat, node.lng)} className={LINK}>
-                      {t("nodeDetail.viewOnMap")}
-                    </button>
-                  )}
+                  <button type="button" onClick={() => onViewOnMap(node.lat, node.lng)} className={LINK}>
+                    {t("nodeDetail.viewOnMap")}
+                  </button>
                 </div>
+              )}
+              {observerId && (
+                <Segmented
+                  stretch
+                  size="xs"
+                  className="mt-2.5"
+                  ariaLabel={t("nodeDetail.view")}
+                  value={shownView}
+                  onChange={(v) => setView(v as NodeView)}
+                  options={[{ value: "node", label: t("nodeDetail.viewNode") }, { value: "observer", label: t("nodeDetail.viewObserver") }]}
+                />
               )}
             </div>
             </Section>
 
+            {shownView === "observer" && observerId ? (
+              <Suspense fallback={<p role="status" className="px-3 py-2.5 font-mono text-[13px] text-text-dim">{t("common.loading")}</p>}>
+                <NodeObserverSection key={observerId} observerId={observerId} onOpenDashboard={() => (onOpenObserverDashboard ?? onViewObserver)(observerId)} onAnalyzePacket={onAnalyzePacket} />
+              </Suspense>
+            ) : <>
             <Section title={t("nodeDetail.details")}>
               {(hasLocation || node.locationSource) && (
                 <>
@@ -240,7 +265,13 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
               <Suspense fallback={null}>
                 <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} extra={requestBlock} info={telemetryInfo} />
               </Suspense>
-            ) : requestBlock && <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</FoldSection>}
+            ) : requestBlock ? <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</FoldSection>
+              : observerId && (
+                <Section title={t("nodeDetail.telemetry.title")}>
+                  <p className="font-mono text-[13px] text-text-dim">{t("nodeDetail.observer.readings")}</p>
+                  <button type="button" onClick={() => setView("observer")} className={`${LINK} mt-1`}>{t("nodeDetail.observer.showReadings")}</button>
+                </Section>
+              )}
 
             <FoldSection id="node-neighbors" title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
               {neighborsQuery.isError && <NodeQueryError section={t("nodeDetail.neighbors")} previousData={!!neighbors?.length} isFetching={neighborsQuery.isFetching} onRetry={() => void neighborsQuery.refetch()} />}
@@ -281,7 +312,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onViewNode, o
                 <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.noRecentPackets")}</div>
               )}
             </FoldSection>
-
+            </>}
         </>
       )}
     </DetailPanel>

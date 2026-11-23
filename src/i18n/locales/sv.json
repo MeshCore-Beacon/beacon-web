@@ -268,7 +268,17 @@
       "previousData": "Visar tidigare inlästa data.",
       "summary": "Sammanfattning",
       "copyKey": "Kopiera publik nyckel",
-      "viewObserver": "Visa observatör →",
+      "view": "Nod- eller observatörsvy",
+      "viewNode": "Nod",
+      "viewObserver": "Observatör",
+      "observer": {
+        "readings": "Batteri, brus och sändtid kommer från radions egna observatörsrapporter.",
+        "showReadings": "Visa observatörens mätvärden",
+        "openDashboard": "Öppna översikten",
+        "range": "Period för observatörens mätvärden",
+        "device": "Enhetens mätvärden",
+        "loadFailed": "Kunde inte läsa in observatören."
+      },
       "location": "Position",
       "lat": "Lat",
       "lng": "Long",
@@ -445,6 +455,8 @@
       "brokers": "Brokers",
       "copyLinkShort": "Kopiera länk",
       "advertsHeard": "Mottagna annonser",
+      "nodeDetails": "Noddetaljer",
+      "nodeRecord": "Nodpost",
       "noAdverts": "Inga annonser mottagna",
       "unknownNode": "okänd",
       "hops": "Hopp"
@@ -1310,7 +1322,8 @@
           "active": "Avläses",
           "login_failed": "Stoppad: lösenordet avvisades",
           "admin_stopped": "Stoppad: administratörslösenord",
-          "disabled": "Pausad: repeatern har inte hörts på sistone"
+          "disabled": "Pausad: repeatern har inte hörts på sistone",
+          "observer": "Stoppad: den här radion är en observatör"
         },
         "reason": {
           "noObserver": "Ingen observatör kan nå den här repeatern ännu.",
@@ -1319,6 +1332,7 @@
           "blankFailed": "Repeatern godtog inte en tom eller hello-inloggning. Ange ett gästlösenord.",
           "adminStopped": "Repeatern gav administratörsåtkomst med det här lösenordet, så Beacon raderade det. Ange ett gästlösenord, aldrig ett administratörslösenord.",
           "blankBlocked": "Den här repeatern ger administratörsåtkomst med en tom inloggning, så Beacon avläser den inte utan gästlösenord.",
+          "observer": "Den här radion är en observatör och rapporterar sin egen telemetri.",
           "offline_one": "Ingen observatör har hört den på {{count}} dag.",
           "offline_other": "Ingen observatör har hört den på {{count}} dagar."
         },
@@ -1352,6 +1366,7 @@
           "request_limit": "Du har använt alla dina telemetribegäran.",
           "already_requested": "Du har redan begärt den här repeatern.",
           "not_a_repeater": "Bara repeatrar och rumsservrar kan avläsas.",
+          "observer_node": "Observatörer rapporterar sin egen telemetri.",
           "password_invalid": "Lösenordet måste vara 1 till 15 tecken.",
           "password_invalid_stopped": "Den här begäran behöver ett gästlösenord på 1 till 15 tecken. Den kan inte startas om med en tom inloggning.",
           "no_password_blocked": "Den här repeatern ger administratörsåtkomst utan lösenord, så den kan inte avläsas på det här sättet",

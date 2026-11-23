@@ -42,6 +42,8 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
   const stopped = request.status === "admin_stopped";
   const failed = request.status === "login_failed";
   const needsNew = stopped || failed;
+  // The server refuses to re-enable an observer, it reports its own telemetry.
+  const observer = request.statusReasonCode === "observer";
   const busy = savePassword.isPending || enable.isPending || remove.isPending;
 
   const line = requestLine(t, request);
@@ -50,7 +52,7 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
     ? t("account.requests.adminStoppedHelp")
     : failed
       ? t("account.requests.loginFailedHelp")
-      : request.status !== "active" && request.statusReason
+      : request.status !== "active" && (request.statusReason || observer)
         ? requestReasonText(t, request)
         : "";
 
@@ -124,7 +126,7 @@ function RequestRow({ request }: { request: TelemetryRequest }) {
           <FormButton type="button" variant="outline" size="md" disabled={busy} aria-label={t(needsNew ? "account.requests.enterNewPasswordNamed" : "account.requests.changePasswordNamed", { name })} onClick={() => setMode("password")}>
             {t(needsNew ? "account.requests.enterNewPassword" : "account.requests.changePassword")}
           </FormButton>
-          {request.status === "disabled" && (
+          {request.status === "disabled" && !observer && (
             <FormButton type="button" variant="outline" size="md" busy={enable.isPending} busyLabel={t("account.requests.enabling")} aria-label={t("account.requests.reenableNamed", { name })} onClick={() => enable.mutate()}>
               {t("account.requests.reenable")}
             </FormButton>

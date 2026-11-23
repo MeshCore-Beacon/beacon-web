@@ -138,6 +138,20 @@ describe("telemetry requests section", () => {
   });
 });
 
+describe("observer requests", () => {
+  it("says the radio is an observer and offers no re-enable", async () => {
+    const observer = req({ id: "r5", node: { id: "n5", publicKey: "ff", name: "Tower" }, status: "disabled", statusReasonCode: "observer", statusReason: "", poller: null });
+    vi.mocked(requests.list).mockResolvedValue({ limit: 3, requests: [observer] });
+    renderAt("?tab=Map&view=profile", <AccountViews />);
+    await screen.findByText("Tower");
+    const r = row("Tower");
+    expect(r.getByText("Stopped: this radio is an observer")).toBeInTheDocument();
+    expect(r.getByText("This radio is an observer and reports its own telemetry.")).toBeInTheDocument();
+    expect(r.queryByRole("button", { name: /Re-enable/ })).not.toBeInTheDocument();
+    expect(r.getByRole("button", { name: /^Remove/ })).toBeInTheDocument();
+  });
+});
+
 describe("stopped requests", () => {
   const stopped = req({
     id: "r3", node: { id: "n3", publicKey: "cc", name: "Cliff" }, status: "admin_stopped", statusReasonCode: "admin_stopped",

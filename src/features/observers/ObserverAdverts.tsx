@@ -29,29 +29,33 @@ function AdvertRow({ advert, onClick }: { advert: AdvertObservation; onClick: ()
   );
 }
 
-export function ObserverAdverts({ observerId, onAnalyzePacket }: { observerId: string; onAnalyzePacket: (hash: string, observationId: number) => void }) {
+// The list alone, for a host that brings its own heading (the node panel fold); one column unless wide.
+export function ObserverAdvertList({ observerId, onAnalyzePacket, wide = false }: { observerId: string; onAnalyzePacket: (hash: string, observationId: number) => void; wide?: boolean }) {
   const { t } = useTranslation();
   const { data: adverts, isPending, isError, isFetching, refetch } = useQuery({
     queryKey: ["observer-adverts", observerId],
     queryFn: () => getObserverAdverts(observerId, { limit: 50 }),
     staleTime: 30_000,
   });
+  return isPending ? <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>
+    : isError && !adverts?.items.length ? (
+      <p role="alert" className="font-mono text-[13px] text-danger">
+        {t("common.loadFailed")}{" · "}
+        <button type="button" disabled={isFetching} className="cursor-pointer underline disabled:opacity-40" onClick={() => void refetch()}>{t("observerPage.retry")}</button>
+      </p>
+    ) : adverts?.items.length ? (
+      <div className={`grid gap-1.5 ${wide ? "md:grid-cols-2" : ""}`}>
+        {adverts.items.map(a => <AdvertRow key={a.id} advert={a} onClick={() => onAnalyzePacket(a.packetHash, a.id)} />)}
+      </div>
+    ) : <p className="font-mono text-[13px] text-text-dim">{t("observerPage.noAdverts")}</p>;
+}
+
+export function ObserverAdverts({ observerId, onAnalyzePacket }: { observerId: string; onAnalyzePacket: (hash: string, observationId: number) => void }) {
+  const { t } = useTranslation();
   return (
     <details className="rounded-lg border border-border bg-bg-surface p-3.5">
       <summary className="cursor-pointer font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{t("observerPage.advertsHeard")}</summary>
-      <div className="mt-2.5">
-        {isPending ? <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>
-          : isError && !adverts?.items.length ? (
-            <p role="alert" className="font-mono text-[13px] text-danger">
-              {t("common.loadFailed")}{" · "}
-              <button type="button" disabled={isFetching} className="cursor-pointer underline disabled:opacity-40" onClick={() => void refetch()}>{t("observerPage.retry")}</button>
-            </p>
-          ) : adverts?.items.length ? (
-            <div className="grid gap-1.5 md:grid-cols-2">
-              {adverts.items.map(a => <AdvertRow key={a.id} advert={a} onClick={() => onAnalyzePacket(a.packetHash, a.id)} />)}
-            </div>
-          ) : <p className="font-mono text-[13px] text-text-dim">{t("observerPage.noAdverts")}</p>}
-      </div>
+      <div className="mt-2.5"><ObserverAdvertList observerId={observerId} onAnalyzePacket={onAnalyzePacket} wide /></div>
     </details>
   );
 }

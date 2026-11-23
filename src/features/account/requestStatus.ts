@@ -9,7 +9,7 @@ const KNOWN = new Set(["ok", ...WAITING, ...PASSWORD]);
 
 // What a request reads as at a glance. An active request with a poller state from the server says what
 // the observer is really doing; a missing or unknown state (older server) keeps the plain status.
-export function requestLine(t: TFunction, r: Pick<TelemetryRequest, "status" | "poller">): { text: string; tone: Tone; names: boolean } {
+export function requestLine(t: TFunction, r: Pick<TelemetryRequest, "status" | "poller" | "statusReasonCode">): { text: string; tone: Tone; names: boolean } {
   if (r.status === "active") {
     const state = r.poller?.state;
     if (r.poller && state && KNOWN.has(state)) {
@@ -18,6 +18,8 @@ export function requestLine(t: TFunction, r: Pick<TelemetryRequest, "status" | "
     }
     return { text: t("account.requests.status.active"), tone: "idle", names: false };
   }
+  // An observer reports its own readings, so the server stops polling it for good, not for a pause.
+  if (r.status === "disabled" && r.statusReasonCode === "observer") return { text: t("account.requests.status.observer"), tone: "idle", names: false };
   const tone: Tone = r.status === "waiting" ? "wait" : r.status === "disabled" ? "idle" : "bad";
   return { text: t(`account.requests.status.${r.status}`), tone, names: false };
 }

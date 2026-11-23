@@ -9,6 +9,7 @@ const KEYS: Record<string, string> = {
   blank_login_failed: "blankFailed",
   admin_stopped: "adminStopped",
   blank_blocked: "blankBlocked",
+  observer: "observer",
 };
 
 // A request's reason in the user's language. No code (an older server) or one this build does not know shows statusReason as sent.

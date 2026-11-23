@@ -17,6 +17,7 @@ const REASON_CODES: Array<[string, string, number?]> = [
   ["admin_stopped", "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one."],
   ["blank_blocked", "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password."],
   ["offline", "Not heard by any observer for 7 days.", 7],
+  ["observer", "This radio is an observer and reports its own telemetry."],
 ];
 const reasonOf = (code: string, statusReason: string, days?: number) => ({
   statusReasonCode: code, statusReason, ...(days === undefined ? {} : { statusReasonDays: days }),
@@ -172,6 +173,11 @@ describe("telemetry request poller state", () => {
     expect(requestLine(i18n.t, withPoller(poller, "login_failed")).tone).toBe("bad");
     expect(requestLine(i18n.t, withPoller(poller, "disabled")).tone).toBe("idle");
   });
+
+  it("says an observer request is stopped, not paused", () => {
+    expect(requestLine(i18n.t, { status: "disabled", poller: null, statusReasonCode: "observer" })).toEqual({ text: "Stopped: this radio is an observer", tone: "idle", names: false });
+    expect(requestLine(i18n.t, { status: "disabled", poller: null, statusReasonCode: "offline" }).text).toBe("Paused: the repeater has not been heard recently");
+  });
 });
 
 describe("error codes the server can send", () => {
@@ -182,6 +188,14 @@ describe("error codes the server can send", () => {
       expect(text, code).not.toBe(authErrorText(i18n.t, {}));
       expect(text).not.toMatch(/^account\./);
     }
+  });
+
+  it.each(["en", "fr", "sv"])("maps observer_node in %s", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const text = requestErrorText(i18n.t, { code: "observer_node", message: "x" });
+    expect(text).not.toBe(authErrorText(i18n.t, {}));
+    expect(text).not.toMatch(/^account\./);
+    if (lang === "en") expect(text).toBe("Observers report their own telemetry.");
   });
 });
 
