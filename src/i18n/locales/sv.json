@@ -272,8 +272,6 @@
       "viewNode": "Nod",
       "viewObserver": "Observatör",
       "observer": {
-        "readings": "Batteri, brus och sändtid kommer från radions egna observatörsrapporter.",
-        "showReadings": "Visa observatörens mätvärden",
         "openDashboard": "Öppna översikten",
         "range": "Period för observatörens mätvärden",
         "device": "Enhetens mätvärden",

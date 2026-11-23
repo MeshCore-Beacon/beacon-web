@@ -265,13 +265,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
               <Suspense fallback={null}>
                 <NodeTelemetrySection key={node.id} node={node} onViewObserver={onViewObserver} extra={requestBlock} info={telemetryInfo} />
               </Suspense>
-            ) : requestBlock ? <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</FoldSection>
-              : observerId && (
-                <Section title={t("nodeDetail.telemetry.title")}>
-                  <p className="font-mono text-[13px] text-text-dim">{t("nodeDetail.observer.readings")}</p>
-                  <button type="button" onClick={() => setView("observer")} className={`${LINK} mt-1`}>{t("nodeDetail.observer.showReadings")}</button>
-                </Section>
-              )}
+            ) : requestBlock && <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={telemetryInfo}>{requestBlock}</FoldSection>}
 
             <FoldSection id="node-neighbors" title={node.knownNeighborCount > 0 ? t("nodeDetail.neighborsCount", { count: node.knownNeighborCount }) : t("nodeDetail.neighbors")}>
               {neighborsQuery.isError && <NodeQueryError section={t("nodeDetail.neighbors")} previousData={!!neighbors?.length} isFetching={neighborsQuery.isFetching} onRetry={() => void neighborsQuery.refetch()} />}

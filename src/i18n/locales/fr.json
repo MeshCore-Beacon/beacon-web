@@ -278,8 +278,6 @@
       "viewNode": "Nœud",
       "viewObserver": "Observateur",
       "observer": {
-        "readings": "La batterie, le bruit et le temps d’antenne viennent des rapports d’observateur de cette radio.",
-        "showReadings": "Voir les mesures de l’observateur",
         "openDashboard": "Ouvrir le tableau de bord",
         "range": "Période des mesures de l’observateur",
         "device": "Mesures de l’appareil",

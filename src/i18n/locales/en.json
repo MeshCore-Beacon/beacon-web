@@ -273,8 +273,6 @@
       "viewNode": "Node",
       "viewObserver": "Observer",
       "observer": {
-        "readings": "Battery, noise and airtime come from this radio's own observer reports.",
-        "showReadings": "Show observer readings",
         "openDashboard": "Open dashboard",
         "range": "Observer readings range",
         "device": "Device readings",

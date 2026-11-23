@@ -57,7 +57,6 @@ describe("NodeDetailPanel Node | Observer switch", () => {
     mount();
     await screen.findByText("Self Node");
     expect(screen.queryByRole("group", { name: "Node or observer view" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Show observer readings")).not.toBeInTheDocument();
   });
 
   it("starts on Node and fetches no observer data until the Observer view opens", async () => {
@@ -84,10 +83,10 @@ describe("NodeDetailPanel Node | Observer switch", () => {
     expect(onOpenObserverDashboard).toHaveBeenCalledWith("obs-1");
   });
 
-  it("switches from the readings line in the Node view", async () => {
+  it("shows no Telemetry section in the Node view of an observer", async () => {
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Show observer readings" }));
-    expect(await screen.findByRole("heading", { level: 2, name: "Roof Observer" })).toBeInTheDocument();
+    await screen.findByText("Self Node");
+    expect(screen.queryByText("Telemetry")).not.toBeInTheDocument();
   });
 
   it("is controlled when the host passes the view", async () => {

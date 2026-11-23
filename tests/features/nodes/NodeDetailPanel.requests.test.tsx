@@ -88,13 +88,13 @@ describe("NodeDetailPanel request block", () => {
     expect(requests.list).not.toHaveBeenCalled();
   });
 
-  it.each([false, true])("is absent for an observer, polling %s, and points to its own readings", async (polling) => {
+  it.each([false, true])("is absent for an observer, polling %s, with no Telemetry section at all", async (polling) => {
     state.polling = polling;
     vi.mocked(getNode).mockResolvedValue({ ...node, observerId: "obs-1" });
     mount();
-    expect(await screen.findByText("Battery, noise and airtime come from this radio's own observer reports.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show observer readings" })).toBeInTheDocument();
+    await screen.findByText("Self Node");
     await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByText("Telemetry")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Request telemetry" })).not.toBeInTheDocument();
     expect(requests.list).not.toHaveBeenCalled();
     expect(getNodeTelemetry).not.toHaveBeenCalled();
