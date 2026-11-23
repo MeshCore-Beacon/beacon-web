@@ -6,7 +6,7 @@ import type { ActivityPoint, TelemetryPoint } from "./types";
 
 const MONO = "JetBrains Mono, monospace";
 
-function timeAxis(c: ChartColors) {
+export function timeAxis(c: ChartColors) {
   return {
     type: "time" as const,
     boundaryGap: false,
@@ -16,7 +16,7 @@ function timeAxis(c: ChartColors) {
   };
 }
 
-function valueAxis(c: ChartColors, extra: Record<string, unknown> = {}) {
+export function valueAxis(c: ChartColors, extra: Record<string, unknown> = {}) {
   return {
     type: "value" as const,
     axisLine: { show: false },

@@ -98,6 +98,8 @@ export function StatCard({
   interpolateGaps,
   wrapSublabel,
   visual,
+  onSparkClick,
+  sparkLabel,
 }: {
   label: ReactNode;
   value: ReactNode;
@@ -110,7 +112,11 @@ export function StatCard({
   wrapSublabel?: boolean; // let a long sub-label run to a second line instead of cutting it
   compact?: boolean; // narrow tiles: value stays text-xl so "-77.2 dBm" never wraps
   visual?: ReactNode; // replaces the sparkline; keep it near the sparkline's height
+  onSparkClick?: () => void; // makes a sparkline that has data a button
+  sparkLabel?: string; // that button's accessible name
 }) {
+  const sparkline = spark ? <Sparkline values={spark} color={accent} markPeak={markPeak} interpolateGaps={interpolateGaps} /> : sparkSpacer;
+  const clickable = !!onSparkClick && !visual && !presence && !!spark?.some((v) => v !== null);
   return (
     <div className="flex flex-col rounded-lg border border-border bg-bg-surface px-3.5 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
@@ -119,7 +125,11 @@ export function StatCard({
       </div>
       <div className={`mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright ${compact ? "" : "sm:text-2xl"}`}>{value}</div>
       <div className="mt-auto">
-        {visual ?? (presence ? <PresenceStrip hours={presence} color={accent} /> : spark ? <Sparkline values={spark} color={accent} markPeak={markPeak} interpolateGaps={interpolateGaps} /> : sparkSpacer)}
+        {visual ?? (presence ? <PresenceStrip hours={presence} color={accent} /> : clickable ? (
+          <button type="button" aria-label={sparkLabel} onClick={onSparkClick} className="block w-full cursor-pointer rounded-sm hover:bg-text-normal/5">
+            {sparkline}
+          </button>
+        ) : sparkline)}
       </div>
     </div>
   );

@@ -182,15 +182,18 @@ const finite = (value: unknown): value is number => typeof value === "number" &&
 export function hourSlots(range: AtlasRange, now: number) {
   const hours = RANGE_HOURS[range];
   const age = (t: number) => Math.max(0, Math.floor((now - t) / HOUR));
+  // The clock hour whose bucket lands in slot i.
+  const time = (i: number) => Math.floor((now - (hours - 1 - i) * HOUR) / HOUR) * HOUR;
   return {
     hours,
+    time,
     bin: (t: number) => hours - 1 - age(t),
     inWindow: (t: number) => Number.isFinite(t) && t < now + HOUR && age(t) < hours,
     // Zero for an hour the server read, null for one it has not: no reply yet, or between the rollups and the raw tail.
     counts: (read: { rolledUntil?: number; rawFrom?: number } | undefined) =>
       Array.from({ length: hours }, (_, i): number | null => {
         if (!read) return null;
-        const hour = Math.floor((now - (hours - 1 - i) * HOUR) / HOUR) * HOUR;
+        const hour = time(i);
         return read.rawFrom != null && hour < read.rawFrom && (read.rolledUntil == null || hour >= read.rolledUntil) ? null : 0;
       }),
   };

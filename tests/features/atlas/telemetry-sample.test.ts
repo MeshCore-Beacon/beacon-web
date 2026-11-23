@@ -70,7 +70,7 @@ describe("summarizeTelemetry", () => {
   });
 
   it("has no temperature when no reading carries one", () => {
-    expect(s.temperature).toEqual({ latest: null, values: [] });
+    expect(s.temperature).toEqual({ latest: null, values: [], points: [] });
     const warm = summarizeTelemetry(data([point(2, { temperatureC: 16.5 }), point(1, {})]), "24h", now);
     expect(warm.temperature.latest).toBe(16.5);
   });
@@ -90,6 +90,18 @@ describe("summarizeTelemetry", () => {
     expect(summarizeTelemetry(week, "3d", now).battery.values).toEqual([3.9, 4.1]);
     expect(summarizeTelemetry(week, "24h", now).battery.values).toEqual([4.1]);
     expect(summarizeTelemetry(week, "7d", now).battery.values).toEqual([3, 3.9, 4.1]);
+  });
+
+  it("keeps each reading's time beside its value, and the server's bucket", () => {
+    const s = summarizeTelemetry(readings, "24h", now);
+    expect(s.battery.points).toEqual([20, 14, 8, 2].map((h, i) => ({ t: now - h * HOUR, v: [4.18, 4.17, 4.15, 4.226][i] })));
+    expect(s.battery.points.map((p) => p.v)).toEqual(s.battery.values);
+    // the reading without counters carries no airtime, so it has no point either
+    expect(s.airtime.points.map((p) => p.t)).toEqual([20, 14, 2].map((h) => now - h * HOUR));
+    expect(s.airtime.points.map((p) => p.v)).toEqual(s.airtime.values);
+    expect(s.bucketMs).toBe(HOUR);
+    expect(summarizeTelemetry({ ...readings, interval: "6h" }, "3d", now).bucketMs).toBe(6 * HOUR);
+    expect(summarizeTelemetry(undefined, "24h", now).bucketMs).toBe(HOUR);
   });
 
   it("is empty with no data", () => {

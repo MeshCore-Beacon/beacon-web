@@ -1,4 +1,4 @@
-import type { NodeTelemetry, NodeTelemetryPoint, NodeTelemetryRange } from "../nodes/types";
+import type { NodeTelemetry, NodeTelemetryRange } from "../nodes/types";
 import { airtimePct } from "../nodes/telemetry";
 import { HOUR, type AtlasRange } from "./atlas";
 
@@ -18,6 +18,8 @@ export interface TelemetrySeries {
   latest: number | null;
   // One value per reading that carried this metric, oldest first.
   values: number[];
+  // The same readings with their times, for the full graph.
+  points: { t: number; v: number }[];
 }
 
 export interface TelemetrySample {
@@ -36,6 +38,7 @@ export interface TelemetrySample {
   rebooted: boolean; // uptime fell somewhere in the window
   readings: number; // points in the window, whatever they carry
   latestAt: number | null; // newest reading in the window, epoch ms
+  bucketMs: number; // the server's bucket, for telling a missed reading from the next one
 }
 
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -46,9 +49,19 @@ function perHour(count: number | undefined, span: number | undefined): number | 
   return (count * 3600) / span;
 }
 
-function series(points: NodeTelemetryPoint[], pick: (p: NodeTelemetryPoint) => number | null | undefined): TelemetrySeries {
-  const values = points.map(pick).filter(finite);
-  return { latest: values.at(-1) ?? null, values };
+function series<P extends { t: number }>(points: P[], pick: (p: P) => number | null | undefined): TelemetrySeries {
+  const kept = points.flatMap((p) => {
+    const v = pick(p);
+    return finite(v) ? [{ t: p.t, v }] : [];
+  });
+  const values = kept.map((p) => p.v);
+  return { latest: values.at(-1) ?? null, values, points: kept };
+}
+
+// "1h", "6h", "24h"; an hour when the server sends anything else.
+function bucketOf(interval: string | undefined): number {
+  const hours = /^(\d+)h$/.exec(interval ?? "");
+  return (hours ? Number(hours[1]) : 1) * HOUR;
 }
 
 export function summarizeTelemetry(data: NodeTelemetry | undefined, range: AtlasRange, now: number): TelemetrySample {
@@ -57,7 +70,7 @@ export function summarizeTelemetry(data: NodeTelemetry | undefined, range: Atlas
   const air = points.map((p) => {
     const tx = airtimePct(p.airtimeTxSecs, p.counterSpanSecs);
     const rx = airtimePct(p.airtimeRxSecs, p.counterSpanSecs);
-    return { tx, rx, total: tx !== null && rx !== null ? tx + rx : null };
+    return { t: p.t, tx, rx, total: tx !== null && rx !== null ? tx + rx : null };
   });
   const lastAir = [...air].reverse().find((a) => a.total !== null);
   const lastPackets = [...points].reverse().find((p) => perHour(p.packetsReceived, p.counterSpanSecs) !== null);
@@ -69,7 +82,7 @@ export function summarizeTelemetry(data: NodeTelemetry | undefined, range: Atlas
     noise: series(points, (p) => p.noiseFloorDb),
     uptime,
     temperature: series(points, (p) => p.temperatureC),
-    airtime: { latest: lastAir?.total ?? null, values: air.map((a) => a.total).filter(finite) },
+    airtime: { ...series(air, (a) => a.total), latest: lastAir?.total ?? null },
     airtimeTx: lastAir?.tx ?? null,
     airtimeRx: lastAir?.rx ?? null,
     packets: series(points, (p) => perHour(p.packetsReceived, p.counterSpanSecs)),
@@ -80,6 +93,7 @@ export function summarizeTelemetry(data: NodeTelemetry | undefined, range: Atlas
     rebooted: uptime.values.some((v, i) => i > 0 && v < uptime.values[i - 1]!),
     readings: points.length,
     latestAt: points.at(-1)?.t ?? null,
+    bucketMs: bucketOf(data?.interval),
   };
 }
 

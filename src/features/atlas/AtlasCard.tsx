@@ -9,7 +9,6 @@ import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
-import { formatTemp } from "../../lib/units";
 import { useDisplayUnits } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
 import type { Observation } from "../../types/api";
@@ -20,12 +19,14 @@ import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
 import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
-import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
+import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasSample, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { AtlasAlertBell } from "./AtlasAlerts";
 import { TilePicker } from "./TilePicker";
 import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, useTelemetryTab } from "./useAtlas";
 import { DOT_LIMIT, sparkValues } from "./telemetry-sample";
-import type { PayloadShare } from "./observer-sample";
+import type { ObserverSample, PayloadShare } from "./observer-sample";
+import { TileGraph } from "./TileGraph";
+import { NODE_METRICS, OBSERVER_METRICS, percent, perHour, readingPoints, shortUptime, slotPoints, telemetryMetrics, type NodeTile } from "./tile-graph";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
 
@@ -88,12 +89,27 @@ const ICON_BUTTON = `${ACTION_BUTTON_CLASS} ${ICON_BOX}`;
 // Remove rests muted and only turns to danger under the pointer or focus, so it never reads as a primary action.
 const REMOVE_BUTTON = `${ICON_BOX} rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
 
-const rounded = (v: number) => (v < 10 ? v.toFixed(1) : String(Math.round(v)));
-const percent = (v: number) => `${rounded(v)}%`;
-// Two units at most so a long uptime fits the tile; the title has the full value.
-const shortUptime = (seconds: number) => formatUptime(seconds).split(" ").slice(0, 2).join(" ");
-const perHour = (v: number) => `${rounded(v)}/h`;
 const MIX_SLICES = 5;
+
+// The tile whose sparkline was opened as a full graph, with its slot's colour.
+type GraphTile = { color: string } & (
+  | { kind: "node"; id: NodeTile }
+  | { kind: "observer"; id: Exclude<ObserverTile, "types"> }
+  | { kind: "telemetry"; id: TelemetryTile }
+);
+const NODE_LABEL: Record<NodeTile, string> = { receptions: "signal.receptions", snr: "signal.meanSnr", rssi: "signal.meanRssi" };
+const nodeHourly = (s: AtlasSample): Record<NodeTile, (number | null)[]> => ({ receptions: s.counts, snr: s.snrHourly, rssi: s.rssiHourly });
+const observerHourly = (s: ObserverSample): Record<Exclude<ObserverTile, "types">, (number | null)[]> => ({
+  airtime: s.airtimeHourly,
+  battery: s.batteryHourly,
+  uptime: s.uptimeHourly,
+  packets: s.counts,
+  snr: s.snrHourly,
+  rssi: s.rssiHourly,
+  noise: s.noiseHourly,
+  queue: s.queueHourly,
+  errors: s.errorsHourly,
+});
 
 // Share bar of the payload types heard, busiest first, with the top ones named underneath.
 function TypeMix({ types, colors, unknown, other }: { types: PayloadShare[]; colors: string[]; unknown: string; other: string }) {
@@ -209,6 +225,7 @@ export function AtlasCard({
   }, [pin, upgradeTo.data, onUpgrade]);
 
   const name = (pin.kind === "node" ? node?.name : observer?.displayName) || pin.name;
+  const shownName = name || formatHex(pin.kind === "node" ? (node?.id ?? pin.id) : pin.observerId);
   const hours = sample.counts.length;
   const activeHours = sample.present.filter(Boolean).length;
   const status = observer ? deriveObserverStatus(observer) : null;
@@ -238,7 +255,7 @@ export function AtlasCard({
           name ? "text-primary hover:underline" : "italic text-text-dim"
         }`}
       >
-        {name || formatHex(pin.kind === "node" ? (node?.id ?? pin.id) : pin.observerId)}
+        {shownName}
       </button>
       {node && <Badge variant="default">{node.nodeTypeName}</Badge>}
       {node?.stale === false && <Badge variant="live">{t("atlas.recent")}</Badge>}
@@ -252,7 +269,7 @@ export function AtlasCard({
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
-      <AtlasAlertBell pin={pin} name={name || formatHex(pin.kind === "node" ? (node?.id ?? pin.id) : pin.observerId)} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
+      <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
       {views.length > 1 && (
         <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
           <button
@@ -336,12 +353,25 @@ export function AtlasCard({
   const free = OBSERVER_TILES.filter((id) => !tiles.includes(id)).map((id) => ({ value: id, label: t(TILE_LABEL[id]) }));
   const telemetryTiles = nodePin?.telemetryTiles ?? DEFAULT_TELEMETRY_TILES;
   const telSample = tel.sample;
+  const telMetrics = useMemo(() => telemetryMetrics(tempUnit), [tempUnit]);
+  const [graph, setGraph] = useState<GraphTile | null>(null);
+  const sparkButton = (label: string, tile: GraphTile) => ({ onSparkClick: () => setGraph(tile), sparkLabel: t("atlas.graph.open", { name: label }) });
+  const observerSample = obs.sample;
+  // Memoized so the open graph is redrawn when the data changes, not on every render of the card.
+  const graphed = useMemo(() => {
+    if (!graph) return null;
+    if (graph.kind === "node") return { metric: t(NODE_LABEL[graph.id]), spec: NODE_METRICS[graph.id], points: slotPoints(nodeHourly(sample)[graph.id], range, now) };
+    if (graph.kind === "observer") return { metric: t(TILE_LABEL[graph.id]), spec: OBSERVER_METRICS[graph.id], points: slotPoints(observerHourly(observerSample)[graph.id], range, now) };
+    return { metric: t(TELEMETRY_LABEL[graph.id]), spec: telMetrics[graph.id], points: readingPoints(telSample[graph.id].points, telSample.bucketMs) };
+  }, [graph, sample, observerSample, telSample, telMetrics, range, now, t]);
   const freeTelemetry = TELEMETRY_TILES.filter((id) => !telemetryTiles.includes(id) && (id !== "temperature" || telSample.temperature.values.length > 0))
     .map((id) => ({ value: id, label: t(TELEMETRY_LABEL[id]) }));
   const telemetryTile = (id: TelemetryTile, slot: number) => {
+    const accent = c.series[SLOT_ACCENT[slot]!]!;
     const common = {
       compact: true,
-      accent: c.series[SLOT_ACCENT[slot]!]!,
+      accent,
+      ...sparkButton(t(TELEMETRY_LABEL[id]), { kind: "telemetry", id, color: accent }),
       label: (
         <TilePicker
           label={t(TELEMETRY_LABEL[id])}
@@ -353,6 +383,7 @@ export function AtlasCard({
       ),
     };
     const s = telSample;
+    const m = telMetrics;
     const tile = (
       series: { latest: number | null; values: number[] },
       format: (v: number) => string,
@@ -369,21 +400,21 @@ export function AtlasCard({
     );
     switch (id) {
       case "battery":
-        return tile(s.battery, formatBattery);
+        return tile(s.battery, m.battery.format);
       case "noise":
-        return tile(s.noise, (v) => `${Math.round(v)} dBm`);
+        return tile(s.noise, m.noise.format);
       case "uptime":
-        return tile(s.uptime, shortUptime, { title: formatUptime, sublabel: s.rebooted ? t("atlas.telemetry.restarted") : null });
+        return tile(s.uptime, shortUptime, { title: m.uptime.format, sublabel: s.rebooted ? t("atlas.telemetry.restarted") : null });
       case "airtime":
-        return tile(s.airtime, percent, { peak: true, counter: true, sublabel: s.airtimeTx !== null && s.airtimeRx !== null ? `TX ${percent(s.airtimeTx)} · RX ${percent(s.airtimeRx)}` : null });
+        return tile(s.airtime, m.airtime.format, { peak: true, counter: true, sublabel: s.airtimeTx !== null && s.airtimeRx !== null ? `TX ${percent(s.airtimeTx)} · RX ${percent(s.airtimeRx)}` : null });
       case "temperature":
-        return tile(s.temperature, (v) => formatTemp(v, tempUnit));
+        return tile(s.temperature, m.temperature.format);
       case "packets":
-        return tile(s.packets, perHour, { peak: true, counter: true, sublabel: s.packetsSent !== null ? t("atlas.telemetry.sentPerHour", { value: perHour(s.packetsSent) }) : null });
+        return tile(s.packets, m.packets.format, { peak: true, counter: true, sublabel: s.packetsSent !== null ? t("atlas.telemetry.sentPerHour", { value: perHour(s.packetsSent) }) : null });
       case "signal":
-        return tile(s.signal, (v) => `${v.toFixed(1)} dB`, { sublabel: s.rssi !== null ? `${Math.round(s.rssi)} dBm` : null });
+        return tile(s.signal, m.signal.format, { sublabel: s.rssi !== null ? `${Math.round(s.rssi)} dBm` : null });
       case "errors":
-        return tile(s.errors, perHour, { peak: true, counter: true });
+        return tile(s.errors, m.errors.format, { peak: true, counter: true });
     }
   };
   // polled only says a reading was ever stored; an assigned poller is what means it is polled now.
@@ -396,9 +427,11 @@ export function AtlasCard({
     const sample = obs.sample;
     // Today's stand-in for a radio with no battery, unless the card already has an uptime tile.
     const shown = id === "battery" && sample.battery === null && !tiles.includes("uptime") ? "uptime" : id;
+    const accent = c.series[SLOT_ACCENT[slot]!]!;
     const common = {
       compact: true,
-      accent: c.series[SLOT_ACCENT[slot]!]!,
+      accent,
+      ...(shown !== "types" && sparkButton(t(TILE_LABEL[shown]), { kind: "observer", id: shown, color: accent })),
       label: (
         <TilePicker
           label={t(TILE_LABEL[shown])}
@@ -447,9 +480,9 @@ export function AtlasCard({
       case "rssi":
         return <StatCard {...common} value={average(sample.rssi, "dBm")} spark={sample.rssiHourly} />;
       case "noise":
-        return <StatCard {...common} value={sample.noise === null ? dash : `${Math.round(sample.noise)} dBm`} spark={sample.noiseHourly} interpolateGaps />;
+        return <StatCard {...common} value={sample.noise === null ? dash : OBSERVER_METRICS.noise.format(sample.noise)} spark={sample.noiseHourly} interpolateGaps />;
       case "queue":
-        return <StatCard {...common} value={sample.queue === null ? dash : formatCount(Math.round(sample.queue))} spark={sample.queueHourly} interpolateGaps />;
+        return <StatCard {...common} value={sample.queue === null ? dash : OBSERVER_METRICS.queue.format(sample.queue)} spark={sample.queueHourly} interpolateGaps />;
       case "errors":
         return <StatCard {...common} value={sample.errors === null ? dash : formatCount(sample.errors)} spark={sample.errorsHourly} markPeak />;
     }
@@ -489,6 +522,7 @@ export function AtlasCard({
               spark={sample.counts}
               markPeak
               sublabel={sample.partial ? t("atlas.observerPartialCoverage") : t(`atlas.ranges.${range}`)}
+              {...sparkButton(t(NODE_LABEL.receptions), { kind: "node", id: "receptions", color: c.series[0]! })}
             />
             <StatCard
               compact
@@ -496,6 +530,7 @@ export function AtlasCard({
               value={average(sample.snr, "dB")}
               accent={c.series[2]!}
               spark={sample.snrHourly}
+              {...sparkButton(t(NODE_LABEL.snr), { kind: "node", id: "snr", color: c.series[2]! })}
             />
             <StatCard
               compact
@@ -503,6 +538,7 @@ export function AtlasCard({
               value={average(sample.rssi, "dBm")}
               accent={c.series[1]!}
               spark={sample.rssiHourly}
+              {...sparkButton(t(NODE_LABEL.rssi), { kind: "node", id: "rssi", color: c.series[1]! })}
             />
             <StatCard
               compact
@@ -600,6 +636,9 @@ export function AtlasCard({
             ],
           )}
         </div>
+      )}
+      {graph && graphed && (
+        <TileGraph name={shownName} metric={graphed.metric} range={range} color={graph.color} points={graphed.points} spec={graphed.spec} missing={dash} onClose={() => setGraph(null)} />
       )}
     </Card>
   );

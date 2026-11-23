@@ -48,6 +48,34 @@ describe("ModalOverlay", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("centres the panel on request and keeps Escape, backdrop close and the focus trap", () => {
+    const onClose = vi.fn();
+    render(
+      <ModalOverlay label="Graph" onClose={onClose} centered>
+        <button type="button">Close</button>
+      </ModalOverlay>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Graph" });
+    expect(dialog).toHaveClass("items-center", "justify-center");
+    expect(dialog).not.toHaveClass("justify-end");
+    expect(dialog.firstElementChild).toHaveClass("max-w-4xl", "max-h-full", "w-full");
+    expect(dialog.firstElementChild).not.toHaveClass("h-full");
+    expect(dialog).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    fireEvent.mouseDown(dialog);
+    fireEvent.click(dialog);
+    expect(onClose).toHaveBeenCalledTimes(2);
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays a right-side drawer by default", () => {
+    const dialog = renderOverlay(vi.fn());
+    expect(dialog).toHaveClass("justify-end");
+    expect(dialog.firstElementChild).toHaveClass("h-full");
+  });
+
   it("does not close on clicks inside the panel", () => {
     const onClose = vi.fn();
     renderOverlay(onClose);

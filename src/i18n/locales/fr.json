@@ -1081,6 +1081,11 @@
       "emptyTitle": "Aucun nœud enregistré",
       "emptyDescription": "Cherchez ci-dessus pour ajouter jusqu’à {{limit}} nœuds",
       "range": "Période d’activité",
+      "graph": {
+        "open": "Ouvrir le graphique : {{name}}",
+        "title": "{{name}} : {{metric}}",
+        "window": "{{range}}, heures en UTC"
+      },
       "ranges": {
         "24h": "24 h",
         "3d": "3 j",

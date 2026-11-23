@@ -1073,6 +1073,11 @@
       "emptyTitle": "No nodes saved",
       "emptyDescription": "Search above to add up to {{limit}} nodes",
       "range": "Activity window",
+      "graph": {
+        "open": "Open graph: {{name}}",
+        "title": "{{name}}: {{metric}}",
+        "window": "{{range}}, times in UTC"
+      },
       "ranges": {
         "24h": "24h",
         "3d": "3d",

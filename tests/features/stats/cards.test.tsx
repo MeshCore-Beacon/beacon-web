@@ -1,5 +1,5 @@
-import { expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Card, StatCard } from "../../../src/features/stats/cards";
 
 it("keeps the header on one line unless a caller asks for the right slot to wrap", () => {
@@ -38,4 +38,22 @@ it("draws isolated samples and dashed gap connectors without filling missing rea
   expect(container.querySelectorAll("[data-sample]")).toHaveLength(2);
   expect(container.querySelectorAll("[data-gap]")).toHaveLength(1);
   expect(container.querySelector("[data-gap]")).toHaveAttribute("stroke-dasharray", "3 3");
+});
+
+it("makes a sparkline with data a named button, and nothing else", () => {
+  const open = vi.fn();
+  const view = render(<StatCard label="Noise" value="-110" accent="red" spark={[1, null, 2]} onSparkClick={open} sparkLabel="Open graph: Noise" />);
+  const button = screen.getByRole("button", { name: "Open graph: Noise" });
+  expect(button.querySelector("svg")).not.toBeNull();
+  expect(button.parentElement).toHaveClass("mt-auto");
+  fireEvent.click(button);
+  expect(open).toHaveBeenCalledOnce();
+  view.unmount();
+  for (const props of [{ spark: [null, null] }, { spark: [] }, {}, { presence: [true, false] }, { spark: [1, 2], visual: <span>mix</span> }]) {
+    const other = render(<StatCard label="Noise" value="-110" accent="red" onSparkClick={open} sparkLabel="Open graph: Noise" {...props} />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    other.unmount();
+  }
+  render(<StatCard label="Noise" value="-110" accent="red" spark={[1, 2]} />);
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });

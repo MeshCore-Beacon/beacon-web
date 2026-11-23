@@ -1006,6 +1006,11 @@
       "hops": "{{value}} hopp",
       "neighbors_one": "{{count}} granne",
       "neighbors_other": "{{count}} grannar",
+      "graph": {
+        "open": "Öppna grafen: {{name}}",
+        "title": "{{name}}: {{metric}}",
+        "window": "{{range}}, tider i UTC"
+      },
       "ranges": {
         "24h": "24 h",
         "3d": "3 d",
