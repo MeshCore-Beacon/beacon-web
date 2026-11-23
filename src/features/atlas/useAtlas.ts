@@ -11,7 +11,7 @@ import { isPolledNodeType } from "../nodes/polledType";
 import { useNodePolling, useNodeTelemetry } from "../nodes/useNodeTelemetry";
 import { loadAtlasNode, summarizeActivity, type NodePin, type AtlasRange } from "./atlas";
 import { OBSERVER_RANGE } from "./observer-sample";
-import { summarizeTelemetry, telemetryRange } from "./telemetry-sample";
+import { summarizeTelemetry, telemetryInterval, telemetryRange } from "./telemetry-sample";
 
 export const ATLAS_REFRESH_MS = 60_000;
 // A pin whose radio is gone is checked rarely, so it can come back after a reset without costing a poll a minute.
@@ -116,7 +116,7 @@ export function useAtlasTelemetry(nodeId: string | null, range: AtlasRange, enab
   const { atlasTelemetry } = useFeatures();
   const now = useTick(ATLAS_REFRESH_MS);
   const throttled = useThrottled();
-  const query = useNodeTelemetry(nodeId ?? undefined, telemetryRange(range, atlasTelemetry), enabled && !throttled, ATLAS_REFRESH_MS);
+  const query = useNodeTelemetry(nodeId ?? undefined, telemetryRange(range, atlasTelemetry), enabled && !throttled, ATLAS_REFRESH_MS, telemetryInterval(range));
   const sample = useMemo(() => summarizeTelemetry(query.data, range, now), [query.data, range, now]);
   return { sample, loading: query.isLoading, failed: query.isError, unsupported: query.unsupported };
 }

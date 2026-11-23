@@ -128,7 +128,7 @@ export interface ServerInfo {
   minWebVersion: string | null;
   serverVersion: string;
   // absent on servers that predate the flags
-  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; mapTelemetry?: boolean; alertChannels?: { email?: boolean; push?: boolean }; push?: { server?: string; pushId?: string }; portalUrl?: string };
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; atlas7d?: boolean; mapTelemetry?: boolean; alertChannels?: { email?: boolean; push?: boolean }; push?: { server?: string; pushId?: string }; portalUrl?: string };
   display?: { temperatureUnit?: string; distanceUnit?: string };
   limits?: { atlas?: number };
 }
@@ -496,8 +496,8 @@ export function getObserverActivity(observerId: string, range: string, interval:
 // Bucket per range, the same as the server's defaults.
 const NODE_TELEMETRY_INTERVAL: Record<NodeTelemetryRange, string> = { "24h": "1h", "72h": "1h", "168h": "6h", "720h": "24h" };
 
-export function getNodeTelemetry(id: string, range: NodeTelemetryRange, signal?: AbortSignal): Promise<NodeTelemetry> {
-  return request(`/nodes/${encodeURIComponent(id)}/telemetry`, { range, interval: NODE_TELEMETRY_INTERVAL[range] }, signal);
+export function getNodeTelemetry(id: string, range: NodeTelemetryRange, signal?: AbortSignal, interval?: string): Promise<NodeTelemetry> {
+  return request(`/nodes/${encodeURIComponent(id)}/telemetry`, { range, interval: interval ?? NODE_TELEMETRY_INTERVAL[range] }, signal);
 }
 
 export function getNodePolling(id: string, signal?: AbortSignal): Promise<NodePolling> {

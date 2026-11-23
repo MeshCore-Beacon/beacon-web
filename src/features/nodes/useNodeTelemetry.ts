@@ -20,9 +20,9 @@ const toUndefined = <T,>(data: T | null): T | undefined => data ?? undefined;
 // function may not return undefined.
 export type NodeTelemetryResult = { unsupported: true } | { unsupported: false; telemetry: NodeTelemetry };
 
-async function loadTelemetry(id: string, range: NodeTelemetryRange, signal: AbortSignal): Promise<NodeTelemetryResult> {
+async function loadTelemetry(id: string, range: NodeTelemetryRange, signal: AbortSignal, interval?: string): Promise<NodeTelemetryResult> {
   try {
-    return { unsupported: false, telemetry: await getNodeTelemetry(id, range, signal) };
+    return { unsupported: false, telemetry: await (interval ? getNodeTelemetry(id, range, signal, interval) : getNodeTelemetry(id, range, signal)) };
   } catch (err) {
     if (isNotFound(err)) return { unsupported: true };
     throw err;
@@ -30,11 +30,12 @@ async function loadTelemetry(id: string, range: NodeTelemetryRange, signal: Abor
 }
 
 // `refetchMs` is for a caller that keeps the reading on screen, such as an Atlas card. It stops
-// once the server has said it has no such route.
-export function useNodeTelemetry(id: string | undefined, range: NodeTelemetryRange, enabled: boolean, refetchMs?: number) {
+// once the server has said it has no such route. `interval` overrides the range's default bucket and
+// gets its own cache entry.
+export function useNodeTelemetry(id: string | undefined, range: NodeTelemetryRange, enabled: boolean, refetchMs?: number, interval?: string) {
   const query = useQuery({
-    queryKey: ["node-telemetry", id, range],
-    queryFn: ({ signal }) => loadTelemetry(id!, range, signal),
+    queryKey: interval ? ["node-telemetry", id, range, interval] : ["node-telemetry", id, range],
+    queryFn: ({ signal }) => loadTelemetry(id!, range, signal, interval),
     enabled: enabled && !!id,
     staleTime: 60_000,
     refetchInterval: (q) => (q.state.data?.unsupported ? false : (refetchMs ?? false)),

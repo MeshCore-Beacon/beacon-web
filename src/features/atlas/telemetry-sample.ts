@@ -5,9 +5,11 @@ import { HOUR, type AtlasRange } from "./atlas";
 // The route to ask per card range. 3d is a 72h read where the server offers it (features.atlasTelemetry);
 // older servers only know 168h, which is trimmed to the window here.
 export function telemetryRange(range: AtlasRange, atlasTelemetry: boolean): NodeTelemetryRange {
-  return range === "24h" ? "24h" : atlasTelemetry ? "72h" : "168h";
+  return range === "24h" ? "24h" : range === "3d" && atlasTelemetry ? "72h" : "168h";
 }
-const WINDOW_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72 };
+// 168h defaults to 6h buckets; the 7d card reads it hourly like the other ranges.
+export const telemetryInterval = (range: AtlasRange): string | undefined => (range === "7d" ? "1h" : undefined);
+const WINDOW_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72, "7d": 168 };
 
 // With fewer readings than this a line looks broken, so the points are drawn as dots.
 export const DOT_LIMIT = 8;

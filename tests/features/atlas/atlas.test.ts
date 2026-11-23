@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTelemetryTiles, withTiles, withView, homeView, DEFAULT_TELEMETRY_TILES, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT_MAX, type NodePin } from "../../../src/features/atlas/atlas";
+import { atlasFile, atlasFileName, effectiveRange, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTelemetryTiles, withTiles, withView, homeView, DEFAULT_TELEMETRY_TILES, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT_MAX, type NodePin } from "../../../src/features/atlas/atlas";
 import type { NodeActivity } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
@@ -48,6 +48,17 @@ describe("saved Atlas", () => {
     // Loading keeps every saved card up to the highest cap a server allows; the page enforces its own.
     expect(result.pins).toHaveLength(20);
     expect(result.range).toBe("24h");
+  });
+  it("keeps a 7d range through storage and the export file", () => {
+    const saved = { version: 2 as const, range: "7d" as const, pins: [nodePin] };
+    expect(parseAtlas(JSON.stringify(saved))).toEqual(saved);
+    expect(readAtlasFile(atlasFile(saved as never))?.atlas.range).toBe("7d");
+  });
+  it("reads 7d as 3d only on a server without it", () => {
+    expect(effectiveRange("7d", false)).toBe("3d");
+    expect(effectiveRange("7d", true)).toBe("7d");
+    expect(effectiveRange("3d", false)).toBe("3d");
+    expect(effectiveRange("24h", false)).toBe("24h");
   });
   it("round-trips version 2 pins of both kinds, keeps the observer hint, and drops unknown kinds", () => {
     const pins = [
@@ -148,6 +159,14 @@ describe("node activity sample", () => {
     expect(sample.snrHourly[21]).toBeNull();
     expect(sample.snrHourly[0]).toBeNull();
     expect(sample).toMatchObject({ total: 50, snr: 5, rssi: -100, hops: 2, partial: false, latest });
+  });
+
+  it("has 168 hourly slots at 7d", () => {
+    const sample = summarizeActivity(activityOf({ points: [point(167, 4), point(168, 9), point(0, 3)] }), "7d", tick);
+    expect(sample.counts).toHaveLength(168);
+    expect(sample.counts[0]).toBe(4);
+    expect(sample.counts[167]).toBe(3);
+    expect(sample.present.filter(Boolean)).toHaveLength(2);
   });
 
   it("keeps a real zero mean and turns missing or non-finite means into null", () => {

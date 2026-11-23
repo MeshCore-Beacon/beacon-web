@@ -5,7 +5,7 @@ import type { ObserverActivity, ObserverTelemetry, TelemetryPoint } from "../sta
 import { HOUR, hourSlots, type AtlasRange } from "./atlas";
 
 // Go duration strings the observer endpoints expect, per Atlas window; one bucket per hour for both.
-export const OBSERVER_RANGE: Record<AtlasRange, string> = { "24h": "24h", "3d": "72h" };
+export const OBSERVER_RANGE: Record<AtlasRange, string> = { "24h": "24h", "3d": "72h", "7d": "168h" };
 export const OBSERVER_INTERVAL = "1h";
 
 export interface PayloadShare {

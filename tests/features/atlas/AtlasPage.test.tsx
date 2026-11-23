@@ -93,6 +93,56 @@ describe("Atlas page", () => {
     expect(screen.getByText("Matches")).toBeInTheDocument();
   });
 
+  describe("7d range", () => {
+    const withFlag = (atlas7d: boolean) => vi.mocked(api.getServerInfo).mockResolvedValue({ minAppVersion: null, minWebVersion: null, serverVersion: "2.4.0", features: { atlas7d } } as never);
+
+    it("is not offered by a server without atlas7d", async () => {
+      save();
+      mount();
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      await waitFor(() => expect(api.getServerInfo).toHaveBeenCalled());
+      const picker = screen.getByRole("group", { name: "Activity window" });
+      expect(within(picker).getAllByRole("button").map((b) => b.textContent)).toEqual(["24h", "3d"]);
+    });
+
+    it("is offered with atlas7d, saved, and read as 168h", async () => {
+      withFlag(true);
+      save();
+      mount();
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      fireEvent.click(await screen.findByRole("button", { name: "7d" }));
+      expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+      expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).range).toBe("7d");
+      await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal)));
+    });
+
+    it("shows and reads a saved 7d as 3d on a server without it, leaving the saved 7d alone", async () => {
+      withFlag(false);
+      save([pin], "7d");
+      mount();
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "72h", expect.any(AbortSignal)));
+      expect(api.getNodeActivity).not.toHaveBeenCalledWith(pin.id, "168h", expect.anything());
+      expect(screen.getByRole("button", { name: "3d" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+      expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).range).toBe("7d");
+    });
+
+    it("waits for /info before loading a saved 7d, so it never loads as 3d first", async () => {
+      let answer: (value: unknown) => void = () => {};
+      vi.mocked(api.getServerInfo).mockReturnValue(new Promise((resolve) => { answer = resolve; }) as never);
+      save([pin], "7d");
+      mount();
+      expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+      await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+      expect(api.getNode).not.toHaveBeenCalled();
+      expect(api.getNodeActivity).not.toHaveBeenCalled();
+      await act(async () => { answer({ features: { atlas7d: true } }); });
+      await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal)));
+      expect(api.getNodeActivity).not.toHaveBeenCalledWith(pin.id, "72h", expect.anything());
+    });
+  });
+
   it("keeps the toolbar to one row on a phone: short count chip, picker, no info tip", async () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
     save();

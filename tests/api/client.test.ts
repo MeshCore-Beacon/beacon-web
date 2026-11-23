@@ -798,6 +798,14 @@ describe("getNodeTelemetry and getNodePolling", () => {
     }
   });
 
+  it("sends an explicit interval in place of the default", async () => {
+    const url = mockFetchOnce({ points: [] });
+    await getNodeTelemetry("n1", "168h", undefined, "1h");
+    const u = new URL(url());
+    expect(u.searchParams.get("range")).toBe("168h");
+    expect(u.searchParams.get("interval")).toBe("1h");
+  });
+
   it("asks for the polling answer by node id", async () => {
     const url = mockFetchOnce({ polled: false });
     await getNodePolling("abc");

@@ -1006,6 +1006,11 @@
       "hops": "{{value}} hopp",
       "neighbors_one": "{{count}} granne",
       "neighbors_other": "{{count}} grannar",
+      "ranges": {
+        "24h": "24 h",
+        "3d": "3 d",
+        "7d": "7 d"
+      },
       "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet",
       "viewTelemetry": "Telemetri",
       "telemetry": {

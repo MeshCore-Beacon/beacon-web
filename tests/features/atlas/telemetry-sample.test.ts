@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOT_LIMIT, sparkValues, summarizeTelemetry, telemetryRange } from "../../../src/features/atlas/telemetry-sample";
+import { DOT_LIMIT, sparkValues, summarizeTelemetry, telemetryInterval, telemetryRange } from "../../../src/features/atlas/telemetry-sample";
 import type { NodeTelemetry, NodeTelemetryPoint } from "../../../src/features/nodes/types";
 
 const HOUR = 3_600_000;
@@ -24,6 +24,13 @@ describe("telemetryRange", () => {
   it("asks 72h for the 3d card when the server has atlasTelemetry, else 168h", () => {
     expect(telemetryRange("3d", true)).toBe("72h");
     expect(telemetryRange("3d", false)).toBe("168h");
+  });
+  it("asks 168h in hourly buckets for the 7d card, and leaves the other ranges on their default bucket", () => {
+    expect(telemetryRange("7d", true)).toBe("168h");
+    expect(telemetryRange("7d", false)).toBe("168h");
+    expect(telemetryInterval("7d")).toBe("1h");
+    expect(telemetryInterval("3d")).toBeUndefined();
+    expect(telemetryInterval("24h")).toBeUndefined();
   });
 });
 
@@ -82,6 +89,7 @@ describe("summarizeTelemetry", () => {
     const week = data([point(100, { batteryMv: 3000 }), point(60, { batteryMv: 3900 }), point(5, { batteryMv: 4100 })]);
     expect(summarizeTelemetry(week, "3d", now).battery.values).toEqual([3.9, 4.1]);
     expect(summarizeTelemetry(week, "24h", now).battery.values).toEqual([4.1]);
+    expect(summarizeTelemetry(week, "7d", now).battery.values).toEqual([3, 3.9, 4.1]);
   });
 
   it("is empty with no data", () => {

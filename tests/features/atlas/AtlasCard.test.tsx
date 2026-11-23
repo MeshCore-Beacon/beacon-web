@@ -815,6 +815,14 @@ describe("AtlasCard", () => {
       expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal));
     });
 
+    it("asks for 168h in hourly buckets on a 7d card", async () => {
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true, true));
+      mount({ view: "telemetry", range: "7d" });
+      await screen.findByText("4.23V");
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal), "1h");
+      expect(api.getNodeTelemetry).not.toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal));
+    });
+
     it("falls back to Analytics for a pinned Telemetry view the card does not have", async () => {
       vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null }));
       vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [] } as never);

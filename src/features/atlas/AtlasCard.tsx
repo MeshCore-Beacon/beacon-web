@@ -80,7 +80,7 @@ const TELEMETRY_LABEL: Record<TelemetryTile, string> = {
 };
 // Accents belong to the slot, so a card keeps its colours whatever its tiles show.
 const SLOT_ACCENT = [0, 3, 2, 1];
-const RANGE_MS: Record<AtlasRange, number> = { "24h": 86_400_000, "3d": 259_200_000 };
+const RANGE_MS: Record<AtlasRange, number> = { "24h": 86_400_000, "3d": 259_200_000, "7d": 604_800_000 };
 
 // Icon-only header actions share one box so the row stays even.
 const ICON_BOX = "flex h-[26px] w-7 shrink-0 items-center justify-center";

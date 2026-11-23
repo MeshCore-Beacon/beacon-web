@@ -141,7 +141,7 @@ describe("atlas polling policy", () => {
 
 describe("useAtlasNode", () => {
   it("loads the node, then its hourly activity for the range, without the observation rows", async () => {
-    const { result, rerender } = renderHook(({ range }: { range: "24h" | "3d" }) => useAtlasNode(pin, range, true), { wrapper, initialProps: { range: "24h" } });
+    const { result, rerender } = renderHook(({ range }: { range: "24h" | "3d" | "7d" }) => useAtlasNode(pin, range, true), { wrapper, initialProps: { range: "24h" } });
     await waitFor(() => expect(result.current.sample.total).toBe(1));
     expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
     expect(api.getNodeObservations).not.toHaveBeenCalled();
@@ -150,6 +150,9 @@ describe("useAtlasNode", () => {
     expect(result.current.activity).toEqual({ loading: false, unsupported: false, failed: false });
     rerender({ range: "3d" });
     await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "72h", expect.any(AbortSignal)));
+    rerender({ range: "7d" });
+    await waitFor(() => expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal)));
+    expect(result.current.sample.counts).toHaveLength(168);
     expect(api.getNode).toHaveBeenCalledTimes(1);
   });
 

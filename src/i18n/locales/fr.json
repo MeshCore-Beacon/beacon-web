@@ -1083,7 +1083,8 @@
       "range": "Période d’activité",
       "ranges": {
         "24h": "24 h",
-        "3d": "3 j"
+        "3d": "3 j",
+        "7d": "7 j"
       },
       "readingsLabel": "Batterie et température, dernière moyenne horaire",
       "sampleHelp": "Observations conservées de paquets provenant de ce nœud, par heure sur la période choisie, avec le signal mesuré par les observateurs sur le dernier saut.",

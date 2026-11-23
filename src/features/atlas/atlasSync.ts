@@ -1,4 +1,4 @@
-import { NO_NODE_ID, parseAtlas, pinKey, type AtlasPin, type NodePin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas, type TelemetryTile } from "./atlas";
+import { NO_NODE_ID, effectiveRange, parseAtlas, pinKey, type AtlasPin, type NodePin, type AtlasRange, type AtlasView, type ObserverTile, type SavedAtlas, type TelemetryTile } from "./atlas";
 
 // The account document, as /me/atlas answers it. Times and ids follow the API contract.
 export interface ServerNodePin { kind: "node"; publicKey: string; id: string | null; name: string; observerId: string | null; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
@@ -24,8 +24,9 @@ export const emptyAtlas = (): SavedAtlas => ({ version: 2, range: "24h", pins: [
 
 // The server document as a local Atlas. `previous` lends the ids the server could not resolve. A server
 // without Telemetry tab support never stores `view: "telemetry"` or `telemetryTiles`, so with
-// `keepTelemetry` the previous local pin's two stay in this browser's copy.
-export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys, keepTelemetry = false): { atlas: SavedAtlas; keys: ObserverKeys } {
+// `keepTelemetry` the previous local pin's two stay in this browser's copy. Likewise `keep7d`: a server
+// without 7d was sent 3d for a local 7d, so its 3d does not replace it.
+export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys, keepTelemetry = false, keep7d = false): { atlas: SavedAtlas; keys: ObserverKeys } {
   const nodeIds = new Map<string, string>();
   const before = new Map<string, NodePin>();
   const observerIds = new Map<string, string>();
@@ -53,12 +54,14 @@ export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known:
     return { kind: "observer", observerId, name: pin.name, ...tiles };
   });
   // Through the local parser so the cap, dedupe and tile defaults match everything else that loads.
-  return { atlas: parseAtlas(JSON.stringify({ version: 2, range: doc.range, pins })), keys };
+  const range = keep7d && previous?.range === "7d" && doc.range === "3d" ? "7d" : doc.range;
+  return { atlas: parseAtlas(JSON.stringify({ version: 2, range, pins })), keys };
 }
 
 // `telemetry` is the server's `features.atlasTelemetry`. Without it the Telemetry tab's two fields stay
 // out of the body, which an older server would reject; a pin on that tab is sent as having no view.
-export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number, telemetry = false): PutAtlas {
+// `atlas7d` is `features.atlas7d`: without it a 7d range goes out as 3d.
+export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number, telemetry = false, atlas7d = false): PutAtlas {
   const pins = saved.pins.map((pin): PutPin => {
     const tiles = pin.tiles && { tiles: pin.tiles };
     if (pin.kind === "node") {
@@ -69,7 +72,7 @@ export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: numbe
     if (isPlaceholder(pin.observerId) && key) return { kind: "observer", observerPublicKey: key, name: pin.name, ...tiles };
     return { kind: "observer", observerId: pin.observerId, name: pin.name, ...tiles };
   });
-  return { baseRevision, range: saved.range, pins };
+  return { baseRevision, range: effectiveRange(saved.range, atlas7d), pins };
 }
 
 // Does the server list already hold this local pin, under either of its identities?

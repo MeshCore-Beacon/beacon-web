@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { me } from "../../api/auth";
 import { ALERTS_KEY } from "../../hooks/useAlerts";
-import { useFeatures } from "../../hooks/useFeatures";
+import { useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
 import { useSession } from "../../hooks/useSession";
 import type { SavedAtlas } from "./atlas";
 import { ATLAS_LIMIT_FALLBACK } from "./atlas";
@@ -34,8 +34,12 @@ export function useSyncedAtlas() {
   const { t } = useTranslation();
   const base = useSavedAtlas();
   // Read at send time like the rest: until /info answers, and on an older server, the Telemetry fields stay local.
-  const { atlasTelemetry } = useFeatures();
+  const { atlasTelemetry, atlas7d } = useFeatures();
   const telemetry = useRef(atlasTelemetry);
+  const sevenDay = useRef(atlas7d);
+  // Until /info answers nobody knows whether 7d can be sent, so a 7d Atlas holds its writes.
+  const infoPending = useFeaturesLoading();
+  const infoLoading = useRef(infoPending);
   const { user } = useSession();
   const userId = user?.id ?? null;
   const [syncedFor, setSyncedFor] = useState<string | null>(null);
@@ -68,11 +72,13 @@ export function useSyncedAtlas() {
     baseRef.current = base;
     tRef.current = t;
     telemetry.current = atlasTelemetry;
+    sevenDay.current = atlas7d;
+    infoLoading.current = infoPending;
   });
 
   const markWhenSent = useRef<string | null>(null);
   const adopt = useCallback((doc: ServerAtlas) => {
-    const { atlas, keys: next } = fromServer(doc, baseRef.current.latest(), keys.current, !telemetry.current);
+    const { atlas, keys: next } = fromServer(doc, baseRef.current.latest(), keys.current, !telemetry.current, !sevenDay.current);
     keys.current = next;
     setObserverKeys(next);
     revision.current = doc.revision;
@@ -82,6 +88,7 @@ export function useSyncedAtlas() {
 
   const flush = useCallback(async (): Promise<void> => {
     if (running.current || loading.current) return;
+    if (infoLoading.current && baseRef.current.latest().range === "7d") return;
     // No revision means the first load failed: redo it in full (it adopts, or drops a foreign cache)
     // before anything is written.
     if (revision.current === null && owner.current) {
@@ -97,7 +104,7 @@ export function useSyncedAtlas() {
           const rev = revision.current;
           // A conflict without a document cleared it: go back through the load before writing.
           if (rev === null) { queued.current = true; return; }
-          const doc = await me.putAtlas(toPut(baseRef.current.latest(), keys.current, rev, telemetry.current));
+          const doc = await me.putAtlas(toPut(baseRef.current.latest(), keys.current, rev, telemetry.current, sevenDay.current));
           if (generation.current !== mine) return;
           // A save commits exactly rev + 1. Whatever the answer says, the next save builds on that, so a
           // newer copy from another device meets a conflict instead of being overwritten.
@@ -141,7 +148,7 @@ export function useSyncedAtlas() {
         const doc = await me.atlas();
         if (generation.current !== mine) return;
         const local = baseline.current ?? baseRef.current.latest();
-        const server = fromServer(doc, local, {}, !telemetry.current);
+        const server = fromServer(doc, local, {}, !telemetry.current, !sevenDay.current);
         keys.current = server.keys;
         setObserverKeys(server.keys);
         revision.current = doc.revision;
@@ -203,6 +210,11 @@ export function useSyncedAtlas() {
     // Leaving a sign-in ends its synced state, so the same account signing back in is not "synced" before its load.
     return () => { liveToken.current = null; generation.current += 1; loading.current = false; setSyncedFor(null); setObserverKeys({}); };
   }, [userId, load, token]);
+
+  // Writes held for /info go out once it has answered.
+  useEffect(() => {
+    if (!infoPending && queued.current) void flush();
+  }, [infoPending, flush]);
 
   const update = (change: Change) => {
     if (liveToken.current !== token) return;

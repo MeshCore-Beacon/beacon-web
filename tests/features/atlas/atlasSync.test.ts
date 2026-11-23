@@ -6,8 +6,8 @@ const key = (n: number) => n.toString(16).padStart(2, "0").repeat(32);
 const uuid = (n: number) => `${n.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`;
 const node = (n: number, extra: Partial<NodePin> = {}): NodePin => ({ kind: "node", id: uuid(n), publicKey: key(n), name: `N${n}`, ...extra });
 const obs = (n: number) => ({ kind: "observer" as const, observerId: uuid(100 + n), name: `O${n}` });
-const local = (pins: SavedAtlas["pins"], range: "24h" | "3d" = "24h"): SavedAtlas => ({ version: 2, range, pins });
-const doc = (pins: ServerAtlas["pins"], revision = 3, range: "24h" | "3d" = "24h"): ServerAtlas => ({ revision, range, limit: 12, pins });
+const local = (pins: SavedAtlas["pins"], range: SavedAtlas["range"] = "24h"): SavedAtlas => ({ version: 2, range, pins });
+const doc = (pins: ServerAtlas["pins"], revision = 3, range: ServerAtlas["range"] = "24h"): ServerAtlas => ({ revision, range, limit: 12, pins });
 
 describe("fromServer", () => {
   it("converts node and observer pins and remembers the observer keys", () => {
@@ -53,6 +53,19 @@ describe("fromServer", () => {
   });
 });
 
+describe("fromServer and a local 7d", () => {
+  const pins: ServerAtlas["pins"] = [{ kind: "node", publicKey: key(1), id: uuid(1), name: "N1", observerId: null }];
+  it("keeps the local 7d when the server without 7d answers the 3d it was sent", () => {
+    expect(fromServer(doc(pins, 3, "3d"), local([node(1)], "7d"), {}, false, true).atlas.range).toBe("7d");
+  });
+  it("takes the server's range in every other case", () => {
+    expect(fromServer(doc(pins, 3, "3d"), local([node(1)], "7d"), {}).atlas.range).toBe("3d");
+    expect(fromServer(doc(pins, 3, "24h"), local([node(1)], "7d"), {}, false, true).atlas.range).toBe("24h");
+    expect(fromServer(doc(pins, 3, "3d"), local([node(1)], "24h"), {}, false, true).atlas.range).toBe("3d");
+    expect(fromServer(doc(pins, 3, "7d"), null, {}).atlas.range).toBe("7d");
+  });
+});
+
 describe("toPut", () => {
   it("sends node pins by key and observers by id, with the base revision", () => {
     const body = toPut(local([node(1, { view: "heard", observerId: uuid(101), tiles: ["uptime", "battery", "types", "noise"] }), obs(2)], "3d"), {}, 9);
@@ -64,6 +77,12 @@ describe("toPut", () => {
         { kind: "observer", observerId: uuid(102), name: "O2" },
       ],
     });
+  });
+
+  it("sends 7d only to a server that has it, and 3d otherwise", () => {
+    expect(toPut(local([node(1)], "7d"), {}, 1, false, true).range).toBe("7d");
+    expect(toPut(local([node(1)], "7d"), {}, 1, false, false).range).toBe("3d");
+    expect(toPut(local([node(1)], "7d"), {}, 1).range).toBe("3d");
   });
 
   it("sends an observer the server does not know by id by its key", () => {

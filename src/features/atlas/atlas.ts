@@ -8,7 +8,9 @@ export const ATLAS_KEY = "beacon-atlas-v2";
 export const ATLAS_LIMIT_FALLBACK = 12;
 // The highest cap a server can set; loading keeps up to this many and the page enforces the server's.
 export const ATLAS_LIMIT_MAX = 100;
-export type AtlasRange = "24h" | "3d";
+export type AtlasRange = "24h" | "3d" | "7d";
+// 7d needs a server with features.atlas7d; without it a saved 7d is shown, fetched and sent as 3d.
+export const effectiveRange = (range: AtlasRange, atlas7d: boolean): AtlasRange => (range === "7d" && !atlas7d ? "3d" : range);
 // The metrics an Observer view tile can show. A pin stores its four only when they differ from the default.
 export const OBSERVER_TILES = ["airtime", "battery", "uptime", "types", "packets", "snr", "rssi", "noise", "queue", "errors"] as const;
 export type ObserverTile = (typeof OBSERVER_TILES)[number];
@@ -59,7 +61,7 @@ export function parseAtlas(raw: string | null): SavedAtlas {
       pins.push(pin);
       if (pins.length === ATLAS_LIMIT_MAX) break;
     }
-    return { version: 2, range: value.range === "3d" ? "3d" : "24h", pins };
+    return { version: 2, range: value.range === "3d" || value.range === "7d" ? value.range : "24h", pins };
   } catch { return empty; }
 }
 
@@ -172,7 +174,7 @@ export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal): Promise
 }
 
 export const HOUR = 3_600_000;
-const RANGE_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72 };
+const RANGE_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72, "7d": 168 };
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
 // Slots count back from the tick, newest last. The tick can trail the clock by a minute, so a bucket

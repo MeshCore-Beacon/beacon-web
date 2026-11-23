@@ -8,7 +8,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { InfoTip } from "../../components/InfoTip";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { Tooltip } from "../../components/Tooltip";
-import { useAtlasLimit, useFeaturesLoading } from "../../hooks/useFeatures";
+import { useAtlasLimit, useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { formatHex } from "../../lib/formatters";
 import { nodeSearchParams } from "../nodes/node-search";
@@ -19,11 +19,11 @@ import type { ObserverDirectoryItem } from "../observers/types";
 import { Card } from "../stats/cards";
 import { Segmented } from "../stats/Segmented";
 import { AtlasCard, type AtlasActions } from "./AtlasCard";
-import { ATLAS_FILE_MAX_BYTES, atlasFile, atlasFileName, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTelemetryTiles, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
+import { ATLAS_FILE_MAX_BYTES, atlasFile, atlasFileName, effectiveRange, homeView, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, withTelemetryTiles, withTiles, withView, type AtlasImport, type AtlasPin, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { useCardDrag } from "./useCardDrag";
 import { useSyncedAtlas } from "./useSyncedAtlas";
 
-const RANGES: AtlasRange[] = ["24h", "3d"];
+const RANGES: AtlasRange[] = ["24h", "3d", "7d"];
 const SEARCH_LIMIT = 8;
 const SEARCH_MIN = 2;
 
@@ -94,7 +94,11 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
     { value: "pubkey", label: t("nodeFilters.fieldPubkey") },
     { value: "observer", label: t("atlas.fieldObserver") },
   ];
-  const rangeOptions = RANGES.map((value) => ({ value, label: t(`atlas.ranges.${value}`) }));
+  const { atlas7d } = useFeatures();
+  // A saved 7d waits for /info rather than loading as 3d first; a server without 7d then gets 3d.
+  const holding = infoPending && saved.range === "7d";
+  const range = holding ? saved.range : effectiveRange(saved.range, atlas7d);
+  const rangeOptions = RANGES.filter((value) => value !== "7d" || atlas7d || holding).map((value) => ({ value, label: t(`atlas.ranges.${value}`) }));
 
   // Re-parse so an add goes through the same validation, dedupe and cap as a restore.
   const append = (pin: AtlasPin) =>
@@ -256,7 +260,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
           <Segmented
             size="xs"
             options={rangeOptions}
-            value={saved.range}
+            value={range}
             onChange={(range) => update((value) => ({ ...value, range: range as AtlasRange }))}
             ariaLabel={t("atlas.range")}
           />
@@ -367,8 +371,8 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                   <AtlasCard
                     pin={pin}
                     observerKey={pin.kind === "observer" ? observerKeys[pin.observerId] : undefined}
-                    range={saved.range}
-                    active={active}
+                    range={range}
+                    active={active && !holding}
                     view={viewOf(pin)}
                     home={homeView(pin)}
                     onPinView={(view) => pinView(pin, view)}

@@ -26,6 +26,16 @@ describe("useNodeTelemetry", () => {
     expect(client.getQueryData(["node-telemetry", "n1", "24h"])).toEqual({ unsupported: false, telemetry });
   });
 
+  it("asks for an explicit interval under its own cache entry", async () => {
+    const fetchSpy = respond(200, telemetry);
+    vi.stubGlobal("fetch", fetchSpy);
+    const { result } = renderHook(() => useNodeTelemetry("n1", "168h", true, undefined, "1h"), { wrapper });
+    await waitFor(() => expect(result.current.data).toEqual(telemetry));
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("/nodes/n1/telemetry?range=168h&interval=1h");
+    expect(client.getQueryData(["node-telemetry", "n1", "168h", "1h"])).toBeDefined();
+    expect(client.getQueryData(["node-telemetry", "n1", "168h"])).toBeUndefined();
+  });
+
   it("does not fetch when disabled or without an id", async () => {
     const fetchSpy = respond(200, telemetry);
     vi.stubGlobal("fetch", fetchSpy);
