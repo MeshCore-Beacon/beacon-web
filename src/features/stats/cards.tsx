@@ -126,8 +126,12 @@ export function StatCard({
       <div className={`mt-0.5 font-mono text-xl font-bold tabular-nums text-text-bright ${compact ? "" : "sm:text-2xl"}`}>{value}</div>
       <div className="mt-auto">
         {visual ?? (presence ? <PresenceStrip hours={presence} color={accent} /> : clickable ? (
-          <button type="button" aria-label={sparkLabel} onClick={onSparkClick} className="block w-full cursor-pointer rounded-sm hover:bg-text-normal/5">
-            {sparkline}
+          <button type="button" aria-label={sparkLabel} onClick={onSparkClick} className="group -mt-1.5 flex w-full cursor-pointer items-end gap-1.5 rounded-sm pt-1.5 hover:bg-text-normal/5">
+            <span className="min-w-0 flex-1">{sparkline}</span>
+            {/* says the sparkline opens larger */}
+            <svg data-expand width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-text-muted group-hover:text-text-bright" aria-hidden>
+              <path d="M5.4 0H9v3.6M9 0 5.2 3.8M3.6 9H0V5.4M0 9l3.8-3.8" />
+            </svg>
           </button>
         ) : sparkline)}
       </div>

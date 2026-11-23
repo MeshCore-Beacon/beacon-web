@@ -52,11 +52,20 @@ describe("tileGraphOption", () => {
 
   it("draws one line of [time, value] pairs in the tile's colour, with gaps left open and a dot on every point", () => {
     const series = option.series[0];
-    expect(option.series).toHaveLength(1);
     expect(series).toMatchObject({ type: "line", name: "Noise floor", connectNulls: false, showSymbol: true });
     expect(series.data).toBe(points);
     expect(series.lineStyle.color).toBe("#abc");
     expect(series.itemStyle.color).toBe("#abc");
+  });
+
+  it("joins the readings either side of a gap with faint dashes that stay out of the tooltip", () => {
+    const bridge = option.series[1];
+    expect(option.series).toHaveLength(2);
+    // the leading gap has no reading before it, so only the middle one is bridged
+    expect(bridge.data).toEqual([points[1], points[3], [points[3]![0], null]]);
+    expect(bridge).toMatchObject({ type: "line", showSymbol: false, silent: true, tooltip: { show: false } });
+    expect(bridge.lineStyle).toMatchObject({ color: "#abc", type: "dashed" });
+    expect(bridge.name).toBeUndefined();
   });
 
   it("has a UTC time axis, a value axis named by the unit, and wheel, drag and slider zoom", () => {

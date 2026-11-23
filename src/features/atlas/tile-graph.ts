@@ -77,6 +77,23 @@ export function readingPoints(readings: { t: number; v: number }[], bucketMs: nu
   return out;
 }
 
+// The reading before and after each gap, as two-point runs for a bridging line.
+export function gapBridges(points: GraphPoint[]): GraphPoint[] {
+  const out: GraphPoint[] = [];
+  let last: GraphPoint | null = null;
+  let gap = false;
+  for (const point of points) {
+    if (point[1] === null) {
+      gap = last !== null;
+      continue;
+    }
+    if (gap) out.push(last!, point, [point[0], null]);
+    last = point;
+    gap = false;
+  }
+  return out;
+}
+
 export function tileGraphOption(
   points: GraphPoint[],
   c: ChartColors,
@@ -116,6 +133,15 @@ export function tileGraphOption(
         data: points,
         lineStyle: { color: o.color, width: 1.8 },
         itemStyle: { color: o.color },
+      },
+      {
+        // Faint dashes across each gap: a guide between readings, not data.
+        type: "line",
+        showSymbol: false,
+        silent: true,
+        tooltip: { show: false },
+        data: gapBridges(points),
+        lineStyle: { color: o.color, width: 1, type: "dashed", opacity: 0.6 },
       },
     ],
   };
