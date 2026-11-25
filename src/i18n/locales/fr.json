@@ -349,7 +349,6 @@
       "colLocation": "Position",
       "observer": "Observateur",
       "poller": "Interrogateur",
-      "pollersOnly": "Interrogateurs seulement",
       "empty": "Aucun nœud",
       "neighbors_one": "{{formatted}} voisin",
       "neighbors_other": "{{formatted}} voisins",
@@ -682,6 +681,7 @@
       }
     },
     "nodeFilters": {
+      "poller": "Interrogateur",
       "exportCsv": "CSV",
       "exportCsvResult": "CSV enregistré. Nœuds chargés : {{count}}. Ce fichier ne représente pas tout le réseau.",
       "exportLoaded": "Exporter les nœuds chargés (CSV)",

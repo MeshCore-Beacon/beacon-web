@@ -23,8 +23,8 @@ interface NodeFilterBarProps {
   scopeFilter: string;
   onScopeChange: (s: string) => void;
   scopeOptions: string[];
-  pollerOnly: boolean;
-  onPollerOnlyChange: (on: boolean) => void;
+  pollerFilter: MultibyteFilter;
+  onPollerChange: (v: MultibyteFilter) => void;
   onExportCsv?: () => void;
   exportCsvDisabled?: boolean;
 }
@@ -43,8 +43,8 @@ export function NodeFilterBar({
   scopeFilter,
   onScopeChange,
   scopeOptions,
-  pollerOnly,
-  onPollerOnlyChange,
+  pollerFilter,
+  onPollerChange,
   onExportCsv,
   exportCsvDisabled,
 }: NodeFilterBarProps) {
@@ -54,7 +54,7 @@ export function NodeFilterBar({
   // close the sheet when leaving mobile — derive during render, not in an effect
   if (sheetOpen && !isMobile) setSheetOpen(false);
 
-  const activeCount = [typeFilter, pathsFilter, tracesFilter, scopeFilter, pollerOnly].filter(Boolean).length;
+  const activeCount = [typeFilter, pathsFilter, tracesFilter, scopeFilter, pollerFilter].filter(Boolean).length;
   const exportButton = onExportCsv && <button type="button" disabled={exportCsvDisabled} onClick={onExportCsv}
     title={t("nodeFilters.exportLoadedHelp")} aria-label={t("nodeFilters.exportLoaded")}
     className="h-7 shrink-0 rounded border border-border px-2 text-[11px] font-mono text-primary disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">{t("nodeFilters.exportCsv")}</button>;
@@ -63,7 +63,7 @@ export function NodeFilterBar({
     onPathsChange("");
     onTracesChange("");
     onScopeChange("");
-    onPollerOnlyChange(false);
+    onPollerChange("");
   };
 
   const multibyteOptions = [
@@ -82,17 +82,10 @@ export function NodeFilterBar({
       <SelectDropdown label={t("nodeFilters.type")} options={typeOptions} allLabel={t("nodeFilters.all")} value={typeFilter} onChange={onTypeChange} fullWidth={fullWidth} />
       <SelectDropdown label={t("nodeFilters.multibytePaths")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={pathsFilter} onChange={(v) => onPathsChange(v as MultibyteFilter)} fullWidth={fullWidth} />
       <SelectDropdown label={t("nodeFilters.multibyteTraces")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={tracesFilter} onChange={(v) => onTracesChange(v as MultibyteFilter)} fullWidth={fullWidth} />
+      <SelectDropdown label={t("nodeFilters.poller")} options={multibyteOptions} allLabel={t("nodeFilters.any")} value={pollerFilter} onChange={(v) => onPollerChange(v as MultibyteFilter)} fullWidth={fullWidth} />
       {scopeOptions.length > 0 && (
         <SelectDropdown label={t("nodeFilters.scope")} options={scopeOptions.map((s) => ({ value: s, label: s }))} allLabel={t("nodeFilters.any")} value={scopeFilter} onChange={onScopeChange} fullWidth={fullWidth} />
       )}
-      <button
-        type="button"
-        aria-pressed={pollerOnly}
-        onClick={() => onPollerOnlyChange(!pollerOnly)}
-        className={`h-7 shrink-0 rounded border px-2 text-[11px] font-mono cursor-pointer ${fullWidth ? "w-full" : ""} ${pollerOnly ? "border-primary text-primary" : "border-border text-text-muted"}`}
-      >
-        {t("nodes.pollersOnly")}
-      </button>
     </>
   );
 

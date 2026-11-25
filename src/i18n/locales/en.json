@@ -378,7 +378,6 @@
       "colLocation": "Location",
       "observer": "Observer",
       "poller": "Poller",
-      "pollersOnly": "Pollers only",
       "empty": "No nodes",
       "neighbors_one": "{{formatted}} neighbors",
       "neighbors_other": "{{formatted}} neighbors",
@@ -702,6 +701,7 @@
       }
     },
     "nodeFilters": {
+      "poller": "Poller",
       "exportCsv": "CSV",
       "exportCsvResult": "CSV saved. Loaded nodes: {{count}}. This is not a full-network export.",
       "exportLoaded": "Export loaded nodes (CSV)",

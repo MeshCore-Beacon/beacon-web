@@ -113,7 +113,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any
-  const [pollerOnly, setPollerOnly] = useState(false);
+  const [pollerFilter, setPollerFilter] = useState<MultibyteFilter>("");
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [sort, setSort] = useState<TableSort>(NAME_SORT);
@@ -216,8 +216,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   const serverSort = clientSort ? undefined : toNodeSort(sort.id);
   const queryKey = useMemo(
-    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerOnly, serverSort ?? "", serverSort ? sort.direction : ""],
-    [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerOnly, serverSort, sort.direction],
+    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerFilter, serverSort ?? "", serverSort ? sort.direction : ""],
+    [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerFilter, serverSort, sort.direction],
   );
 
   // The server filters and sorts; pages of 200 load as the table scrolls, a fresh first page for each
@@ -235,7 +235,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         supportsMultibytePaths: pathsFilter || undefined,
         supportsMultibyteTraces: tracesFilter || undefined,
         scope: scopeFilter || undefined,
-        poller: pollerOnly ? "true" : undefined,
+        poller: pollerFilter || undefined,
         sort: serverSort,
         order: sort.direction,
       }, signal),
@@ -246,7 +246,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   });
 
   // an older server ignores ?poller and a live update can clear the flag, so enforce it here too
-  const nodes = useMemo(() => (pollerOnly ? loadedNodes.filter((n) => n.isPoller) : loadedNodes), [loadedNodes, pollerOnly]);
+  const nodes = useMemo(() => (pollerFilter ? loadedNodes.filter((n) => !!n.isPoller === (pollerFilter === "true")) : loadedNodes), [loadedNodes, pollerFilter]);
 
   // rows with no `sort` beside them came from a server that didn't sort them
   if (!clientSort && firstPage && !firstPage.sort && firstPage.items.length > 0) setClientSort(true);
@@ -266,9 +266,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
-      // a node that just became a poller can't join a filtered list by patching; refetch this exact
+      // a node that just became a poller (Yes) can't join a filtered list by patching; refetch this exact
       // query (one per burst) so the server applies the other filters and the sort
-      if (pollerOnly && data.isPoller === true && !refetchTimer.current) {
+      if (pollerFilter === "true" && data.isPoller === true && !refetchTimer.current) {
         const loaded = queryClient.getQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey);
         if (loaded?.pages.some((pg) => pg.items.some((n) => n.id === data.nodeId))) return;
         refetchTimer.current = setTimeout(() => {
@@ -277,13 +277,13 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         }, 300);
       }
     },
-    [queryClient, queryKey, selectedNodeId, pollerOnly],
+    [queryClient, queryKey, selectedNodeId, pollerFilter],
   );
   // a timer armed for an old key or toggle state must not swallow an event for the new one
   useEffect(() => () => {
     clearTimeout(refetchTimer.current);
     refetchTimer.current = undefined;
-  }, [queryKey, pollerOnly]);
+  }, [queryKey, pollerFilter]);
 
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 
@@ -304,8 +304,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
-          pollerOnly={pollerOnly}
-          onPollerOnlyChange={setPollerOnly}
+          pollerFilter={pollerFilter}
+          onPollerChange={setPollerFilter}
           onExportCsv={() => { downloadNodeCsv(nodes); setCsvNotice({ count: nodes.length, key: queryKey }); }}
           exportCsvDisabled={!nodes.length || isLoading || isPaging || isError || isResolved === false}
         />

@@ -342,7 +342,6 @@
       "colLocation": "Position",
       "observer": "Observatör",
       "poller": "Pollare",
-      "pollersOnly": "Endast pollare",
       "empty": "Inga noder",
       "neighbors_one": "{{formatted}} granne",
       "neighbors_other": "{{formatted}} grannar",
@@ -666,6 +665,7 @@
       }
     },
     "nodeFilters": {
+      "poller": "Pollare",
       "exportCsv": "CSV",
       "exportCsvResult": "CSV sparad. Inlästa noder: {{count}}. Detta är inte en export av hela nätet.",
       "exportLoaded": "Exportera inlästa noder (CSV)",
