@@ -281,3 +281,32 @@ describe("NodeTable server order", () => {
     expect(names()).toEqual(["Zulu", "Alpha"]);
   });
 });
+
+describe("NodeTable role icons", () => {
+  const EYE = 'path[stroke="#c79bff"]';
+  const PULSE = 'path[stroke="#ffb454"]';
+
+  it("shows the poller icon with its tooltip and not the eye for a poller", async () => {
+    mount([node({ id: "p", name: "Pol", isObserver: true, isPoller: true })]);
+    const row = (await screen.findByText("Pol")).closest("tr")!;
+    const pulse = row.querySelector(PULSE)!;
+    expect(pulse).not.toBeNull();
+    expect(row.querySelector(EYE)).toBeNull();
+    fireEvent.mouseEnter(pulse.closest("span")!);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Poller");
+  });
+
+  it("shows the eye for an observer-only node", async () => {
+    mount([node({ id: "o", name: "Obs", isObserver: true })]);
+    const row = (await screen.findByText("Obs")).closest("tr")!;
+    expect(row.querySelector(EYE)).not.toBeNull();
+    expect(row.querySelector(PULSE)).toBeNull();
+  });
+
+  it("sends poller=true once Pollers only is switched on", async () => {
+    mount([node({ id: "a", name: "Node A" })]);
+    await screen.findByText("Node A");
+    fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+    await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true" }), expect.any(AbortSignal)));
+  });
+});

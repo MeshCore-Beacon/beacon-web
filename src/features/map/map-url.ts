@@ -15,6 +15,7 @@ export interface ParsedMapView {
   flow?: boolean;
   borders?: boolean;
   telemetry?: boolean;
+  pollersOnly?: boolean;
 }
 
 // The live map state a copy-link snapshot is built from (every field concrete).
@@ -28,6 +29,7 @@ export interface MapViewSnapshot {
   flow: boolean;
   borders: boolean;
   telemetry?: boolean; // left out of the link when the toggle is not offered
+  pollersOnly?: boolean;
 }
 
 const NEIGHBOR_MODES: NeighborLinesMode[] = ["on", "selected", "off"];
@@ -94,6 +96,8 @@ export function parseMapView(params: URLSearchParams): ParsedMapView {
   const telemetry = parseBool(params.get("telemetry"));
   if (telemetry !== undefined) view.telemetry = telemetry;
 
+  if (params.get("pollers") === "1") view.pollersOnly = true;
+
   return view;
 }
 
@@ -117,6 +121,7 @@ export function buildMapParams(view: MapViewSnapshot): Record<string, string | n
     style: view.styleId,
     flow: view.flow ? "on" : "off",
     borders: view.borders ? "on" : "off",
+    pollers: view.pollersOnly ? "1" : null,
     ...(view.telemetry !== undefined && { telemetry: view.telemetry ? "on" : "off" }),
   };
 }

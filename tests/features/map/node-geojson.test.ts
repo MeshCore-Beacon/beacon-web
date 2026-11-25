@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, neighborFocusIds, buildFocusedNeighborEdges } from "../../../src/features/map/node-geojson";
+import { nodesToFeatureCollection, filterByNodeType, filterByPoller, buildNeighborEdges, neighborFocusIds, buildFocusedNeighborEdges } from "../../../src/features/map/node-geojson";
 import type { NodeSummary, NodeNeighbor } from "../../../src/features/nodes/types";
 
 function node(overrides: Partial<NodeSummary>): NodeSummary {
@@ -43,6 +43,7 @@ describe("nodesToFeatureCollection", () => {
       name: "Relay A",
       nodeTypeName: "sensor",
       isObserver: false,
+      isPoller: false,
     });
   });
 
@@ -260,5 +261,27 @@ describe("nodesToFeatureCollection telemetry labels", () => {
   it("leaves the props absent without a label map", () => {
     const fc = nodesToFeatureCollection(nodes);
     expect("telemetry" in fc.features[0]!.properties).toBe(false);
+  });
+});
+
+describe("poller flag", () => {
+  const fc = nodesToFeatureCollection([
+    node({ id: "p1", nodeTypeName: "repeater", isPoller: true }),
+    node({ id: "r2", nodeTypeName: "repeater" }),
+    node({ id: "p3", nodeTypeName: "companion", isPoller: true }),
+  ]);
+
+  it("carries isPoller, defaulting to false when the server omits it", () => {
+    expect(fc.features.map((f) => f.properties.isPoller)).toEqual([true, false, true]);
+  });
+
+  it("keeps only pollers when on and returns the same collection when off", () => {
+    expect(filterByPoller(fc, true).features.map((f) => f.properties.id)).toEqual(["p1", "p3"]);
+    expect(filterByPoller(fc, false)).toBe(fc);
+  });
+
+  it("chains with the node type filter so both apply", () => {
+    const out = filterByPoller(filterByNodeType(fc, "repeater"), true);
+    expect(out.features.map((f) => f.properties.id)).toEqual(["p1"]);
   });
 });

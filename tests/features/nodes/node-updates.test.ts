@@ -172,3 +172,18 @@ describe("upsertNodePages", () => {
     expect(out.pages[0]!.items[1]).toMatchObject({ id: "new1", lat: null, lng: null });
   });
 });
+
+describe("isPoller patching", () => {
+  it("sets the flag on an existing node and clears it again", () => {
+    const list = [node({ id: "a" })];
+    const on = patchNodeSummary(list, update({ nodeId: "a", name: "Node 1", lat: 45, lng: -75, isPoller: true }))!;
+    expect(on[0]!.isPoller).toBe(true);
+    const off = patchNodeSummary(on, update({ nodeId: "a", name: "Node 1", lat: 45, lng: -75, isPoller: false }))!;
+    expect(off[0]!.isPoller).toBe(false);
+  });
+
+  it("keeps the flag and list identity when the event omits it", () => {
+    const list = [node({ id: "a", name: "Node 1", isPoller: true })];
+    expect(patchNodeSummary(list, update({ nodeId: "a", name: "Node 1", lat: 45, lng: -75 }))).toBe(list);
+  });
+});

@@ -260,6 +260,7 @@
       "chartDescription": "Effectifs par scope de transport. Les valeurs exactes de tous les scopes correspondants figurent dans le tableau."
     },
     "nodeDetail": {
+      "poller": "Interrogateur",
       "viewOnMap": "Voir sur la carte",
       "lastSeen": "Vu pour la dernière fois",
       "details": "Détails",
@@ -347,6 +348,8 @@
       "colLastHeard": "Dernier contact",
       "colLocation": "Position",
       "observer": "Observateur",
+      "poller": "Interrogateur",
+      "pollersOnly": "Interrogateurs seulement",
       "empty": "Aucun nœud",
       "neighbors_one": "{{formatted}} voisin",
       "neighbors_other": "{{formatted}} voisins",
@@ -636,6 +639,7 @@
       "tiles": "Fond de carte",
       "nodeType": "Type de nœud",
       "nodeTypeLabel": "Type de nœud",
+      "pollersOnly": "Interrogateurs seulement",
       "clustering": "Regroupement",
       "clusteringLiveNote": "Désactivé tant que la carte en direct est active",
       "neighborLines": "Liens de voisinage",

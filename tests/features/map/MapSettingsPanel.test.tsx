@@ -102,3 +102,20 @@ describe("telemetry row", () => {
     expect(onTelemetryChange).toHaveBeenCalledWith(true);
   });
 });
+
+describe("pollers only toggle", () => {
+  it("reports On and reflects the current state", async () => {
+    await i18n.changeLanguage("en");
+    const onPollersOnlyChange = vi.fn();
+    render(
+      <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
+        clustered onClusteredChange={() => {}} neighborLines="selected" onNeighborLinesChange={() => {}}
+        borders={false} onBordersChange={() => {}} terrain={false} onTerrainChange={() => {}} buildShareParams={() => ({})}
+        pollersOnly={false} onPollersOnlyChange={onPollersOnlyChange} />,
+    );
+    const group = screen.getByRole("group", { name: "Pollers only" });
+    expect(within(group).getByRole("button", { name: "Off" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(group).getByRole("button", { name: "On" }));
+    expect(onPollersOnlyChange).toHaveBeenCalledWith(true);
+  });
+});

@@ -7,7 +7,7 @@ it("keeps missing values blank, real zeros/negative coordinates, Unicode and quo
   const csv = nodeCsv([{ ...node, name: 'Répeté, "test"\nnext', radio: undefined }]);
   expect(csv).toContain('"Répeté, ""test""\nnext"');
   expect(csv).toContain('"0","-80.5",');
-  expect(csv).toContain('"0","false",""');
+  expect(csv).toContain('"0","false","false",""');
   expect(csv.startsWith("\uFEFF")).toBe(true);
   expect(csv.endsWith("\r\n")).toBe(true);
 });
@@ -19,4 +19,9 @@ it("exports only supplied rows and uses stable UTC times without inventing missi
   expect(csv).toContain("1970-01-01T00:00:00.000Z");
   expect(csv).not.toMatch(/NaN|Infinity|undefined/);
   expect(csv.split("\r\n")).toHaveLength(4);
+});
+it("puts is_poller after is_observer and carries the value", () => {
+  const [header, row] = nodeCsv([{ ...node, isPoller: true }]).replace("\uFEFF", "").split("\r\n");
+  expect(header).toContain('"is_observer","is_poller","last_heard_utc"');
+  expect(row).toContain('"false","true",""');
 });

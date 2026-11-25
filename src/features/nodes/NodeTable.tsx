@@ -13,6 +13,7 @@ import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { Timestamp } from "../../components/Timestamp";
 import { ObserverIcon } from "../../components/ObserverIcon";
+import { PollerIcon } from "../../components/PollerIcon";
 import { DataTable, type Column, type TableSort } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
@@ -77,7 +78,9 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
         {node.lastSeen != null && <Timestamp value={node.lastSeen} className="shrink-0 text-text-dim text-[11px]" />}
         <span className="shrink-0">
           <Badge variant="default">
-            {node.isObserver && (
+            {node.isPoller ? (
+              <Tooltip label={t("nodes.poller")} className="mr-1"><PollerIcon /></Tooltip>
+            ) : node.isObserver && (
               <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
             )}
             {node.nodeTypeName}
@@ -110,6 +113,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any
+  const [pollerOnly, setPollerOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [sort, setSort] = useState<TableSort>(NAME_SORT);
@@ -137,7 +141,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       cell: (node) => (
         <div className="flex flex-wrap gap-1">
           <Badge variant="default">
-            {node.isObserver && (
+            {node.isPoller ? (
+              <Tooltip label={t("nodes.poller")} className="mr-1"><PollerIcon /></Tooltip>
+            ) : node.isObserver && (
               <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
             )}
             {node.nodeTypeName}
@@ -210,8 +216,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   const serverSort = clientSort ? undefined : toNodeSort(sort.id);
   const queryKey = useMemo(
-    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, serverSort ?? "", serverSort ? sort.direction : ""],
-    [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, serverSort, sort.direction],
+    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerOnly, serverSort ?? "", serverSort ? sort.direction : ""],
+    [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerOnly, serverSort, sort.direction],
   );
 
   // The server filters and sorts; pages of 200 load as the table scrolls, a fresh first page for each
@@ -229,6 +235,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         supportsMultibytePaths: pathsFilter || undefined,
         supportsMultibyteTraces: tracesFilter || undefined,
         scope: scopeFilter || undefined,
+        poller: pollerOnly ? "true" : undefined,
         sort: serverSort,
         order: sort.direction,
       }, signal),
@@ -278,6 +285,8 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          pollerOnly={pollerOnly}
+          onPollerOnlyChange={setPollerOnly}
           onExportCsv={() => { downloadNodeCsv(nodes); setCsvNotice({ count: nodes.length, key: queryKey }); }}
           exportCsvDisabled={!nodes.length || isLoading || isPaging || isError || isResolved === false}
         />

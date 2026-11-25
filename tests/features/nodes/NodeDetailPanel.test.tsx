@@ -488,3 +488,17 @@ describe("NodeDetailPanel layout", () => {
     expect(link.closest("[data-summary]")).not.toBeNull();
   });
 });
+
+describe("NodeDetailPanel poller chip", () => {
+  it("shows a Poller chip for a poller node", async () => {
+    mockGetNode.mockResolvedValue({ ...node, isObserver: true, isPoller: true });
+    renderPanel();
+    expect(await screen.findByText("Poller")).toBeInTheDocument();
+  });
+
+  it("shows no chip for a non-poller", async () => {
+    renderPanel();
+    await screen.findByText("Self Node");
+    expect(screen.queryByText("Poller")).not.toBeInTheDocument();
+  });
+});

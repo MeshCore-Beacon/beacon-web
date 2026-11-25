@@ -10,6 +10,7 @@ export interface NodeFeatureProps {
   name: string | null;
   nodeTypeName: string;
   isObserver: boolean; // role flag; selects the observer-pip marker variant (default false)
+  isPoller: boolean; // role flag; selects the poller-pip marker variant (default false)
   telemetry?: string; // battery/temperature label; absent when the node has no reading
   telemetryOld?: boolean;
 }
@@ -31,6 +32,7 @@ export function nodesToFeatureCollection(
         name: n.name,
         nodeTypeName: n.nodeTypeName,
         isObserver: !!n.isObserver,
+        isPoller: !!n.isPoller,
         ...(label && { telemetry: label.text, telemetryOld: label.old }),
       },
     });
@@ -151,4 +153,13 @@ export function filterByNodeType(
 ): FeatureCollection<Point, NodeFeatureProps> {
   if (typeName === "") return fc;
   return { ...fc, features: fc.features.filter((f) => f.properties.nodeTypeName === typeName) };
+}
+
+// Keep only pollers when on; off returns the collection untouched.
+export function filterByPoller(
+  fc: FeatureCollection<Point, NodeFeatureProps>,
+  pollersOnly: boolean,
+): FeatureCollection<Point, NodeFeatureProps> {
+  if (!pollersOnly) return fc;
+  return { ...fc, features: fc.features.filter((f) => f.properties.isPoller) };
 }

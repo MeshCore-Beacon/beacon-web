@@ -184,6 +184,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
                   <EmojiText text={node.name ?? formatHex(node.id)} />
                 </span>
                 <Badge variant="default">{node.nodeTypeName}</Badge>
+                {node.isPoller && <Badge variant="default" normalCase>{t("nodeDetail.poller")}</Badge>}
                 <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
                 {node.meshmapper?.carpeater && (
                   <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>

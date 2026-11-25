@@ -116,6 +116,7 @@ export interface WsNodeUpdate {
     lat?: number | null;
     lng?: number | null;
     isObserver: boolean;
+    isPoller?: boolean; // omitted leaves the prior value unchanged
     iatas: NodeIATA[];
     defaultScope?: string;
     radio?: string; // compact "freq,bw,sf" string

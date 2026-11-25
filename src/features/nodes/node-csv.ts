@@ -11,13 +11,13 @@ function cell(value: string | number | boolean | null | undefined): string {
 export function nodeCsv(nodes: readonly NodeSummary[]): string {
   const rows: (string | number | boolean | null | undefined)[][] = [[
     "id", "public_key", "name", "type", "latitude", "longitude", "radio",
-    "matched_scope", "heard_areas", "known_neighbors", "is_observer", "last_heard_utc",
+    "matched_scope", "heard_areas", "known_neighbors", "is_observer", "is_poller", "last_heard_utc",
   ]];
   for (const node of nodes) {
     const date = new Date(node.lastSeen ?? NaN);
     rows.push([node.id, node.publicKey, node.name, node.nodeTypeName, node.lat, node.lng,
       node.radio, node.defaultScope, (node.iatas ?? []).map(i => i.iata).join(";"),
-      node.knownNeighborCount, node.isObserver, Number.isNaN(date.valueOf()) ? "" : date.toISOString()]);
+      node.knownNeighborCount, node.isObserver, !!node.isPoller, Number.isNaN(date.valueOf()) ? "" : date.toISOString()]);
   }
   return "\uFEFF" + rows.map(row => row.map(cell).join(",")).join("\r\n") + "\r\n";
 }
