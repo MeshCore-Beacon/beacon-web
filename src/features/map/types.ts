@@ -21,6 +21,7 @@ export const DEFAULT_STYLE_ID = "dark";
 // beacon-* matches the codebase convention (beacon-theme, beacon-region, beacon-analyzer-open)
 export const MAP_STYLE_STORAGE_KEY = "beacon-map-style";
 export const MAP_CLUSTER_STORAGE_KEY = "beacon-map-clustering";
+export const MAP_POLLERS_ONLY_STORAGE_KEY = "beacon-map-pollers-only";
 export const MAP_NODE_TYPE_STORAGE_KEY = "beacon-map-node-type";
 
 // Always returns an option: falls back to the first entry, which also covers a stale/invalid id

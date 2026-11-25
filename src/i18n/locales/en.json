@@ -1104,6 +1104,7 @@
       "heardUnavailable": "Packet details are unavailable or expired.",
       "openPacket": "Open packet",
       "fieldObserver": "Observer",
+      "pollerBadge": "Poller",
       "observerBadge": "Observer",
       "viewAnalytics": "Analytics",
       "viewHeard": "Heard by",

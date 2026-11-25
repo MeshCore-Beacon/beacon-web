@@ -327,6 +327,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                             <span className={`truncate ${node.name ? "text-text-bright" : "italic text-text-dim"}`}>{label}</span>
                             <Badge variant="default">{node.nodeTypeName}</Badge>
                             {node.isObserver && <Badge variant="default">{t("atlas.observerBadge")}</Badge>}
+                            {node.isPoller && <Badge variant="default">{t("atlas.pollerBadge")}</Badge>}
                             <Tooltip label={node.publicKey}>
                               <code className="text-text-dim">{formatHex(node.publicKey)}</code>
                             </Tooltip>

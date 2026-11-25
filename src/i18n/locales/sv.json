@@ -998,6 +998,7 @@
         "noneReach": "Larm skickas inte förrän du slår på e-post eller push.",
         "openProfile": "Öppna larminställningar"
       },
+      "pollerBadge": "Pollare",
       "syncedToAccount": "Synkad med ditt konto",
       "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",
       "syncFailed": "Det gick inte att spara Atlas på ditt konto. Din ändring finns kvar på den här enheten.",

@@ -381,6 +381,24 @@ describe("NodeTable role icons", () => {
       expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
     });
 
+    it("a timer armed for an old key does not swallow an event for the new one", async () => {
+      await mountWs();
+      fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      act(() => push(update({ nodeId: "y", isPoller: true }))); // arms the timer for the old key
+      fireEvent.click(within(screen.getByRole("toolbar")).getAllByRole("button", { name: /^type/i })[0]!);
+      fireEvent.click(await screen.findByRole("option", { name: "Repeater" }));
+      await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ type: "repeater" }), expect.any(AbortSignal)));
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      serverHasX = true;
+      act(() => push(update({ isPoller: true })));
+      await screen.findByText("Xray");
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
+    });
+
     it("does not refetch with the toggle off, or for a poller already loaded", async () => {
       await mountWs();
       const before = vi.mocked(getNodesPage).mock.calls.length;

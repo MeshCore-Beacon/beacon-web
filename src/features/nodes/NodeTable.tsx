@@ -279,7 +279,11 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     },
     [queryClient, queryKey, selectedNodeId, pollerOnly],
   );
-  useEffect(() => () => clearTimeout(refetchTimer.current), []);
+  // a timer armed for an old key or toggle state must not swallow an event for the new one
+  useEffect(() => () => {
+    clearTimeout(refetchTimer.current);
+    refetchTimer.current = undefined;
+  }, [queryKey, pollerOnly]);
 
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 

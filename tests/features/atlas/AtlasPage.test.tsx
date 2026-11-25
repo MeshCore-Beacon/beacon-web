@@ -178,6 +178,18 @@ describe("Atlas page", () => {
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
   });
 
+  it("badges a poller result with both Observer and Poller, and a plain one with neither", async () => {
+    const plain = { ...node, id: second.id, publicKey: second.publicKey, name: "Plain node" };
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [{ ...node, isObserver: true, isPoller: true }, plain], hasMore: false, nextCursor: null });
+    mount();
+    typeSearch("node");
+    const row = (await screen.findByRole("button", { name: "Add Renamed repeater" })).closest("li")!;
+    expect(within(row).getByText("Observer")).toBeInTheDocument();
+    expect(within(row).getByText("Poller")).toBeInTheDocument();
+    const plainRow = screen.getByRole("button", { name: "Add Plain node" }).closest("li")!;
+    expect(within(plainRow).queryByText("Poller")).not.toBeInTheDocument();
+  });
+
   it("tells two results with the same name and type apart by their key prefix", async () => {
     const twin = { ...node, id: second.id, publicKey: second.publicKey };
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node, twin], hasMore: false, nextCursor: null });

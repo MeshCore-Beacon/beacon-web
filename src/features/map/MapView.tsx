@@ -15,7 +15,7 @@ import { nodesToFeatureCollection, filterByNodeType, filterByPoller, buildNeighb
 import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, MAP_TELEMETRY_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_POLLERS_ONLY_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, MAP_TELEMETRY_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -75,7 +75,13 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
     localStorage.setItem(MAP_NODE_TYPE_STORAGE_KEY, t);
   }, []);
 
-  const [pollersOnly, setPollersOnly] = useState(() => urlView.pollersOnly ?? false);
+  const [pollersOnly, setPollersOnly] = useState(
+    () => urlView.pollersOnly ?? localStorage.getItem(MAP_POLLERS_ONLY_STORAGE_KEY) === "on",
+  );
+  const handlePollersOnlyChange = useCallback((on: boolean) => {
+    setPollersOnly(on);
+    localStorage.setItem(MAP_POLLERS_ONLY_STORAGE_KEY, on ? "on" : "off");
+  }, []);
 
   const [clustered, setClustered] = useState(
     () => urlView.clustered ?? localStorage.getItem(MAP_CLUSTER_STORAGE_KEY) !== "off",
@@ -285,7 +291,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         typeFilter={typeFilter}
         onTypeChange={handleTypeChange}
         pollersOnly={pollersOnly}
-        onPollersOnlyChange={setPollersOnly}
+        onPollersOnlyChange={handlePollersOnlyChange}
         clustered={clustered}
         onClusteredChange={handleClusteredChange}
         neighborLines={neighborLines}
