@@ -222,7 +222,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   // The server filters and sorts; pages of 200 load as the table scrolls, a fresh first page for each
   // filter set and order. WS updates keep loaded rows live, no 30s refetch.
-  const { items: nodes, loadedCount, isPaging, isError, isLoading, loadMore, firstPage } = useInfinitePages<NodeSummary, number, NodePage>({
+  const { items: loadedNodes, loadedCount, isPaging, isError, isLoading, loadMore, firstPage } = useInfinitePages<NodeSummary, number, NodePage>({
     queryKey,
     queryFn: (page, signal) =>
       getNodesPage(iatas, {
@@ -244,6 +244,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
     auto: clientSort,
     enabled: isResolved !== false,
   });
+
+  // an older server ignores ?poller and a live update can clear the flag, so enforce it here too
+  const nodes = useMemo(() => (pollerOnly ? loadedNodes.filter((n) => n.isPoller) : loadedNodes), [loadedNodes, pollerOnly]);
 
   // rows with no `sort` beside them came from a server that didn't sort them
   if (!clientSort && firstPage && !firstPage.sort && firstPage.items.length > 0) setClientSort(true);

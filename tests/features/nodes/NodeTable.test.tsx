@@ -303,6 +303,27 @@ describe("NodeTable role icons", () => {
     expect(row.querySelector(PULSE)).toBeNull();
   });
 
+  it("hides rows without isPoller when Pollers only is on, as an older server ignores the param", async () => {
+    mount([node({ id: "a", name: "Plain" }), node({ id: "b", name: "Pulse", isObserver: true, isPoller: true })]);
+    await screen.findByText("Plain");
+    fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+    await waitFor(() => expect(screen.queryByText("Plain")).not.toBeInTheDocument());
+    expect(screen.getByText("Pulse")).toBeInTheDocument();
+  });
+
+  it("drops a row from the Pollers only list when a live update clears its flag", async () => {
+    let push: (data: WsNodeUpdate["data"]) => void = () => {};
+    const ws = { onNodeUpdate: (h: typeof push) => { push = h; return () => {}; } } as unknown as WsManager;
+    vi.mocked(getNodesPage).mockResolvedValue({ items: [node({ id: "b", name: "Pulse", isObserver: true, isPoller: true })], nextCursor: null, hasMore: false });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><NodeTable wsManager={ws} selectedNodeId={null} onSelectNode={vi.fn()} /></QueryClientProvider>);
+    await screen.findByText("Pulse");
+    fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+    await screen.findByText("Pulse");
+    act(() => push({ nodeId: "b", publicKey: "aabbccdd", name: "Pulse", nodeType: 2, nodeTypeName: "REPEATER", iata: "YVR", isObserver: true, isPoller: false, iatas: [] }));
+    await waitFor(() => expect(screen.queryByText("Pulse")).not.toBeInTheDocument());
+  });
+
   it("sends poller=true once Pollers only is switched on", async () => {
     mount([node({ id: "a", name: "Node A" })]);
     await screen.findByText("Node A");
