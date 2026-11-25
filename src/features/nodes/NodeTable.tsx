@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getNodesPage } from "../../api/client";
@@ -258,6 +258,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   const scopeOptions = useScopes(scopeFilter);
 
+  const refetchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
       // the event rides on an advert just heard, so its row's Last heard becomes now; no row moves
@@ -265,9 +266,20 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
+      // a node that just became a poller can't join a filtered list by patching; refetch this exact
+      // query (one per burst) so the server applies the other filters and the sort
+      if (pollerOnly && data.isPoller === true && !refetchTimer.current) {
+        const loaded = queryClient.getQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey);
+        if (loaded?.pages.some((pg) => pg.items.some((n) => n.id === data.nodeId))) return;
+        refetchTimer.current = setTimeout(() => {
+          refetchTimer.current = undefined;
+          void queryClient.invalidateQueries({ queryKey, exact: true });
+        }, 300);
+      }
     },
-    [queryClient, queryKey, selectedNodeId],
+    [queryClient, queryKey, selectedNodeId, pollerOnly],
   );
+  useEffect(() => () => clearTimeout(refetchTimer.current), []);
 
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 

@@ -53,7 +53,7 @@ export function nodeTypeColor(typeName: string): string {
 // Observer is a ROLE pip layered on any type; keep a fixed accent so it reads consistently and
 // contrasts the (theme-tinted) node color.
 const OBSERVER_COLOR = "#c79bff";
-// Poller pip (pulse) replaces the observer eye on nodes that are polled for telemetry.
+// Poller pip (pulse) replaces the observer eye on observers with a stored polling claim.
 const POLLER_COLOR = "#ffb454";
 
 // On the light basemaps the hollow Wireframe glyph loses contrast, so a near-white disc is filled

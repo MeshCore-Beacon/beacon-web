@@ -324,6 +324,79 @@ describe("NodeTable role icons", () => {
     await waitFor(() => expect(screen.queryByText("Pulse")).not.toBeInTheDocument());
   });
 
+  describe("a node becoming a poller while Pollers only is on", () => {
+    let push: (data: WsNodeUpdate["data"]) => void = () => {};
+    const ws = { onNodeUpdate: (h: typeof push) => { push = h; return () => {}; } } as unknown as WsManager;
+    let serverHasX = false;
+    const answer = (p: Parameters<typeof getNodesPage>[1]) => ({
+      items: p?.poller === "true" && !serverHasX ? [node({ id: "a", name: "Alpha", isPoller: true })]
+        : p?.poller === "true" ? [node({ id: "a", name: "Alpha", isPoller: true }), node({ id: "x", name: "Xray", isPoller: true })]
+        : [node({ id: "a", name: "Alpha", isPoller: true })],
+      nextCursor: null, hasMore: false,
+    });
+    const update = (over: Partial<WsNodeUpdate["data"]>): WsNodeUpdate["data"] =>
+      ({ nodeId: "x", publicKey: "aabbccdd", name: "Xray", nodeType: 2, nodeTypeName: "REPEATER", iata: "YVR", isObserver: true, iatas: [], ...over });
+    const mountWs = async () => {
+      serverHasX = false;
+      vi.mocked(getNodesPage).mockImplementation(async (_i, p) => answer(p));
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      render(<QueryClientProvider client={client}><NodeTable wsManager={ws} selectedNodeId={null} onSelectNode={vi.fn()} /></QueryClientProvider>);
+      await screen.findByText("Alpha");
+    };
+
+    it("refetches the active query and shows the node once the server returns it", async () => {
+      await mountWs();
+      fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+      await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true" }), expect.any(AbortSignal)));
+      await screen.findByText("Alpha");
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      serverHasX = true;
+      act(() => push(update({ isPoller: true })));
+      expect(await screen.findByText("Xray")).toBeInTheDocument();
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
+      expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true" }), expect.any(AbortSignal));
+    });
+
+    it("carries the type filter in that refetch", async () => {
+      await mountWs();
+      fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+      fireEvent.click(within(screen.getByRole("toolbar")).getAllByRole("button", { name: /^type/i })[0]!);
+      fireEvent.click(await screen.findByRole("option", { name: "Repeater" }));
+      await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true", type: "repeater" }), expect.any(AbortSignal)));
+      await screen.findByText("Alpha");
+      serverHasX = true;
+      act(() => push(update({ isPoller: true })));
+      await screen.findByText("Xray");
+      expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true", type: "repeater" }), expect.any(AbortSignal));
+    });
+
+    it("coalesces a burst of updates into one refetch", async () => {
+      await mountWs();
+      fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      act(() => { for (const id of ["x", "y", "z"]) push(update({ nodeId: id, isPoller: true })); });
+      await act(async () => new Promise((r) => setTimeout(r, 800)));
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
+    });
+
+    it("does not refetch with the toggle off, or for a poller already loaded", async () => {
+      await mountWs();
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      act(() => push(update({ isPoller: true })));
+      await act(async () => new Promise((r) => setTimeout(r, 800)));
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before);
+      fireEvent.click(screen.getByRole("button", { name: "Pollers only" }));
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      const mid = vi.mocked(getNodesPage).mock.calls.length;
+      act(() => push(update({ nodeId: "a", name: "Alpha", isPoller: true })));
+      await act(async () => new Promise((r) => setTimeout(r, 800)));
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(mid);
+    });
+  });
+
   it("sends poller=true once Pollers only is switched on", async () => {
     mount([node({ id: "a", name: "Node A" })]);
     await screen.findByText("Node A");
