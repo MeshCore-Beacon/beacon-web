@@ -271,6 +271,16 @@ export async function rasterizeNodeIcon(id: string, isDark: boolean): Promise<Ra
     return { data, pixelRatio: scale };
   }
 
+  const svg = nodeIconSvg(id, isDark);
+  if (!svg) return null;
+  // light basemaps use the hollow Wireframe glyph -> give it a solid backing for contrast
+  const backing = isDark ? undefined : WIREFRAME_BACKING;
+  const data = await rasterizeSvg(svg, scale, MARKER_SIZE, backing);
+  return { data, pixelRatio: scale };
+}
+
+// The themed glyph SVG for a plain, -observer or -poller node icon id; null for any other id.
+export function nodeIconSvg(id: string, isDark: boolean): string | null {
   const PREFIX = "node-";
   if (!id.startsWith(PREFIX)) return null;
   const variant = id.endsWith("-poller") ? "poller" : id.endsWith("-observer") ? "observer" : "";
@@ -278,9 +288,6 @@ export async function rasterizeNodeIcon(id: string, isDark: boolean): Promise<Ra
   const color = NODE_TYPE_COLOR[type];
   const svg = svgText(type, variant, isDark);
   if (!color || !svg) return null;
-  const nodeColor = styles.getPropertyValue(color.colorVar).trim() || color.fallback;
-  // light basemaps use the hollow Wireframe glyph -> give it a solid backing for contrast
-  const backing = isDark ? undefined : WIREFRAME_BACKING;
-  const data = await rasterizeSvg(styleSvg(svg, nodeColor, isDark), scale, MARKER_SIZE, backing);
-  return { data, pixelRatio: scale };
+  const nodeColor = getComputedStyle(document.documentElement).getPropertyValue(color.colorVar).trim() || color.fallback;
+  return styleSvg(svg, nodeColor, isDark);
 }

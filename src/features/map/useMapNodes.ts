@@ -83,8 +83,9 @@ function syncLeafSelectionRing(map: MapLibreMap, selectedId: string | null): voi
   );
 }
 
-// Icon per device type; pollers get the -poller pip, observers the -observer pip, unknown types the fallback ring.
-const ICON_IMAGE: ExpressionSpecification = [
+// Icon per device type: pollers get the -poller pip, observers the -observer pip,
+// unknown types the fallback ring.
+export const ICON_IMAGE: ExpressionSpecification = [
   "match",
   ["get", "nodeTypeName"],
   ...NODE_TYPE_NAMES.flatMap((t) => [
