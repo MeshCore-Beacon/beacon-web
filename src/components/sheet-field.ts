@@ -6,7 +6,7 @@ export const fieldButtonClass = (open: boolean) =>
     open ? "border-primary" : "border-border"
   }`;
 
-export const FIELD_LABEL_CLASS = "absolute -top-2 left-3 bg-bg-surface px-1 text-[11px] leading-4 text-primary";
+export const FIELD_LABEL_CLASS = "absolute -top-2 left-3 bg-bg-surface px-1 font-mono text-[11px] leading-4 text-primary";
 export const FIELD_VALUE_CLASS = "min-w-0 truncate text-[15px] text-text-bright";
 
 // Outlined text input for a sheet field: same 56px box as the select fields, 16px text (no iOS zoom).
