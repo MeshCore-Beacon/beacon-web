@@ -98,12 +98,13 @@ const TYPE_CLASSES: Record<string, string> = {
 const UNKNOWN_TYPE = "bg-text-muted/10 text-text-muted border-text-muted/12";
 
 export function TypeChip({ typeName }: { typeName: string }) {
+  const { t } = useTranslation();
   const key = typeName.toLowerCase();
   const known = key in TYPE_CLASSES;
   return (
     <span data-chip="type" className={`${BASE} px-2 uppercase ${known ? TYPE_CLASSES[key] : UNKNOWN_TYPE}`}>
       {known && <Glyph name={key} />}
-      {typeName}
+      {t(`nodeTypes.${key}`, { defaultValue: typeName.replaceAll("_", " ") })}
     </span>
   );
 }

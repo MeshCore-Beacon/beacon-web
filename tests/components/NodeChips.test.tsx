@@ -10,6 +10,13 @@ describe("NodeChips", () => {
     expect(b).toHaveClass("text-warn");
   });
 
+  it("shows the translated type label, and spaces for an unknown name with underscores", () => {
+    render(<><TypeChip typeName="room_server" /><TypeChip typeName="mystery_box" /></>);
+    expect(screen.getByText("Room")).toBeInTheDocument();
+    expect(screen.getByText("mystery box")).toBeInTheDocument();
+    expect(screen.queryByText(/_/)).not.toBeInTheDocument();
+  });
+
   it("draws a glyph-only role chip with an accessible name, and a worded one in the panel", () => {
     const { rerender } = render(<RoleChip role="observer" glyphOnly />);
     expect(screen.getByRole("img", { name: "Observer" })).toBeInTheDocument();
