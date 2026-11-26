@@ -37,6 +37,7 @@ function svgText(type: string, variant: "" | "observer" | "poller", isDark: bool
 }
 
 // Per-type node color (theme palette var + hard fallback). Drives the glyph via the SVG's currentColor.
+// The nodes list and panel chips (components/NodeChips.tsx TYPE_CLASSES) use these colours; keep them in step.
 const NODE_TYPE_COLOR: Record<string, { colorVar: string; fallback: string }> = {
   companion: { colorVar: "--palette-primary", fallback: "#3B82F6" },
   repeater: { colorVar: "--palette-secondary", fallback: "#A78BFA" },

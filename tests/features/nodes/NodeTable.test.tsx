@@ -288,24 +288,54 @@ async function pickPoller(option: "Yes" | "No" | "Any") {
 }
 
 describe("NodeTable role icons", () => {
-  const EYE = 'path[stroke="#c79bff"]';
-  const PULSE = 'path[stroke="#ffb454"]';
+  const chips = (row: HTMLElement) => [...row.querySelectorAll("[data-chip]")].map((c) => c.getAttribute("data-chip"));
 
-  it("shows the poller icon with its tooltip and not the eye for a poller", async () => {
+  it("shows the poller then observer glyph chips, then the type chip, for a poller", async () => {
     mount([node({ id: "p", name: "Pol", isObserver: true, isPoller: true })]);
     const row = (await screen.findByText("Pol")).closest("tr")!;
-    const pulse = row.querySelector(PULSE)!;
-    expect(pulse).not.toBeNull();
-    expect(row.querySelector(EYE)).toBeNull();
-    fireEvent.mouseEnter(pulse.closest("span")!);
+    expect(chips(row)).toEqual(["poller", "observer", "type"]);
+    const pulse = within(row).getByRole("img", { name: "Poller" });
+    expect(within(row).getByRole("img", { name: "Observer" })).toBeInTheDocument();
+    fireEvent.mouseEnter(pulse.parentElement!);
     expect(screen.getByRole("tooltip")).toHaveTextContent("Poller");
   });
 
-  it("shows the eye for an observer-only node", async () => {
+  it("shows only the eye for an observer-only node", async () => {
     mount([node({ id: "o", name: "Obs", isObserver: true })]);
     const row = (await screen.findByText("Obs")).closest("tr")!;
-    expect(row.querySelector(EYE)).not.toBeNull();
-    expect(row.querySelector(PULSE)).toBeNull();
+    expect(chips(row)).toEqual(["observer", "type"]);
+  });
+
+  it("shows no role chips for a node without the flags", async () => {
+    mount([node({ id: "n", name: "Plain" })]);
+    const row = (await screen.findByText("Plain")).closest("tr")!;
+    expect(chips(row)).toEqual(["type"]);
+  });
+
+  it.each([
+    ["companion", "text-primary"],
+    ["repeater", "text-secondary"],
+    ["room_server", "text-green"],
+    ["sensor", "text-warn"],
+  ])("tints the %s type chip with its marker colour", async (type, cls) => {
+    mount([node({ id: "t", name: "Typed", nodeTypeName: type })]);
+    const row = (await screen.findByText("Typed")).closest("tr")!;
+    const chip = row.querySelector('[data-chip="type"]')!;
+    expect(chip).toHaveClass(cls);
+    expect(chip.querySelector("svg")).not.toBeNull();
+  });
+
+  it("falls back to grey with no glyph for an unknown type", async () => {
+    mount([node({ id: "u", name: "Odd", nodeTypeName: "mystery" })]);
+    const chip = (await screen.findByText("Odd")).closest("tr")!.querySelector('[data-chip="type"]')!;
+    expect(chip).toHaveClass("text-text-muted");
+    expect(chip.querySelector("svg")).toBeNull();
+  });
+
+  it("shows Possibly foreign in the caution look", async () => {
+    mount([node({ id: "f", name: "Far", possiblyForeign: true })]);
+    const chip = (await screen.findByText("Far")).closest("tr")!.querySelector('[data-chip="caution"]')!;
+    expect(chip).toHaveTextContent("Possibly foreign");
   });
 
   it("hides rows without isPoller when Poller is Yes, as an older server ignores the param", async () => {

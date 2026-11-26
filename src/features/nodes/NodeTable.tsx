@@ -12,8 +12,7 @@ import { hasMapLocation } from "../map/location";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { Timestamp } from "../../components/Timestamp";
-import { ObserverIcon } from "../../components/ObserverIcon";
-import { PollerIcon } from "../../components/PollerIcon";
+import { TypeChip, RoleChip } from "../../components/NodeChips";
 import { DataTable, type Column, type TableSort } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
@@ -76,15 +75,10 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
           <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
         {node.lastSeen != null && <Timestamp value={node.lastSeen} className="shrink-0 text-text-dim text-[11px]" />}
-        <span className="shrink-0">
-          <Badge variant="default">
-            {node.isPoller ? (
-              <Tooltip label={t("nodes.poller")} className="mr-1"><PollerIcon /></Tooltip>
-            ) : node.isObserver && (
-              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
-            )}
-            {node.nodeTypeName}
-          </Badge>
+        <span className="shrink-0 flex items-center gap-1">
+          {node.isPoller && <RoleChip role="poller" glyphOnly />}
+          {(node.isObserver || node.isPoller) && <RoleChip role="observer" glyphOnly />}
+          <TypeChip typeName={node.nodeTypeName} />
         </span>
       </div>
       <div className="flex items-center gap-2 text-text-muted">
@@ -140,14 +134,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       sortValue: (node) => node.nodeTypeName,
       cell: (node) => (
         <div className="flex flex-wrap gap-1">
-          <Badge variant="default">
-            {node.isPoller ? (
-              <Tooltip label={t("nodes.poller")} className="mr-1"><PollerIcon /></Tooltip>
-            ) : node.isObserver && (
-              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
-            )}
-            {node.nodeTypeName}
-          </Badge>
+          {node.isPoller && <RoleChip role="poller" glyphOnly />}
+          {(node.isObserver || node.isPoller) && <RoleChip role="observer" glyphOnly />}
+          <TypeChip typeName={node.nodeTypeName} />
           <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
         </div>
       ),
