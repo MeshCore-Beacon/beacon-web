@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MessagePanel } from "../../../src/features/channels/MessagePanel";
@@ -7,6 +7,7 @@ import type { ChannelMessage, ChannelSummary } from "../../../src/features/chann
 import type { WsManager } from "../../../src/api/ws-manager";
 import { getChannelMessagesPage, getChannels } from "../../../src/api/client";
 import i18n from "../../../src/i18n";
+import { setPhone } from "../../phone";
 
 vi.mock("../../../src/api/client", () => ({
   getChannelMessagesPage: vi.fn(),
@@ -183,5 +184,23 @@ describe("channel scope evidence", () => {
       await screen.findByText(`History ${index}`);
     }
     expect(screen.getByText("History 0")).toBeInTheDocument();
+  });
+});
+
+describe("channel scope picker", () => {
+  const original = window.matchMedia;
+  afterEach(() => { window.matchMedia = original; });
+
+  it("opens as a sheet on a phone and as a popover on desktop", async () => {
+    setPhone(true);
+    const { unmount } = show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" scope="" onScopeChange={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Scope/ }));
+    expect(screen.getByRole("dialog", { name: "Scope" })).toBeInTheDocument();
+    unmount();
+    setPhone(false);
+    show(<MessagePanel channel={channel} heardCounts={{}} regionKey="YOW" scope="" onScopeChange={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Scope/ }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 });

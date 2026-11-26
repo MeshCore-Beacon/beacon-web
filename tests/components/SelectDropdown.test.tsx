@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { SelectDropdown } from "../../src/components/SelectDropdown";
+import { setPhone } from "../phone";
 
 const options = [{ value: "a", label: "Alpha" }, { value: "b", label: "Beta" }];
 
@@ -42,5 +43,33 @@ describe("SelectDropdown in the filter sheet", () => {
   it("keeps the compact desktop trigger when not full width", () => {
     render(<SelectDropdown label="Type" options={options} value="" onChange={() => {}} />);
     expect(screen.getByRole("button", { name: /Type/ })).not.toHaveClass("h-14");
+  });
+});
+
+describe("SelectDropdown sheetOnMobile", () => {
+  const original = window.matchMedia;
+  afterEach(() => { window.matchMedia = original; });
+  const many = Array.from({ length: 9 }, (_, i) => ({ value: `v${i}`, label: `Item ${i}` }));
+
+  it("opens a dialog sheet with the shared option list on a phone", () => {
+    setPhone(true);
+    const onChange = vi.fn();
+    render(<SelectDropdown label="Section" options={many} value="v1" onChange={onChange} hideAll sheetOnMobile />);
+    fireEvent.click(screen.getByRole("button", { name: /Section/ }));
+    const dialog = screen.getByRole("dialog", { name: "Section" });
+    expect(within(dialog).getAllByRole("option")).toHaveLength(9);
+    expect(within(dialog).getByRole("option", { name: "Item 1" })).toHaveAttribute("aria-selected", "true");
+    expect(within(dialog).getByPlaceholderText("Filter...")).not.toHaveFocus();
+    fireEvent.click(within(dialog).getByRole("option", { name: "Item 3" }));
+    expect(onChange).toHaveBeenCalledWith("v3");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps the popover on desktop", () => {
+    setPhone(false);
+    render(<SelectDropdown label="Section" options={many} value="v1" onChange={() => {}} hideAll sheetOnMobile />);
+    fireEvent.click(screen.getByRole("button", { name: /Section/ }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
   });
 });

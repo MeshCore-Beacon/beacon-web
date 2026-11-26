@@ -199,7 +199,7 @@ export function MessagePanel({ channel, heardCounts, iatas, regionKey, onAnalyze
         </div>
         <div className="flex max-w-full flex-wrap items-center gap-1 sm:shrink-0">
           {onScopeChange && <SelectDropdown label={t("channelMessages.scope")} value={scope} onChange={onScopeChange}
-            allLabel={t("channelMessages.allScopes")} options={scopeNames.map((name) => ({ value: name, label: name }))} align="right" />}
+            allLabel={t("channelMessages.allScopes")} options={scopeNames.map((name) => ({ value: name, label: name }))} align="right" sheetOnMobile />}
           {channel.keyKnown ? (
             <Badge variant="advert">{t("channelMessages.keyKnown")}</Badge>
           ) : (
