@@ -30,10 +30,14 @@ export function FiltersButton({ activeCount, onClick }: { activeCount: number; o
 }
 
 // Bottom sheet that holds a filter bar's controls stacked full-width on mobile, with Clear/Done.
-export function FilterSheet({ onClose, onClear, children }: {
+export function FilterSheet({ onClose, onClear, children, doneLabel, onDone, doneDisabled }: {
   onClose: () => void;
   onClear?: () => void;
   children: ReactNode;
+  // for filters that are submitted rather than applied as they are picked: the primary action and its label
+  doneLabel?: string;
+  onDone?: () => void;
+  doneDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -59,10 +63,11 @@ export function FilterSheet({ onClose, onClear, children }: {
         )}
         <button
           type="button"
-          onClick={onClose}
-          className="min-h-11 min-w-28 rounded-md bg-primary px-6 text-[15px] font-mono font-semibold text-bg-base cursor-pointer transition-opacity hover:opacity-90"
+          onClick={onDone ?? onClose}
+          disabled={doneDisabled}
+          className="min-h-11 min-w-28 rounded-md bg-primary px-6 text-[15px] font-mono font-semibold text-bg-base cursor-pointer transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {t("common.done")}
+          {doneLabel ?? t("common.done")}
         </button>
       </div>
     </BottomSheet>
