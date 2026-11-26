@@ -9,6 +9,9 @@ import { useWsStatus } from "../hooks/useWsStatus";
 import { useRateLimit } from "../hooks/useRateLimit";
 import { useTheme } from "../hooks/useTheme";
 import { Dropdown } from "./Dropdown";
+import { BottomSheet } from "./BottomSheet";
+import { CloseButton } from "./CloseButton";
+import { OptionMarker } from "./SheetOptionList";
 import { BottomNav } from "./BottomNav";
 import { LanguageOptions } from "./LanguagePicker";
 import { useIsMobile } from "../hooks/useMediaQuery";
@@ -135,30 +138,51 @@ function regionSummaryLabel(selection: RegionSelection, t: TFunction): string {
 function RegionSelector() {
   const { t } = useTranslation();
   const { selection } = useRegionSelection();
+  const isMobile = useIsMobile();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  if (sheetOpen && !isMobile) setSheetOpen(false);
+
+  const trigger = (toggle: () => void) => (
+    <button
+      type="button"
+      className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-3 py-1 text-text-bright font-mono text-xs font-semibold hover:border-text-dim/30 transition-colors"
+      onClick={toggle}
+    >
+      <span className="text-text-muted font-normal text-[11px] uppercase">{t("region.label")}</span>
+      {regionSummaryLabel(selection, t)}
+      <span className="text-text-dim text-[11px]">▾</span>
+    </button>
+  );
+
+  // phones get a bottom sheet with the shared option look; desktop keeps the popover
+  if (isMobile) {
+    return (
+      <>
+        {trigger(() => setSheetOpen(true))}
+        {sheetOpen && (
+          <BottomSheet onClose={() => setSheetOpen(false)} label={t("region.label")}>
+            <div className="flex items-center justify-between px-4 pb-3 shrink-0">
+              <span className="text-lg font-mono font-medium text-text-bright">{t("region.label")}</span>
+              <CloseButton onClose={() => setSheetOpen(false)} label={t("common.close")} className="-mr-2 w-11! h-11!" />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
+              <RegionSelectorPanel sheet />
+            </div>
+          </BottomSheet>
+        )}
+      </>
+    );
+  }
 
   return (
-    <Dropdown
-      align="left"
-      width="w-60"
-      renderTrigger={({ toggle }) => (
-        <button
-          type="button"
-          className="flex items-center gap-1.5 bg-bg-raised border border-border rounded px-3 py-1 text-text-bright font-mono text-xs font-semibold hover:border-text-dim/30 transition-colors"
-          onClick={toggle}
-        >
-          <span className="text-text-muted font-normal text-[11px] uppercase">{t("region.label")}</span>
-          {regionSummaryLabel(selection, t)}
-          <span className="text-text-dim text-[11px]">▾</span>
-        </button>
-      )}
-    >
+    <Dropdown align="left" width="w-60" renderTrigger={({ toggle }) => trigger(toggle)}>
       {() => <RegionSelectorPanel />}
     </Dropdown>
   );
 }
 
 // Split out from RegionSelector so the filter query lives and dies with the open panel.
-function RegionSelectorPanel() {
+function RegionSelectorPanel({ sheet = false }: { sheet?: boolean }) {
   const { t } = useTranslation();
   const { selection, setSelection } = useRegionSelection();
   const { regions } = useRegions();
@@ -167,12 +191,13 @@ function RegionSelectorPanel() {
 
   // Take focus for typing, then hand it back on close — same restore rule as useFocusTrap.
   useEffect(() => {
+    if (sheet) return; // the sheet never autofocuses: that raises the on-screen keyboard
     const restoreTo = document.activeElement as HTMLElement | null;
     inputRef.current?.focus();
     return () => {
       if (restoreTo && restoreTo !== document.body && document.contains(restoreTo)) restoreTo.focus();
     };
-  }, []);
+  }, [sheet]);
 
   const { data: iatas, isError: iatasError } = useQuery({
     queryKey: ["iatas"],
@@ -221,10 +246,21 @@ function RegionSelectorPanel() {
   const showAll = !q || t("region.allRegions").toLowerCase().includes(q);
   const showIataGroup = !iatas || shownIatas.length > 0; // keep the group while loading/failed
   const hasRowsAbove = showAll || shownRegions.length > 0;
+  const rowClass = (on: boolean) => sheet
+    ? `flex min-h-11 w-full items-center gap-3 px-4 text-left font-mono text-[15px] transition-colors ${on ? "bg-bg-raised text-text-bright" : "text-text-normal"}`
+    : `w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${on ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"}`;
+  const headingClass = sheet ? "px-4 pt-3 pb-1 text-[11px] font-mono uppercase tracking-wide text-text-dim" : "px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim";
+  const mark = (on: boolean) => sheet ? <OptionMarker mode="multi" selected={on} /> : <CheckBox checked={on} />;
 
   return (
     <>
-      <div className="sticky -top-1 z-10 -mt-1 bg-bg-raised px-2 pt-1 pb-1.5">
+      <div className={sheet ? "flex min-h-11 items-center gap-3 border-b border-border-subtle px-4" : "sticky -top-1 z-10 -mt-1 bg-bg-raised px-2 pt-1 pb-1.5"}>
+        {sheet && (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-text-muted">
+            <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        )}
         {/* 16px on phones so iOS Safari does not zoom the page on focus. */}
         <input
           ref={inputRef}
@@ -240,22 +276,22 @@ function RegionSelectorPanel() {
           }}
           aria-label={t("region.filter")}
           placeholder={t("region.filter")}
-          className="w-full text-[16px] sm:text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
+          className={sheet
+            ? "h-11 min-w-0 flex-1 bg-transparent font-mono text-base text-text-bright placeholder:text-text-dim focus:outline-none"
+            : "w-full text-[16px] sm:text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"}
         />
       </div>
 
       {showAll && (
         <button
           type="button"
-          className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-            isAllRegions(selection)
-              ? "text-text-bright bg-primary/10"
-              : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
-          }`}
+          className={rowClass(isAllRegions(selection))}
           onClick={() => setSelection(ALL_REGIONS)}
         >
-          {/* spacer matching the checkbox column so ALL/code/name align with the rows below */}
-          <span className="w-3 shrink-0" aria-hidden="true" />
+          {sheet ? <OptionMarker mode="single" selected={isAllRegions(selection)} /> : (
+            // spacer matching the checkbox column so ALL/code/name align with the rows below
+            <span className="w-3 shrink-0" aria-hidden="true" />
+          )}
           <span className="font-semibold text-primary min-w-8 shrink-0">{t("region.allShort")}</span>
           <span className="text-text-dim">{t("region.allRegions")}</span>
         </button>
@@ -263,19 +299,17 @@ function RegionSelectorPanel() {
 
       {shownRegions.length > 0 && (
         <>
-          <div className="px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim">{t("region.group")}</div>
+          <div className={headingClass}>{t("region.group")}</div>
           {shownRegions.map(({ region, matched }) => {
             const checked = selection.regions.includes(region.slug);
             return (
               <button
                 key={region.slug}
                 type="button"
-                className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-                  checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
-                }`}
+                className={rowClass(checked)}
                 onClick={() => toggleRegion(region.slug)}
               >
-                <CheckBox checked={checked} />
+                {mark(checked)}
                 <span className="truncate">{region.name}</span>
                 {matched.length > 0 && <span className="text-text-dim shrink-0">· {matched.join(", ")}</span>}
               </button>
@@ -286,7 +320,7 @@ function RegionSelectorPanel() {
 
       {showIataGroup && (
         <>
-          <div className={`px-3 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-text-dim ${
+          <div className={`${headingClass} ${
             hasRowsAbove ? "border-t border-border-subtle mt-1" : ""
           }`}>{t("region.areaGroup")}</div>
           {iatas ? (
@@ -296,12 +330,10 @@ function RegionSelectorPanel() {
                 <button
                   key={i.iata}
                   type="button"
-                  className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left text-xs font-mono transition-colors ${
-                    checked ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
-                  }`}
+                  className={rowClass(checked)}
                   onClick={() => toggleIata(i.iata)}
                 >
-                  <CheckBox checked={checked} />
+                  {mark(checked)}
                   <span className="font-semibold text-primary w-8 shrink-0">{i.iata}</span>
                   <span className="text-text-dim truncate">{i.displayName || i.iata}</span>
                 </button>

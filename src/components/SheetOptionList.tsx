@@ -83,7 +83,15 @@ function Row({ mode, label, selected, onPick }: { mode: "single" | "multi"; labe
         selected ? "bg-bg-raised text-text-bright" : "text-text-normal"
       }`}
     >
-      <span
+      <OptionMarker mode={mode} selected={selected} />
+      <span className="min-w-0 truncate">{label}</span>
+    </button>
+  );
+}
+
+export function OptionMarker({ mode, selected }: { mode: "single" | "multi"; selected: boolean }) {
+  return (
+    <span
         data-marker={mode === "single" ? "radio" : "checkbox"}
         className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${mode === "single" ? "rounded-full" : "rounded-[5px]"} ${
           selected ? "border-primary" : "border-border"
@@ -96,7 +104,5 @@ function Row({ mode, label, selected, onPick }: { mode: "single" | "multi"; labe
           </svg>
         )}
       </span>
-      <span className="min-w-0 truncate">{label}</span>
-    </button>
   );
 }
