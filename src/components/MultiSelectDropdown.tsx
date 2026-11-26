@@ -28,9 +28,13 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const showSearch = searchable ?? options.length > 6;
+  // the sheet only offers search on long lists; the desktop panel keeps its own rule
+  const showSearch = fullWidth ? options.length > 8 : (searchable ?? options.length > 6);
 
-  const closeDropdown = useCallback(() => setOpen(false), []);
+  const closeDropdown = useCallback(() => {
+    inputRef.current?.blur(); // drops the on-screen keyboard
+    setOpen(false);
+  }, []);
   useClickOutside(ref, open, closeDropdown);
 
   useEffect(() => {
@@ -45,10 +49,12 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   }, [open]);
 
   useEffect(() => {
-    if (open && showSearch) {
+    // the sheet never autofocuses: that raises the keyboard before the user asks for it
+    if (open && showSearch && !fullWidth) {
       inputRef.current?.focus();
     }
-  }, [open, showSearch]);
+    if (open && fullWidth) ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, showSearch, fullWidth]);
 
   const filtered = useMemo(() => {
     if (!filter) return options;
@@ -69,7 +75,10 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
         }`}
         onClick={() => {
           setOpen((prev) => {
-            if (prev) setFilter("");
+            if (prev) {
+              setFilter("");
+              inputRef.current?.blur();
+            }
             return !prev;
           });
         }}
@@ -102,14 +111,20 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
             : `absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`
         }>
           {showSearch && (
-            <div className={fullWidth ? "px-0 pb-2" : "px-2 pb-1"}>
+            <div className={fullWidth ? "flex min-h-11 items-center gap-3 border-b border-border-subtle px-4" : "px-2 pb-1"}>
+              {fullWidth && (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-text-muted">
+                  <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              )}
               <input
                 ref={inputRef}
                 type="text"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t("common.filterPlaceholder")}
-                className={fullWidth ? "h-14 w-full rounded-md border border-border bg-bg-surface px-4 text-[15px] font-mono text-text-bright placeholder:text-text-dim focus:border-primary focus:outline-none" : "w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"}
+                className={fullWidth ? "h-11 min-w-0 flex-1 bg-transparent font-mono text-base text-text-bright placeholder:text-text-dim focus:outline-none" : "w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"}
               />
             </div>
           )}
@@ -117,7 +132,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
           <div className={`flex items-center border-b border-border-subtle mb-1 ${fullWidth ? "gap-1 px-2" : "gap-1 px-2 py-1"}`}>
             <button
               type="button"
-              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-[15px]" : "text-[11px]"} ${
+              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-base" : "text-[11px]"} ${
                 count === options.length ? "text-primary" : "text-text-muted hover:text-text-normal"
               }`}
               onClick={() => onChange(options.map((o) => o.value))}
@@ -127,7 +142,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
             <span className="text-border text-[11px]">·</span>
             <button
               type="button"
-              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-[15px]" : "text-[11px]"} ${
+              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-base" : "text-[11px]"} ${
                 count === 0 ? "text-primary" : "text-text-muted hover:text-text-normal"
               }`}
               onClick={() => onChange([])}
@@ -136,7 +151,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
             </button>
           </div>
 
-          <div className="max-h-64 overflow-y-auto" role="listbox" aria-multiselectable="true">
+          <div className={fullWidth ? "max-h-[40dvh] overflow-y-auto overscroll-contain" : "max-h-64 overflow-y-auto"} role="listbox" aria-multiselectable="true">
             {filtered.map((opt) => {
               const isSelected = selected.includes(opt.value);
               return (
