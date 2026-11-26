@@ -129,16 +129,11 @@ export function RoleChip({ role, glyphOnly = false }: { role: "poller" | "observ
     );
   }
   return (
-    <span data-chip={role} className={`${BASE} px-2 ${color}`}>
+    <span data-chip={role} className={`${BASE} px-2 uppercase ${color}`}>
       <Glyph name={role} />
       {label}
     </span>
   );
-}
-
-// Scope chip, in the theme's secondary colour; lower case as given.
-export function ScopeChip({ scope }: { scope: string }) {
-  return <span data-chip="scope" className={`${BASE} px-2 bg-secondary/8 text-secondary border-secondary/30`}>{scope}</span>;
 }
 
 export function CautionChip({ children }: { children: ReactNode }) {

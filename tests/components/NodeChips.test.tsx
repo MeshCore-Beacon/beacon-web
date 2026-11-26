@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { TypeChip, RoleChip, CautionChip, ScopeChip } from "../../src/components/NodeChips";
+import { TypeChip, RoleChip, CautionChip } from "../../src/components/NodeChips";
 
 describe("NodeChips", () => {
   it("tints each known type and matches it case-insensitively", () => {
@@ -18,9 +18,10 @@ describe("NodeChips", () => {
     expect(screen.getByText("Poller")).toBeInTheDocument();
   });
 
-  it("renders caution and scope text as given", () => {
-    render(<><CautionChip>Careful</CautionChip><ScopeChip scope="#yow" /></>);
+  it("upper-cases a worded role chip but keeps caution text in normal case", () => {
+    render(<><RoleChip role="poller" /><CautionChip>Careful</CautionChip></>);
+    expect(screen.getByText("Poller")).toHaveClass("uppercase");
     expect(screen.getByText("Careful")).toHaveClass("text-[#fb923c]");
-    expect(screen.getByText("#yow")).toBeInTheDocument();
+    expect(screen.getByText("Careful")).not.toHaveClass("uppercase");
   });
 });

@@ -13,7 +13,7 @@ import { Timestamp } from "../../components/Timestamp";
 import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
-import { TypeChip, RoleChip, ScopeChip, CautionChip } from "../../components/NodeChips";
+import { TypeChip, RoleChip, CautionChip } from "../../components/NodeChips";
 import { MeshMapperSection } from "./MeshMapperSection";
 import { Tooltip } from "../../components/Tooltip";
 import { EmojiText } from "../../components/EmojiText";
@@ -187,7 +187,6 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
                 <TypeChip typeName={node.nodeTypeName} />
                 {node.isPoller && <RoleChip role="poller" />}
                 {(node.isObserver || node.isPoller) && <RoleChip role="observer" />}
-                {node.defaultScope && <ScopeChip scope={node.defaultScope} />}
                 <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
                 {node.meshmapper?.carpeater && (
                   <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>

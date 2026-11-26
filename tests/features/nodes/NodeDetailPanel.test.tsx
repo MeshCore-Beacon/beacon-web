@@ -492,15 +492,14 @@ describe("NodeDetailPanel layout", () => {
 describe("NodeDetailPanel identity chips", () => {
   const order = (c: HTMLElement) => [...c.querySelectorAll("[data-chip]")].map((e) => e.getAttribute("data-chip"));
 
-  it("shows type, Poller, Observer, scope and caution chips in that order", async () => {
+  it("shows type, Poller, Observer and caution chips in that order", async () => {
     mockGetNode.mockResolvedValue({ ...node, isObserver: true, isPoller: true, defaultScope: "#yow", possiblyForeign: true, meshmapper: { fetchedAt: 1, site: {}, carpeater: true, admins: [], scopes: [] } as MeshMapperRepeater });
     const { container } = renderPanel();
     await screen.findByText("Self Node");
     const summary = container.querySelector("[data-summary]") as HTMLElement;
-    expect(order(summary)).toEqual(["type", "poller", "observer", "scope", "caution", "caution"]);
+    expect(order(summary)).toEqual(["type", "poller", "observer", "caution", "caution"]);
     expect(within(summary).getByText("Poller")).toBeInTheDocument();
     expect(within(summary).getByText("Observer")).toBeInTheDocument();
-    expect(within(summary).getByText("#yow")).toBeInTheDocument();
   });
 
   it("shows no role chips for a node without the flags", async () => {
