@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { fieldButtonClass, FIELD_LABEL_CLASS, FIELD_VALUE_CLASS, optionRowClass } from "./sheet-field";
+import { FieldChevron } from "./FieldChevron";
 
 interface Option {
   value: string;
@@ -60,9 +62,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
     <div ref={ref} className={`relative ${fullWidth ? "w-full" : ""}`}>
       <button
         type="button"
-        className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-sm border font-mono cursor-pointer transition-all ${
-          fullWidth ? "w-full justify-between" : ""
-        } ${
+        className={fullWidth ? fieldButtonClass(open) : `flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-sm border font-mono cursor-pointer transition-all ${
           count > 0
             ? "border-primary-dim bg-primary/6 text-primary"
             : "border-border bg-bg-surface text-text-muted hover:border-text-dim hover:text-text-normal"
@@ -76,36 +76,48 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        {label}
-        <span className={`text-[9px] px-1 rounded-sm min-w-[1ch] text-center ${count > 0 ? "bg-primary/15" : "invisible"}`}>
-          {count || 0}
-        </span>
-        <span className="text-text-dim text-[9px]">{fullWidth && open ? "▴" : "▾"}</span>
+        {fullWidth ? (
+          <>
+            <span className={FIELD_LABEL_CLASS}>{label}</span>
+            <span className={FIELD_VALUE_CLASS}>
+              {count === 0 ? t("common.all") : options.filter((o) => selected.includes(o.value)).map((o) => o.label).join(", ")}
+            </span>
+            <FieldChevron open={open} />
+          </>
+        ) : (
+          <>
+            {label}
+            <span className={`text-[9px] px-1 rounded-sm min-w-[1ch] text-center ${count > 0 ? "bg-primary/15" : "invisible"}`}>
+              {count || 0}
+            </span>
+            <span className="text-text-dim text-[9px]">▾</span>
+          </>
+        )}
       </button>
 
       {open && (
         <div className={
           fullWidth
-            ? "mt-1 w-full bg-bg-raised border border-border rounded-md py-1"
+            ? "mt-1 w-full py-1"
             : `absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`
         }>
           {showSearch && (
-            <div className="px-2 pb-1">
+            <div className={fullWidth ? "px-0 pb-2" : "px-2 pb-1"}>
               <input
                 ref={inputRef}
                 type="text"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t("common.filterPlaceholder")}
-                className="w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
+                className={fullWidth ? "h-14 w-full rounded-md border border-border bg-bg-surface px-4 text-[15px] font-mono text-text-bright placeholder:text-text-dim focus:border-primary focus:outline-none" : "w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"}
               />
             </div>
           )}
 
-          <div className="flex items-center gap-1 px-2 py-1 border-b border-border-subtle mb-1">
+          <div className={`flex items-center border-b border-border-subtle mb-1 ${fullWidth ? "gap-1 px-2" : "gap-1 px-2 py-1"}`}>
             <button
               type="button"
-              className={`text-[11px] font-mono transition-colors ${
+              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-[15px]" : "text-[11px]"} ${
                 count === options.length ? "text-primary" : "text-text-muted hover:text-text-normal"
               }`}
               onClick={() => onChange(options.map((o) => o.value))}
@@ -115,7 +127,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
             <span className="text-border text-[11px]">·</span>
             <button
               type="button"
-              className={`text-[11px] font-mono transition-colors ${
+              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-[15px]" : "text-[11px]"} ${
                 count === 0 ? "text-primary" : "text-text-muted hover:text-text-normal"
               }`}
               onClick={() => onChange([])}
@@ -133,7 +145,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1 text-left text-xs font-mono transition-colors ${
+                  className={fullWidth ? optionRowClass(isSelected) : `w-full flex items-center gap-2 px-2.5 py-1 text-left text-xs font-mono transition-colors ${
                     isSelected
                       ? "text-text-bright bg-primary/10"
                       : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
