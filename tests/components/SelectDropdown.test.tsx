@@ -29,6 +29,16 @@ describe("SelectDropdown in the filter sheet", () => {
     expect(screen.getByRole("option", { name: "Alpha" })).toHaveAttribute("aria-selected", "false");
   });
 
+  it("renders the shared list with radios, and a search row for 9 or more options", () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ value: `v${i}`, label: `Item ${i}` }));
+    const { container } = render(<SelectDropdown label="Scope" options={many} value="v2" onChange={() => {}} fullWidth allLabel="Any" />);
+    fireEvent.click(screen.getByRole("button", { name: /Scope/ }));
+    expect(container.querySelectorAll('[data-marker="radio"]')).toHaveLength(10); // Any + 9
+    expect(screen.getByPlaceholderText("Filter...")).not.toHaveFocus();
+    fireEvent.change(screen.getByPlaceholderText("Filter..."), { target: { value: "item 4" } });
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+  });
+
   it("keeps the compact desktop trigger when not full width", () => {
     render(<SelectDropdown label="Type" options={options} value="" onChange={() => {}} />);
     expect(screen.getByRole("button", { name: /Type/ })).not.toHaveClass("h-14");

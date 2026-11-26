@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Dropdown } from "./Dropdown";
-import { fieldButtonClass, FIELD_LABEL_CLASS, FIELD_VALUE_CLASS, optionRowClass } from "./sheet-field";
+import { fieldButtonClass, FIELD_LABEL_CLASS, FIELD_VALUE_CLASS } from "./sheet-field";
 import { FieldChevron } from "./FieldChevron";
+import { SheetOptionList } from "./SheetOptionList";
 
 interface SelectOption {
   value: string;
@@ -57,14 +58,23 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
         )
       )}
     >
-      {(close) => (
+      {(close) => fullWidth ? (
+        <SheetOptionList
+          mode="single"
+          options={options}
+          isSelected={(v) => v === value}
+          onPick={(v) => { onChange(v); close(); }}
+          firstRow={hideAll ? undefined : { label: allLabel, selected: !active, onPick: () => { onChange(""); close(); } }}
+          emptyLabel={hideAll && options.length === 0 ? t("common.noOptions") : undefined}
+        />
+      ) : (
         <div role="listbox">
           {!hideAll && (
             <button
               type="button"
               role="option"
               aria-selected={!active}
-              className={fullWidth ? optionRowClass(!active) : `w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
+              className={`w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
                 !active ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
               }`}
               onClick={() => { onChange(""); close(); }}
@@ -80,7 +90,7 @@ export function SelectDropdown({ label, options, value, onChange, align = "right
                 type="button"
                 role="option"
                 aria-selected={isSelected}
-                className={fullWidth ? optionRowClass(isSelected) : `w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
+                className={`w-full text-left px-2.5 py-1 text-xs font-mono transition-colors ${
                   isSelected ? "text-text-bright bg-primary/10" : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"
                 }`}
                 onClick={() => { onChange(opt.value); close(); }}

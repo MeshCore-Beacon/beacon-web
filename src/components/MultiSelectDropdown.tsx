@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useClickOutside } from "../hooks/useClickOutside";
-import { fieldButtonClass, FIELD_LABEL_CLASS, FIELD_VALUE_CLASS, optionRowClass } from "./sheet-field";
+import { fieldButtonClass, FIELD_LABEL_CLASS, FIELD_VALUE_CLASS } from "./sheet-field";
 import { FieldChevron } from "./FieldChevron";
+import { SheetOptionList } from "./SheetOptionList";
 
 interface Option {
   value: string;
@@ -28,8 +29,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // the sheet only offers search on long lists; the desktop panel keeps its own rule
-  const showSearch = fullWidth ? options.length > 8 : (searchable ?? options.length > 6);
+  const showSearch = searchable ?? options.length > 6;
 
   const closeDropdown = useCallback(() => {
     inputRef.current?.blur(); // drops the on-screen keyboard
@@ -49,7 +49,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   }, [open]);
 
   useEffect(() => {
-    // the sheet never autofocuses: that raises the keyboard before the user asks for it
+    // desktop only; the sheet's list never autofocuses (that raises the on-screen keyboard)
     if (open && showSearch && !fullWidth) {
       inputRef.current?.focus();
     }
@@ -104,35 +104,45 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
         )}
       </button>
 
-      {open && (
-        <div className={
-          fullWidth
-            ? "mt-1 w-full py-1"
-            : `absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`
-        }>
+      {open && fullWidth && (
+        <SheetOptionList
+          mode="multi"
+          options={options}
+          isSelected={(v) => selected.includes(v)}
+          onPick={(v) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v])}
+          header={
+            <div className="mb-1 flex items-center gap-1 border-b border-border-subtle px-2">
+              <button type="button" className={`min-h-11 px-2 font-mono text-base transition-colors ${count === options.length ? "text-primary" : "text-text-muted"}`} onClick={() => onChange(options.map((o) => o.value))}>
+                {t("common.all")}
+              </button>
+              <span className="text-border text-[11px]">·</span>
+              <button type="button" className={`min-h-11 px-2 font-mono text-base transition-colors ${count === 0 ? "text-primary" : "text-text-muted"}`} onClick={() => onChange([])}>
+                {t("common.none")}
+              </button>
+            </div>
+          }
+        />
+      )}
+
+      {open && !fullWidth && (
+        <div className={`absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`}>
           {showSearch && (
-            <div className={fullWidth ? "flex min-h-11 items-center gap-3 border-b border-border-subtle px-4" : "px-2 pb-1"}>
-              {fullWidth && (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-text-muted">
-                  <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-              )}
+            <div className="px-2 pb-1">
               <input
                 ref={inputRef}
                 type="text"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t("common.filterPlaceholder")}
-                className={fullWidth ? "h-11 min-w-0 flex-1 bg-transparent font-mono text-base text-text-bright placeholder:text-text-dim focus:outline-none" : "w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"}
+                className="w-full text-[11px] font-mono bg-bg-surface border border-border rounded px-2 py-1 text-text-bright placeholder:text-text-dim"
               />
             </div>
           )}
 
-          <div className={`flex items-center border-b border-border-subtle mb-1 ${fullWidth ? "gap-1 px-2" : "gap-1 px-2 py-1"}`}>
+          <div className="flex items-center gap-1 px-2 py-1 border-b border-border-subtle mb-1">
             <button
               type="button"
-              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-base" : "text-[11px]"} ${
+              className={`text-[11px] font-mono transition-colors ${
                 count === options.length ? "text-primary" : "text-text-muted hover:text-text-normal"
               }`}
               onClick={() => onChange(options.map((o) => o.value))}
@@ -142,7 +152,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
             <span className="text-border text-[11px]">·</span>
             <button
               type="button"
-              className={`font-mono transition-colors ${fullWidth ? "min-h-11 px-2 text-base" : "text-[11px]"} ${
+              className={`text-[11px] font-mono transition-colors ${
                 count === 0 ? "text-primary" : "text-text-muted hover:text-text-normal"
               }`}
               onClick={() => onChange([])}
@@ -151,7 +161,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
             </button>
           </div>
 
-          <div className={fullWidth ? "max-h-[40dvh] overflow-y-auto overscroll-contain" : "max-h-64 overflow-y-auto"} role="listbox" aria-multiselectable="true">
+          <div className="max-h-64 overflow-y-auto" role="listbox" aria-multiselectable="true">
             {filtered.map((opt) => {
               const isSelected = selected.includes(opt.value);
               return (
@@ -160,7 +170,7 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  className={fullWidth ? optionRowClass(isSelected) : `w-full flex items-center gap-2 px-2.5 py-1 text-left text-xs font-mono transition-colors ${
+                  className={`w-full flex items-center gap-2 px-2.5 py-1 text-left text-xs font-mono transition-colors ${
                     isSelected
                       ? "text-text-bright bg-primary/10"
                       : "text-text-muted hover:text-text-normal hover:bg-text-normal/3"

@@ -54,4 +54,11 @@ describe("MultiSelectDropdown search", () => {
     expect(list).toHaveClass("overflow-y-auto", "overscroll-contain");
     expect(list.className).toMatch(/max-h-\[\d+dvh\]/);
   });
+
+  it("uses the shared list with checkboxes in the sheet and keeps All / None", () => {
+    const { container } = render(<MultiSelectDropdown label="Types" options={many(3)} selected={["v1"]} onChange={() => {}} fullWidth />);
+    fireEvent.click(screen.getByRole("button", { name: /Types/ }));
+    expect(container.querySelectorAll('[data-marker="checkbox"]')).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "None" })).toBeInTheDocument();
+  });
 });

@@ -8,9 +8,3 @@ export const fieldButtonClass = (open: boolean) =>
 
 export const FIELD_LABEL_CLASS = "absolute -top-2 left-3 bg-bg-surface px-1 text-[11px] leading-4 text-primary";
 export const FIELD_VALUE_CLASS = "min-w-0 truncate text-[15px] text-text-bright";
-
-// Option rows under an open field: 44px tall, the current choice on the raised background.
-export const optionRowClass = (selected: boolean) =>
-  `flex min-h-11 w-full items-center gap-3 px-4 text-left font-mono text-[15px] transition-colors ${
-    selected ? "bg-bg-raised text-text-bright" : "text-text-normal"
-  }`;
