@@ -13,6 +13,7 @@ import { Timestamp } from "../../components/Timestamp";
 import { hasMapLocation } from "../map/location";
 import type { NodeObservation, NodeNeighbor } from "./types";
 import { ForeignNodeBadge } from "./ForeignNodeBadge";
+import { TypeChip, RoleChip, CautionChip } from "../../components/NodeChips";
 import { MeshMapperSection } from "./MeshMapperSection";
 import { Tooltip } from "../../components/Tooltip";
 import { EmojiText } from "../../components/EmojiText";
@@ -183,11 +184,13 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   <EmojiText text={node.name ?? formatHex(node.id)} />
                 </span>
-                <Badge variant="default">{node.nodeTypeName}</Badge>
+                <TypeChip typeName={node.nodeTypeName} />
+                {node.isPoller && <RoleChip role="poller" />}
+                {(node.isObserver || node.isPoller) && <RoleChip role="observer" />}
                 <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
                 {node.meshmapper?.carpeater && (
                   <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>
-                    <Badge variant="trace" normalCase>{t("nodeDetail.carpeater")}</Badge>
+                    <CautionChip>{t("nodeDetail.carpeater")}</CautionChip>
                   </Tooltip>
                 )}
               </div>

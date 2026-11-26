@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { fieldButtonClass, FIELD_LABEL_CLASS, FIELD_VALUE_CLASS } from "./sheet-field";
+import { FieldChevron } from "./FieldChevron";
+import { SheetOptionList } from "./SheetOptionList";
 
 interface Option {
   value: string;
@@ -28,7 +31,10 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
 
   const showSearch = searchable ?? options.length > 6;
 
-  const closeDropdown = useCallback(() => setOpen(false), []);
+  const closeDropdown = useCallback(() => {
+    inputRef.current?.blur(); // drops the on-screen keyboard
+    setOpen(false);
+  }, []);
   useClickOutside(ref, open, closeDropdown);
 
   useEffect(() => {
@@ -43,10 +49,12 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
   }, [open]);
 
   useEffect(() => {
-    if (open && showSearch) {
+    // desktop only; the sheet's list never autofocuses (that raises the on-screen keyboard)
+    if (open && showSearch && !fullWidth) {
       inputRef.current?.focus();
     }
-  }, [open, showSearch]);
+    if (open && fullWidth) ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, showSearch, fullWidth]);
 
   const filtered = useMemo(() => {
     if (!filter) return options;
@@ -60,35 +68,64 @@ export function MultiSelectDropdown({ label, options, selected, onChange, search
     <div ref={ref} className={`relative ${fullWidth ? "w-full" : ""}`}>
       <button
         type="button"
-        className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-sm border font-mono cursor-pointer transition-all ${
-          fullWidth ? "w-full justify-between" : ""
-        } ${
+        className={fullWidth ? fieldButtonClass(open) : `flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-sm border font-mono cursor-pointer transition-all ${
           count > 0
             ? "border-primary-dim bg-primary/6 text-primary"
             : "border-border bg-bg-surface text-text-muted hover:border-text-dim hover:text-text-normal"
         }`}
         onClick={() => {
           setOpen((prev) => {
-            if (prev) setFilter("");
+            if (prev) {
+              setFilter("");
+              inputRef.current?.blur();
+            }
             return !prev;
           });
         }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        {label}
-        <span className={`text-[9px] px-1 rounded-sm min-w-[1ch] text-center ${count > 0 ? "bg-primary/15" : "invisible"}`}>
-          {count || 0}
-        </span>
-        <span className="text-text-dim text-[9px]">{fullWidth && open ? "▴" : "▾"}</span>
+        {fullWidth ? (
+          <>
+            <span className={FIELD_LABEL_CLASS}>{label}</span>
+            <span className={FIELD_VALUE_CLASS}>
+              {count === 0 ? t("common.all") : options.filter((o) => selected.includes(o.value)).map((o) => o.label).join(", ")}
+            </span>
+            <FieldChevron open={open} />
+          </>
+        ) : (
+          <>
+            {label}
+            <span className={`text-[9px] px-1 rounded-sm min-w-[1ch] text-center ${count > 0 ? "bg-primary/15" : "invisible"}`}>
+              {count || 0}
+            </span>
+            <span className="text-text-dim text-[9px]">▾</span>
+          </>
+        )}
       </button>
 
-      {open && (
-        <div className={
-          fullWidth
-            ? "mt-1 w-full bg-bg-raised border border-border rounded-md py-1"
-            : `absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`
-        }>
+      {open && fullWidth && (
+        <SheetOptionList
+          mode="multi"
+          options={options}
+          isSelected={(v) => selected.includes(v)}
+          onPick={(v) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v])}
+          header={
+            <div className="mb-1 flex items-center gap-1 border-b border-border-subtle px-2">
+              <button type="button" className={`min-h-11 px-2 font-mono text-base transition-colors ${count === options.length ? "text-primary" : "text-text-muted"}`} onClick={() => onChange(options.map((o) => o.value))}>
+                {t("common.all")}
+              </button>
+              <span className="text-border text-[11px]">·</span>
+              <button type="button" className={`min-h-11 px-2 font-mono text-base transition-colors ${count === 0 ? "text-primary" : "text-text-muted"}`} onClick={() => onChange([])}>
+                {t("common.none")}
+              </button>
+            </div>
+          }
+        />
+      )}
+
+      {open && !fullWidth && (
+        <div className={`absolute top-full mt-1 w-52 ${align === "right" ? "right-0" : "left-0"} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1`}>
           {showSearch && (
             <div className="px-2 pb-1">
               <input

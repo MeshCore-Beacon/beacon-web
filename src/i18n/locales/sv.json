@@ -254,6 +254,7 @@
       "chartDescription": "Antal per transport-scope. Exakta värden för alla matchande scopes listas i tabellen."
     },
     "nodeDetail": {
+      "poller": "Pollare",
       "viewOnMap": "Visa på karta",
       "lastSeen": "Senast sedd",
       "details": "Detaljer",
@@ -340,6 +341,7 @@
       "colLastHeard": "Senast mottagen",
       "colLocation": "Position",
       "observer": "Observatör",
+      "poller": "Pollare",
       "empty": "Inga noder",
       "neighbors_one": "{{formatted}} granne",
       "neighbors_other": "{{formatted}} grannar",
@@ -620,6 +622,7 @@
       "tiles": "Kartplattor",
       "nodeType": "Nodtyp",
       "nodeTypeLabel": "Nodtyp",
+      "pollersOnly": "Endast pollare",
       "clustering": "Klustring",
       "clusteringLiveNote": "Av medan livekartan är på",
       "neighborLines": "Grannlinjer",
@@ -662,6 +665,7 @@
       }
     },
     "nodeFilters": {
+      "poller": "Pollare",
       "exportCsv": "CSV",
       "exportCsvResult": "CSV sparad. Inlästa noder: {{count}}. Detta är inte en export av hela nätet.",
       "exportLoaded": "Exportera inlästa noder (CSV)",
@@ -994,6 +998,7 @@
         "noneReach": "Larm skickas inte förrän du slår på e-post eller push.",
         "openProfile": "Öppna larminställningar"
       },
+      "pollerBadge": "Pollare",
       "syncedToAccount": "Synkad med ditt konto",
       "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",
       "syncFailed": "Det gick inte att spara Atlas på ditt konto. Din ändring finns kvar på den här enheten.",

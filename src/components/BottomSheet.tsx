@@ -31,7 +31,7 @@ export function BottomSheet({ onClose, label, role = "dialog", children }: {
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        className="bg-bg-surface border-t border-border rounded-t-xl pb-[env(safe-area-inset-bottom)] shadow-2xl max-h-[85vh] flex flex-col"
+        className="bg-bg-surface border-t border-border rounded-t-xl pb-[env(safe-area-inset-bottom)] shadow-2xl max-h-[85dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center pt-2 pb-1 shrink-0">

@@ -30,27 +30,31 @@ export function FiltersButton({ activeCount, onClick }: { activeCount: number; o
 }
 
 // Bottom sheet that holds a filter bar's controls stacked full-width on mobile, with Clear/Done.
-export function FilterSheet({ onClose, onClear, children }: {
+export function FilterSheet({ onClose, onClear, children, doneLabel, onDone, doneDisabled }: {
   onClose: () => void;
   onClear?: () => void;
   children: ReactNode;
+  // for filters that are submitted rather than applied as they are picked: the primary action and its label
+  doneLabel?: string;
+  onDone?: () => void;
+  doneDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <BottomSheet onClose={onClose} label={t("common.filters")}>
-      <div className="flex items-center justify-between px-4 pb-2 shrink-0">
-        <span className="text-[13px] font-mono font-medium text-text-dim uppercase tracking-wider">{t("common.filters")}</span>
-        <CloseButton onClose={onClose} label={t("common.closeFilters")} className="-mr-1" />
+      <div className="flex items-center justify-between px-4 pb-3 shrink-0">
+        <span className="text-lg font-mono font-medium text-text-bright">{t("common.filters")}</span>
+        <CloseButton onClose={onClose} label={t("common.closeFilters")} className="-mr-2 w-11! h-11!" />
       </div>
 
-      <div className="flex flex-col gap-3 px-4 py-2 overflow-y-auto">{children}</div>
+      <div className="flex flex-col gap-4 px-4 pt-4 pb-2 overflow-y-auto">{children}</div>
 
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-border-subtle shrink-0">
         {onClear ? (
           <button
             type="button"
             onClick={onClear}
-            className="text-xs font-mono text-text-dim hover:text-danger px-2 py-1.5 cursor-pointer transition-colors"
+            className="min-h-11 px-2 text-[15px] font-mono text-primary cursor-pointer transition-colors hover:opacity-80"
           >
             {t("common.clearAll")}
           </button>
@@ -59,10 +63,11 @@ export function FilterSheet({ onClose, onClear, children }: {
         )}
         <button
           type="button"
-          onClick={onClose}
-          className="text-xs font-mono font-medium text-primary border border-primary-dim bg-primary/6 rounded px-4 py-1.5 cursor-pointer transition-colors hover:bg-primary/10"
+          onClick={onDone ?? onClose}
+          disabled={doneDisabled}
+          className="min-h-11 min-w-28 rounded-md bg-primary px-6 text-[15px] font-mono font-semibold text-bg-base cursor-pointer transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {t("common.done")}
+          {doneLabel ?? t("common.done")}
         </button>
       </div>
     </BottomSheet>

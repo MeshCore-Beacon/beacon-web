@@ -113,6 +113,7 @@ export function StatsSubHeader({ tab, onTabChange, range, onRangeChange, infoSlo
         <SelectDropdown
           label={t("stats.mobileSection")}
           hideAll
+          sheetOnMobile
           align="left"
           options={tabOptions}
           value={tab}

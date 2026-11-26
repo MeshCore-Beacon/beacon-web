@@ -67,6 +67,11 @@ async function open(data: AlertsResponse = response(), collapsed = false) {
 const block = (name: string) => within(screen.getByRole("group", { name }));
 const row = (target: string, kind: string) => within(block(target).getByTestId(`alert-${kind}`));
 const put = () => vi.mocked(alerts.putRule);
+// the threshold pickers are dropdowns (a sheet on phones), not native selects
+const pickOption = (r: ReturnType<typeof row>, label: string, index: number) => {
+  fireEvent.click(r.getByRole("button", { name: new RegExp(`^${label}`) }));
+  fireEvent.click(r.getAllByRole("option")[index]!);
+};
 
 describe("focus through a save", () => {
   it("moves focus to the same control when a saved row is replaced", async () => {
@@ -237,33 +242,37 @@ describe("alerts section", () => {
   });
 
   describe("gone quiet hours", () => {
-    const options = (el: HTMLElement) => within(el).getAllByRole("option").map((o) => (o as HTMLOptionElement).value);
+    const options = (r: ReturnType<typeof row>) => {
+      fireEvent.click(r.getByRole("button", { name: /^Hours/ }));
+      return r.getAllByRole("option").map((o) => o.textContent);
+    };
+    const hours = (...n: number[]) => n.map((h) => `${h} hours`);
     it("offers 3 and 6 when the target reports telemetry", async () => {
       await open();
-      expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["3", "6", "12", "24", "48"]);
+      expect(options(row("Hilltop", "gone_quiet"))).toEqual(hours(3, 6, 12, 24, 48));
     });
     it("offers 3 and 6 for a polled repeater that reports none of the telemetry kinds", async () => {
       await open(response({ targets: [repeater({ polled: true, available: ["gone_quiet", "clock"] })] }));
-      expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["3", "6", "12", "24", "48"]);
+      expect(options(row("Hilltop", "gone_quiet"))).toEqual(hours(3, 6, 12, 24, 48));
     });
     it("offers only 12, 24, 48 for a repeater that is not polled, whatever it lists", async () => {
       await open(response({ targets: [repeater({ polled: false })] }));
-      expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["12", "24", "48"]);
+      expect(options(row("Hilltop", "gone_quiet"))).toEqual(hours(12, 24, 48));
     });
     it("offers 3 and 6 for an observer", async () => {
       await open(response({ targets: [repeater({ kind: "observer", available: ["gone_quiet"] })] }));
-      expect(options(row("Hilltop", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["3", "6", "12", "24", "48"]);
+      expect(options(row("Hilltop", "gone_quiet"))).toEqual(hours(3, 6, 12, 24, 48));
     });
     it("offers only 12, 24, 48 otherwise", async () => {
       await open(response({ targets: [plain()] }));
-      expect(options(row("Ridge", "gone_quiet").getByLabelText("Hours") as HTMLElement)).toEqual(["12", "24", "48"]);
+      expect(options(row("Ridge", "gone_quiet"))).toEqual(hours(12, 24, 48));
     });
   });
 
   describe("turning rules on and off", () => {
     it("sends the current value when turned on, and refetches", async () => {
       await open();
-      fireEvent.change(row("Hilltop", "gone_quiet").getByLabelText("Hours"), { target: { value: "48" } });
+      pickOption(row("Hilltop", "gone_quiet"), "Hours", 4);
       expect(put()).not.toHaveBeenCalled();
       fireEvent.click(row("Hilltop", "gone_quiet").getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith({ target: { kind: "node", publicKey: "aabb" }, kind: "gone_quiet", threshold: 48, thresholdHigh: null, enabled: true }));
@@ -287,13 +296,13 @@ describe("alerts section", () => {
 
     it("battery_falling, clock and observer_offline selects send their units", async () => {
       await open(response({ targets: [repeater({ kind: "observer", available: ["battery_falling", "clock", "observer_offline"] })] }));
-      fireEvent.change(row("Hilltop", "battery_falling").getByLabelText("Drop per day"), { target: { value: "300" } });
+      pickOption(row("Hilltop", "battery_falling"), "Drop per day", 2);
       fireEvent.click(row("Hilltop", "battery_falling").getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "battery_falling", threshold: 300 })));
-      fireEvent.change(row("Hilltop", "clock").getByLabelText("Drift"), { target: { value: "86400" } });
+      pickOption(row("Hilltop", "clock"), "Drift", 2);
       fireEvent.click(row("Hilltop", "clock").getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "clock", threshold: 86400 })));
-      fireEvent.change(row("Hilltop", "observer_offline").getByLabelText("No report for"), { target: { value: "180" } });
+      pickOption(row("Hilltop", "observer_offline"), "No report for", 2);
       fireEvent.click(row("Hilltop", "observer_offline").getByRole("switch"));
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "observer_offline", threshold: 180 })));
     });
@@ -464,9 +473,15 @@ describe("alerts section", () => {
       expect(put()).toHaveBeenCalledTimes(1);
     });
 
+    it("renders the threshold choice as a dropdown, not a native select", async () => {
+      await open();
+      expect(document.querySelector("select")).toBeNull();
+      expect(row("Hilltop", "gone_quiet").getByRole("button", { name: /^Hours/ })).toBeInTheDocument();
+    });
+
     it("sends a changed select at once on an enabled rule", async () => {
       await open(response({ targets: [repeater({ rules: [rule({ kind: "gone_quiet", threshold: 24 })] })] }));
-      fireEvent.change(row("Hilltop", "gone_quiet").getByLabelText("Hours"), { target: { value: "12" } });
+      pickOption(row("Hilltop", "gone_quiet"), "Hours", 2);
       await waitFor(() => expect(put()).toHaveBeenCalledWith(expect.objectContaining({ kind: "gone_quiet", threshold: 12, enabled: true })));
     });
 

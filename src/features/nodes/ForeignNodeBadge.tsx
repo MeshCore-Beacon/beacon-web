@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Badge } from "../../components/Badge";
+import { CautionChip } from "../../components/NodeChips";
 import { Tooltip } from "../../components/Tooltip";
 
 export function ForeignNodeBadge({ possiblyForeign }: { possiblyForeign?: boolean }) {
@@ -7,7 +7,7 @@ export function ForeignNodeBadge({ possiblyForeign }: { possiblyForeign?: boolea
   if (possiblyForeign !== true) return null;
   return (
     <Tooltip label={t("nodes.possiblyForeignHint")} focusable>
-      <Badge variant="default">{t("nodes.possiblyForeign")}</Badge>
+      <CautionChip>{t("nodes.possiblyForeign")}</CautionChip>
     </Tooltip>
   );
 }

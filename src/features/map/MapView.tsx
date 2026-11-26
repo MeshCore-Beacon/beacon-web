@@ -11,11 +11,11 @@ import { useMapBordersData } from "./useMapBordersData";
 import { useMapPacketFlow } from "./useMapPacketFlow";
 import { PacketFlowButton } from "./PacketFlowButton";
 import { useMapNodesData } from "./useMapNodesData";
-import { nodesToFeatureCollection, filterByNodeType, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
+import { nodesToFeatureCollection, filterByNodeType, filterByPoller, buildNeighborEdges, buildFocusedNeighborEdges, neighborFocusIds, type NeighborEdgeProps } from "./node-geojson";
 import { buildLiveNodeIndex, idleDotTypes, withSelectedNode, liveNeighborLines } from "./live-map";
 import { MapSettingsPanel } from "./MapSettingsPanel";
 import { parseMapView, parseNodeType, buildMapParams, type MapViewSnapshot } from "./map-url";
-import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, MAP_TELEMETRY_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
+import { MAP_STYLE_STORAGE_KEY, DEFAULT_STYLE_ID, resolveMapStyle, MAP_NEIGHBOR_LINES_STORAGE_KEY, MAP_CLUSTER_STORAGE_KEY, MAP_NODE_TYPE_STORAGE_KEY, MAP_POLLERS_ONLY_STORAGE_KEY, MAP_BORDERS_STORAGE_KEY, MAP_TERRAIN_STORAGE_KEY, MAP_TELEMETRY_STORAGE_KEY, DEFAULT_CENTER, DEFAULT_ZOOM, type NeighborLinesMode } from "./types";
 import type { FeatureCollection, LineString } from "geojson";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingPill } from "../../components/LoadingPill";
@@ -73,6 +73,14 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const handleTypeChange = useCallback((t: string) => {
     setTypeFilter(t);
     localStorage.setItem(MAP_NODE_TYPE_STORAGE_KEY, t);
+  }, []);
+
+  const [pollersOnly, setPollersOnly] = useState(
+    () => urlView.pollersOnly ?? localStorage.getItem(MAP_POLLERS_ONLY_STORAGE_KEY) === "on",
+  );
+  const handlePollersOnlyChange = useCallback((on: boolean) => {
+    setPollersOnly(on);
+    localStorage.setItem(MAP_POLLERS_ONLY_STORAGE_KEY, on ? "on" : "off");
   }, []);
 
   const [clustered, setClustered] = useState(
@@ -186,7 +194,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
   const [labels, setLabels] = useState(nextLabels);
   if (stableLabels(labels, nextLabels) !== labels) setLabels(nextLabels);
   const baseFc = useMemo(() => nodesToFeatureCollection(nodes, labels), [nodes, labels]);
-  const geojson = useMemo(() => filterByNodeType(baseFc, typeFilter), [baseFc, typeFilter]);
+  const geojson = useMemo(() => filterByPoller(filterByNodeType(baseFc, typeFilter), pollersOnly), [baseFc, typeFilter, pollersOnly]);
   // Live Map lights crossed nodes from the unfiltered list and draws idle nodes as dots
   const liveNodeIndex = useMemo(() => buildLiveNodeIndex(baseFc), [baseFc]);
   const dotTypes = useMemo(() => idleDotTypes(typeFilter), [typeFilter]);
@@ -256,6 +264,7 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       zoom: map?.getZoom() ?? DEFAULT_ZOOM,
       clustered,
       nodeType: typeFilter,
+      pollersOnly,
       neighborLines,
       styleId,
       flow: packetFlow,
@@ -263,9 +272,9 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
       telemetry: telemetry || telemetryOffered ? telemetry : undefined, // keep a saved "on" before /info loads
     };
     return { tab: "Map", ...buildMapParams(snapshot) };
-  }, [mapRef, clustered, typeFilter, neighborLines, styleId, packetFlow, borders, telemetry, telemetryOffered]);
+  }, [mapRef, clustered, typeFilter, pollersOnly, neighborLines, styleId, packetFlow, borders, telemetry, telemetryOffered]);
 
-  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}`, dotTypes);
+  useMapNodes(mapRef, nodeIconResolverRef, isReady, mapGeojson, isDark, themeKey, effectiveClustered, onSelectNode, selectedNodeId, packetFlow, focusIds, `${regionKey}:${typeFilter}:${pollersOnly}`, dotTypes);
   useMapNeighbors(mapRef, isReady, neighborEdges, themeKey);
   useMapBorders(mapRef, isReady, borderData, themeKey);
   useMapPacketFlow(mapRef, isReady, packetFlow, wsManager, themeKey, regionKey, isDark, liveNodeIndex, onSelectNode);
@@ -281,6 +290,8 @@ export function MapView({ wsManager, selectedNodeId, onSelectNode }: MapViewProp
         onStyleChange={handleStyleChange}
         typeFilter={typeFilter}
         onTypeChange={handleTypeChange}
+        pollersOnly={pollersOnly}
+        onPollersOnlyChange={handlePollersOnlyChange}
         clustered={clustered}
         onClusteredChange={handleClusteredChange}
         neighborLines={neighborLines}

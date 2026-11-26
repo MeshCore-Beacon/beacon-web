@@ -338,6 +338,7 @@
       "meshmapper": "MeshMapper",
       "fromMeshMapper": "From MeshMapper",
       "updated": "updated",
+      "poller": "Poller",
       "carpeater": "CARpeater",
       "carpeaterHint": "Mobile repeater in a vehicle: its position moves.",
       "telemetry": {
@@ -376,6 +377,7 @@
       "colLastHeard": "Last heard",
       "colLocation": "Location",
       "observer": "Observer",
+      "poller": "Poller",
       "empty": "No nodes",
       "neighbors_one": "{{formatted}} neighbors",
       "neighbors_other": "{{formatted}} neighbors",
@@ -656,6 +658,7 @@
       "tiles": "Map Tiles",
       "nodeType": "Node Type",
       "nodeTypeLabel": "Node type",
+      "pollersOnly": "Pollers only",
       "clustering": "Clustering",
       "clusteringLiveNote": "Off while Live Map is on",
       "neighborLines": "Neighbor Lines",
@@ -698,6 +701,7 @@
       }
     },
     "nodeFilters": {
+      "poller": "Poller",
       "exportCsv": "CSV",
       "exportCsvResult": "CSV saved. Loaded nodes: {{count}}. This is not a full-network export.",
       "exportLoaded": "Export loaded nodes (CSV)",
@@ -1100,6 +1104,7 @@
       "heardUnavailable": "Packet details are unavailable or expired.",
       "openPacket": "Open packet",
       "fieldObserver": "Observer",
+      "pollerBadge": "Poller",
       "observerBadge": "Observer",
       "viewAnalytics": "Analytics",
       "viewHeard": "Heard by",

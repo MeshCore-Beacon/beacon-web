@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { StatsSubHeader } from "../../../src/features/stats/StatsSubHeader";
 import i18n from "../../../src/i18n";
+import { setPhone } from "../../phone";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -52,5 +53,23 @@ describe("translated analytics controls", () => {
     rerender(<StatsSubHeader tab="clockdrift" range="24h" onTabChange={onTabChange} onRangeChange={onRangeChange} />);
     expect(screen.queryByRole("group", { name: "Période" })).not.toBeInTheDocument();
     expect(onRangeChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("section picker on a phone", () => {
+  const original = window.matchMedia;
+  afterEach(() => { window.matchMedia = original; });
+
+  it("opens a sheet with the sections and reports the choice", async () => {
+    await act(() => i18n.changeLanguage("en"));
+    setPhone(true);
+    const onTabChange = vi.fn();
+    render(<StatsSubHeader tab="mesh" range="7d" onTabChange={onTabChange} onRangeChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Section/ }));
+    const dialog = screen.getByRole("dialog");
+    const options = within(dialog).getAllByRole("option");
+    expect(options.length).toBeGreaterThan(3);
+    fireEvent.click(options[1]!);
+    expect(onTabChange).toHaveBeenCalled();
   });
 });

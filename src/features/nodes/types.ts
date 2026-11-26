@@ -21,6 +21,7 @@ export interface NodeSummary {
   // Set when this node also runs as an observer (watches traffic for uplink). isObserver drives the
   // map's observer-pip marker variant; observerId, when present, links to that observer's detail.
   isObserver?: boolean;
+  isPoller?: boolean; // a poller is always an observer; absent on older servers (treated as false)
   observerId?: string;
   // Server verdict against its configured local border union; absence is unknown/disabled.
   possiblyForeign?: boolean;

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
 import { RouteTable } from "../../../src/features/routes/RouteTable";
@@ -364,4 +364,50 @@ it("shows no routes for a region with no IATAs", async () => {
   expect(await screen.findByText("No routes")).toBeInTheDocument();
   expect(screen.queryByText("9")).not.toBeInTheDocument();
   expect(mockGetKnownRoutesPage).not.toHaveBeenCalled();
+});
+
+describe("RouteTable on a phone", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 767px)", media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => { window.matchMedia = original; });
+
+  it("shows a Filters button instead of the inline fields, and the sheet holds the three fields", async () => {
+    renderTable();
+    const filters = await screen.findByRole("button", { name: /Filters/ });
+    expect(screen.queryByPlaceholderText("from hash")).not.toBeInTheDocument();
+    fireEvent.click(filters);
+    const dialog = screen.getByRole("dialog", { name: "Filters" });
+    expect(within(dialog).getByLabelText("From hash")).not.toHaveFocus();
+    expect(within(dialog).getByLabelText("To hash")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: /Areas/ })).toBeInTheDocument();
+  });
+
+  it("runs the same search from the primary button, closes the sheet, and counts set fields", async () => {
+    renderTable();
+    fireEvent.click(await screen.findByRole("button", { name: /Filters/ }));
+    const dialog = screen.getByRole("dialog", { name: "Filters" });
+    const search = within(dialog).getByRole("button", { name: "Search" });
+    expect(search).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText("From hash"), { target: { value: "AA11" } });
+    fireEvent.change(within(dialog).getByLabelText("To hash"), { target: { value: "bb22" } });
+    expect(search).toBeEnabled();
+    fireEvent.click(search);
+    await waitFor(() => expect(mockSearchKnownRoutes).toHaveBeenCalledWith(undefined, "aa11", "bb22", expect.any(AbortSignal)));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Filters/ })).toHaveTextContent("2");
+  });
+
+  it("clears the three fields with Clear all", async () => {
+    renderTable();
+    fireEvent.click(await screen.findByRole("button", { name: /Filters/ }));
+    const dialog = screen.getByRole("dialog", { name: "Filters" });
+    fireEvent.change(within(dialog).getByLabelText("From hash"), { target: { value: "aa11" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Clear all" }));
+    expect(within(dialog).getByLabelText("From hash")).toHaveValue("");
+  });
 });

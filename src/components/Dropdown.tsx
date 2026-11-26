@@ -19,6 +19,11 @@ export function Dropdown({ renderTrigger, align = "right", width = "w-48", fullW
   const toggle = useCallback(() => setOpen((v) => !v), []);
   useClickOutside(ref, open, close);
 
+  // in the sheet, keep the opened field in view as the viewport changes
+  useEffect(() => {
+    if (open && fullWidth) ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, fullWidth]);
+
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -36,7 +41,7 @@ export function Dropdown({ renderTrigger, align = "right", width = "w-48", fullW
       {open && (
         <div className={
           fullWidth
-            ? "mt-1 w-full bg-bg-raised border border-border rounded-md py-1 max-h-72 overflow-y-auto"
+            ? "w-full"
             : `absolute ${up ? "bottom-full mb-1" : "top-full mt-1"} ${ALIGN_CLASS[align]} ${width} max-w-[calc(100vw-1.5rem)] bg-bg-raised border border-border rounded-md shadow-lg z-50 py-1 max-h-80 overflow-y-auto`
         }>
           {children(close)}

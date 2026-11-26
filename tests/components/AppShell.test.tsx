@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { AppShell } from "../../src/components/AppShell";
@@ -358,5 +358,32 @@ describe("AppShell on a phone", () => {
     const badge = screen.getByRole("status", { name: "STALE 5s" });
     expect(badge).toHaveTextContent(/^5s$/);
     expect(screen.queryByText("STALE 5s")).not.toBeInTheDocument();
+  });
+});
+
+describe("region picker on a phone", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    vi.mocked(getIatas).mockResolvedValue(IATAS);
+    vi.mocked(getRegions).mockResolvedValue(REGIONS.map(({ id, slug, name }) => ({ id, slug, name })));
+    vi.mocked(getRegion).mockImplementation(async (id: number) => REGIONS.find((r) => r.id === id)!);
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 767px)", media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => { window.matchMedia = original; });
+
+  it("opens a dialog sheet without focusing the search, and selecting still updates the region", async () => {
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: /Region/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Region" });
+    await within(dialog).findByText("Western Canada");
+    const input = within(dialog).getByPlaceholderText(/Search region or area code/);
+    expect(input).not.toHaveFocus();
+    expect(input).toHaveClass("text-base");
+    fireEvent.change(input, { target: { value: "yvr" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Vancouver International/ }));
+    expect(screen.getByRole("button", { name: /Region\s*YVR/ })).toBeInTheDocument();
   });
 });

@@ -320,6 +320,7 @@ export function getNodesPage(
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
     scope?: string; // transport scope name, e.g. "#bc"
+    poller?: "true" | "false"; // only pollers / only non-pollers; omit for all
     // server-side order, paged by pageCursor alone; check the page's `sort`, older servers ignore it
     sort?: NodeSort;
     order?: "asc" | "desc";
@@ -340,6 +341,7 @@ export function getNodesPage(
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
     scope: params?.scope,
+    poller: params?.poller,
     sort: params?.sort,
     order: params?.sort ? params.order : undefined,
   }, signal);

@@ -10,7 +10,7 @@ import type {
 } from "maplibre-gl";
 import Spiderfy from "@nazka/map-gl-js-spiderfy";
 import type { FeatureCollection, Point } from "geojson";
-import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, SELECTION_RING_ICON_ID, nodeTypeColor } from "./node-icons";
+import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, nodePollerIconId, SELECTION_RING_ICON_ID, nodeTypeColor } from "./node-icons";
 import type { NodeFeatureProps } from "./node-geojson";
 import { idleDotTypes } from "./live-map";
 import {
@@ -83,13 +83,21 @@ function syncLeafSelectionRing(map: MapLibreMap, selectedId: string | null): voi
   );
 }
 
-// Icon per device type; observers get the -observer pip variant, unknown types the fallback ring.
-const ICON_IMAGE: ExpressionSpecification = [
+// Icon per device type: pollers get the -poller pip, observers the -observer pip,
+// unknown types the fallback ring.
+export const ICON_IMAGE: ExpressionSpecification = [
   "match",
   ["get", "nodeTypeName"],
   ...NODE_TYPE_NAMES.flatMap((t) => [
     t,
-    ["case", ["to-boolean", ["get", "isObserver"]], nodeObserverIconId(t), nodeIconId(t)],
+    [
+      "case",
+      ["to-boolean", ["get", "isPoller"]],
+      nodePollerIconId(t),
+      ["to-boolean", ["get", "isObserver"]],
+      nodeObserverIconId(t),
+      nodeIconId(t),
+    ],
   ]),
   NODE_ICON_UNKNOWN,
 ] as unknown as ExpressionSpecification;

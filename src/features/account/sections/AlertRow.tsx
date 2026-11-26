@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSessionMutation } from "../../../hooks/useSessionMutation";
 import { alerts } from "../../../api/auth";
 import { Timestamp } from "../../../components/Timestamp";
+import { SelectDropdown } from "../../../components/SelectDropdown";
 import { fieldClassRoomy } from "../../../components/form/fieldStyles";
 import { Switch } from "../../../components/form/Switch";
 import { ALERTS_KEY } from "../../../hooks/useAlerts";
@@ -85,9 +86,11 @@ export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTar
 
   const label = (key: string) => t(`account.alerts.fields.${key}`, { unit: tempSymbol(tempUnit) });
   const select = (key: string, options: number[], text: (n: number) => string) => (
-    <select aria-label={label(key)} value={inputs.a} disabled={save.isPending} onChange={(e) => change("a", e.target.value, true)} className={`${fieldClassRoomy} !w-auto`}>
-      {options.map((o) => <option key={o} value={o}>{text(o)}</option>)}
-    </select>
+    <SelectDropdown
+      label={label(key)} showLabel={false} hideAll sheetOnMobile align="left" disabled={save.isPending}
+      options={options.map((o) => ({ value: String(o), label: text(o) }))} value={inputs.a}
+      onChange={(v) => change("a", v, true)}
+    />
   );
   const text = (key: string, field: keyof Inputs, placeholder: string) => (
     <input
