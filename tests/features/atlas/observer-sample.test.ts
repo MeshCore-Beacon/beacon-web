@@ -50,7 +50,17 @@ describe("summarizeObserver", () => {
   });
 
   it("maps ranges to the server's duration strings", () => {
-    expect(OBSERVER_RANGE).toEqual({ "24h": "24h", "3d": "72h" });
+    expect(OBSERVER_RANGE).toEqual({ "24h": "24h", "3d": "72h", "7d": "168h" });
+  });
+
+  it("has 168 hourly slots at 7d", () => {
+    const sample = summarizeObserver(activity([point(0, 3, 1), point(167, 5, 2), point(168, 99, 0)]), tele([{ t: now - 100 * HOUR, noiseFloorDb: -110 }]), undefined, "7d", now);
+    expect(sample.counts).toHaveLength(168);
+    expect(sample.counts[167]).toBe(3);
+    expect(sample.counts[0]).toBe(5);
+    expect(sample.heard).toBe(8);
+    expect(sample.noiseHourly).toHaveLength(168);
+    expect(sample.noiseHourly[67]).toBe(-110);
   });
 
   it("bins packets heard per hour over the window, newest last, and sums them", () => {

@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ModalOverlay } from "../components/ModalOverlay";
-import { NodeDetailPanel } from "./nodes/NodeDetailPanel";
+import { NodeDetailPanel, type NodeView } from "./nodes/NodeDetailPanel";
 import { PacketAnalyzerDrawer } from "./packets/PacketAnalyzerDrawer";
 import { usePacketDetail } from "./packets/usePacketDetail";
 import { PacketPathMapModal } from "./map/PacketPathMapModal";
 import type { PacketDetail } from "../types/api";
 
 export type InvestigationTarget =
-  | { kind: "node"; id: string }
+  | { kind: "node"; id: string; view?: NodeView }
   | { kind: "packet"; hash: string; observationId?: number }
   | { kind: "path"; detail: PacketDetail; selectedKey?: string };
 
@@ -18,9 +18,10 @@ export interface Investigation {
 }
 
 // Each panel stays mounted underneath the next one so its selection, scroll and trigger survive.
-export function InvestigationPanel({ target, inactive, onClose, onOpen, onViewObserver, onViewOnMap }: {
+export function InvestigationPanel({ target, inactive, onClose, onOpen, onViewObserver, onOpenObserverDashboard, onViewOnMap }: {
   target: InvestigationTarget; inactive: boolean; onClose: () => void;
   onOpen: (target: InvestigationTarget) => void; onViewObserver: (id: string, packet?: { hash: string; observationId?: number }) => void;
+  onOpenObserverDashboard?: (id: string) => void;
   onViewOnMap?: (nodeId: string, lat: number, lng: number) => void;
 }) {
   const { t } = useTranslation();
@@ -31,7 +32,7 @@ export function InvestigationPanel({ target, inactive, onClose, onOpen, onViewOb
   if (target.kind === "path") return <PacketPathMapModal detail={target.detail} initialSelectedKey={target.selectedKey} inactive={inactive} onClose={onClose} />;
   return <ModalOverlay label={t(target.kind === "node" ? "investigation.nodeDialog" : "investigation.packetDialog")} inactive={inactive} onClose={onClose}>
     {target.kind === "node" ? (
-      <NodeDetailPanel nodeId={target.id} onClose={onClose} onViewObserver={id => onViewObserver(id)} onViewNode={node} onAnalyzePacket={packet} onViewOnMap={onViewOnMap && ((lat, lng) => onViewOnMap(target.id, lat, lng))} />
+      <NodeDetailPanel nodeId={target.id} view={target.view} onClose={onClose} onViewObserver={id => onViewObserver(id)} onOpenObserverDashboard={onOpenObserverDashboard} onViewNode={node} onAnalyzePacket={packet} onViewOnMap={onViewOnMap && ((lat, lng) => onViewOnMap(target.id, lat, lng))} />
     ) : (
       <PacketAnalyzerDrawer
         detail={detail} loading={isLoading} selectedObservationId={selected} onSelectObservation={setSelected}

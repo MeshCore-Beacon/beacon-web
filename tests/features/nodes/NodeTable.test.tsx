@@ -71,7 +71,7 @@ describe("NodeTable paging", () => {
   it("asks for nodes at the server's page cap, so a whole region takes a quarter of the requests", async () => {
     mount([node({ id: "node-a", name: "Node A" })]);
     await screen.findByText("Node A");
-    expect(vi.mocked(getNodesPage)).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ limit: 200 }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenCalledWith(["YVR"], expect.objectContaining({ limit: 200 }), expect.any(AbortSignal));
   });
 });
 
@@ -189,14 +189,14 @@ describe("NodeTable server order", () => {
         : sortedPage([node({ id: "b", name: "Bravo" }), node({ id: "a", name: "alpha 10" })], { hasMore: true, nextPageCursor: "s1:next" }),
     );
     await screen.findByText("alpha 10");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "name", order: "asc", limit: 200 }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "name", order: "asc", limit: 200 }), expect.any(AbortSignal));
     expect(names()).toEqual(["Bravo", "alpha 10"]); // as given, not re-sorted here
     await act(async () => new Promise((r) => setTimeout(r, 50)));
     expect(vi.mocked(getNodesPage)).toHaveBeenCalledTimes(1); // no eager paging
 
     fireEvent.scroll(screen.getByRole("table").parentElement!);
     await screen.findByText("Charlie");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ pageCursor: "s1:next", sort: "name" }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ pageCursor: "s1:next", sort: "name" }), expect.any(AbortSignal));
     expect(names()).toEqual(["Bravo", "alpha 10", "Charlie"]);
   });
 
@@ -219,7 +219,7 @@ describe("NodeTable server order", () => {
     await screen.findByText("Node lastSeen desc");
     fireEvent.click(header(/last heard/i)!);
     await screen.findByText("Node lastSeen asc");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "lastSeen", order: "asc" }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: "lastSeen", order: "asc" }), expect.any(AbortSignal));
   });
 
   it("hides Last heard when the server's rows don't carry it", async () => {
@@ -261,7 +261,7 @@ describe("NodeTable server order", () => {
     scopes = ["#bc"];
     mountPages((p) => sortedPage([node({ id: "a", name: p?.scope ? `in ${p.scope}` : "any scope" })]));
     await screen.findByText("any scope");
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ scope: undefined }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ scope: undefined }), expect.any(AbortSignal));
     fireEvent.click(screen.getAllByRole("button", { name: /scope/i })[0]!);
     fireEvent.click(await screen.findByRole("option", { name: "#bc" }));
     await screen.findByText("in #bc");
@@ -275,9 +275,197 @@ describe("NodeTable server order", () => {
     );
     await screen.findByText("Alpha"); // the second page came without a scroll
     expect(names()).toEqual(["Alpha", "Zulu"]);
-    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: undefined }));
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ sort: undefined }), expect.any(AbortSignal));
     expect(header(/last heard/i)).not.toBeInTheDocument();
     fireEvent.click(header(/radio/i)!);
     expect(names()).toEqual(["Zulu", "Alpha"]);
+  });
+});
+
+async function pickPoller(option: "Yes" | "No" | "Any") {
+  fireEvent.click(within(screen.getByRole("toolbar")).getAllByRole("button", { name: /poller/i })[0]!);
+  fireEvent.click(await screen.findByRole("option", { name: option }));
+}
+
+describe("NodeTable role icons", () => {
+  const chips = (row: HTMLElement) => [...row.querySelectorAll("[data-chip]")].map((c) => c.getAttribute("data-chip"));
+
+  it("shows the poller then observer glyph chips, then the type chip, for a poller", async () => {
+    mount([node({ id: "p", name: "Pol", isObserver: true, isPoller: true })]);
+    const row = (await screen.findByText("Pol")).closest("tr")!;
+    expect(chips(row)).toEqual(["poller", "observer", "type"]);
+    const pulse = within(row).getByRole("img", { name: "Poller" });
+    expect(within(row).getByRole("img", { name: "Observer" })).toBeInTheDocument();
+    fireEvent.mouseEnter(pulse.parentElement!);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Poller");
+  });
+
+  it("shows only the eye for an observer-only node", async () => {
+    mount([node({ id: "o", name: "Obs", isObserver: true })]);
+    const row = (await screen.findByText("Obs")).closest("tr")!;
+    expect(chips(row)).toEqual(["observer", "type"]);
+  });
+
+  it("shows no role chips for a node without the flags", async () => {
+    mount([node({ id: "n", name: "Plain" })]);
+    const row = (await screen.findByText("Plain")).closest("tr")!;
+    expect(chips(row)).toEqual(["type"]);
+  });
+
+  it.each([
+    ["companion", "text-primary"],
+    ["repeater", "text-secondary"],
+    ["room_server", "text-green"],
+    ["sensor", "text-warn"],
+  ])("tints the %s type chip with its marker colour", async (type, cls) => {
+    mount([node({ id: "t", name: "Typed", nodeTypeName: type })]);
+    const row = (await screen.findByText("Typed")).closest("tr")!;
+    const chip = row.querySelector('[data-chip="type"]')!;
+    expect(chip).toHaveClass(cls);
+    expect(chip.querySelector("svg")).not.toBeNull();
+  });
+
+  it("falls back to grey with no glyph for an unknown type", async () => {
+    mount([node({ id: "u", name: "Odd", nodeTypeName: "mystery" })]);
+    const chip = (await screen.findByText("Odd")).closest("tr")!.querySelector('[data-chip="type"]')!;
+    expect(chip).toHaveClass("text-text-muted");
+    expect(chip.querySelector("svg")).toBeNull();
+  });
+
+  it("shows Possibly foreign in the caution look", async () => {
+    mount([node({ id: "f", name: "Far", possiblyForeign: true })]);
+    const chip = (await screen.findByText("Far")).closest("tr")!.querySelector('[data-chip="caution"]')!;
+    expect(chip).toHaveTextContent("Possibly foreign");
+  });
+
+  it("hides rows without isPoller when Poller is Yes, as an older server ignores the param", async () => {
+    mount([node({ id: "a", name: "Plain" }), node({ id: "b", name: "Pulse", isObserver: true, isPoller: true })]);
+    await screen.findByText("Plain");
+    await pickPoller("Yes");
+    await waitFor(() => expect(screen.queryByText("Plain")).not.toBeInTheDocument());
+    expect(screen.getByText("Pulse")).toBeInTheDocument();
+  });
+
+  it("drops a row from the Poller Yes list when a live update clears its flag", async () => {
+    let push: (data: WsNodeUpdate["data"]) => void = () => {};
+    const ws = { onNodeUpdate: (h: typeof push) => { push = h; return () => {}; } } as unknown as WsManager;
+    vi.mocked(getNodesPage).mockResolvedValue({ items: [node({ id: "b", name: "Pulse", isObserver: true, isPoller: true })], nextCursor: null, hasMore: false });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><NodeTable wsManager={ws} selectedNodeId={null} onSelectNode={vi.fn()} /></QueryClientProvider>);
+    await screen.findByText("Pulse");
+    await pickPoller("Yes");
+    await screen.findByText("Pulse");
+    act(() => push({ nodeId: "b", publicKey: "aabbccdd", name: "Pulse", nodeType: 2, nodeTypeName: "REPEATER", iata: "YVR", isObserver: true, isPoller: false, iatas: [] }));
+    await waitFor(() => expect(screen.queryByText("Pulse")).not.toBeInTheDocument());
+  });
+
+  describe("a node becoming a poller while Poller is Yes", () => {
+    let push: (data: WsNodeUpdate["data"]) => void = () => {};
+    const ws = { onNodeUpdate: (h: typeof push) => { push = h; return () => {}; } } as unknown as WsManager;
+    let serverHasX = false;
+    const answer = (p: Parameters<typeof getNodesPage>[1]) => ({
+      items: p?.poller === "true" && !serverHasX ? [node({ id: "a", name: "Alpha", isPoller: true })]
+        : p?.poller === "true" ? [node({ id: "a", name: "Alpha", isPoller: true }), node({ id: "x", name: "Xray", isPoller: true })]
+        : [node({ id: "a", name: "Alpha", isPoller: true })],
+      nextCursor: null, hasMore: false,
+    });
+    const update = (over: Partial<WsNodeUpdate["data"]>): WsNodeUpdate["data"] =>
+      ({ nodeId: "x", publicKey: "aabbccdd", name: "Xray", nodeType: 2, nodeTypeName: "REPEATER", iata: "YVR", isObserver: true, iatas: [], ...over });
+    const mountWs = async () => {
+      serverHasX = false;
+      vi.mocked(getNodesPage).mockImplementation(async (_i, p) => answer(p));
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      render(<QueryClientProvider client={client}><NodeTable wsManager={ws} selectedNodeId={null} onSelectNode={vi.fn()} /></QueryClientProvider>);
+      await screen.findByText("Alpha");
+    };
+
+    it("refetches the active query and shows the node once the server returns it", async () => {
+      await mountWs();
+      await pickPoller("Yes");
+      await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true" }), expect.any(AbortSignal)));
+      await screen.findByText("Alpha");
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      serverHasX = true;
+      act(() => push(update({ isPoller: true })));
+      expect(await screen.findByText("Xray")).toBeInTheDocument();
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
+      expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true" }), expect.any(AbortSignal));
+    });
+
+    it("carries the type filter in that refetch", async () => {
+      await mountWs();
+      await pickPoller("Yes");
+      fireEvent.click(within(screen.getByRole("toolbar")).getAllByRole("button", { name: /^type/i })[0]!);
+      fireEvent.click(await screen.findByRole("option", { name: "Repeater" }));
+      await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true", type: "repeater" }), expect.any(AbortSignal)));
+      await screen.findByText("Alpha");
+      serverHasX = true;
+      act(() => push(update({ isPoller: true })));
+      await screen.findByText("Xray");
+      expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true", type: "repeater" }), expect.any(AbortSignal));
+    });
+
+    it("coalesces a burst of updates into one refetch", async () => {
+      await mountWs();
+      await pickPoller("Yes");
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      act(() => { for (const id of ["x", "y", "z"]) push(update({ nodeId: id, isPoller: true })); });
+      await act(async () => new Promise((r) => setTimeout(r, 800)));
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
+    });
+
+    it("a timer armed for an old key does not swallow an event for the new one", async () => {
+      await mountWs();
+      await pickPoller("Yes");
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      act(() => push(update({ nodeId: "y", isPoller: true }))); // arms the timer for the old key
+      fireEvent.click(within(screen.getByRole("toolbar")).getAllByRole("button", { name: /^type/i })[0]!);
+      fireEvent.click(await screen.findByRole("option", { name: "Repeater" }));
+      await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ type: "repeater" }), expect.any(AbortSignal)));
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      serverHasX = true;
+      act(() => push(update({ isPoller: true })));
+      await screen.findByText("Xray");
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before + 1);
+    });
+
+    it("does not refetch with the toggle off, or for a poller already loaded", async () => {
+      await mountWs();
+      const before = vi.mocked(getNodesPage).mock.calls.length;
+      act(() => push(update({ isPoller: true })));
+      await act(async () => new Promise((r) => setTimeout(r, 800)));
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(before);
+      await pickPoller("Yes");
+      await screen.findByText("Alpha");
+      await act(async () => new Promise((r) => setTimeout(r, 50)));
+      const mid = vi.mocked(getNodesPage).mock.calls.length;
+      act(() => push(update({ nodeId: "a", name: "Alpha", isPoller: true })));
+      await act(async () => new Promise((r) => setTimeout(r, 800)));
+      expect(vi.mocked(getNodesPage).mock.calls.length).toBe(mid);
+    });
+  });
+
+  it("hides pollers and sends poller=false when Poller is No, and Any shows everyone again", async () => {
+    mount([node({ id: "a", name: "Plain" }), node({ id: "b", name: "Pulse", isObserver: true, isPoller: true })]);
+    await screen.findByText("Plain");
+    await pickPoller("No");
+    await waitFor(() => expect(screen.queryByText("Pulse")).not.toBeInTheDocument());
+    expect(screen.getByText("Plain")).toBeInTheDocument();
+    expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "false" }), expect.any(AbortSignal));
+    await pickPoller("Any");
+    expect(await screen.findByText("Pulse")).toBeInTheDocument();
+    expect(vi.mocked(getNodesPage).mock.calls[0]![1]!.poller).toBeUndefined();
+  });
+
+  it("sends poller=true once Poller is set to Yes", async () => {
+    mount([node({ id: "a", name: "Node A" })]);
+    await screen.findByText("Node A");
+    await pickPoller("Yes");
+    await waitFor(() => expect(vi.mocked(getNodesPage)).toHaveBeenLastCalledWith(["YVR"], expect.objectContaining({ poller: "true" }), expect.any(AbortSignal)));
   });
 });

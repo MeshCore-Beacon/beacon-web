@@ -135,6 +135,28 @@ describe("rate-limit store", () => {
     expect(getRateLimitedUntil()).toBe(10_000);
   });
 
+  it("notifies a parked subscriber when the extended deadline expires", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const deadlines: (number | null)[] = [];
+    const unsubscribe = subscribeRateLimit(() => deadlines.push(getRateLimitedUntil()));
+    try {
+      noteRateLimited(2_000);
+      vi.advanceTimersByTime(1_000);
+      noteRateLimited(4_000);
+      noteRateLimited(100);
+      vi.advanceTimersByTime(3_999);
+      expect(deadlines).toEqual([2_000, 5_000]);
+      vi.advanceTimersByTime(1);
+      expect(deadlines).toEqual([2_000, 5_000, null]);
+      expect(isRateLimited()).toBe(false);
+      noteRequestOk();
+      expect(deadlines).toHaveLength(3);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it("noteRequestOk clears and notifies, and stays quiet when nothing was set", () => {
     const cb = vi.fn();
     const unsub = subscribeRateLimit(cb);

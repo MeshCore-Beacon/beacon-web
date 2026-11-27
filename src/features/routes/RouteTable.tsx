@@ -11,6 +11,8 @@ import { Timestamp } from "../../components/Timestamp";
 import { DataTable, type Column } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { MultiSelectDropdown } from "../../components/MultiSelectDropdown";
+import { FilterSheet, FiltersButton } from "../../components/FilterSheet";
+import { SheetTextField } from "../../components/SheetTextField";
 import { useIsMobile } from "../../hooks/useMediaQuery";
 import { RouteDetailPanel, type RouteActions } from "./RouteDetailPanel";
 import { ResolvedHopBlock } from "../packets/PathData";
@@ -254,7 +256,7 @@ export function RouteTable(actions: RouteActions) {
   const { items: listRoutes, loadedCount, isPaging, isError, isLoading: listLoading, loadMore, hasMore } =
     useInfinitePages<KnownRoute, RouteCursor>({
       queryKey: ["routes", serverIatas?.join(",") ?? ""],
-      queryFn: (page) => getKnownRoutesPage({ iatas: serverIatas, cursor: page?.cursor }),
+      queryFn: (page, signal) => getKnownRoutesPage({ iatas: serverIatas, cursor: page?.cursor }, signal),
       getId: routeId,
       keepPrevious: true,
       auto: false,
@@ -364,13 +366,50 @@ export function RouteTable(actions: RouteActions) {
     closeRoute();
   }, [closeRoute]);
 
+  const [sheetOpen, setSheetOpen] = useState(false);
+  if (sheetOpen && !isMobile) setSheetOpen(false);
+  const activeCount = [from.trim(), to.trim(), searchIatas.length > 0].filter(Boolean).length;
+  const clearFields = () => { setFrom(""); setTo(""); setSearchIatas([]); setHashError(false); };
+
+  const onSheetKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") { submitSearch(); setSheetOpen(false); }
+  };
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") submitSearch();
   };
 
   return (
     <div className="flex flex-col flex-1 min-h-0 min-w-0">
-      {/* stacks into two rows on mobile (the inputs would otherwise wrap around the arrow); one row at md+ */}
+      {isMobile ? (
+        <div className={`${panelOpen ? "hidden" : "flex"} flex-wrap items-center gap-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0`}>
+          <FiltersButton activeCount={activeCount} onClick={() => setSheetOpen(true)} />
+          {search && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="h-7 text-[11px] font-mono px-2 rounded-sm text-text-dim hover:text-text-normal cursor-pointer transition-colors"
+            >
+              {t("routes.clear")}
+            </button>
+          )}
+          {(hashError || tooManyAreas) && (
+            <span className="font-mono text-[11px] text-warn">{t(hashError ? "routes.badHash" : "routes.tooManyAreas")}</span>
+          )}
+          {sheetOpen && (
+            <FilterSheet
+              onClose={() => setSheetOpen(false)}
+              onClear={activeCount > 0 ? clearFields : undefined}
+              doneLabel={t("routes.search")}
+              doneDisabled={!canSearch}
+              onDone={() => { submitSearch(); setSheetOpen(false); }}
+            >
+              <SheetTextField label={t("routes.fromLabel")} placeholder={t("routes.fromPlaceholder")} value={from} onChange={(v) => { setFrom(v); setHashError(false); }} onKeyDown={onSheetKeyDown} />
+              <SheetTextField label={t("routes.toLabel")} placeholder={t("routes.toPlaceholder")} value={to} onChange={(v) => { setTo(v); setHashError(false); }} onKeyDown={onSheetKeyDown} />
+              <MultiSelectDropdown label={t("routes.areas")} options={iataOptions} selected={searchIatas} onChange={setSearchIatas} align="left" fullWidth />
+            </FilterSheet>
+          )}
+        </div>
+      ) : (
       <div className={`${panelOpen ? "hidden md:flex" : "flex"} flex-col md:flex-row md:flex-wrap md:items-center gap-1.5 gap-y-1.5 px-4 py-2 border-b border-border-subtle bg-bg-base shrink-0`}>
         <div className="flex items-center gap-1.5">
           <span className="hidden md:inline text-text-muted text-[11px] uppercase tracking-wider mr-1 shrink-0">{t("routes.findPath")}</span>
@@ -425,6 +464,7 @@ export function RouteTable(actions: RouteActions) {
           <span className="font-mono text-[11px] text-warn">{t(hashError ? "routes.badHash" : "routes.tooManyAreas")}</span>
         )}
       </div>
+      )}
       {search && searchErrors.length > 0 && (searchRows?.length ?? 0) > 0 && (
         <div role="alert" className="px-4 py-1.5 border-b border-border-subtle font-mono text-[11px] text-danger">
           {searchErrors.join(" · ")}

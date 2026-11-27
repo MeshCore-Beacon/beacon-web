@@ -21,7 +21,13 @@ vi.mock("../../../src/features/observers/useObserverDirectory", () => ({
   }),
 }));
 vi.mock("../../../src/hooks/useScopes", () => ({ useScopes: () => [] }));
-vi.mock("../../../src/api/client", () => ({ getBrokers: () => Promise.resolve([]) }));
+vi.mock("../../../src/api/client", () => ({
+  getBrokers: () => Promise.resolve([]),
+  getObserver: vi.fn((id: string) => Promise.resolve({ id, publicKey: id === "observer-a" ? "AABB" : "ccdd" })),
+  getNodesPage: vi.fn((_region: unknown, { pubkey }: { pubkey: string }) => Promise.resolve({
+    items: pubkey === "aabb" ? [{ id: "node-a", publicKey: "aabb", name: "Roof Node", nodeTypeName: "repeater" }] : [], nextCursor: null, hasMore: false,
+  })),
+}));
 vi.mock("../../../src/features/observers/ObserverSidebar", () => ({
   ObserverSidebar: ({ observers, onSelect }: { observers: ObserverSummary[]; onSelect: (id: string) => void }) => (
     <ul aria-label="Observer list">
@@ -66,13 +72,13 @@ function Location() {
     </>
   );
 }
-function view(url = "?tab=Observers&iata=YOW") {
+function view(url = "?tab=Observers&iata=YOW", onViewNode?: (id: string) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[url]}>
         <Location />
-        <ObserverPage wsManager={{} as WsManager} />
+        <ObserverPage wsManager={{} as WsManager} onViewNode={onViewNode} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -192,4 +198,22 @@ it("changes the detail range without changing the directory request", async () =
   expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-a 30d");
   expect(vi.mocked(useObserverDirectory).mock.calls.at(-1)![1]).toEqual(before);
   expect(list().getAllByRole("button")).toHaveLength(2);
+});
+
+describe("observer node row", () => {
+  it("names the node this observer advertises as and opens its panel", async () => {
+    const onViewNode = vi.fn();
+    view("?tab=Observers&observer=observer-a", onViewNode);
+    const row = await screen.findByRole("region", { name: "Node record" });
+    expect(within(row).getByText("Roof Node")).toBeInTheDocument();
+    expect(within(row).getByText("repeater")).toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: "Node details" }));
+    expect(onViewNode).toHaveBeenCalledWith("node-a");
+  });
+  it("is absent for an observer with no node record", async () => {
+    view("?tab=Observers&observer=observer-b", vi.fn());
+    await screen.findByRole("heading");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("region", { name: "Node record" })).not.toBeInTheDocument();
+  });
 });

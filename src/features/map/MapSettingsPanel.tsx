@@ -59,6 +59,11 @@ interface MapSettingsPanelProps {
   onBordersChange: (on: boolean) => void;
   terrain: boolean;
   onTerrainChange: (on: boolean) => void;
+  // the row shows only when the server offers telemetry labels
+  telemetry?: boolean;
+  onTelemetryChange?: (on: boolean) => void;
+  pollersOnly?: boolean;
+  onPollersOnlyChange?: (on: boolean) => void;
   // builds deep-link params for the current view, evaluated at copy time (reads the live camera)
   buildShareParams: () => Record<string, string | null>;
   // Live Map forces clustering off while it runs; the saved choice comes back afterwards
@@ -78,6 +83,10 @@ export function MapSettingsPanel({
   onBordersChange,
   terrain,
   onTerrainChange,
+  telemetry = false,
+  onTelemetryChange,
+  pollersOnly = false,
+  onPollersOnlyChange,
   buildShareParams,
   liveMap = false,
 }: MapSettingsPanelProps) {
@@ -140,6 +149,17 @@ export function MapSettingsPanel({
               onChange={onTypeChange}
             />
           </Section>
+          {onPollersOnlyChange && (
+            <Section title={t("map.pollersOnly")}>
+              <SegmentedControl
+                ariaLabel={t("map.pollersOnly")}
+                options={[on, off]}
+                value={pollersOnly ? "on" : "off"}
+                onChange={(v) => onPollersOnlyChange(v === "on")}
+                className="w-full"
+              />
+            </Section>
+          )}
           <Section title={t("map.clustering")}>
             <SegmentedControl
               ariaLabel={t("map.clustering")}
@@ -182,6 +202,17 @@ export function MapSettingsPanel({
               className="w-full"
             />
           </Section>
+          {onTelemetryChange && (
+            <Section title={t("map.telemetry")}>
+              <SegmentedControl
+                ariaLabel={t("map.telemetryLabel")}
+                options={[on, off]}
+                value={telemetry ? "on" : "off"}
+                onChange={(v) => onTelemetryChange(v === "on")}
+                className="w-full"
+              />
+            </Section>
+          )}
           <div className="px-3 py-2.5 border-t border-border-subtle flex justify-end">
             <CopyLinkButton
               params={buildShareParams}

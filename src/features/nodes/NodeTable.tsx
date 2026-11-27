@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getNodesPage } from "../../api/client";
@@ -12,7 +12,7 @@ import { hasMapLocation } from "../map/location";
 import { Badge } from "../../components/Badge";
 import { Tooltip } from "../../components/Tooltip";
 import { Timestamp } from "../../components/Timestamp";
-import { ObserverIcon } from "../../components/ObserverIcon";
+import { TypeChip, RoleChip } from "../../components/NodeChips";
 import { DataTable, type Column, type TableSort } from "../../components/DataTable";
 import { LoadingPill } from "../../components/LoadingPill";
 import { NodeFilterBar, type MultibyteFilter } from "./NodeFilterBar";
@@ -26,6 +26,7 @@ import type { WsManager } from "../../api/ws-manager";
 import type { WsNodeUpdate } from "../../types/ws";
 import { EmojiText } from "../../components/EmojiText";
 import { MAX_PAGE_SIZE } from "../../lib/constants";
+import { downloadNodeCsv } from "./node-csv";
 
 const nodeId = (n: NodeSummary) => n.id; // stable id accessor for the paged hook's dedup and the table's row keys
 const NAME_SORT: TableSort = { id: "name", direction: "asc" };
@@ -74,13 +75,10 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
           <EmojiText text={node.name ?? formatHex(node.id)} />
         </span>
         {node.lastSeen != null && <Timestamp value={node.lastSeen} className="shrink-0 text-text-dim text-[11px]" />}
-        <span className="shrink-0">
-          <Badge variant="default">
-            {node.isObserver && (
-              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
-            )}
-            {node.nodeTypeName}
-          </Badge>
+        <span className="shrink-0 flex items-center gap-1">
+          {node.isPoller && <RoleChip role="poller" glyphOnly />}
+          {(node.isObserver || node.isPoller) && <RoleChip role="observer" glyphOnly />}
+          <TypeChip typeName={node.nodeTypeName} />
         </span>
       </div>
       <div className="flex items-center gap-2 text-text-muted">
@@ -101,6 +99,7 @@ function renderNodeCard(node: NodeSummary, t: TFunction) {
 }
 
 export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTableProps) {
+  const [csvNotice, setCsvNotice] = useState<{ count: number; key: readonly unknown[] } | null>(null);
   const { t } = useTranslation();
   const { iatas, regionKey, isResolved } = useRegion();
   const queryClient = useQueryClient();
@@ -108,6 +107,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
   const [pathsFilter, setPathsFilter] = useState<MultibyteFilter>("");
   const [tracesFilter, setTracesFilter] = useState<MultibyteFilter>("");
   const [scopeFilter, setScopeFilter] = useState(""); // "" = Any
+  const [pollerFilter, setPollerFilter] = useState<MultibyteFilter>("");
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("name");
   const [sort, setSort] = useState<TableSort>(NAME_SORT);
@@ -134,12 +134,9 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       sortValue: (node) => node.nodeTypeName,
       cell: (node) => (
         <div className="flex flex-wrap gap-1">
-          <Badge variant="default">
-            {node.isObserver && (
-              <Tooltip label={t("nodes.observer")} className="mr-1"><ObserverIcon /></Tooltip>
-            )}
-            {node.nodeTypeName}
-          </Badge>
+          {node.isPoller && <RoleChip role="poller" glyphOnly />}
+          {(node.isObserver || node.isPoller) && <RoleChip role="observer" glyphOnly />}
+          <TypeChip typeName={node.nodeTypeName} />
           <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
         </div>
       ),
@@ -208,15 +205,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   const serverSort = clientSort ? undefined : toNodeSort(sort.id);
   const queryKey = useMemo(
-    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, serverSort ?? "", serverSort ? sort.direction : ""],
-    [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, serverSort, sort.direction],
+    () => ["nodes", regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerFilter, serverSort ?? "", serverSort ? sort.direction : ""],
+    [regionKey, typeFilter, pathsFilter, tracesFilter, nameParam, pubkeyPrefixParam, scopeFilter, pollerFilter, serverSort, sort.direction],
   );
 
   // The server filters and sorts; pages of 200 load as the table scrolls, a fresh first page for each
   // filter set and order. WS updates keep loaded rows live, no 30s refetch.
-  const { items: nodes, loadedCount, isPaging, isError, isLoading, loadMore, firstPage } = useInfinitePages<NodeSummary, number, NodePage>({
+  const { items: loadedNodes, loadedCount, isPaging, isError, isLoading, loadMore, firstPage } = useInfinitePages<NodeSummary, number, NodePage>({
     queryKey,
-    queryFn: (page) =>
+    queryFn: (page, signal) =>
       getNodesPage(iatas, {
         cursor: page?.cursor,
         pageCursor: page?.pageCursor,
@@ -227,14 +224,18 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
         supportsMultibytePaths: pathsFilter || undefined,
         supportsMultibyteTraces: tracesFilter || undefined,
         scope: scopeFilter || undefined,
+        poller: pollerFilter || undefined,
         sort: serverSort,
         order: sort.direction,
-      }),
+      }, signal),
     getId: nodeId,
     keepPrevious: true,
     auto: clientSort,
     enabled: isResolved !== false,
   });
+
+  // an older server ignores ?poller and a live update can clear the flag, so enforce it here too
+  const nodes = useMemo(() => (pollerFilter ? loadedNodes.filter((n) => !!n.isPoller === (pollerFilter === "true")) : loadedNodes), [loadedNodes, pollerFilter]);
 
   // rows with no `sort` beside them came from a server that didn't sort them
   if (!clientSort && firstPage && !firstPage.sort && firstPage.items.length > 0) setClientSort(true);
@@ -246,6 +247,7 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
 
   const scopeOptions = useScopes(scopeFilter);
 
+  const refetchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleNodeUpdate = useCallback(
     (data: WsNodeUpdate["data"]) => {
       // the event rides on an advert just heard, so its row's Last heard becomes now; no row moves
@@ -253,9 +255,24 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
       if (selectedNodeId === data.nodeId) {
         queryClient.invalidateQueries({ queryKey: ["node", data.nodeId] });
       }
+      // a node that just became a poller (Yes) can't join a filtered list by patching; refetch this exact
+      // query (one per burst) so the server applies the other filters and the sort
+      if (pollerFilter === "true" && data.isPoller === true && !refetchTimer.current) {
+        const loaded = queryClient.getQueryData<InfiniteData<CursorPage<NodeSummary>>>(queryKey);
+        if (loaded?.pages.some((pg) => pg.items.some((n) => n.id === data.nodeId))) return;
+        refetchTimer.current = setTimeout(() => {
+          refetchTimer.current = undefined;
+          void queryClient.invalidateQueries({ queryKey, exact: true });
+        }, 300);
+      }
     },
-    [queryClient, queryKey, selectedNodeId],
+    [queryClient, queryKey, selectedNodeId, pollerFilter],
   );
+  // a timer armed for an old key or toggle state must not swallow an event for the new one
+  useEffect(() => () => {
+    clearTimeout(refetchTimer.current);
+    refetchTimer.current = undefined;
+  }, [queryKey, pollerFilter]);
 
   useWsNodeUpdateHandler(wsManager, handleNodeUpdate);
 
@@ -276,8 +293,15 @@ export function NodeTable({ wsManager, selectedNodeId, onSelectNode }: NodeTable
           scopeFilter={scopeFilter}
           onScopeChange={setScopeFilter}
           scopeOptions={scopeOptions}
+          pollerFilter={pollerFilter}
+          onPollerChange={setPollerFilter}
+          onExportCsv={() => { downloadNodeCsv(nodes); setCsvNotice({ count: nodes.length, key: queryKey }); }}
+          exportCsvDisabled={!nodes.length || isLoading || isPaging || isError || isResolved === false}
         />
 
+        {csvNotice?.key === queryKey && <p role="status" className="shrink-0 px-4 py-2 text-xs text-text-muted">
+          {t("nodeFilters.exportCsvResult", { count: csvNotice.count })}
+        </p>}
         <DataTable
           columns={columns}
           rows={nodes}

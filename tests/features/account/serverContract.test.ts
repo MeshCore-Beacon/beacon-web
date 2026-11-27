@@ -1,0 +1,260 @@
+import { afterEach, describe, expect, it } from "vitest";
+import i18n from "../../../src/i18n";
+import { alertErrorText, authErrorText, requestErrorText } from "../../../src/features/account/errors";
+import { fromServer, toPut, type ServerAtlas } from "../../../src/features/atlas/atlasSync";
+import type { AlertsResponse } from "../../../src/features/account/types";
+import { requestReasonText } from "../../../src/features/account/requestReason";
+import { requestLine } from "../../../src/features/account/requestStatus";
+import type { TelemetryRequest } from "../../../src/features/account/types";
+import { unavailableText } from "../../../src/features/account/unavailableReason";
+
+// Every statusReasonCode beacon-server puts on a telemetry request (reason-codes.md), with its English sentence.
+const REASON_CODES: Array<[string, string, number?]> = [
+  ["no_observer", "No observer can reach this repeater yet."],
+  ["no_seat", "Every observer that can reach this repeater is already polling its maximum."],
+  ["login_failed", "The repeater did not accept this guest password. Enter a new one."],
+  ["blank_login_failed", "The repeater did not accept a blank or hello login. Enter a guest password."],
+  ["admin_stopped", "The repeater gave admin access to this password, so Beacon deleted it. Enter a guest password, never an admin one."],
+  ["blank_blocked", "This repeater gives admin access to a blank login, so Beacon will not poll it without a guest password."],
+  ["offline", "Not heard by any observer for 7 days.", 7],
+  ["observer", "This radio is an observer and reports its own telemetry."],
+];
+const reasonOf = (code: string, statusReason: string, days?: number) => ({
+  statusReasonCode: code, statusReason, ...(days === undefined ? {} : { statusReasonDays: days }),
+});
+
+// Every unavailableCodes value beacon-server emits (alerts.md), with a sentence and the kind that carries it.
+const UNAVAILABLE_CODES: Array<[string, string, string]> = [
+  ["observer_no_data", "This observer does not report a battery level.", "battery_low"],
+  ["repeaters_only", "Only repeaters report its uptime.", "rebooted"],
+  ["not_polled", "Beacon is not polling this repeater. Request telemetry for it first.", "temperature"],
+  ["no_data", "This repeater does not report a noise floor.", "noise_high"],
+  ["observer_no_clock", "Observers have no clock drift value.", "clock"],
+  ["clock_repeaters_only", "Only repeaters and room servers report their clock.", "clock"],
+  ["needs_gone_quiet", "Turn on the gone-quiet alert for this radio first.", "back_online"],
+  ["not_applicable", "This alert does not apply to this radio.", "observer_offline"],
+];
+
+afterEach(() => i18n.changeLanguage("en"));
+
+// GET /me/alerts as beacon-server sends it (api-contract.md, Alerts).
+const SERVER_ALERTS: AlertsResponse = {
+  channels: {
+    email: { available: false, enabled: true, reason: "unverified_email" },
+    push: { available: true, enabled: true, hasDevice: false },
+  },
+  targets: [
+    { id: "9b0a5f0e-5d0e-4a39-9a43-6a3c1f2f0001", kind: "node", publicKey: "ab".repeat(32), name: "Hilltop", polled: true,
+      available: ["gone_quiet", "back_online"], unavailable: { temperature: "This repeater does not report a temperature." },
+      unavailableCodes: { temperature: "no_data" }, rules: [] },
+    { id: null, kind: "observer", publicKey: "cd".repeat(32), name: "North", polled: false, available: [], unavailable: {}, unavailableCodes: {}, rules: [] },
+  ],
+};
+
+describe("alert channels", () => {
+  it("carry the email reason and the push device flag", () => {
+    expect(Object.keys(SERVER_ALERTS.channels.email).sort()).toEqual(["available", "enabled", "reason"]);
+    expect(Object.keys(SERVER_ALERTS.channels.push).sort()).toEqual(["available", "enabled", "hasDevice"]);
+  });
+});
+
+describe("alert targets", () => {
+  it("carry an id (or null), polled and a code for every reason", () => {
+    for (const target of SERVER_ALERTS.targets) {
+      expect(Object.keys(target).sort()).toEqual(["available", "id", "kind", "name", "polled", "publicKey", "rules", "unavailable", "unavailableCodes"]);
+      expect(target.id === null || /^[0-9a-f-]{36}$/.test(target.id)).toBe(true);
+      expect(Object.keys(target.unavailableCodes).sort()).toEqual(Object.keys(target.unavailable).sort());
+    }
+  });
+});
+
+describe("alert unavailable reason codes", () => {
+  it.each(["en", "fr", "sv"])("translates every code in %s without reading the sentence", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const english = i18n.getFixedT("en");
+    for (const [code, sentence, kind] of UNAVAILABLE_CODES) {
+      const text = unavailableText(i18n.t, kind, code, "x");
+      expect(text, code).not.toMatch(/^account\./);
+      expect(text, code).not.toBe("x");
+      if (lang === "en") expect(text, code).toBe(sentence);
+      else expect(text, code).not.toBe(unavailableText(english, kind, code, "x"));
+    }
+  });
+
+  it("shows the server sentence for an unknown or missing code", () => {
+    expect(unavailableText(i18n.t, "clock", "brand_new", "As sent.")).toBe("As sent.");
+    expect(unavailableText(i18n.t, "clock", undefined, "As sent.")).toBe("As sent.");
+    // A data code for a kind with no value name also falls back.
+    expect(unavailableText(i18n.t, "clock", "no_data", "As sent.")).toBe("As sent.");
+  });
+
+  it("reads the code of a kind_unavailable error from its body", () => {
+    const err = { code: "kind_unavailable", message: "Sentence.", body: { error: { code: "kind_unavailable", message: "Sentence.", reasonCode: "needs_gone_quiet" } } };
+    expect(alertErrorText(i18n.t, err, "back_online")).toBe("Turn on the gone-quiet alert for this radio first.");
+    expect(alertErrorText(i18n.t, { ...err, body: undefined }, "back_online")).toBe("Sentence.");
+  });
+});
+
+describe("telemetry request reasons", () => {
+  it.each(["en", "fr", "sv"])("translates every reason code in %s without reading the sentence", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const english = i18n.getFixedT("en");
+    for (const [code, sentence, days] of REASON_CODES) {
+      // The sentence is deliberately wrong: only the code may decide the text.
+      const text = requestReasonText(i18n.t, reasonOf(code, "x", days));
+      expect(text, code).not.toMatch(/^account\./);
+      expect(text, code).not.toBe("x");
+      if (lang === "en") expect(text).toBe(sentence);
+      else expect(text, code).not.toBe(requestReasonText(english, reasonOf(code, "x", days)));
+    }
+  });
+
+  it("fills in the offline days, one day included", () => {
+    expect(requestReasonText(i18n.t, reasonOf("offline", "", 7))).toBe("Not heard by any observer for 7 days.");
+    expect(requestReasonText(i18n.t, reasonOf("offline", "", 1))).toBe("Not heard by any observer for 1 day.");
+  });
+
+  it("shows the server's text for no code, an unknown code, other, or offline without days", () => {
+    expect(requestReasonText(i18n.t, { statusReason: "No observer can reach this repeater yet." })).toBe("No observer can reach this repeater yet.");
+    expect(requestReasonText(i18n.t, reasonOf("future_code", "Something new."))).toBe("Something new.");
+    expect(requestReasonText(i18n.t, reasonOf("other", "Odd text."))).toBe("Odd text.");
+    expect(requestReasonText(i18n.t, reasonOf("offline", "Not heard for ages."))).toBe("Not heard for ages.");
+    expect(requestReasonText(i18n.t, reasonOf("", ""))).toBe("");
+  });
+});
+
+// GET /me/telemetry-requests: poller.state and poller.stateAt are optional (an older server omits them).
+const POLL_STATES: Array<[string, string, string]> = [
+  ["ok", "Being polled by North", "ok"],
+  ["pending", "Assigned to North. First poll is on its way.", "wait"],
+  ["not_direct", "Assigned to North, which cannot hear this repeater directly right now.", "wait"],
+  ["no_reply", "North is asking, but the repeater is not answering.", "wait"],
+  ["not_claimed", "Assigned to North. Waiting for it to pick this up.", "wait"],
+  ["login_failed", "North reported a password problem. Checking.", "wait"],
+  ["admin_stop", "North reported a password problem. Checking.", "wait"],
+];
+const withPoller = (poller: TelemetryRequest["poller"], status: TelemetryRequest["status"] = "active") => ({ status, poller });
+
+describe("telemetry request poller state", () => {
+  it("reads state and stateAt, both optional", () => {
+    const full: TelemetryRequest["poller"] = JSON.parse('{"observerId":"o1","name":"North","state":"ok","stateAt":1700000000000}');
+    const nulled: TelemetryRequest["poller"] = JSON.parse('{"observerId":"o1","name":"North","state":"pending","stateAt":null}');
+    const old: TelemetryRequest["poller"] = JSON.parse('{"observerId":"o1","name":"North"}');
+    expect(full?.stateAt).toBe(1_700_000_000_000);
+    expect(nulled?.stateAt).toBeNull();
+    expect(old?.state).toBeUndefined();
+  });
+
+  it.each(["en", "fr", "sv"])("has a sentence and a dot for every state in %s", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const english = i18n.getFixedT("en");
+    for (const [state, sentence, tone] of POLL_STATES) {
+      const poller = { observerId: "o1", name: "North", state };
+      const line = requestLine(i18n.t, withPoller(poller));
+      expect(line.text, state).not.toMatch(/^account\./);
+      expect(line.text, state).toContain("North");
+      expect(line.tone, state).toBe(tone);
+      expect(line.names).toBe(true);
+      if (lang === "en") expect(line.text).toBe(sentence);
+      else if (state !== "admin_stop") expect(line.text, state).not.toBe(requestLine(english, withPoller(poller)).text);
+    }
+  });
+
+  it("keeps the flat status for a missing or unknown state, and for a poller-less request", () => {
+    for (const poller of [{ observerId: "o1", name: "North" }, { observerId: "o1", name: "North", state: "brand_new" }, null]) {
+      const line = requestLine(i18n.t, withPoller(poller));
+      expect(line).toEqual({ text: "Being polled", tone: "idle", names: false });
+    }
+  });
+
+  it("ignores the poller state unless the request is active", () => {
+    const poller = { observerId: "o1", name: "North", state: "ok" };
+    expect(requestLine(i18n.t, withPoller(poller, "waiting"))).toMatchObject({ tone: "wait", names: false });
+    expect(requestLine(i18n.t, withPoller(poller, "login_failed")).tone).toBe("bad");
+    expect(requestLine(i18n.t, withPoller(poller, "disabled")).tone).toBe("idle");
+  });
+
+  it("says an observer request is stopped, not paused", () => {
+    expect(requestLine(i18n.t, { status: "disabled", poller: null, statusReasonCode: "observer" })).toEqual({ text: "Stopped: this radio is an observer", tone: "idle", names: false });
+    expect(requestLine(i18n.t, { status: "disabled", poller: null, statusReasonCode: "offline" }).text).toBe("Paused: the repeater has not been heard recently");
+  });
+});
+
+describe("error codes the server can send", () => {
+  it.each(["en", "fr", "sv"])("maps service_unavailable, read_only and not_found in %s", async (lang) => {
+    await i18n.changeLanguage(lang);
+    for (const code of ["service_unavailable", "read_only", "not_found"]) {
+      const text = requestErrorText(i18n.t, { code });
+      expect(text, code).not.toBe(authErrorText(i18n.t, {}));
+      expect(text).not.toMatch(/^account\./);
+    }
+  });
+
+  it.each(["en", "fr", "sv"])("maps observer_node in %s", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const text = requestErrorText(i18n.t, { code: "observer_node", message: "x" });
+    expect(text).not.toBe(authErrorText(i18n.t, {}));
+    expect(text).not.toMatch(/^account\./);
+    if (lang === "en") expect(text).toBe("Observers report their own telemetry.");
+  });
+});
+
+// What GET /me/atlas marshals: a node pin without tiles or view, a node the server lost, an observer pin whose
+// observer row is gone (observerId null), and an observer pin with a chosen tile layout.
+const KEY_A = "0f".repeat(32);
+const KEY_B = "1e".repeat(32);
+const KEY_C = "2d".repeat(32);
+const SERVER_ATLAS = JSON.parse(`{
+  "revision": 7, "range": "3d", "limit": 12,
+  "pins": [
+    {"kind":"node","name":"Hilltop","publicKey":"${KEY_A}","id":"3f2b8c1e-6a52-4d0e-9b57-0d3d2b6a1c11","observerId":null,"view":"heard"},
+    {"kind":"node","name":"Gone","publicKey":"${KEY_B}","id":null,"observerId":null},
+    {"kind":"observer","name":"North Ridge","observerPublicKey":"${KEY_C}","observerId":null,"tiles":["snr","rssi","noise","queue"]}
+  ]
+}`) as ServerAtlas;
+
+describe("Atlas document as the server marshals it", () => {
+  it("reads null ids and omitted fields", () => {
+    const { atlas } = fromServer(SERVER_ATLAS, null, {});
+    expect(atlas.range).toBe("3d");
+    expect(atlas.pins).toHaveLength(3);
+    expect(atlas.pins[0]).toMatchObject({ kind: "node", publicKey: KEY_A, view: "heard" });
+    expect(atlas.pins[1]).toMatchObject({ kind: "node", publicKey: KEY_B });
+    expect(atlas.pins[2]).toMatchObject({ kind: "observer", tiles: ["snr", "rssi", "noise", "queue"] });
+  });
+
+  it("sends a body the server's validator accepts", () => {
+    const { atlas, keys } = fromServer(SERVER_ATLAS, null, {});
+    const body = toPut(atlas, keys, SERVER_ATLAS.revision);
+    expect(Object.keys(body).sort()).toEqual(["baseRevision", "pins", "range"]);
+    expect(body.pins.length).toBeLessThanOrEqual(12);
+    for (const pin of body.pins) {
+      expect(["node", "observer"]).toContain(pin.kind);
+      if (pin.kind === "node") expect(pin.publicKey).toMatch(/^[0-9a-f]{64}$/);
+      else expect("observerId" in pin || "observerPublicKey" in pin).toBe(true);
+      if ("view" in pin) expect(["heard", "observer"]).toContain(pin.view);
+      if (pin.tiles) expect(new Set(pin.tiles).size).toBe(4);
+      expect([...pin.name].length).toBeLessThanOrEqual(160);
+    }
+  });
+});
+
+describe("error codes on the portal and alert routes", () => {
+  it.each(["en", "fr", "sv"])("has %s text for portal_managed and the alert codes", async (lang) => {
+    await i18n.changeLanguage(lang);
+    const generic = authErrorText(i18n.t, {});
+    for (const code of ["portal_managed", "not_found", "app_session_required"]) {
+      const text = alertErrorText(i18n.t, { code });
+      expect(text, code).not.toBe(generic);
+      expect(text).not.toMatch(/^account\./);
+    }
+    expect(authErrorText(i18n.t, { code: "portal_managed" })).not.toBe(generic);
+    for (const code of ["not_on_atlas", "invalid_threshold", "alerts_disabled", "invalid_input", "not_signed_in", "csrf_rejected", "service_unavailable", "read_only"]) {
+      expect(alertErrorText(i18n.t, { code }), code).not.toBe(generic);
+    }
+  });
+
+  it("keeps the server's own reason for kind_unavailable", () => {
+    expect(alertErrorText(i18n.t, { code: "kind_unavailable", message: "Turn on the gone-quiet alert for this radio first." })).toBe("Turn on the gone-quiet alert for this radio first.");
+  });
+});

@@ -10,13 +10,14 @@ import type {
 } from "maplibre-gl";
 import Spiderfy from "@nazka/map-gl-js-spiderfy";
 import type { FeatureCollection, Point } from "geojson";
-import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, SELECTION_RING_ICON_ID, nodeTypeColor } from "./node-icons";
+import { rasterizeNodeIcon, MAP_ICON_IDS, nodeObserverIconId, nodePollerIconId, SELECTION_RING_ICON_ID, nodeTypeColor } from "./node-icons";
 import type { NodeFeatureProps } from "./node-geojson";
 import { idleDotTypes } from "./live-map";
 import {
   NODES_SOURCE_ID,
   NODES_CLUSTER_LAYER_ID,
   NODES_POINT_LAYER_ID,
+  NODES_TELEMETRY_LAYER_ID,
   NODES_SELECTED_LAYER_ID,
   NODES_SELECTED_LEAF_LAYER_ID,
   PACKET_FLOW_TRAIL_LAYER_ID,
@@ -82,20 +83,33 @@ function syncLeafSelectionRing(map: MapLibreMap, selectedId: string | null): voi
   );
 }
 
-// Icon per device type; observers get the -observer pip variant, unknown types the fallback ring.
-const ICON_IMAGE: ExpressionSpecification = [
+// Icon per device type: pollers get the -poller pip, observers the -observer pip,
+// unknown types the fallback ring.
+export const ICON_IMAGE: ExpressionSpecification = [
   "match",
   ["get", "nodeTypeName"],
   ...NODE_TYPE_NAMES.flatMap((t) => [
     t,
-    ["case", ["to-boolean", ["get", "isObserver"]], nodeObserverIconId(t), nodeIconId(t)],
+    [
+      "case",
+      ["to-boolean", ["get", "isPoller"]],
+      nodePollerIconId(t),
+      ["to-boolean", ["get", "isObserver"]],
+      nodeObserverIconId(t),
+      nodeIconId(t),
+    ],
   ]),
   NODE_ICON_UNKNOWN,
 ] as unknown as ExpressionSpecification;
 
 // Node labels fade in only past NODE_LABEL_MIN_ZOOM.
 const LABEL_OPACITY: ExpressionSpecification = ["step", ["zoom"], 0, NODE_LABEL_MIN_ZOOM, 1];
+// The telemetry line sits 3 em down with no padding so it clears its own name; readings 48h+ dim to 0.45.
+const TELEMETRY_TEXT_OFFSET_Y = 3;
+const TELEMETRY_TEXT_PADDING = 0;
+const TELEMETRY_OPACITY: ExpressionSpecification = ["case", ["boolean", ["get", "telemetryOld"], false], 0.45, 1];
 
+const TELEMETRY_MIN_ZOOM = 8;
 const UNCLUSTERED = ["!", ["has", "point_count"]] as ExpressionSpecification;
 const ALL_DOT_TYPES = idleDotTypes("");
 const LIVE_DOT_RADIUS = ["interpolate", ["linear"], ["zoom"], ...LIVE_DOT_RADIUS_STOPS.flat()] as unknown as ExpressionSpecification;
@@ -175,7 +189,7 @@ export function useMapNodes(
     // maplibre fixes `cluster` at source creation, so toggling clustering means recreating the
     // source. The spiderfy effect below also keys on `clustered` and re-applies itself around this.
     if (appliedClusteredRef.current !== clustered && map.getSource(NODES_SOURCE_ID)) {
-      for (const id of [LIVE_DOTS_LAYER_ID, NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID]) {
+      for (const id of [LIVE_DOTS_LAYER_ID, NODES_SELECTED_LAYER_ID, NODES_CLUSTER_LAYER_ID, NODES_POINT_LAYER_ID, NODES_TELEMETRY_LAYER_ID]) {
         if (map.getLayer(id)) map.removeLayer(id);
       }
       map.removeSource(NODES_SOURCE_ID);
@@ -244,6 +258,32 @@ export function useMapNodes(
           "text-opacity": LABEL_OPACITY, // labels fade in only at high zoom
         },
       } as SymbolLayerSpecification, beforeFlow);
+    }
+
+    // Battery/temperature text under the name. Added beneath the name layer so names place first and
+    // this line yields; no allow-overlap, so crowded labels thin out.
+    if (!map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
+      map.addLayer({
+        id: NODES_TELEMETRY_LAYER_ID,
+        type: "symbol",
+        source: NODES_SOURCE_ID,
+        minzoom: TELEMETRY_MIN_ZOOM,
+        filter: ["all", UNCLUSTERED, ["has", "telemetry"]],
+        layout: {
+          "text-field": ["get", "telemetry"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-offset": [0, TELEMETRY_TEXT_OFFSET_Y],
+          "text-padding": TELEMETRY_TEXT_PADDING,
+          "text-anchor": "top",
+        },
+        paint: {
+          "text-color": textColor,
+          "text-halo-color": halo,
+          "text-halo-width": 1.3,
+          "text-opacity": TELEMETRY_OPACITY,
+        },
+      } as SymbolLayerSpecification, NODES_POINT_LAYER_ID);
     }
 
     // Ring under the selected node's icon. Only matches an unclustered point (clusters carry no id);
@@ -321,6 +361,8 @@ export function useMapNodes(
     // node-label colors track the basemap dark/light flag (cluster count is white on the hexagon)
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-color", textColor);
     map.setPaintProperty(NODES_POINT_LAYER_ID, "text-halo-color", halo);
+    map.setPaintProperty(NODES_TELEMETRY_LAYER_ID, "text-color", textColor);
+    map.setPaintProperty(NODES_TELEMETRY_LAYER_ID, "text-halo-color", halo);
 
     // seed the (possibly just-recreated) source; live updates flow through the geojson effect below
     (map.getSource(NODES_SOURCE_ID) as GeoJSONSource).setData(geojsonRef.current);
@@ -383,6 +425,14 @@ export function useMapNodes(
     const iconOpacity: ExpressionSpecification | number = live ? 1 : focusIds ? focusCase(1, LIVE_DIM_OPACITY) : 1;
     const labelOpacity: ExpressionSpecification | number = live ? 0 : focusIds ? focusCase(LABEL_OPACITY, 0) : LABEL_OPACITY;
     const dimActive = live || Boolean(focusIds);
+    // live mode hides the name labels, so the text under them goes too
+    if (map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
+      map.setLayoutProperty(NODES_TELEMETRY_LAYER_ID, "visibility", live ? "none" : "visible");
+    }
+    if (map.getLayer(NODES_TELEMETRY_LAYER_ID)) {
+      // unrelated nodes' text fades with their names; old readings stay dimmed on a focused node
+      map.setPaintProperty(NODES_TELEMETRY_LAYER_ID, "text-opacity", live || !focusIds ? TELEMETRY_OPACITY : focusCase(TELEMETRY_OPACITY, 0));
+    }
     if (map.getLayer(LIVE_DOTS_LAYER_ID)) {
       map.setFilter(LIVE_DOTS_LAYER_ID, dotsFilter(dotTypes));
       map.setLayoutProperty(LIVE_DOTS_LAYER_ID, "visibility", live ? "visible" : "none");

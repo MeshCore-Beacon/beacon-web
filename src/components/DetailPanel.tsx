@@ -1,15 +1,63 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseButton } from "./CloseButton";
+import { InfoTip } from "./InfoTip";
 
 // shared scaffolding for the right-hand entity detail panels (observers, nodes, …)
 
-export function Section({ title, children, first }: { title: ReactNode; children: ReactNode; first?: boolean }) {
+type InfoLines = string | (string | false | null | undefined)[];
+const TITLE = "text-xs font-mono font-medium text-text-bright uppercase tracking-wider";
+
+function Title({ title, info }: { title: ReactNode; info?: InfoLines }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span>{title}</span>
+      {info && <InfoTip text={info} />}
+    </span>
+  );
+}
+
+export function Section({ title, info, children, first }: { title: ReactNode; info?: InfoLines; children: ReactNode; first?: boolean }) {
   return (
     <div className={`px-3 py-2.5 ${first ? "" : "border-t border-border-subtle"}`}>
-      <div className="text-xs font-mono font-medium text-text-bright uppercase tracking-wider mb-1.5">{title}</div>
+      <div className={`${TITLE} mb-1.5`}><Title title={title} info={info} /></div>
       {children}
     </div>
+  );
+}
+
+const FOLDS_KEY = "beacon-detail-folds";
+
+function readFolds(): Record<string, boolean> {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(FOLDS_KEY) ?? "{}");
+    return value && typeof value === "object" ? (value as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
+// A section for reference info: closed by default, a one-line summary when closed, and remembered per id.
+export function FoldSection({ id, title, summary, info, children }: { id: string; title: ReactNode; summary?: ReactNode; info?: InfoLines; children: ReactNode }) {
+  const [open, setOpen] = useState(() => readFolds()[id] === true);
+  const toggle = (next: boolean) => {
+    if (next === open) return;
+    setOpen(next);
+    try {
+      localStorage.setItem(FOLDS_KEY, JSON.stringify({ ...readFolds(), [id]: next }));
+    } catch {
+      // the fold still works for this visit
+    }
+  };
+  return (
+    <details open={open} onToggle={(e) => toggle(e.currentTarget.open)} className="group border-t border-border-subtle px-3 py-2.5">
+      <summary className={`${TITLE} flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden`}>
+        <span aria-hidden className="text-[10px] text-text-dim transition-transform group-open:rotate-90">▸</span>
+        <Title title={title} info={info} />
+        {summary && <span className="ml-auto min-w-0 truncate font-normal normal-case tracking-normal text-[11px] text-text-dim group-open:hidden">{summary}</span>}
+      </summary>
+      <div className="mt-1.5">{children}</div>
+    </details>
   );
 }
 

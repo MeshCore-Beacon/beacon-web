@@ -13,7 +13,7 @@ import type { Point } from "geojson";
 import type { PacketPath } from "./packet-path";
 import { packetPathsToFeatures } from "./packet-path";
 import { resolveMapStyle, DEFAULT_CENTER, DEFAULT_ZOOM, IATA_ZOOM } from "./types";
-import { mapLocale } from "./useMapLibre";
+import { localizeMapControls, mapLocale } from "./map-locale";
 import { splitEmoji } from "../../lib/emoji";
 
 // Private ids — this map instance is dedicated to the popup, so they can't collide with the main map.
@@ -52,6 +52,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     mapRef.current = map;
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new AttributionControl({ compact: true }));
+    const stopLocalizing = localizeMapControls(map.getContainer());
     // start the attribution as a bare (i) instead of the wide expanded bar it pops open on load —
     // on mobile that bar overlaps the observer list beneath the map (same trick as useMapLibre)
     const attrib = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
@@ -85,6 +86,7 @@ export function PacketPathMap({ paths, selectedKey, styleId }: {
     const onLoad = () => setReady(true);
     map.on("load", onLoad);
     return () => {
+      stopLocalizing();
       map.remove();
       mapRef.current = null;
       setReady(false);

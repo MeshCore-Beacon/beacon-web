@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
 import { PacketVirtualList } from "../../../src/features/packets/PacketVirtualList";
 import i18n from "../../../src/i18n";
 import type { PacketSummary } from "../../../src/types/api";
@@ -84,8 +84,17 @@ function setScrollMetrics(el: HTMLElement, { scrollHeight, clientHeight, scrollT
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
   observers.length = 0;
   usePacketDetail.mockReturnValue({ data: { packetHash: "AA11", header: { payloadType: 1 }, observations: [] } });
+});
+
+// Scroll idle callbacks must finish before this file's JSDOM window is disposed.
+afterEach(async () => {
+  cleanup();
+  await act(() => vi.runOnlyPendingTimersAsync());
+  expect(vi.getTimerCount()).toBe(0);
+  vi.useRealTimers();
 });
 
 describe("PacketVirtualList expansion", () => {

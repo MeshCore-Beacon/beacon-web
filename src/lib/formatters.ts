@@ -43,14 +43,14 @@ export const SIGNAL_LEVEL_BORDER_CLASSES: Record<SignalLevel, string> = {
 };
 
 export function snrLevel(snr: number | null | undefined): SignalLevel | null {
-  if (snr == null) return null;
+  if (snr == null || !Number.isFinite(snr)) return null;
   if (snr >= 10) return "good";
   if (snr >= 5) return "mid";
   return "bad";
 }
 
 export function formatSnr(snr: number | null | undefined): string {
-  if (snr == null) return "—";
+  if (snr == null || !Number.isFinite(snr)) return "—";
   return snr.toFixed(2);
 }
 

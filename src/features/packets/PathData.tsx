@@ -175,7 +175,7 @@ export function ResolvedHopBlock({ hop, label, onViewNode, showSnr = true }: {
 }
 
 // SNR sub-line under a trace hop; a "-" placeholder keeps the row aligned when there's no reading.
-export function HopSnr({ snr }: { snr: number | undefined }) {
+export function HopSnr({ snr }: { snr: number | null | undefined }) {
   if (snr == null) return <span className="text-[11px] text-text-dim" aria-hidden>-</span>;
   const level = snrLevel(snr);
   return <span className={`text-[11px] ${level ? SIGNAL_LEVEL_CLASSES[level] : "text-text-normal"}`}>{formatSnr(snr)} dB</span>;

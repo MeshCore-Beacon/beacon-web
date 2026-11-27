@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router-dom";
 import { AppShell } from "../../src/components/AppShell";
 import { RegionProvider } from "../../src/hooks/useRegion";
 import { ALL_REGIONS } from "../../src/hooks/region-selection";
@@ -22,15 +23,17 @@ const wsManager = {
   getLastEventTimestamp: () => Date.now(),
 } as unknown as WsManager;
 
-function renderShell(onTabChange: (tab: string) => void = () => {}) {
+function renderShell(onTabChange: (tab: string) => void = () => {}, ws: WsManager = wsManager) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <RegionProvider defaultSelection={ALL_REGIONS}>
-        <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={wsManager}>
-          <div />
-        </AppShell>
-      </RegionProvider>
+      <MemoryRouter>
+        <RegionProvider defaultSelection={ALL_REGIONS}>
+          <AppShell activeTab="Packets" onTabChange={onTabChange} wsManager={ws}>
+            <div />
+          </AppShell>
+        </RegionProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -47,9 +50,9 @@ describe("AppShell", () => {
     const onTabChange = vi.fn();
     renderShell(onTabChange);
 
-    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Langue: Français" })).toHaveAttribute("aria-expanded", "false"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Réglages" })).toHaveAttribute("aria-expanded", "false"));
     expect(screen.getAllByRole("tab", { name: "Paquets" })[0]).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("EN DIRECT")).toBeInTheDocument();
     expect(document.documentElement.lang).toBe("fr");
@@ -110,7 +113,7 @@ describe("region picker filter", () => {
 
   it("searches the translated all-regions label and retains raw IATA values", async () => {
     renderShell();
-    fireEvent.click(screen.getByRole("button", { name: "Language: English" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Français", exact: true }));
     fireEvent.click(await screen.findByRole("button", { name: /Région/ }));
     await screen.findByText("Western Canada");
@@ -298,13 +301,32 @@ describe("rate limit badge", () => {
 });
 
 describe("AppShell region picker alignment", () => {
-  it("opens rightward only below md so the desktop row's controls stay visible", async () => {
+  it("opens rightward, since the picker sits by the wordmark on every layout", async () => {
     vi.mocked(getIatas).mockResolvedValue([]);
     renderShell();
     fireEvent.click(screen.getByRole("button", { name: /Region/ }));
     const panel = screen.getByPlaceholderText("Search region or area code…").closest(".absolute")!;
     expect(panel.className).toContain("left-0");
-    expect(panel.className).toContain("md:right-0");
+    expect(panel.className).not.toContain("right-0");
+  });
+});
+
+describe("AppShell on desktop", () => {
+  it("puts region by the wordmark and folds theme, language and GitHub into the settings menu", () => {
+    vi.mocked(getIatas).mockResolvedValue([]);
+    renderShell();
+    const header = screen.getByRole("banner");
+    const region = screen.getByRole("button", { name: /Region/ });
+    const settings = screen.getByRole("button", { name: "Settings" });
+    expect(header.firstElementChild!.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(region.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("LIVE")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Language:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Theme" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "GitHub" })).not.toBeInTheDocument();
+    fireEvent.click(settings);
+    expect(screen.getByRole("link", { name: "GitHub" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Français", exact: true })).toBeInTheDocument();
   });
 });
 
@@ -324,5 +346,44 @@ describe("AppShell on a phone", () => {
     fireEvent.click(screen.getByRole("button", { name: "Français" }));
     await waitFor(() => expect(document.documentElement.lang).toBe("fr"));
     await act(() => i18n.changeLanguage("en"));
+  });
+
+  it("shrinks the stale badge to a dot and the age so the instance name keeps its room", () => {
+    vi.spyOn(Date, "now").mockReturnValue(10_000);
+    const media = window.matchMedia("(max-width: 767px)");
+    vi.spyOn(window, "matchMedia").mockImplementation((query) => ({ ...media, media: query, matches: query === "(max-width: 767px)" }));
+    vi.mocked(getIatas).mockResolvedValue([]);
+    const stale = { onStatusChange: () => () => {}, getStatus: () => "connecting", getLastEventTimestamp: () => 5_000 } as unknown as WsManager;
+    renderShell(() => {}, stale);
+    const badge = screen.getByRole("status", { name: "STALE 5s" });
+    expect(badge).toHaveTextContent(/^5s$/);
+    expect(screen.queryByText("STALE 5s")).not.toBeInTheDocument();
+  });
+});
+
+describe("region picker on a phone", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    vi.mocked(getIatas).mockResolvedValue(IATAS);
+    vi.mocked(getRegions).mockResolvedValue(REGIONS.map(({ id, slug, name }) => ({ id, slug, name })));
+    vi.mocked(getRegion).mockImplementation(async (id: number) => REGIONS.find((r) => r.id === id)!);
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 767px)", media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(), addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => { window.matchMedia = original; });
+
+  it("opens a dialog sheet without focusing the search, and selecting still updates the region", async () => {
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: /Region/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Region" });
+    await within(dialog).findByText("Western Canada");
+    const input = within(dialog).getByPlaceholderText(/Search region or area code/);
+    expect(input).not.toHaveFocus();
+    expect(input).toHaveClass("text-base");
+    fireEvent.change(input, { target: { value: "yvr" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Vancouver International/ }));
+    expect(screen.getByRole("button", { name: /Region\s*YVR/ })).toBeInTheDocument();
   });
 });

@@ -21,6 +21,7 @@ export const DEFAULT_STYLE_ID = "dark";
 // beacon-* matches the codebase convention (beacon-theme, beacon-region, beacon-analyzer-open)
 export const MAP_STYLE_STORAGE_KEY = "beacon-map-style";
 export const MAP_CLUSTER_STORAGE_KEY = "beacon-map-clustering";
+export const MAP_POLLERS_ONLY_STORAGE_KEY = "beacon-map-pollers-only";
 export const MAP_NODE_TYPE_STORAGE_KEY = "beacon-map-node-type";
 
 // Always returns an option: falls back to the first entry, which also covers a stale/invalid id
@@ -42,6 +43,8 @@ export const TERRAIN_EXAGGERATION = 1.5;
 
 // 3D terrain + hillshade, off by default: each view pulls dozens of uncached DEM tiles
 export const MAP_TERRAIN_STORAGE_KEY = "beacon-map-terrain";
+export const MAP_TELEMETRY_STORAGE_KEY = "beacon-map-telemetry";
+export const NODES_TELEMETRY_LAYER_ID = "nodes-telemetry"; // battery/temperature text under the node name
 
 // The fallback/initial map view, configured per deployment via .env (VITE_MAP_CENTER as decimal
 // "lat,lon", VITE_MAP_ZOOM). Used before airports load and when a selection has no airport coords;

@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AtlasCard } from "../../../src/features/atlas/AtlasCard";
 import * as api from "../../../src/api/client";
 import { ApiError } from "../../../src/api/client";
+import { noteRateLimited, noteRequestOk } from "../../../src/api/rate-limit";
+import { ATLAS_REFRESH_MS } from "../../../src/features/atlas/useAtlas";
 import { formatHex } from "../../../src/lib/formatters";
 import type { Node } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
@@ -19,6 +21,9 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getObserver: vi.fn(),
   getObserverActivity: vi.fn(),
   getObserverTelemetry: vi.fn(),
+  getServerInfo: vi.fn(),
+  getNodeTelemetry: vi.fn(),
+  getNodePolling: vi.fn(),
 }));
 
 const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -46,8 +51,12 @@ const handlers = {
   onResolved: vi.fn(),
   onUpgrade: vi.fn(),
   onTilesChange: vi.fn(),
+  onTelemetryTilesChange: vi.fn(),
   onPinView: vi.fn(),
 };
+const info = (polling: boolean, atlasTelemetry = false) => ({ features: { polling, accounts: "off", telemetryRequests: false, alerts: false, atlasTelemetry } }) as never;
+const LINE = "Battery and temperature, latest hourly average";
+const polling = (extra: object = {}) => ({ polled: true, latestReadingAt: Date.now() - 12 * 60_000, poller: { observerId: "obs-1", name: "Ridge listener" }, standbys: [], ...extra }) as never;
 let client: QueryClient;
 
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
@@ -64,6 +73,8 @@ beforeEach(() => {
   vi.mocked(api.getNode).mockResolvedValue(node);
   vi.mocked(api.getNodeActivity).mockResolvedValue(nodeActivity);
   vi.mocked(api.getPacketDetail).mockResolvedValue(detail);
+  vi.mocked(api.getServerInfo).mockResolvedValue(info(false));
+  vi.mocked(api.getNodePolling).mockResolvedValue(polling());
 });
 afterEach(() => client.clear());
 
@@ -81,7 +92,7 @@ describe("AtlasCard", () => {
     expect(screen.getByText("Active hours")).toBeInTheDocument();
     expect(screen.getByText("1/24")).toBeInTheDocument();
     expect(screen.getByText("24h")).toBeInTheDocument();
-    expect(screen.getByText("Mean hops 2.0 · Neighbors (4)")).toBeInTheDocument();
+    expect(screen.getByText("2.0 hops · 4 neighbors")).toBeInTheDocument();
     expect(api.getNodeActivity).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
     expect(screen.queryByText(/battery|telemetry/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Renamed repeater" }));
@@ -133,16 +144,44 @@ describe("AtlasCard", () => {
   });
 
   it("gives the Analytics view a one-line footer and lists every fact in the tip", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(node.lastSeen);
+    try {
+      mount();
+      const footer = (await screen.findByText("Heard")).closest("[data-card-footer]") as HTMLElement;
+      expect(footer).not.toHaveClass("flex-wrap");
+      expect(within(footer).getByText("Heard")).toHaveClass("truncate");
+      expect(within(footer).getByText("Heard").parentElement).toHaveTextContent(/^Heard · 0s ago$/);
+      expect(within(footer).getByText("0s ago").parentElement).toHaveClass("shrink-0", "whitespace-pre");
+      expect(await within(footer).findByText("2.0 hops · 4 neighbors")).toHaveClass("truncate");
+      const tip = within(footer).getByText(/More information:/);
+      expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
+      expect(tip).toHaveTextContent("Mean hops 2.0");
+      expect(tip).toHaveTextContent("Neighbors (4)");
+      expect(tip).toHaveTextContent("Stored observations of packets");
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("lights the Analytics dot only when the node was heard inside the window", async () => {
+    const first = mount();
+    const lit = (await screen.findByText("Heard")).closest("[data-card-footer]")!.querySelector("[data-fresh]")!;
+    expect(lit).toHaveAttribute("data-fresh", "true");
+    expect(lit).toHaveClass("bg-green");
+    first.unmount();
+    client.clear();
+    vi.mocked(api.getNode).mockResolvedValue({ ...node, lastSeen: Date.now() - 30 * 3_600_000 });
     mount();
-    const footer = (await screen.findByText("Last seen")).closest("[data-card-footer]") as HTMLElement;
-    expect(footer).not.toHaveClass("flex-wrap");
-    expect(within(footer).getByText("Last seen").parentElement).toHaveClass("truncate");
-    expect(await within(footer).findByText("Mean hops 2.0 · Neighbors (4)")).toHaveClass("truncate");
-    const tip = within(footer).getByText(/More information:/);
-    expect(tip).toHaveTextContent(/Last seen \d{4}-\d{2}-\d{2}/);
-    expect(tip).toHaveTextContent("Mean hops 2.0");
-    expect(tip).toHaveTextContent("Neighbors (4)");
-    expect(tip).toHaveTextContent("Stored observations of packets");
+    const dim = (await screen.findByText("Heard")).closest("[data-card-footer]")!.querySelector("[data-fresh]")!;
+    expect(dim).toHaveAttribute("data-fresh", "false");
+    expect(dim).toHaveClass("bg-text-dim/30");
+  });
+
+  it("leaves the hops out of the Analytics footer when there are none", async () => {
+    vi.mocked(api.getNodeActivity).mockResolvedValue({ ...nodeActivity, summary: { ...nodeActivity.summary, hopAvg: null } } as never);
+    mount();
+    expect(await screen.findByText("4 neighbors")).toBeInTheDocument();
+    expect(screen.queryByText(/hops/)).not.toBeInTheDocument();
   });
 
   it("fills its grid row so neighbouring cards stay the same height whatever their titles wrap to", async () => {
@@ -293,8 +332,9 @@ describe("AtlasCard", () => {
     expect(screen.getByText("Online")).toBeInTheDocument();
     const footer = screen.getByText("Online").closest("[data-card-footer]") as HTMLElement;
     expect(footer).not.toHaveClass("flex-wrap");
-    expect(screen.getByText("Online").parentElement).toHaveClass("truncate");
+    expect(screen.getByText("Online")).toHaveClass("truncate");
     expect(screen.getByText("Online").parentElement).toHaveTextContent(/^Online · 1m ago$/);
+    expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "true");
     expect(within(footer).getByText("915 MHz · SF11")).toHaveClass("truncate");
     const tip = within(footer).getByText(/More information:/);
     expect(tip).toHaveTextContent(/Online · Last status \d{4}-\d{2}-\d{2}/);
@@ -506,10 +546,300 @@ describe("AtlasCard", () => {
     });
   });
 
+  it("pauses an observer's node lookup during Retry-After and adopts a match after expiry", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getObserver).mockResolvedValue(observer);
+    vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
+    vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+    vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
+    const card = mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+    const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+    try {
+      await tick(10);
+      expect(api.getNodesPage).toHaveBeenCalledTimes(1);
+      act(() => noteRateLimited(3 * ATLAS_REFRESH_MS));
+      await tick(2 * ATLAS_REFRESH_MS);
+      expect(api.getNodesPage).toHaveBeenCalledTimes(1);
+      vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
+      await tick(ATLAS_REFRESH_MS);
+      await tick(10);
+      expect(handlers.onUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: node.id }), observerId);
+    } finally {
+      card.unmount();
+      noteRequestOk();
+      vi.useRealTimers();
+    }
+  });
+
   it("upgrades an observer-only pin to a node pin when its key now resolves to a node", async () => {
     vi.mocked(api.getObserver).mockResolvedValue(observer);
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [node], hasMore: false, nextCursor: null });
     mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
     await waitFor(() => expect(handlers.onUpgrade).toHaveBeenCalledWith(expect.objectContaining({ id: node.id }), observerId));
+  });
+
+  describe("Telemetry tab", () => {
+    const TAB = { name: "Telemetry" };
+    const reading = (hoursAgo: number, extra: object) => ({ t: Date.now() - hoursAgo * 3_600_000, readings: 1, ...extra });
+    // Counters are increases over counterSpanSecs; one uptime drop is a reboot; no point carries a temperature.
+    const week = { range: "24h", interval: "1h", polled: true, untrustedReadings: 0, points: [
+      reading(8, { batteryMv: 4150, noiseFloorDb: -112, uptimeSeconds: 900_000, airtimeTxSecs: 36, airtimeRxSecs: 360, packetsReceived: 400, packetsSent: 20, receiveErrors: 5, counterSpanSecs: 21_600, lastSnrDb: 9, lastRssiDb: -30 }),
+      reading(2, { batteryMv: 4226, noiseFloorDb: -97, uptimeSeconds: 3_600, airtimeTxSecs: 72, airtimeRxSecs: 720, packetsReceived: 1_200, packetsSent: 60, receiveErrors: 10, counterSpanSecs: 21_600, lastSnrDb: 12, lastRssiDb: -20 }),
+    ] };
+    beforeEach(() => {
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true));
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue(week as never);
+    });
+
+    it("appears for a polled repeater and leaves the other two tabs as they were", async () => {
+      mount();
+      expect(await screen.findByRole("button", TAB)).toBeInTheDocument();
+      expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button").map((r) => r.textContent)).toEqual(["Analytics", "Heard by", "Telemetry"]);
+    });
+
+    it("appears for a room server whose polling route says it is polled, without asking for history", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, nodeType: 3, nodeTypeName: "room_server" });
+      mount();
+      expect(await screen.findByRole("button", TAB)).toBeInTheDocument();
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+    });
+
+    it("appears for a node no longer polled when the last 30 days hold readings", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null }));
+      mount();
+      expect(await screen.findByRole("button", TAB)).toBeInTheDocument();
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "720h", expect.any(AbortSignal));
+    });
+
+    it("does not appear when it is not polled and has no readings", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null }));
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [] } as never);
+      mount();
+      await screen.findByText("Observations");
+      await waitFor(() => expect(api.getNodeTelemetry).toHaveBeenCalled());
+      expect(screen.queryByRole("button", TAB)).not.toBeInTheDocument();
+      expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button")).toHaveLength(2);
+    });
+
+    it("does not appear, and asks for nothing, for a companion or with polling off", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, nodeType: 1, nodeTypeName: "companion" });
+      const first = mount();
+      await screen.findByText("Observations");
+      expect(screen.queryByRole("button", TAB)).not.toBeInTheDocument();
+      first.unmount();
+      vi.mocked(api.getNode).mockResolvedValue(node);
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(false));
+      client.clear();
+      mount();
+      await screen.findByText("Observations");
+      expect(screen.queryByRole("button", TAB)).not.toBeInTheDocument();
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+      expect(api.getNodePolling).not.toHaveBeenCalled();
+    });
+
+    it("removes the battery and temperature line from the other tabs", async () => {
+      mount();
+      await screen.findByRole("button", TAB);
+      await screen.findByText("Observations");
+      expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
+      expect(api.getNodeTelemetry).not.toHaveBeenCalledWith(pin.id, "24h", expect.anything());
+    });
+
+    it("asks for no readings until the tab is showing, then for one query in the card's range", async () => {
+      mount();
+      await screen.findByRole("button", TAB);
+      expect(api.getNodeTelemetry).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", TAB));
+      expect(handlers.onViewChange).toHaveBeenCalledWith("telemetry");
+    });
+
+    it("shows the four default tiles with latest values and units", async () => {
+      mount({ view: "telemetry" });
+      expect(await screen.findByText("4.23V")).toBeInTheDocument();
+      expect(screen.getByText("-97 dBm")).toBeInTheDocument();
+      // 3600 s up, after a restart
+      expect(screen.getByText("1h 0m")).toBeInTheDocument();
+      expect(screen.getByText("Restarted")).toBeInTheDocument();
+      // 720 s over 21600 s is 3.3 %, 72 s is 0.3 %, together 3.7 %
+      expect(screen.getByText("3.7%")).toBeInTheDocument();
+      expect(screen.getByText("TX 0.3% · RX 3.3%")).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /^Change tile/ }).map((b) => b.textContent)).toEqual(["Battery▾", "Noise floor▾", "Uptime▾", "Airtime▾"]);
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "24h", expect.any(AbortSignal));
+    });
+
+    it("draws two readings as dots, not a line", async () => {
+      const { container } = mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      expect(container.querySelectorAll("polyline")).toHaveLength(0);
+      expect(container.querySelectorAll("line[data-sample]").length).toBeGreaterThanOrEqual(8);
+    });
+
+    it("draws many readings as a line", async () => {
+      const points = Array.from({ length: 12 }, (_, i) => reading(12 - i, { batteryMv: 4000 + i * 10 }));
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points } as never);
+      const { container } = mount({ view: "telemetry" });
+      await screen.findByText("4.11V");
+      expect(container.querySelectorAll("polyline").length).toBeGreaterThan(0);
+    });
+
+    it("shows a dash and says so for a tile with nothing in the window", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: week.points.map((p) => ({ ...p, noiseFloorDb: undefined })) } as never);
+      mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      expect(screen.getAllByText("No readings in this window")).toHaveLength(1);
+    });
+
+    it("offers temperature only when a reading carries one", async () => {
+      mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      fireEvent.click(screen.getByRole("button", { name: "Change tile: Battery" }));
+      const options = within(screen.getByRole("listbox", { name: "Change tile: Battery" })).getAllByRole("option").map((o) => o.textContent);
+      expect(options).toEqual(["Packets", "Signal", "Errors"]);
+    });
+
+    it("shows the temperature tile in the instance unit", async () => {
+      const warm = { ...week, points: week.points.map((p) => ({ ...p, temperatureC: 15.25 })) };
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue(warm as never);
+      const tiles = { pin: { ...pin, telemetryTiles: ["temperature", "noise", "uptime", "airtime"] }, view: "telemetry" as const };
+      const { unmount } = mount(tiles);
+      expect(await screen.findByText("15.3 °C")).toBeInTheDocument();
+      unmount();
+      client.clear();
+      vi.mocked(api.getServerInfo).mockResolvedValue({ features: { polling: true }, display: { temperatureUnit: "f", distanceUnit: "imperial" } } as never);
+      mount(tiles);
+      expect(await screen.findByText("59.5 °F")).toBeInTheDocument();
+    });
+
+    it("offers temperature when a reading has one, and picking a tile reports the new four", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: week.points.map((p) => ({ ...p, temperatureC: 15.25 })) } as never);
+      mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      fireEvent.click(screen.getByRole("button", { name: "Change tile: Battery" }));
+      fireEvent.click(screen.getByRole("option", { name: "Temperature" }));
+      expect(handlers.onTelemetryTilesChange).toHaveBeenCalledWith(["temperature", "noise", "uptime", "airtime"]);
+    });
+
+    it("shows packets, signal and errors per the readings", async () => {
+      mount({ pin: { ...pin, telemetryTiles: ["packets", "signal", "errors", "battery"] }, view: "telemetry" });
+      expect(await screen.findByText("200/h")).toBeInTheDocument();
+      expect(screen.getByText("sent 10/h")).toBeInTheDocument();
+      expect(screen.getByText("12.0 dB")).toBeInTheDocument();
+      expect(screen.getByText("-20 dBm")).toBeInTheDocument();
+      expect(screen.getByText("1.7/h")).toBeInTheDocument();
+    });
+
+    it("offers a reset when the tiles are not the default", async () => {
+      mount({ pin: { ...pin, telemetryTiles: ["packets", "signal", "errors", "battery"] }, view: "telemetry" });
+      await screen.findByText("200/h");
+      fireEvent.click(screen.getByRole("button", { name: "Change tile: Packets" }));
+      fireEvent.click(screen.getByRole("button", { name: "Reset tiles" }));
+      expect(handlers.onTelemetryTilesChange).toHaveBeenCalledWith(["battery", "noise", "uptime", "airtime"]);
+    });
+
+    it("shows at most two units of uptime, with the full value in the title", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [reading(1, { uptimeSeconds: 164 * 86_400 + 12 * 3_600 + 7 * 60 })] } as never);
+      mount({ view: "telemetry" });
+      const value = await screen.findByText("164d 12h");
+      expect(value).toHaveAttribute("title", "164d 12h 7m");
+    });
+
+    it("says counters need two status readings when the window has readings but no pair", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [reading(1, { batteryMv: 4100 })] } as never);
+      mount({ view: "telemetry" });
+      await screen.findByText("4.10V");
+      expect(screen.getAllByText("Needs two status readings")).toHaveLength(1);
+      expect(screen.getAllByText("No readings in this window")).toHaveLength(2);
+    });
+
+    it("centres a single reading in the sparkline", async () => {
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [reading(1, { batteryMv: 4100 })] } as never);
+      const { container } = mount({ view: "telemetry" });
+      await screen.findByText("4.10V");
+      const dot = container.querySelector("line[data-sample]")!;
+      expect(dot.getAttribute("y1")).toBe("10");
+      expect(dot.getAttribute("x1")).toBe("60");
+    });
+
+    it("says when it was polled, with a lit dot, and who polls it on the right", async () => {
+      mount({ view: "telemetry" });
+      const footer = (await screen.findByText("Polled")).closest("[data-card-footer]") as HTMLElement;
+      expect(footer).not.toHaveClass("flex-wrap");
+      expect(within(footer).getByText("Polled").parentElement).toHaveTextContent(/^Polled · 12m ago$/);
+      expect(within(footer).getByText("by Ridge listener")).toHaveClass("truncate");
+      expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "true");
+      const tip = within(footer).getByText(/More information:/);
+      expect(tip).toHaveTextContent("Polled by Ridge listener");
+      expect(tip).toHaveTextContent(/Last reading \d{4}-\d{2}-\d{2}/);
+    });
+
+    it("says it is not polled, with a dim dot and nothing on the right, when polling stopped", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null, latestReadingAt: Date.now() - 3 * 86_400_000 }));
+      mount({ view: "telemetry" });
+      const footer = (await screen.findByText("Not polled")).closest("[data-card-footer]") as HTMLElement;
+      expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "false");
+      expect(within(footer).queryByText(/^by /)).not.toBeInTheDocument();
+      expect(within(footer).getByText(/More information:/)).toHaveTextContent("Not being polled right now");
+    });
+
+    // The server's polled flag means a reading was ever stored; only an assigned poller means it is polled now.
+    it("says it is not polled when readings exist but nobody is assigned", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: true, poller: null, latestReadingAt: Date.now() - 3 * 86_400_000 }));
+      mount({ view: "telemetry" });
+      expect(await screen.findByText("Not polled")).toBeInTheDocument();
+    });
+
+    it("keeps the battery line off Analytics after the Telemetry tab loaded the same readings", async () => {
+      const { rerender } = mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      rerender(
+        <QueryClientProvider client={client}>
+          <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} {...handlers} />
+        </QueryClientProvider>,
+      );
+      await screen.findByText("Observations");
+      expect(screen.queryByLabelText(LINE)).not.toBeInTheDocument();
+    });
+
+    it("asks for 72h on a 3d card when the server supports it", async () => {
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true, true));
+      mount({ view: "telemetry", range: "3d" });
+      await screen.findByText("4.23V");
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "72h", expect.any(AbortSignal));
+    });
+
+    it("asks for 168h on a 3d card on an older server and trims it to the last 72 hours", async () => {
+      const old = [reading(100, { batteryMv: 3000 }), reading(5, { batteryMv: 4100 })];
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: old } as never);
+      mount({ view: "telemetry", range: "3d" });
+      await screen.findByText("4.10V");
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal));
+    });
+
+    it("asks for 168h in hourly buckets on a 7d card", async () => {
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true, true));
+      mount({ view: "telemetry", range: "7d" });
+      await screen.findByText("4.23V");
+      expect(api.getNodeTelemetry).toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal), "1h");
+      expect(api.getNodeTelemetry).not.toHaveBeenCalledWith(pin.id, "168h", expect.any(AbortSignal));
+    });
+
+    it("falls back to Analytics for a pinned Telemetry view the card does not have", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null }));
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ ...week, points: [] } as never);
+      mount({ view: "telemetry", home: "telemetry" });
+      expect(await screen.findByText("Observations")).toBeInTheDocument();
+    });
+
+    it("never touches the saved Atlas", async () => {
+      const saved = JSON.stringify({ version: 2, pins: [{ kind: "node", ...pin }], range: "24h" });
+      localStorage.setItem("beacon-atlas-v2", saved);
+      const write = vi.spyOn(Storage.prototype, "setItem");
+      mount({ view: "telemetry" });
+      await screen.findByText("4.23V");
+      expect(write).not.toHaveBeenCalled();
+      expect(localStorage.getItem("beacon-atlas-v2")).toBe(saved);
+      write.mockRestore();
+      localStorage.clear();
+    });
   });
 });

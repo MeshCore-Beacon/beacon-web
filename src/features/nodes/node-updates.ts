@@ -22,13 +22,14 @@ export function patchNodeSummary(
   const lat = data.lat === undefined ? prev.lat : data.lat;
   const lng = data.lng === undefined ? prev.lng : data.lng;
   const possiblyForeign = data.possiblyForeign === undefined ? prev.possiblyForeign : data.possiblyForeign ?? undefined;
+  const isPoller = data.isPoller === undefined ? prev.isPoller : data.isPoller;
   // rows from a server that doesn't send lastSeen don't gain one
   const lastSeen = heardAt === undefined || prev.lastSeen == null ? prev.lastSeen : Math.max(prev.lastSeen, heardAt);
   // a re-advert that re-sends the same values must keep the SAME ref so the page patch no-ops
   // (otherwise an unchanged node would trigger a full map FeatureCollection rebuild + setData)
-  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign && lastSeen === prev.lastSeen) return list;
+  if (name === prev.name && lat === prev.lat && lng === prev.lng && possiblyForeign === prev.possiblyForeign && isPoller === prev.isPoller && lastSeen === prev.lastSeen) return list;
   const updated = [...list];
-  updated[idx] = { ...prev, name, lat, lng, possiblyForeign, lastSeen };
+  updated[idx] = { ...prev, name, lat, lng, possiblyForeign, isPoller, lastSeen };
   return updated;
 }
 
@@ -87,6 +88,7 @@ export function upsertNodePages(
     // meeting for the first time has none resolved yet, so start at 0 until a reload fills it in
     knownNeighborCount: 0,
     isObserver: data.isObserver,
+    isPoller: data.isPoller,
     possiblyForeign: data.possiblyForeign ?? undefined,
   };
   const pages = [...old.pages];

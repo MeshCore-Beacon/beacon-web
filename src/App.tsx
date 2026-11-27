@@ -14,6 +14,8 @@ import {
 } from "./hooks/region-selection";
 import { ThemeProvider } from "./hooks/useTheme";
 import { useIsMobile } from "./hooks/useMediaQuery";
+import { useFeatures, useFeaturesLoading } from "./hooks/useFeatures";
+import { useView, VIEW_PARAMS } from "./features/account/useView";
 import { usePauseWhenHidden } from "./hooks/usePauseWhenHidden";
 import { AppShell } from "./components/AppShell";
 import { SplashScreen } from "./components/SplashScreen";
@@ -21,10 +23,11 @@ import { VersionGate } from "./components/VersionGate";
 import { PacketList } from "./features/packets/PacketList";
 import { PacketAnalyzerDrawer } from "./features/packets/PacketAnalyzerDrawer";
 import { NodeTable } from "./features/nodes/NodeTable";
-import { NodeDetailPanel } from "./features/nodes/NodeDetailPanel";
+import { NodeDetailPanel, type NodeView } from "./features/nodes/NodeDetailPanel";
 import { InvestigationPanel, type Investigation, type InvestigationTarget } from "./features/InvestigationPanels";
 import { ObserverPage } from "./features/observers/ObserverPage";
 import { observerDestination } from "./features/observers/observer-navigation";
+import { fetchObserverNode } from "./features/observers/observer-node";
 import { RouteTable } from "./features/routes/RouteTable";
 import { TraceList } from "./features/traces/TraceList";
 import { ChannelList } from "./features/channels/ChannelList";
@@ -45,6 +48,9 @@ const MapView = lazy(() => import("./features/map/MapView").then((m) => ({ defau
 
 // Stats pulls in ECharts (~150-200KB gz), so lazy-load it too — the chunk loads on first visit to Stats.
 const StatsOverview = lazy(() => import("./features/stats/StatsOverview").then((m) => ({ default: m.StatsOverview })));
+
+// Sign-in, registration, verify and reset views: one chunk, fetched only when one is opened.
+const AccountViews = lazy(() => import("./features/account/AccountViews").then((m) => ({ default: m.AccountViews })));
 
 // global singletons
 
@@ -91,13 +97,14 @@ function AnalyticsPrefetch({ active }: { active: boolean }) {
 // Once the first view has had time to load, fetch the lazy tabs' code so a later click doesn't wait
 // on it; skipped when the browser asks to save data.
 const PRELOAD_DELAY_MS = 3_000;
-function usePreloadLazyTabs() {
+function usePreloadLazyTabs(accountsOn: boolean) {
   useEffect(() => {
     if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
     let idle: number | undefined;
     const preload = () => {
       if (ENABLED_TABS.includes("Analytics")) void import("./features/stats/StatsOverview");
       if (ENABLED_TABS.includes("Map")) void import("./features/map/MapView");
+      if (accountsOn) void import("./features/account/AccountViews");
     };
     const timer = setTimeout(() => {
       if ("requestIdleCallback" in window) idle = requestIdleCallback(preload, { timeout: 5_000 });
@@ -107,7 +114,7 @@ function usePreloadLazyTabs() {
       clearTimeout(timer);
       if (idle !== undefined) cancelIdleCallback(idle);
     };
-  }, []);
+  }, [accountsOn]);
 }
 
 // null-render component -- easiest way to sync region changes into the WS manager
@@ -133,13 +140,15 @@ function RegionWatcher({ wsManager: mgr }: { wsManager: WsManager }) {
 function RegionUrlSync() {
   const { selection } = useRegionSelection();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const next = selectionToParams(selection, searchParams);
     if (next.toString() === searchParams.toString()) return;
-    setSearchParams(next, { replace: true, state: location.state });
-  }, [selection, searchParams, setSearchParams, location.state]);
+    // navigate, not setSearchParams: that drops the fragment, which carries a mailed link's token.
+    navigate({ search: `?${next}`, hash: location.hash }, { replace: true, state: location.state });
+  }, [selection, searchParams, navigate, location.hash, location.state]);
 
   return null;
 }
@@ -192,11 +201,22 @@ function TabLoading({ tab }: { tab: string }) {
   return <EmptyState title={t(`tabs.${tab}`, { defaultValue: tab })} subtitle={t("common.loading")} />;
 }
 
+function ViewLoading() {
+  const { t } = useTranslation();
+  return <EmptyState title={t("common.loading")} />;
+}
+
 function AppInner() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  usePreloadLazyTabs();
+  const features = useFeatures();
+  const featuresLoading = useFeaturesLoading();
+  usePreloadLazyTabs(features.accounts !== "off");
+  // While /info is loading a ?view= holds the content area, so a tab does not flash first; with accounts off it is ignored.
+  const { view } = useView();
+  const viewOpen = view !== null && (featuresLoading || features.accounts !== "off");
   // The URL is the single source of truth for the active tab — back/forward just work, and an
   // unknown ?tab value falls back to Packets instead of rendering a blank pane.
   // "Stats" was renamed to "Analytics"; keep old ?tab=Stats links working.
@@ -265,6 +285,10 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
+      // ?view=observer belongs to the docked node panel, which only survives a desktop move between Nodes and Map
+      const keepNodeView = !isMobile && (tab === "Nodes" || tab === "Map") && prev.get("view") === "observer";
+      for (const key of VIEW_PARAMS) next.delete(key);
+      if (keepNodeView) next.set("view", "observer");
       if (tab !== "Routes") for (const key of ["route", "routeIata"]) next.delete(key);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
@@ -309,9 +333,21 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete(key);
+      if (next.get("view") === "observer") next.delete("view");
       return next;
     }, { replace: true });
   }, [setSearchParams]);
+
+  // The docked panel's Node | Observer choice. It counts only for the node the URL names, so picking another node starts on Node.
+  const nodeView: NodeView = searchParams.get("view") === "observer" && searchParams.get("node") === selectedNodeId ? "observer" : "node";
+  const setNodeView = useCallback((view: NodeView) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (view === "observer" && selectedNodeId) { next.set("node", selectedNodeId); next.set("view", "observer"); }
+      else if (next.get("view") === "observer") next.delete("view");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams, selectedNodeId]);
 
   const handleCloseNode = useCallback(() => {
     setSelectedNodeId(null);
@@ -319,7 +355,7 @@ function AppInner() {
   }, [dropSelectionParam, setSelectedNodeId]);
 
   // An observer opens its dashboard; a packet it was inspected from moves into the side drawer beside it.
-  const viewObserver = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
+  const openObserverDashboard = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
     setPanels([]);
     const origin = new URLSearchParams(searchParams);
     if (packet) {
@@ -335,6 +371,14 @@ function AppInner() {
     navigate({ search: "?" + next.toString() }, { state: { inspected: isMobile } });
   }, [navigate, searchParams, setPanels, isMobile]);
 
+  // An observer that is also a node opens the merged node panel on its Observer view, over whatever is open.
+  const viewObserver = useCallback((id: string, packet?: { hash: string; observationId?: number }) => {
+    fetchObserverNode(queryClient, id).then(
+      (node) => { if (node) openPanel({ kind: "node", id: node.id, view: "observer" }); else openObserverDashboard(id, packet); },
+      () => openObserverDashboard(id, packet),
+    );
+  }, [queryClient, openPanel, openObserverDashboard]);
+
   useEffect(() => {
     // Region slugs can't be expanded until region details load, so hold the subscription (an empty
     // list subscribes to nothing) and let RegionWatcher subscribe once useRegion resolves them.
@@ -346,7 +390,7 @@ function AppInner() {
   usePauseWhenHidden(wsManager);
 
   const tabContent: Record<string, React.ReactNode> = {
-    Atlas: <AtlasPage onViewNode={viewNode} onViewObserver={viewObserver} onAnalyzePacket={viewPacket} />,
+    Atlas: <AtlasPage onViewNode={viewNode} onViewObserver={openObserverDashboard} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}
@@ -357,7 +401,7 @@ function AppInner() {
       />
     ),
     Nodes: <NodeTable wsManager={wsManager} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />,
-    Observers: <ObserverPage wsManager={wsManager} onAnalyzePacket={handleAnalyze} />,
+    Observers: <ObserverPage wsManager={wsManager} onAnalyzePacket={handleAnalyze} onViewNode={viewNode} />,
     Routes: <RouteTable onAnalyzePacket={viewPacket} onViewObserver={viewObserver} onViewNode={viewNode} />,
     // analyze opens the packet overlay (modal) rather than the side drawer, which suits the
     // master/detail layout and renders on any tab — same path NodeDetailPanel's onAnalyzePacket uses
@@ -381,12 +425,12 @@ function AppInner() {
       />
       <AppShell activeTab={activeTab} onTabChange={handleTabChange} wsManager={wsManager}>
         <div className="relative flex flex-1 min-h-0 min-w-0">
-          <div key={activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
-            <Suspense fallback={<TabLoading tab={activeTab} />}>
-              {tabContent[activeTab]}
+          <div key={viewOpen ? "view" : activeTab} className="flex flex-1 min-h-0 min-w-0 fade-in">
+            <Suspense fallback={viewOpen ? <ViewLoading /> : <TabLoading tab={activeTab} />}>
+              {viewOpen ? <AccountViews /> : tabContent[activeTab]}
             </Suspense>
           </div>
-          {analyzerHash && activeTab !== "Map" && activeTab !== "Analytics" && (
+          {!viewOpen && analyzerHash && activeTab !== "Map" && activeTab !== "Analytics" && (
             <PacketAnalyzerDrawer
               detail={analyzerDetail}
               loading={analyzerLoading}
@@ -398,17 +442,20 @@ function AppInner() {
               onViewPath={(key) => { if (analyzerDetail) handleViewPath(analyzerDetail, key); }}
             />
           )}
-          {(activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
+          {!viewOpen && (activeTab === "Map" || activeTab === "Nodes") && selectedNodeId && (
             <NodeDetailPanel
               nodeId={selectedNodeId}
               onClose={handleCloseNode}
               onViewObserver={viewObserver}
+              onOpenObserverDashboard={openObserverDashboard}
+              view={nodeView}
+              onViewChange={setNodeView}
               onViewNode={setSelectedNodeId}
               onAnalyzePacket={viewPacket}
               onViewOnMap={canViewOnMap ? (lat, lng) => handleViewOnMap(selectedNodeId, lat, lng) : undefined}
             />
           )}
-          {panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
+          {!viewOpen && panels.map((panel, index) => <InvestigationPanel key={panel.key} target={panel.target} inactive={index !== panels.length - 1} onClose={() => closePanel(index)} onOpen={openPanel} onViewObserver={viewObserver} onOpenObserverDashboard={openObserverDashboard} onViewOnMap={canViewOnMap ? handleViewOnMap : undefined} />)}
         </div>
       </AppShell>
     </RegionProvider>

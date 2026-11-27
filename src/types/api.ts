@@ -53,7 +53,7 @@ export interface ResolvedNode {
 export interface ResolvedHop {
   confidence: PathConfidence;
   nodes: ResolvedNode[]; // empty when confidence is "none"
-  snr?: number; // per-hop link SNR (dB) when the backend resolved it
+  snr?: number | null; // per-hop link SNR (dB) when the backend resolved it
   hashBytes?: string; // hex per-hop path-hash prefix, carried by RouteHop; trace hops get theirs from rawPath instead
 }
 
@@ -71,8 +71,11 @@ export interface Observation {
   heardAt: number;
   pathLength: PathLength;
   pathBytes?: string;
-  rssi?: number;
-  snr?: number;
+  // TRACE only: the bytes really in the path slot on air (one signal byte per hop reached, may be
+  // empty). Absent when they equal pathBytes and on older servers.
+  wirePathBytes?: string;
+  rssi?: number | null;
+  snr?: number | null;
   propagationTimeMs?: number;
   radio?: {
     freqMhz?: number;
@@ -178,8 +181,8 @@ export interface RouteObservation {
   heardAt: number;
   payloadType: number;
   payloadTypeName: string;
-  rssi?: number;
-  snr?: number;
+  rssi?: number | null;
+  snr?: number | null;
 }
 
 export interface RouteEvidence {
@@ -233,7 +236,7 @@ export interface TraceTagSummary {
 
 export interface RawHop {
   hash: string; // hex per-hop path-hash prefix
-  snr?: number; // per-hop link SNR (dB) when known
+  snr?: number | null; // per-hop link SNR (dB) when known
 }
 
 export interface TracePacket {

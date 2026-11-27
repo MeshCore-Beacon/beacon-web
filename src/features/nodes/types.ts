@@ -21,11 +21,20 @@ export interface NodeSummary {
   // Set when this node also runs as an observer (watches traffic for uplink). isObserver drives the
   // map's observer-pip marker variant; observerId, when present, links to that observer's detail.
   isObserver?: boolean;
+  isPoller?: boolean; // a poller is always an observer; absent on older servers (treated as false)
   observerId?: string;
   // Server verdict against its configured local border union; absence is unknown/disabled.
   possiblyForeign?: boolean;
   lastSeen?: number; // epoch ms; servers up to 2.1.0 leave it out
   stale?: boolean; // server-configured freshness threshold; absent on older servers
+}
+
+// Latest polled battery/temperature for a node; temperatures are Celsius, either value may be absent.
+export interface NodeLatestReading {
+  nodeId: string;
+  sampledAt: number; // epoch ms
+  batteryMv?: number;
+  temperatureC?: number;
 }
 
 // /nodes orders, server 2.1.0+; lastSeen ascending only from a server whose rows carry lastSeen
@@ -139,7 +148,43 @@ export interface NodeObservation {
   payloadTypeName: string;
   iata: string;
   heardAt: number; // epoch ms
-  rssi?: number;
-  snr?: number;
+  rssi?: number | null;
+  snr?: number | null;
   hopCount?: number;
+}
+
+// Polled repeater readings, bucketed by the server; every field after `readings` is absent when no reading carried it.
+export interface NodeTelemetryPoint {
+  t: number; // epoch ms
+  readings: number;
+  batteryMv?: number;
+  temperatureC?: number;
+  noiseFloorDb?: number;
+  lastRssiDb?: number;
+  lastSnrDb?: number;
+  uptimeSeconds?: number;
+  queueLength?: number;
+  airtimeTxSecs?: number;
+  airtimeRxSecs?: number;
+  packetsReceived?: number;
+  packetsSent?: number;
+  receiveErrors?: number;
+  counterSpanSecs?: number; // seconds the counter increments cover; divide by this, not the bucket length
+}
+
+export type NodeTelemetryRange = "24h" | "72h" | "168h" | "720h";
+
+export interface NodeTelemetry {
+  range: string;
+  interval: string;
+  polled: boolean;
+  untrustedReadings: number;
+  points: NodeTelemetryPoint[];
+}
+
+export interface NodePolling {
+  polled: boolean;
+  latestReadingAt: number | null; // epoch ms
+  poller: { observerId: string; name: string } | null;
+  standbys: { observerId: string; name: string; rank: number }[];
 }

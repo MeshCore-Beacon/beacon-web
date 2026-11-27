@@ -3,7 +3,8 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodePage, NodeSort } from "../features/nodes/types";
+import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodeLatestReading, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling } from "../features/nodes/types";
+
 import type {
   StatsSeries,
   SignalStats,
@@ -126,6 +127,10 @@ export interface ServerInfo {
   minAppVersion: string | null;
   minWebVersion: string | null;
   serverVersion: string;
+  // absent on servers that predate the flags
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; atlas7d?: boolean; mapTelemetry?: boolean; alertChannels?: { email?: boolean; push?: boolean }; push?: { server?: string; pushId?: string }; portalUrl?: string };
+  display?: { temperatureUnit?: string; distanceUnit?: string };
+  limits?: { atlas?: number };
 }
 
 export function getServerInfo(): Promise<ServerInfo> {
@@ -138,9 +143,9 @@ export function getIatas(): Promise<IataCode[]> {
 
 // An IATA's GeoJSON border, or null when none is configured. Can't use request(): the endpoint
 // answers 204 (empty body) or a literal `null` for "no border", and request() always parses JSON.
-export async function getIataBorder(iata: string): Promise<IataBorder | null> {
+export async function getIataBorder(iata: string, signal?: AbortSignal): Promise<IataBorder | null> {
   const url = new URL(`${API_BASE}/iatas/${iata}/border`, window.location.origin);
-  const res = await apiFetch(url);
+  const res = await apiFetch(url, signal);
   if (!res.ok) throw await errorFrom(res);
   noteRequestOk();
   if (res.status === 204) return null;
@@ -220,6 +225,7 @@ export interface RouteCursor {
 
 export async function getKnownRoutesPage(
   params?: { iatas?: string[]; hopCount?: number; cursor?: RouteCursor; limit?: number },
+  signal?: AbortSignal,
 ): Promise<CursorPage<KnownRoute, RouteCursor>> {
   const limit = params?.limit ?? DEFAULT_PAGE_SIZE;
   const iatas = params?.iatas ?? [];
@@ -230,7 +236,7 @@ export async function getKnownRoutesPage(
     cursor: params?.cursor?.lastSeen,
     cursorId: params?.cursor?.id,
     limit,
-  });
+  }, signal);
   return toCursorPage(items, limit, (r) => ({ lastSeen: r.lastSeen, id: r.id }));
 }
 
@@ -314,6 +320,7 @@ export function getNodesPage(
     supportsMultibyteTraces?: "true" | "false";
     neighbors?: boolean; // include each node's neighborIds (?neighbors=true)
     scope?: string; // transport scope name, e.g. "#bc"
+    poller?: "true" | "false"; // only pollers / only non-pollers; omit for all
     // server-side order, paged by pageCursor alone; check the page's `sort`, older servers ignore it
     sort?: NodeSort;
     order?: "asc" | "desc";
@@ -334,6 +341,7 @@ export function getNodesPage(
     supportsMultibyteTraces: params?.supportsMultibyteTraces,
     neighbors: params?.neighbors ? "true" : undefined,
     scope: params?.scope,
+    poller: params?.poller,
     sort: params?.sort,
     order: params?.sort ? params.order : undefined,
   }, signal);
@@ -391,6 +399,11 @@ export function getNode(nodeId: string, signal?: AbortSignal): Promise<Node> {
   return request(`/nodes/${nodeId}`, undefined, signal);
 }
 
+export function getLatestNodeTelemetry(iatas: string[] | undefined): Promise<{ generatedAt: number; items: NodeLatestReading[] }> {
+  if (noIatas(iatas)) return Promise.resolve({ generatedAt: Date.now(), items: [] });
+  return request("/nodes/telemetry/latest", { iatas: iatasParam(iatas) });
+}
+
 export function getNodeObservations(
   nodeId: string,
   params?: { cursor?: number; limit?: number },
@@ -406,8 +419,8 @@ export function getNodeActivity(nodeId: string, range: string, signal?: AbortSig
   return request(`/nodes/${nodeId}/activity`, { range }, signal);
 }
 
-export function getNodeNeighbors(nodeId: string): Promise<NodeNeighbor[]> {
-  return request(`/nodes/${nodeId}/neighbors`);
+export function getNodeNeighbors(nodeId: string, signal?: AbortSignal): Promise<NodeNeighbor[]> {
+  return request(`/nodes/${nodeId}/neighbors`, undefined, signal);
 }
 
 // stats endpoints
@@ -428,38 +441,38 @@ export function getPathStats(since: number, until: number, iatas?: StatsRegion, 
   return request("/stats/paths", { since, until, ...statsRegionParams(iatas) }, signal);
 }
 
-export function getPayloadBreakdown(iatas?: StatsRegion, since?: number): Promise<PayloadBreakdownItem[]> {
-  return request("/stats/payload-breakdown", { ...statsRegionParams(iatas), since });
+export function getPayloadBreakdown(iatas?: StatsRegion, since?: number, signal?: AbortSignal): Promise<PayloadBreakdownItem[]> {
+  return request("/stats/payload-breakdown", { ...statsRegionParams(iatas), since }, signal);
 }
 
-export function getTopNodes(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopNode[]> {
-  return request("/stats/top-nodes", { ...statsRegionParams(iatas), since, limit });
+export function getTopNodes(iatas?: StatsRegion, since?: number, limit = 10, signal?: AbortSignal): Promise<TopNode[]> {
+  return request("/stats/top-nodes", { ...statsRegionParams(iatas), since, limit }, signal);
 }
 
-export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopObserver[]> {
-  return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit });
+export function getTopObservers(iatas?: StatsRegion, since?: number, limit = 10, signal?: AbortSignal): Promise<TopObserver[]> {
+  return request("/stats/top-observers", { ...statsRegionParams(iatas), since, limit }, signal);
 }
 
-export function getTopAdvertisers(iatas: StatsRegion | undefined, since: number | undefined, sort: AdvertiserSort, limit = 10): Promise<TopAdvertiser[]> {
-  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, sort, limit });
+export function getTopAdvertisers(iatas: StatsRegion | undefined, since: number | undefined, sort: AdvertiserSort, limit = 10, signal?: AbortSignal): Promise<TopAdvertiser[]> {
+  return request("/stats/top-advertisers", { ...statsRegionParams(iatas), since, sort, limit }, signal);
 }
 
-export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10): Promise<TopTalker[]> {
-  return request("/stats/top-talkers", { ...statsRegionParams(iatas), since, limit });
+export function getTopTalkers(iatas?: StatsRegion, since?: number, limit = 10, signal?: AbortSignal): Promise<TopTalker[]> {
+  return request("/stats/top-talkers", { ...statsRegionParams(iatas), since, limit }, signal);
 }
 
-export function getRadioPresets(iatas?: StatsRegion): Promise<RadioPreset[]> {
-  return request("/stats/radio-presets", { ...statsRegionParams(iatas) });
+export function getRadioPresets(iatas?: StatsRegion, signal?: AbortSignal): Promise<RadioPreset[]> {
+  return request("/stats/radio-presets", { ...statsRegionParams(iatas) }, signal);
 }
 
-export function getStatsNodeTypes(iatas?: StatsRegion): Promise<NodeTypeCount[]> {
-  return request("/stats/node-types", { ...statsRegionParams(iatas) });
+export function getStatsNodeTypes(iatas?: StatsRegion, signal?: AbortSignal): Promise<NodeTypeCount[]> {
+  return request("/stats/node-types", { ...statsRegionParams(iatas) }, signal);
 }
 
 // Repeaters/room servers whose clock has drifted past the server threshold, worst-first. Not
 // time-windowed and top-N only (no cursor), so callers pass a generous limit and page client-side.
-export function getClockDrift(iatas?: StatsRegion, limit = 100): Promise<ClockDriftEntry[]> {
-  return request("/stats/clock-drift", { ...statsRegionParams(iatas), limit });
+export function getClockDrift(iatas?: StatsRegion, limit = 100, signal?: AbortSignal): Promise<ClockDriftEntry[]> {
+  return request("/stats/clock-drift", { ...statsRegionParams(iatas), limit }, signal);
 }
 
 // renamed from getScopes to avoid colliding with the /scopes name list; this is the /stats/scopes
@@ -480,6 +493,17 @@ export function getObserverTelemetry(
 
 export function getObserverActivity(observerId: string, range: string, interval: string, until?: number, signal?: AbortSignal): Promise<ObserverActivity> {
   return request(`/observers/${observerId}/activity`, { range, interval, until }, signal);
+}
+
+// Bucket per range, the same as the server's defaults.
+const NODE_TELEMETRY_INTERVAL: Record<NodeTelemetryRange, string> = { "24h": "1h", "72h": "1h", "168h": "6h", "720h": "24h" };
+
+export function getNodeTelemetry(id: string, range: NodeTelemetryRange, signal?: AbortSignal, interval?: string): Promise<NodeTelemetry> {
+  return request(`/nodes/${encodeURIComponent(id)}/telemetry`, { range, interval: interval ?? NODE_TELEMETRY_INTERVAL[range] }, signal);
+}
+
+export function getNodePolling(id: string, signal?: AbortSignal): Promise<NodePolling> {
+  return request(`/nodes/${encodeURIComponent(id)}/polling`, undefined, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.

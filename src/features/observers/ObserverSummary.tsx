@@ -20,7 +20,8 @@ function Measure({ text }: { text: string }) {
 
 const DT = "text-[11px] text-text-dim";
 
-export function ObserverSummary({ observer, activity, points, pending = false, actions }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode }) {
+// compact: the node panel's width. The node summary above it already shows the key, so it is left out.
+export function ObserverSummary({ observer, activity, points, pending = false, actions, compact = false }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode; compact?: boolean }) {
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
@@ -60,11 +61,12 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
       value: noise != null && Number.isFinite(noise) ? `${noise.toLocaleString(i18n.resolvedLanguage, { maximumFractionDigits: 1 })} dBm` : "—",
     },
   ];
+  const Heading = compact ? "h2" : "h1";
   return <>
-    <section aria-labelledby={headingId} className="flex flex-col gap-3 rounded-lg border border-border bg-bg-surface px-3.5 py-3 sm:flex-row sm:items-start">
+    <section aria-labelledby={headingId} className={`flex flex-col gap-3 rounded-lg border border-border bg-bg-surface px-3.5 py-3 ${compact ? "" : "sm:flex-row sm:items-start"}`}>
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-          <h1 id={headingId} className="min-w-0 break-words text-lg font-semibold text-text-bright"><EmojiText text={observer.displayName ?? observer.id.slice(0, 8)} /></h1>
+          <Heading id={headingId} className={`min-w-0 break-words font-semibold text-text-bright ${compact ? "text-sm" : "text-lg"}`}><EmojiText text={observer.displayName ?? observer.id.slice(0, 8)} /></Heading>
           <span role="img" aria-label={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} title={t(`observerPage.${observer.lastStatusAt == null ? "statusMissing" : statusFresh ? "statusRecent" : "statusStale"}`)} className={`inline-flex items-center ${observer.lastStatusAt == null ? "text-text-muted" : statusFresh ? "text-green" : "text-warn"}`}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
           </span>
@@ -77,7 +79,7 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
               {device.map(([label, value]) => <Tooltip key={label} label={label}><span className="rounded-sm bg-bg-raised px-1.5 py-0.5">{value}</span></Tooltip>)}
             </dd>
           </>}
-          {observer.publicKey && <>
+          {observer.publicKey && !compact && <>
             <dt className={DT}>{t("observerPage.publicKey")}</dt>
             <dd className="flex items-center gap-2">
               <Tooltip label={observer.publicKey}><code className="text-text-normal">{observer.publicKey.slice(0, 8)}…{observer.publicKey.slice(-7)}</code></Tooltip>
@@ -104,10 +106,10 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
       </div>
       {actions && <div className="flex shrink-0 flex-row flex-wrap gap-2 sm:w-40 sm:flex-col sm:items-stretch">{actions}</div>}
     </section>
-    <ul role="list" aria-label={t("observerPage.metrics")} className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+    <ul role="list" aria-label={t("observerPage.metrics")} className={compact ? "grid grid-cols-3 gap-2" : "grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6"}>
       {cards.map(({ key, label, value, title }) => {
-        const shown = <span className="font-mono text-xl font-bold tabular-nums text-text-bright sm:text-2xl"><Measure text={value} /></span>;
-        return <li key={key} className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface px-2 py-3 text-center">
+        const shown = <span className={`font-mono font-bold tabular-nums text-text-bright ${compact ? "text-base" : "text-xl sm:text-2xl"}`}><Measure text={value} /></span>;
+        return <li key={key} className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-bg-surface text-center ${compact ? "px-1.5 py-2" : "px-2 py-3"}`}>
           <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">{label}</span>
           {title ? <Tooltip label={title}>{shown}</Tooltip> : shown}
         </li>;

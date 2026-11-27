@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ObserverAdverts } from "../../../src/features/observers/ObserverAdverts";
 import { getObserverAdverts } from "../../../src/api/client";
@@ -28,6 +28,17 @@ describe("ObserverAdverts", () => {
     expect(await screen.findByText("Node Alpha")).toBeInTheDocument();
     expect(screen.getByText("Node Beta")).toBeInTheDocument();
     expect(mockGetObserverAdverts).toHaveBeenCalledWith("obs-1", { limit: 50 });
+  });
+
+  it("dashes a missing signal and keeps a real zero", async () => {
+    mockGetObserverAdverts.mockResolvedValue({ items: [{ ...advert(1, "No signal"), snr: undefined, rssi: null }, { ...advert(2, "Zero signal"), snr: 0, rssi: 0 }], nextCursor: null, hasMore: false });
+    renderAdverts();
+    const stat = (name: string, label: string) => within(screen.getByRole("button", { name: new RegExp(name) })).getByText(label).nextElementSibling!;
+    await screen.findByText("No signal");
+    expect(stat("No signal", "SNR")).toHaveTextContent(/^—$/);
+    expect(stat("No signal", "RSSI")).toHaveTextContent(/^—$/);
+    expect(stat("Zero signal", "SNR")).toHaveTextContent(/^0\.00$/);
+    expect(stat("Zero signal", "RSSI")).toHaveTextContent(/^0$/);
   });
 
   it("analyzes the packet when an advert is clicked", async () => {

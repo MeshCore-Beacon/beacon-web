@@ -83,3 +83,39 @@ describe("map settings", () => {
     expect(onTerrainChange).toHaveBeenCalledWith(true);
   });
 });
+
+describe("telemetry row", () => {
+  const base = { styleId: "dark", onStyleChange: () => {}, typeFilter: "", onTypeChange: () => {}, clustered: true, onClusteredChange: () => {}, neighborLines: "selected" as const, onNeighborLinesChange: () => {}, borders: false, onBordersChange: () => {}, terrain: false, onTerrainChange: () => {}, buildShareParams: () => ({}) };
+
+  it("is absent without onTelemetryChange", async () => {
+    await i18n.changeLanguage("en");
+    render(<MapSettingsPanel {...base} />);
+    expect(screen.queryByRole("group", { name: "Show battery and temperature on the map" })).toBeNull();
+  });
+
+  it("shows and reports On when onTelemetryChange is passed", async () => {
+    await i18n.changeLanguage("en");
+    const onTelemetryChange = vi.fn();
+    render(<MapSettingsPanel {...base} telemetry={false} onTelemetryChange={onTelemetryChange} />);
+    const group = screen.getByRole("group", { name: "Show battery and temperature on the map" });
+    fireEvent.click(within(group).getByRole("button", { name: "On" }));
+    expect(onTelemetryChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe("pollers only toggle", () => {
+  it("reports On and reflects the current state", async () => {
+    await i18n.changeLanguage("en");
+    const onPollersOnlyChange = vi.fn();
+    render(
+      <MapSettingsPanel styleId="dark" onStyleChange={() => {}} typeFilter="" onTypeChange={() => {}}
+        clustered onClusteredChange={() => {}} neighborLines="selected" onNeighborLinesChange={() => {}}
+        borders={false} onBordersChange={() => {}} terrain={false} onTerrainChange={() => {}} buildShareParams={() => ({})}
+        pollersOnly={false} onPollersOnlyChange={onPollersOnlyChange} />,
+    );
+    const group = screen.getByRole("group", { name: "Pollers only" });
+    expect(within(group).getByRole("button", { name: "Off" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(group).getByRole("button", { name: "On" }));
+    expect(onPollersOnlyChange).toHaveBeenCalledWith(true);
+  });
+});

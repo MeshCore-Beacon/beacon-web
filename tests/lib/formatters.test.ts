@@ -106,9 +106,22 @@ describe("snrLevel", () => {
   it("returns null for null input", () => {
     expect(snrLevel(null)).toBeNull();
   });
+
+  it("rates a real 0 dB but not a missing or invalid value", () => {
+    expect(snrLevel(0)).toBe("bad");
+    expect(snrLevel(undefined)).toBeNull();
+    expect(snrLevel(Number.NaN)).toBeNull();
+  });
 });
 
 describe("formatSnr", () => {
+  it("shows a real 0 and dashes a missing or invalid value", () => {
+    expect(formatSnr(0)).toBe("0.00");
+    expect(formatSnr(null)).toBe("—");
+    expect(formatSnr(undefined)).toBe("—");
+    expect(formatSnr(Number.NaN)).toBe("—");
+  });
+
   it("formats to 2 decimal places", () => {
     expect(formatSnr(10.756)).toBe("10.76");
   });

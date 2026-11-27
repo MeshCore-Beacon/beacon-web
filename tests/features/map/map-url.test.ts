@@ -116,6 +116,7 @@ describe("buildMapParams", () => {
       style: "liberty",
       flow: "on",
       borders: "on",
+      pollers: null,
     });
   });
 
@@ -149,5 +150,33 @@ describe("parseNodeType", () => {
     expect(parseNodeType("room")).toBeUndefined(); // an older saved value no type matches
     expect(parseNodeType("")).toBeUndefined();
     expect(parseNodeType(null)).toBeUndefined();
+  });
+});
+
+describe("telemetry param", () => {
+  it("parses on and leaves it undefined when absent", () => {
+    expect(parseMapView(new URLSearchParams("telemetry=on"))).toEqual({ telemetry: true });
+    expect(parseMapView(new URLSearchParams("")).telemetry).toBeUndefined();
+  });
+
+  it("builds telemetry=on from a snapshot", () => {
+    const snap: MapViewSnapshot = { center: [0, 0], zoom: 5, clustered: true, nodeType: "", neighborLines: "on", styleId: "liberty", flow: false, borders: false, telemetry: true };
+    expect(buildMapParams(snap).telemetry).toBe("on");
+  });
+});
+
+describe("pollers param", () => {
+  it("parses explicit on and off, leaving missing or unknown values to preferences", () => {
+    expect(parseMapView(new URLSearchParams("pollers=1")).pollersOnly).toBe(true);
+    expect(parseMapView(new URLSearchParams("pollers=0")).pollersOnly).toBe(false);
+    expect(parseMapView(new URLSearchParams("pollers=unknown")).pollersOnly).toBeUndefined();
+    expect(parseMapView(new URLSearchParams("")).pollersOnly).toBeUndefined();
+  });
+
+  it("writes either selected view and omits an unspecified filter", () => {
+    const snap: MapViewSnapshot = { center: [0, 0], zoom: 5, clustered: true, nodeType: "", neighborLines: "on", styleId: "liberty", flow: false, borders: false };
+    expect(buildMapParams({ ...snap, pollersOnly: true }).pollers).toBe("1");
+    expect(buildMapParams({ ...snap, pollersOnly: false }).pollers).toBe("0");
+    expect(buildMapParams(snap).pollers).toBeNull();
   });
 });

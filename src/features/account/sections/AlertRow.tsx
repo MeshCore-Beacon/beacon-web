@@ -1,0 +1,139 @@
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSessionMutation } from "../../../hooks/useSessionMutation";
+import { alerts } from "../../../api/auth";
+import { Timestamp } from "../../../components/Timestamp";
+import { SelectDropdown } from "../../../components/SelectDropdown";
+import { fieldClassRoomy } from "../../../components/form/fieldStyles";
+import { Switch } from "../../../components/form/Switch";
+import { ALERTS_KEY } from "../../../hooks/useAlerts";
+import { useDisplayUnits } from "../../../hooks/useFeatures";
+import { tempSymbol } from "../../../lib/units";
+import { alertErrorText } from "../errors";
+import {
+  BATTERY_FALLING_STEPS, CLOCK_SECONDS, OBSERVER_OFFLINE_MINUTES, durationText, goneQuietHours, inputsFor, parseInputs, parseTemperature, temperatureLimits, type Inputs, type Parsed,
+} from "../alertRules";
+import type { AlertKind, AlertRule, AlertTarget } from "../types";
+import { useSessionEnded } from "./useSessionEnded";
+
+const minutesText = (t: TFunction, m: number) => (m % 60 === 0 ? durationText(t, "hours", m / 60) : durationText(t, "minutes", m));
+const secondsText = (t: TFunction, s: number) => (s >= 86400 ? durationText(t, "days", s / 86400) : s >= 3600 ? durationText(t, "hours", s / 3600) : durationText(t, "minutes", s / 60));
+
+export function AlertRow({ target, kind, rule, goneQuietOn }: { target: AlertTarget; kind: AlertKind; rule: AlertRule | undefined; goneQuietOn: boolean }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const ended = useSessionEnded();
+  const { temperature: tempUnit } = useDisplayUnits();
+  const [inputs, setInputs] = useState<Inputs>(() => inputsFor(kind, rule, tempUnit));
+  const [local, setLocal] = useState<string | null>(null);
+
+  const save = useSessionMutation({
+    mutationFn: (body: { threshold: number | null; thresholdHigh: number | null; enabled: boolean }) =>
+      alerts.putRule({ target: { kind: target.kind, publicKey: target.publicKey }, kind, ...body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ALERTS_KEY }),
+    onError: ended,
+  });
+
+  const checked = save.isPending ? save.variables.enabled : rule?.enabled ?? false;
+  const blocked = kind === "back_online" && !goneQuietOn && !checked;
+
+  // A box still showing its displayed text keeps the stored value, since F rounds the display.
+  const resolve = (next: Inputs): Parsed => {
+    const shown = inputsFor(kind, rule, tempUnit);
+    const keepA = rule?.threshold != null && next.a.trim() === shown.a;
+    const keepB = rule?.thresholdHigh != null && next.b.trim() === shown.b;
+    if (kind !== "temperature") return parseInputs(kind, next, tempUnit);
+    return parseTemperature(next.a, next.b, tempUnit, { a: keepA ? rule?.threshold ?? undefined : undefined, b: keepB ? rule?.thresholdHigh ?? undefined : undefined });
+  };
+
+  // Validates the inputs and sends them; an invalid value shows an error and sends nothing.
+  const send = (next: Inputs, enabled: boolean) => {
+    const parsed = resolve(next);
+    if (!parsed.ok) {
+      setLocal(parsed.error);
+      return;
+    }
+    setLocal(null);
+    save.mutate({ threshold: parsed.threshold, thresholdHigh: parsed.thresholdHigh, enabled });
+  };
+
+  const toggle = () => {
+    if (checked) {
+      setLocal(null);
+      save.mutate({ threshold: rule?.threshold ?? null, thresholdHigh: rule?.thresholdHigh ?? null, enabled: false });
+    } else {
+      send(inputs, true);
+    }
+  };
+
+  const change = (key: keyof Inputs, value: string, now: boolean) => {
+    const next = { ...inputs, [key]: value };
+    setInputs(next);
+    setLocal(null);
+    if (now && rule?.enabled) send(next, true);
+  };
+
+  // Typed inputs save when focus leaves, and only if the value moved.
+  const blur = () => {
+    if (!rule?.enabled) return;
+    const parsed = resolve(inputs);
+    if (!parsed.ok) return setLocal(parsed.error);
+    if (parsed.threshold === rule.threshold && parsed.thresholdHigh === rule.thresholdHigh) return;
+    send(inputs, true);
+  };
+
+  const label = (key: string) => t(`account.alerts.fields.${key}`, { unit: tempSymbol(tempUnit) });
+  const select = (key: string, options: number[], text: (n: number) => string) => (
+    <SelectDropdown
+      label={label(key)} showLabel={false} hideAll sheetOnMobile align="left" disabled={save.isPending}
+      options={options.map((o) => ({ value: String(o), label: text(o) }))} value={inputs.a}
+      onChange={(v) => change("a", v, true)}
+    />
+  );
+  const text = (key: string, field: keyof Inputs, placeholder: string) => (
+    <input
+      type="text" inputMode="decimal" autoComplete="off" aria-label={label(key)} placeholder={placeholder}
+      value={inputs[field]} disabled={save.isPending} aria-invalid={local ? true : undefined}
+      onChange={(e) => change(field, e.target.value, false)} onBlur={blur} className={`${fieldClassRoomy} !w-28`}
+    />
+  );
+
+  let input = null;
+  switch (kind) {
+    case "gone_quiet": input = select("hours", goneQuietHours(target, rule?.threshold ?? null), (h) => durationText(t, "hours", h)); break;
+    case "battery_falling": input = select("drop", BATTERY_FALLING_STEPS, (m) => t("account.alerts.voltsPerDay", { volts: (m / 1000).toFixed(1) })); break;
+    case "clock": input = select("drift", CLOCK_SECONDS, (s) => secondsText(t, s)); break;
+    case "observer_offline": input = select("offline", OBSERVER_OFFLINE_MINUTES, (m) => minutesText(t, m)); break;
+    case "battery_low": input = text("volts", "a", "3.50"); break;
+    case "noise_high": input = text("dbm", "a", "-90"); break;
+    case "temperature": input = <>{text("low", "a", tempUnit === "f" ? "14" : "-10.0")}<span aria-hidden className="text-text-dim">–</span>{text("high", "b", tempUnit === "f" ? "104" : "40.0")}</>; break;
+  }
+
+  const name = t(`account.alerts.kinds.${kind}.name`);
+  const unit = kind === "battery_low" ? "V" : kind === "noise_high" ? "dBm" : kind === "temperature" ? tempSymbol(tempUnit) : null;
+  const error = local ? t(`account.alerts.errors.${local}`, temperatureLimits(tempUnit)) : save.isError ? alertErrorText(t, save.error, kind) : null;
+
+  const stateText = rule ? t(`account.alerts.state.${rule.state}`) : null;
+
+  return (
+    <li data-testid={`alert-${kind}`} data-alert-kind={kind} className="flex flex-col gap-2 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="font-mono text-sm font-semibold text-text-bright">{name}</span>
+          <p className="text-xs text-text-muted">{t(`account.alerts.kinds.${kind}.when`)}</p>
+        </div>
+        <Switch label={t("account.alerts.turnOn", { name })} checked={checked} disabled={blocked || save.isPending} onChange={toggle} stateText={checked ? t("account.alerts.on") : t("account.alerts.off")} />
+      </div>
+      {input && <div className="flex flex-wrap items-center gap-2">{input}{unit && <span className="font-mono text-xs text-text-muted">{unit}</span>}</div>}
+      {blocked && <p className="text-xs text-text-muted">{t("account.alerts.backOnlineHint", { name: t("account.alerts.kinds.gone_quiet.name") })}</p>}
+      {stateText && (
+        <p className="font-mono text-xs text-text-normal">
+          {stateText}{rule?.state === "firing" && <> <Timestamp value={rule.stateChangedAt} /></>}
+        </p>
+      )}
+      {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+    </li>
+  );
+}

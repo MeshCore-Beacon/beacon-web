@@ -1,0 +1,139 @@
+import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { FoldSection } from "../../components/DetailPanel";
+import { useDisplayUnits } from "../../hooks/useFeatures";
+import { tempSymbol } from "../../lib/units";
+import { Timestamp } from "../../components/Timestamp";
+import { ChartCard } from "../stats/cards";
+import { useChartColors } from "../stats/chartTheme";
+import { Segmented } from "../stats/Segmented";
+import { buildNodeCharts } from "./nodeTelemetryOptions";
+import { hasNodeTelemetry } from "./telemetry";
+import { useNodePolling, useNodeTelemetry, type NodeTelemetryRange } from "./useNodeTelemetry";
+import type { Node, NodeTelemetry } from "./types";
+
+const CHART_HEIGHT = 130;
+const RANGES: { value: NodeTelemetryRange; key: "24h" | "7d" | "30d" }[] = [
+  { value: "24h", key: "24h" },
+  { value: "168h", key: "7d" },
+  { value: "720h", key: "30d" },
+];
+
+// Lazy chunk: the only node-panel code that pulls in ECharts. The panel mounts it only for a
+// repeater or room server on a server with polling on.
+export default function NodeTelemetrySection({ node, onViewObserver, extra, info }: { node: Node; onViewObserver?: (observerId: string) => void; extra?: ReactNode; info?: string[] }) {
+  const { t } = useTranslation();
+  const colors = useChartColors();
+  const { temperature: tempUnit } = useDisplayUnits();
+  const [range, setRange] = useState<NodeTelemetryRange>("168h");
+  // The charts last drawn. Kept so a failed range change leaves them on screen, and so the
+  // section knows it has shown a chart since it mounted.
+  const [shown, setShown] = useState<NodeTelemetry | null>(null);
+  const telemetry = useNodeTelemetry(node.id, range, true);
+  const polling = useNodePolling(node.id, true);
+
+  const data = telemetry.data;
+  const hasData = hasNodeTelemetry(data);
+  const source = hasData ? data : telemetry.isError ? shown : null;
+
+  const charts = useMemo(
+    () => (source
+      ? buildNodeCharts(source, colors, {
+          battery: t("nodeDetail.telemetry.battery"),
+          temperature: t("nodeDetail.telemetry.temperature", { unit: tempSymbol(tempUnit) }),
+          noise: t("nodeDetail.telemetry.noise"),
+        }, tempUnit)
+      : {}),
+    [source, colors, t, tempUnit],
+  );
+  const drawn = Object.values(charts).some(Boolean);
+  if (hasData && drawn && data !== shown) setShown(data!);
+  const seenData = shown !== null;
+
+  const summaryPoller = polling.data?.poller ?? null;
+  const summaryLatest = polling.data?.latestReadingAt;
+  // What a closed fold still says: whether it is polled and how fresh the last reading is.
+  const pollSummary = summaryPoller || summaryLatest != null ? (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${summaryPoller ? "bg-green" : "bg-text-dim/30"}`} />
+      {t(summaryPoller ? "nodeDetail.telemetry.polledShort" : "nodeDetail.telemetry.lastReading")}
+      {summaryLatest != null && <>{" · "}<Timestamp value={summaryLatest} /></>}
+    </span>
+  ) : undefined;
+
+  // The request block lives here so it shares the Telemetry heading; with nothing else to show it stands alone.
+  const extraBlock = extra ? <div className="mt-3 border-t border-border-subtle pt-2">{extra}</div> : null;
+  const bare = extra ? <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={info} summary={pollSummary}>{extra}</FoldSection> : null;
+
+  // No route on this server, or the first load failed: nothing to show and nothing to apologise for.
+  if (telemetry.unsupported || (telemetry.isError && !seenData)) return bare;
+
+  const poller = polling.data?.poller ?? null;
+  if (!hasData && !poller && !seenData) return bare;
+
+  const polled = !!(data?.polled || polling.data?.polled || seenData);
+  if (!hasData && !polled) {
+    return (
+      <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={info} summary={pollSummary}>
+        <div className="font-mono text-[13px] text-text-dim">{t("nodeDetail.telemetry.waiting", { name: poller!.name })}</div>
+        {extraBlock}
+      </FoldSection>
+    );
+  }
+
+  const standbys = polling.data?.standbys.length ?? 0;
+  const latest = polling.data?.latestReadingAt;
+  const cards: [string, keyof typeof charts, string][] = [
+    ["battery", "battery", t("nodeDetail.telemetry.battery")],
+    ["temperature", "temperature", t("nodeDetail.telemetry.temperature", { unit: tempSymbol(tempUnit) })],
+    ["noise", "noise", t("nodeDetail.telemetry.noise")],
+    ["airtime", "airtime", t("nodeDetail.telemetry.airtime")],
+  ];
+  return (
+    <FoldSection id="node-telemetry" title={t("nodeDetail.telemetry.title")} info={info} summary={pollSummary}>
+      <Segmented
+        size="xs"
+        ariaLabel={t("nodeDetail.telemetry.range")}
+        value={range}
+        onChange={(v) => setRange(v as NodeTelemetryRange)}
+        options={RANGES.map((r) => ({ value: r.value, label: t(`stats.ranges.${r.key}`) }))}
+      />
+      {drawn ? (
+        <div className="mt-2 flex flex-col gap-2">
+          {cards.map(([id, key, title]) => {
+            const option = charts[key];
+            return option ? <ChartCard key={id} title={title} height={CHART_HEIGHT} option={option} /> : null;
+          })}
+        </div>
+      ) : (
+        <div className="mt-2 font-mono text-[13px] text-text-dim">
+          {telemetry.isLoading ? t("common.loading") : t("nodeDetail.telemetry.noReadings")}
+        </div>
+      )}
+      {telemetry.isError && drawn && <div className="mt-1 font-mono text-[11px] text-text-muted">{t("common.loadFailed")}</div>}
+      {(poller || latest != null) && (
+        <div data-poll-line className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-text-muted">
+          <span aria-hidden data-fresh={String(!!poller)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${poller ? "bg-green" : "bg-text-dim/30"}`} />
+          <span>
+            {t(poller ? "nodeDetail.telemetry.polledShort" : "nodeDetail.telemetry.lastReading")}
+            {latest != null && <>{" · "}<Timestamp value={latest} className="text-text-normal" /></>}
+            {poller && (
+              <>
+                {` · ${t("nodeDetail.telemetry.by")} `}
+                {onViewObserver ? (
+                  <button type="button" onClick={() => onViewObserver(poller.observerId)} className="text-primary hover:underline">
+                    {poller.name}
+                  </button>
+                ) : (
+                  <span className="text-text-normal">{poller.name}</span>
+                )}
+              </>
+            )}
+            {standbys > 0 && <>{" · "}<span>{t("nodeDetail.telemetry.standby", { count: standbys })}</span></>}
+          </span>
+        </div>
+      )}
+      {extraBlock}
+    </FoldSection>
+  );
+}

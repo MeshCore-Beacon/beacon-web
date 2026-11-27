@@ -79,6 +79,7 @@ export const ENABLED_THEME_IDS = new Set(
 
 export const APP_NAME = runtimeEnv("VITE_APP_NAME", import.meta.env.VITE_APP_NAME) || "BEACON";
 export const GITHUB_URL = "https://github.com/MeshCore-Beacon";
+export const KOFI_URL = "https://ko-fi.com/mralders0n";
 
 // Notice shown above the header on every page; unset = no banner.
 export const BANNER = runtimeEnv("VITE_BANNER", import.meta.env.VITE_BANNER) ?? "";

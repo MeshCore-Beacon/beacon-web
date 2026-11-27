@@ -83,51 +83,51 @@ export const statsObservationsQuery = (s: StatsScope, range: StatsRange) => quer
 
 export const payloadBreakdownQuery = (s: StatsScope, range: StatsRange) => queryOptions({
   queryKey: ["stats-payload", s.regionKey, range],
-  ...gatedOn(s.isResolved, () => getPayloadBreakdown(s.where, sinceFor(range))),
+  ...gatedOn(s.isResolved, (signal) => getPayloadBreakdown(s.where, sinceFor(range), signal)),
   ...common,
 });
 
 export const topNodesQuery = (s: StatsScope, range: StatsRange, limit = 10) => queryOptions({
   queryKey: ["stats-top-nodes", s.regionKey, range, limit],
-  ...gatedOn(s.isResolved, () => getTopNodes(s.where, sinceFor(range), limit)),
+  ...gatedOn(s.isResolved, (signal) => getTopNodes(s.where, sinceFor(range), limit, signal)),
   ...common,
 });
 
 export const topObserversQuery = (s: StatsScope, range: StatsRange, limit = 10) => queryOptions({
   queryKey: ["stats-top-observers", s.regionKey, range, limit],
-  ...gatedOn(s.isResolved, () => getTopObservers(s.where, sinceFor(range), limit)),
+  ...gatedOn(s.isResolved, (signal) => getTopObservers(s.where, sinceFor(range), limit, signal)),
   ...common,
 });
 
 export const topAdvertisersQuery = (s: StatsScope, range: StatsRange, sort: AdvertiserSort, limit = 10) => queryOptions({
   queryKey: ["stats-top-advertisers", s.regionKey, range, sort, limit],
-  ...gatedOn(s.isResolved, () => getTopAdvertisers(s.where, sinceFor(range), sort, limit)),
+  ...gatedOn(s.isResolved, (signal) => getTopAdvertisers(s.where, sinceFor(range), sort, limit, signal)),
   ...common,
 });
 
 export const topTalkersQuery = (s: StatsScope, range: StatsRange, limit = 10) => queryOptions({
   queryKey: ["stats-top-talkers", s.regionKey, range, limit],
-  ...gatedOn(s.isResolved, () => getTopTalkers(s.where, sinceFor(range), limit)),
+  ...gatedOn(s.isResolved, (signal) => getTopTalkers(s.where, sinceFor(range), limit, signal)),
   ...common,
 });
 
 export const radioPresetsQuery = (s: StatsScope) => queryOptions({
   queryKey: ["stats-radio-presets", s.regionKey],
-  ...gatedOn(s.isResolved, () => getRadioPresets(s.where)),
+  ...gatedOn(s.isResolved, (signal) => getRadioPresets(s.where, signal)),
   ...common,
 });
 
 // node-types is a population census (no time window), so the key is region-only
 export const nodeTypesQuery = (s: StatsScope) => queryOptions({
   queryKey: ["stats-node-types", s.regionKey],
-  ...gatedOn(s.isResolved, () => getStatsNodeTypes(s.where)),
+  ...gatedOn(s.isResolved, (signal) => getStatsNodeTypes(s.where, signal)),
   ...common,
 });
 
 // clock drift reflects each node's latest measured drift, not a windowed aggregate, so region-only
 export const clockDriftQuery = (s: StatsScope, limit = 100) => queryOptions({
   queryKey: ["stats-clock-drift", s.regionKey, limit],
-  ...gatedOn(s.isResolved, () => getClockDrift(s.where, limit)),
+  ...gatedOn(s.isResolved, (signal) => getClockDrift(s.where, limit, signal)),
   ...common,
 });
 

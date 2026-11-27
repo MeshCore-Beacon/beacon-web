@@ -1,17 +1,28 @@
 import { ApiError, getNode, getNodesPage, isNotFound } from "../../api/client";
+import type { AlertTarget } from "../account/types";
 import type { Node, NodeActivity, NodeSummary } from "../nodes/types";
 import type { Observer } from "../observers/types";
 
 export const ATLAS_KEY = "beacon-atlas-v2";
-export const ATLAS_LIMIT = 12;
-export type AtlasRange = "24h" | "3d";
+// The cap a server that does not send limits.atlas enforces.
+export const ATLAS_LIMIT_FALLBACK = 12;
+// The highest cap a server can set; loading keeps up to this many and the page enforces the server's.
+export const ATLAS_LIMIT_MAX = 100;
+export type AtlasRange = "24h" | "3d" | "7d";
+// 7d needs a server with features.atlas7d; without it a saved 7d is shown, fetched and sent as 3d.
+export const effectiveRange = (range: AtlasRange, atlas7d: boolean): AtlasRange => (range === "7d" && !atlas7d ? "3d" : range);
 // The metrics an Observer view tile can show. A pin stores its four only when they differ from the default.
 export const OBSERVER_TILES = ["airtime", "battery", "uptime", "types", "packets", "snr", "rssi", "noise", "queue", "errors"] as const;
 export type ObserverTile = (typeof OBSERVER_TILES)[number];
 export const DEFAULT_TILES: readonly ObserverTile[] = ["airtime", "battery", "types", "noise"];
-export type AtlasView = "analytics" | "heard" | "observer";
+// The metrics a Telemetry tab tile can show, from a repeater's polled readings. A pin stores its four
+// only when they differ from the default.
+export const TELEMETRY_TILES = ["battery", "noise", "uptime", "airtime", "temperature", "packets", "signal", "errors"] as const;
+export type TelemetryTile = (typeof TELEMETRY_TILES)[number];
+export const DEFAULT_TELEMETRY_TILES: readonly TelemetryTile[] = ["battery", "noise", "uptime", "airtime"];
+export type AtlasView = "analytics" | "heard" | "observer" | "telemetry";
 // `view` is the tab the card opens on, stored only when it is not Analytics.
-export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[]; view?: AtlasView }
+export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
 export interface ObserverPin { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
 export type AtlasPin = NodePin | ObserverPin;
 export interface SavedAtlas { version: 2; range: AtlasRange; pins: AtlasPin[] }
@@ -20,13 +31,26 @@ const UUID = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i;
 const KEY = /^[\da-f]{64}$/i;
 const isUuid = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
 
+// Stands in for the server id of a node the server no longer knows. It is a valid UUID that no node has.
+export const NO_NODE_ID = "00000000-0000-0000-0000-000000000000";
+
 export const pinKey = (pin: AtlasPin) => (pin.kind === "node" ? pin.publicKey : pin.observerId);
+
+// The server answers one target per pinned key, and its kind can differ from the pin's: a node pin whose
+// node row is gone reads as an observer, an observer pin whose radio advertises reads as a node.
+export function targetForPin(targets: AlertTarget[] | undefined, pin: AtlasPin, observerKey?: string | null): AlertTarget | undefined {
+  const key = (pin.kind === "node" ? pin.publicKey : observerKey)?.toLowerCase();
+  return targets?.find((target) => {
+    if (pin.kind === "observer" && target.kind === "observer" && target.id === pin.observerId) return true;
+    return !!key && target.publicKey.toLowerCase() === key;
+  });
+}
 
 // Only a version 2 payload loads; anything else is empty.
 export function parseAtlas(raw: string | null): SavedAtlas {
   const empty: SavedAtlas = { version: 2, range: "24h", pins: [] };
   try {
-    if (!raw || raw.length > 32_000) return empty;
+    if (!raw || raw.length > ATLAS_FILE_MAX_BYTES) return empty;
     const value = JSON.parse(raw);
     const list = value?.version === 2 ? value.pins : null;
     if (!Array.isArray(list)) return empty;
@@ -35,9 +59,9 @@ export function parseAtlas(raw: string | null): SavedAtlas {
       const pin = toPin(entry);
       if (!pin || pins.some((other) => pinKey(other) === pinKey(pin))) continue;
       pins.push(pin);
-      if (pins.length === ATLAS_LIMIT) break;
+      if (pins.length === ATLAS_LIMIT_MAX) break;
     }
-    return { version: 2, range: value.range === "3d" ? "3d" : "24h", pins };
+    return { version: 2, range: value.range === "3d" || value.range === "7d" ? value.range : "24h", pins };
   } catch { return empty; }
 }
 
@@ -53,8 +77,8 @@ export const atlasFileName = (now = new Date()) => `beacon-atlas-${now.toISOStri
 
 export interface AtlasImport { atlas: SavedAtlas; skipped: number }
 
-// null when the text is not an Atlas export. Pins go through the same checks, dedupe and cap as a restore.
-export function readAtlasFile(text: string): AtlasImport | null {
+// null when the text is not an Atlas export. Pins go through the same checks and dedupe as a restore, then the cap.
+export function readAtlasFile(text: string, limit = ATLAS_LIMIT_FALLBACK): AtlasImport | null {
   if (text.length > ATLAS_FILE_MAX_BYTES) return null;
   let value: { format?: unknown; pins?: unknown };
   try {
@@ -63,22 +87,33 @@ export function readAtlasFile(text: string): AtlasImport | null {
     return null;
   }
   if (!value || typeof value !== "object" || value.format !== ATLAS_FILE_FORMAT || !Array.isArray(value.pins)) return null;
-  const atlas = parseAtlas(JSON.stringify(value));
+  const parsed = parseAtlas(JSON.stringify(value));
+  const atlas = { ...parsed, pins: parsed.pins.slice(0, limit) };
   return { atlas, skipped: value.pins.length - atlas.pins.length };
 }
 
 // Four distinct known ids in slot order; undefined for anything else and for the default layout.
-function toTiles(raw: unknown): ObserverTile[] | undefined {
-  if (!Array.isArray(raw) || raw.length !== DEFAULT_TILES.length || new Set(raw).size !== raw.length) return undefined;
-  if (!raw.every((id): id is ObserverTile => OBSERVER_TILES.includes(id))) return undefined;
-  return raw.every((id, i) => id === DEFAULT_TILES[i]) ? undefined : [...raw];
+function toTileList<T extends string>(raw: unknown, known: readonly T[], defaults: readonly T[]): T[] | undefined {
+  if (!Array.isArray(raw) || raw.length !== defaults.length || new Set(raw).size !== raw.length) return undefined;
+  if (!raw.every((id): id is T => known.includes(id))) return undefined;
+  return raw.every((id, i) => id === defaults[i]) ? undefined : [...raw];
 }
+const toTiles = (raw: unknown) => toTileList(raw, OBSERVER_TILES, DEFAULT_TILES);
+export const toTelemetryTiles = (raw: unknown) => toTileList(raw, TELEMETRY_TILES, DEFAULT_TELEMETRY_TILES);
 
 export function withTiles<P extends AtlasPin>(pin: P, tiles: readonly ObserverTile[]): P {
   const next = { ...pin };
   const kept = toTiles(tiles);
   if (kept) next.tiles = kept;
   else delete next.tiles;
+  return next;
+}
+
+export function withTelemetryTiles(pin: NodePin, tiles: readonly TelemetryTile[]): NodePin {
+  const next = { ...pin };
+  const kept = toTelemetryTiles(tiles);
+  if (kept) next.telemetryTiles = kept;
+  else delete next.telemetryTiles;
   return next;
 }
 
@@ -98,7 +133,7 @@ export function homeView(pin: AtlasPin): AtlasView {
 function toPin(raw: unknown): AtlasPin | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
-  const name = typeof value.name === "string" ? value.name.slice(0, 160) : "";
+  const name = typeof value.name === "string" ? [...value.name].slice(0, 160).join("") : "";
   const kind = value.kind;
   const tiles = toTiles(value.tiles);
   if (kind === "observer") return isUuid(value.observerId) ? { kind, observerId: value.observerId, name, ...(tiles && { tiles }) } : null;
@@ -106,7 +141,9 @@ function toPin(raw: unknown): AtlasPin | null {
   const pin: NodePin = { kind, id: value.id, publicKey: value.publicKey.toLowerCase(), name };
   if (isUuid(value.observerId)) pin.observerId = value.observerId;
   if (tiles) pin.tiles = tiles;
-  if (value.view === "heard" || value.view === "observer") pin.view = value.view;
+  const telemetryTiles = toTelemetryTiles(value.telemetryTiles);
+  if (telemetryTiles) pin.telemetryTiles = telemetryTiles;
+  if (value.view === "heard" || value.view === "observer" || value.view === "telemetry") pin.view = value.view;
   return pin;
 }
 
@@ -122,7 +159,7 @@ export async function resolveObserverNode(observer: Observer, signal?: AbortSign
 export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal): Promise<Node> {
   let node: Node | undefined;
   try {
-    node = await getNode(pin.id, signal);
+    if (pin.id !== NO_NODE_ID) node = await getNode(pin.id, signal);
   } catch (error) {
     if (!isNotFound(error)) throw error;
   }
@@ -137,7 +174,7 @@ export async function loadAtlasNode(pin: NodePin, signal?: AbortSignal): Promise
 }
 
 export const HOUR = 3_600_000;
-const RANGE_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72 };
+const RANGE_HOURS: Record<AtlasRange, number> = { "24h": 24, "3d": 72, "7d": 168 };
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
 // Slots count back from the tick, newest last. The tick can trail the clock by a minute, so a bucket
@@ -145,15 +182,18 @@ const finite = (value: unknown): value is number => typeof value === "number" &&
 export function hourSlots(range: AtlasRange, now: number) {
   const hours = RANGE_HOURS[range];
   const age = (t: number) => Math.max(0, Math.floor((now - t) / HOUR));
+  // The clock hour whose bucket lands in slot i.
+  const time = (i: number) => Math.floor((now - (hours - 1 - i) * HOUR) / HOUR) * HOUR;
   return {
     hours,
+    time,
     bin: (t: number) => hours - 1 - age(t),
     inWindow: (t: number) => Number.isFinite(t) && t < now + HOUR && age(t) < hours,
     // Zero for an hour the server read, null for one it has not: no reply yet, or between the rollups and the raw tail.
     counts: (read: { rolledUntil?: number; rawFrom?: number } | undefined) =>
       Array.from({ length: hours }, (_, i): number | null => {
         if (!read) return null;
-        const hour = Math.floor((now - (hours - 1 - i) * HOUR) / HOUR) * HOUR;
+        const hour = time(i);
         return read.rawFrom != null && hour < read.rawFrom && (read.rolledUntil == null || hour >= read.rolledUntil) ? null : 0;
       }),
   };

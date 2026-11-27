@@ -13,7 +13,7 @@ const COMMIT_MS = 1_000;
 interface UseInfinitePagesOptions<T, C, P extends CursorPage<T, C>> {
   queryKey: QueryKey;
   // fetch one page; page is the previous page's next cursors (undefined for the first page)
-  queryFn: (page: PageParam<C> | undefined) => Promise<P>;
+  queryFn: (page: PageParam<C> | undefined, signal: AbortSignal) => Promise<P>;
   // stable id accessor for dedup — pass a module-level fn so the memo isn't rebuilt every render
   getId: (item: T) => string;
   // keep the prior key's rows on screen while a new key (e.g. a filter change) loads its first page
@@ -35,7 +35,8 @@ export function useInfinitePages<T, C = number, P extends CursorPage<T, C> = Cur
   const { data, error, refetch, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isError, isFetchNextPageError, isLoading } =
     useInfiniteQuery({
       queryKey,
-      queryFn: ({ pageParam }) => fetchPage(pageParam, queryFn),
+      // Leaving a view cancels its reads only when no other subscriber remains; completed pages stay cached.
+      queryFn: ({ pageParam, signal }) => fetchPage(pageParam, (page) => queryFn(page, signal)),
       getNextPageParam: nextPageParam,
       initialPageParam: undefined as PageParam<C> | undefined,
       staleTime: Infinity,

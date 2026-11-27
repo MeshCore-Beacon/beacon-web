@@ -30,13 +30,14 @@ const WIREFRAME = import.meta.glob("./markers/wireframe/*.svg", {
   eager: true,
 }) as Record<string, string>;
 
-function svgText(type: string, observer: boolean, isDark: boolean): string | undefined {
+function svgText(type: string, variant: "" | "observer" | "poller", isDark: boolean): string | undefined {
   const style = isDark ? "glitch" : "wireframe";
   const set = isDark ? GLITCH : WIREFRAME;
-  return set[`./markers/${style}/${type}${observer ? "-observer" : ""}.svg`];
+  return set[`./markers/${style}/${type}${variant ? `-${variant}` : ""}.svg`];
 }
 
 // Per-type node color (theme palette var + hard fallback). Drives the glyph via the SVG's currentColor.
+// The nodes list and panel chips (components/NodeChips.tsx TYPE_CLASSES) use these colours; keep them in step.
 const NODE_TYPE_COLOR: Record<string, { colorVar: string; fallback: string }> = {
   companion: { colorVar: "--palette-primary", fallback: "#3B82F6" },
   repeater: { colorVar: "--palette-secondary", fallback: "#A78BFA" },
@@ -53,6 +54,8 @@ export function nodeTypeColor(typeName: string): string {
 // Observer is a ROLE pip layered on any type; keep a fixed accent so it reads consistently and
 // contrasts the (theme-tinted) node color.
 const OBSERVER_COLOR = "#c79bff";
+// Poller pip (pulse) replaces the observer eye on observers with a stored polling claim.
+const POLLER_COLOR = "#ffb454";
 
 // On the light basemaps the hollow Wireframe glyph loses contrast, so a near-white disc is filled
 // behind it (a dark disc clashed with the saturated glyph). Sized to the outer ring (r=29 in the
@@ -61,6 +64,7 @@ const WIREFRAME_BACKING = "rgba(255, 255, 255, 0.95)";
 const RING_R = 29; // outer ring radius in the (padded) 88-unit viewBox
 
 export const nodeObserverIconId = (type: string): string => `${nodeIconId(type)}-observer`;
+export const nodePollerIconId = (type: string): string => `${nodeIconId(type)}-poller`;
 
 // Selection ring as a SYMBOL (not a circle) so it can ride onto a spiderfied leaf — see
 // syncLeafSelectionRing in useMapNodes.
@@ -68,7 +72,7 @@ export const SELECTION_RING_ICON_ID = "node-selection-ring";
 
 // Every image id the map layers reference, so they can be provided up front (one per cluster density).
 export const MAP_ICON_IDS: string[] = [
-  ...NODE_TYPE_NAMES.flatMap((t) => [nodeIconId(t), nodeObserverIconId(t), litIconId(t)]),
+  ...NODE_TYPE_NAMES.flatMap((t) => [nodeIconId(t), nodeObserverIconId(t), nodePollerIconId(t), litIconId(t)]),
   NODE_ICON_UNKNOWN,
   ...CLUSTER_ICON_IDS,
   SELECTION_RING_ICON_ID,
@@ -101,6 +105,7 @@ function styleSvg(
   let out = svg
     .replace(/var\(--node-color,\s*#[0-9a-fA-F]{3,8}\)/g, nodeColor)
     .replace(/var\(--observer-color,\s*#[0-9a-fA-F]{3,8}\)/g, OBSERVER_COLOR)
+    .replace(/var\(--poller-color,\s*#[0-9a-fA-F]{3,8}\)/g, POLLER_COLOR)
     .replace(`viewBox="0 0 ${box.base} ${box.base}"`, `viewBox="${-pad} ${-pad} ${box.padded} ${box.padded}"`)
     .replace(`width="${box.base}" height="${box.base}"`, `width="${box.padded}" height="${box.padded}"`);
   if (!isDark) {
@@ -261,22 +266,29 @@ export async function rasterizeNodeIcon(id: string, isDark: boolean): Promise<Ra
   const LIT_PREFIX = litIconId("");
   if (id.startsWith(LIT_PREFIX)) {
     const type = id.slice(LIT_PREFIX.length);
-    const glyph = svgText(type, false, true);
+    const glyph = svgText(type, "", true);
     if (!NODE_TYPE_COLOR[type] || !glyph) return null;
     const data = await rasterizeSvg(litIconSvg(glyph, nodeTypeColor(type)), scale, MARKER_SIZE);
     return { data, pixelRatio: scale };
   }
 
-  const PREFIX = "node-";
-  if (!id.startsWith(PREFIX)) return null;
-  const observer = id.endsWith("-observer");
-  const type = id.slice(PREFIX.length).replace(/-observer$/, "");
-  const color = NODE_TYPE_COLOR[type];
-  const svg = svgText(type, observer, isDark);
-  if (!color || !svg) return null;
-  const nodeColor = styles.getPropertyValue(color.colorVar).trim() || color.fallback;
+  const svg = nodeIconSvg(id, isDark);
+  if (!svg) return null;
   // light basemaps use the hollow Wireframe glyph -> give it a solid backing for contrast
   const backing = isDark ? undefined : WIREFRAME_BACKING;
-  const data = await rasterizeSvg(styleSvg(svg, nodeColor, isDark), scale, MARKER_SIZE, backing);
+  const data = await rasterizeSvg(svg, scale, MARKER_SIZE, backing);
   return { data, pixelRatio: scale };
+}
+
+// The themed glyph SVG for a plain, -observer or -poller node icon id; null for any other id.
+export function nodeIconSvg(id: string, isDark: boolean): string | null {
+  const PREFIX = "node-";
+  if (!id.startsWith(PREFIX)) return null;
+  const variant = id.endsWith("-poller") ? "poller" : id.endsWith("-observer") ? "observer" : "";
+  const type = id.slice(PREFIX.length).replace(/-(observer|poller)$/, "");
+  const color = NODE_TYPE_COLOR[type];
+  const svg = svgText(type, variant, isDark);
+  if (!color || !svg) return null;
+  const nodeColor = getComputedStyle(document.documentElement).getPropertyValue(color.colorVar).trim() || color.fallback;
+  return styleSvg(svg, nodeColor, isDark);
 }

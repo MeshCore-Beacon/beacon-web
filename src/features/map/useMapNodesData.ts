@@ -13,7 +13,7 @@ export function useMapNodesData(selectedIatas: string[] | undefined, regionKey: 
     queryKey: ["map-nodes", regionKey],
     // Always request neighborIds (just UUIDs) so the neighbor-lines toggle is a pure client-side
     // render switch over already-loaded data — no refetch when toggling.
-    queryFn: (page) => getNodesPage(selectedIatas, { cursor: page?.cursor, pageCursor: page?.pageCursor, neighbors: true, limit: NODE_REGION_PAGE_SIZE }),
+    queryFn: (page, signal) => getNodesPage(selectedIatas, { cursor: page?.cursor, pageCursor: page?.pageCursor, neighbors: true, limit: NODE_REGION_PAGE_SIZE }, signal),
     getId: nodeId,
     enabled: opts?.enabled,
   });

@@ -52,6 +52,13 @@ describe("FilterSheet", () => {
     expect(onClear).toHaveBeenCalledTimes(1);
   });
 
+  it("titles the sheet in normal case, not upper-cased by class", () => {
+    render(<FilterSheet onClose={() => {}}><div /></FilterSheet>);
+    const title = screen.getAllByText("Filters").find((e) => e.tagName === "SPAN")!;
+    expect(title).not.toHaveClass("uppercase");
+    expect(title).toHaveClass("text-text-bright");
+  });
+
   it("closes on Escape", () => {
     const onClose = vi.fn();
     render(

@@ -77,6 +77,14 @@ describe("useAtlasObserver", () => {
     expect(api.getObserver).toHaveBeenCalledTimes(2);
   });
 
+  it("asks for 168h in hourly buckets at the 7d window", async () => {
+    const { result } = renderHook(() => useAtlasObserver(id, "7d", true, true), { wrapper });
+    await tick(10);
+    expect(result.current.sample.counts).toHaveLength(168);
+    expect(api.getObserverActivity).toHaveBeenLastCalledWith(id, "168h", "1h", undefined, expect.any(AbortSignal));
+    expect(api.getObserverTelemetry).toHaveBeenLastCalledWith(id, "168h", "1h", undefined, expect.any(AbortSignal));
+  });
+
   it("treats a 404 as an unsupported server: dashes, no retry, no further polling of that query", async () => {
     vi.mocked(api.getObserverActivity).mockRejectedValue(new ApiError(404, "not_found", "no"));
     const { result } = renderHook(() => useAtlasObserver(id, "24h", true, true), { wrapper });

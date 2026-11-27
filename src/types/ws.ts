@@ -64,11 +64,13 @@ export interface WsPacketObservation {
       observerPublicKey?: string; // only with configure{includeObserverKey}
       iata: string;
       heardAt: number;
-      rssi: number;
-      snr: number;
+      // absent when the observer reported no valid measurement; 0 is a real reading
+      rssi?: number | null;
+      snr?: number | null;
       sourceBroker: string;
       pathLength?: PathLength;
       pathBytes?: string;
+      wirePathBytes?: string; // TRACE only, same as REST Observation.wirePathBytes
       // per-hop resolved path; populated only when the connection opts in via configure{resolvePath},
       // null otherwise. Same shape as the REST Observation.resolvedPath.
       resolvedPath?: ResolvedHop[] | null;
@@ -114,6 +116,7 @@ export interface WsNodeUpdate {
     lat?: number | null;
     lng?: number | null;
     isObserver: boolean;
+    isPoller?: boolean; // omitted leaves the prior value unchanged
     iatas: NodeIATA[];
     defaultScope?: string;
     radio?: string; // compact "freq,bw,sf" string

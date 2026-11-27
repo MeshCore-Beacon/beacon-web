@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../../../src/api/client";
-import { atlasFile, atlasFileName, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTiles, withView, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT } from "../../../src/features/atlas/atlas";
+import { atlasFile, atlasFileName, effectiveRange, parseAtlas, pinKey, readAtlasFile, resolveObserverNode, summarizeActivity, withTelemetryTiles, withTiles, withView, homeView, DEFAULT_TELEMETRY_TILES, ATLAS_FILE_MAX_BYTES, ATLAS_LIMIT_MAX, type NodePin } from "../../../src/features/atlas/atlas";
 import type { NodeActivity } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
@@ -45,8 +45,20 @@ describe("saved Atlas", () => {
     for (const value of [null, "{", "[]", '{"version":3}', old, '{"version":2,"pins":{}}']) expect(parseAtlas(value).pins).toEqual([]);
     const pins = [{ ...nodePin, publicKey: "abcd" }, { ...nodePin, id: "../unsafe" }, ...Array.from({ length: 20 }, (_, i) => ({ ...nodePin, publicKey: i.toString(16).padStart(64, "0") }))];
     const result = parseAtlas(JSON.stringify({ version: 2, range: "30d", pins }));
-    expect(result.pins).toHaveLength(ATLAS_LIMIT);
+    // Loading keeps every saved card up to the highest cap a server allows; the page enforces its own.
+    expect(result.pins).toHaveLength(20);
     expect(result.range).toBe("24h");
+  });
+  it("keeps a 7d range through storage and the export file", () => {
+    const saved = { version: 2 as const, range: "7d" as const, pins: [nodePin] };
+    expect(parseAtlas(JSON.stringify(saved))).toEqual(saved);
+    expect(readAtlasFile(atlasFile(saved as never))?.atlas.range).toBe("7d");
+  });
+  it("reads 7d as 3d only on a server without it", () => {
+    expect(effectiveRange("7d", false)).toBe("3d");
+    expect(effectiveRange("7d", true)).toBe("7d");
+    expect(effectiveRange("3d", false)).toBe("3d");
+    expect(effectiveRange("24h", false)).toBe("24h");
   });
   it("round-trips version 2 pins of both kinds, keeps the observer hint, and drops unknown kinds", () => {
     const pins = [
@@ -62,8 +74,8 @@ describe("saved Atlas", () => {
   });
   it("dedupes observer pins by id and caps both kinds together at the limit", () => {
     const observer = (n: number) => ({ kind: "observer", observerId: `${String(n).padStart(8, "0")}-0000-4000-8000-000000000000`, name: `L${n}` });
-    const pins = [observer(1), observer(1), ...Array.from({ length: 14 }, (_, i) => observer(i + 2))];
-    expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins).toHaveLength(ATLAS_LIMIT);
+    const pins = [observer(1), observer(1), ...Array.from({ length: ATLAS_LIMIT_MAX + 5 }, (_, i) => observer(i + 2))];
+    expect(parseAtlas(JSON.stringify({ version: 2, range: "24h", pins })).pins).toHaveLength(ATLAS_LIMIT_MAX);
   });
 });
 
@@ -149,6 +161,14 @@ describe("node activity sample", () => {
     expect(sample).toMatchObject({ total: 50, snr: 5, rssi: -100, hops: 2, partial: false, latest });
   });
 
+  it("has 168 hourly slots at 7d", () => {
+    const sample = summarizeActivity(activityOf({ points: [point(167, 4), point(168, 9), point(0, 3)] }), "7d", tick);
+    expect(sample.counts).toHaveLength(168);
+    expect(sample.counts[0]).toBe(4);
+    expect(sample.counts[167]).toBe(3);
+    expect(sample.present.filter(Boolean)).toHaveLength(2);
+  });
+
   it("keeps a real zero mean and turns missing or non-finite means into null", () => {
     const sample = summarizeActivity(activityOf({ summary: { observations: 4, snrAvg: 0, rssiAvg: null, hopAvg: NaN }, points: [point(1, 4, { snrAvg: 0 })] }), "24h", tick);
     expect(sample.snr).toBe(0);
@@ -205,5 +225,61 @@ describe("Atlas export file", () => {
     const result = readAtlasFile(JSON.stringify({ format: "beacon-atlas", version: 2, range: "24h", pins: [{ kind: "node", id: "bad" }, many[0], many[0], ...many.slice(1)] }));
     expect(result!.atlas.pins).toHaveLength(12);
     expect(result!.skipped).toBe(4);
+  });
+});
+
+describe("telemetry view tiles", () => {
+  const key = "cd".repeat(32);
+  const base = { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: key, name: "R" };
+  const load = (extra: object) => parseAtlas(JSON.stringify({ version: 2, range: "24h", pins: [{ ...base, ...extra }] })).pins[0] as NodePin;
+
+  it("loads a valid layout and a Telemetry view", () => {
+    const pin = load({ view: "telemetry", telemetryTiles: ["packets", "signal", "errors", "battery"] });
+    expect(pin.view).toBe("telemetry");
+    expect(pin.telemetryTiles).toEqual(["packets", "signal", "errors", "battery"]);
+  });
+
+  it("falls back to the default for unknown, repeated or short layouts", () => {
+    for (const telemetryTiles of [["packets", "signal", "errors", "nope"], ["packets", "packets", "errors", "battery"], ["packets", "signal", "errors"], "battery", ["airtime", "battery", "types", "noise"]]) {
+      expect(load({ telemetryTiles })).not.toHaveProperty("telemetryTiles");
+    }
+  });
+
+  it("does not store the default layout", () => {
+    expect(load({ telemetryTiles: ["battery", "noise", "uptime", "airtime"] })).not.toHaveProperty("telemetryTiles");
+  });
+
+  it("stores a layout only when it differs from the default", () => {
+    const pin = load({});
+    const changed = withTelemetryTiles(pin, ["temperature", "noise", "uptime", "airtime"]);
+    expect(changed.telemetryTiles).toEqual(["temperature", "noise", "uptime", "airtime"]);
+    expect(withTelemetryTiles(changed, DEFAULT_TELEMETRY_TILES)).not.toHaveProperty("telemetryTiles");
+    expect(withTelemetryTiles(pin, ["battery", "battery", "uptime", "airtime"])).not.toHaveProperty("telemetryTiles");
+  });
+
+  it("keeps the Observer layout and the Telemetry layout apart", () => {
+    const pin = withTelemetryTiles(withTiles(load({}), ["uptime", "battery", "types", "noise"]), ["packets", "signal", "errors", "battery"]);
+    expect(pin.tiles).toEqual(["uptime", "battery", "types", "noise"]);
+    expect(pin.telemetryTiles).toEqual(["packets", "signal", "errors", "battery"]);
+  });
+
+  it("stores Telemetry as the view only when it is not Analytics", () => {
+    const pin = load({});
+    expect(withView(pin, "telemetry").view).toBe("telemetry");
+    expect(withView(withView(pin, "telemetry"), "analytics")).not.toHaveProperty("view");
+    expect(homeView(withView(pin, "telemetry"))).toBe("telemetry");
+  });
+
+  it("carries both fields through export and import", () => {
+    const pin = load({ view: "telemetry", telemetryTiles: ["packets", "signal", "errors", "battery"] });
+    const back = readAtlasFile(atlasFile({ version: 2, range: "24h", pins: [pin] }));
+    expect(back?.atlas.pins[0]).toEqual(pin);
+  });
+
+  it("ignores bad fields in an import", () => {
+    const text = JSON.stringify({ format: "beacon-atlas", version: 2, range: "24h", pins: [{ ...base, view: "bogus", telemetryTiles: ["x", "y", "z", "w"] }] });
+    const pin = readAtlasFile(text)!.atlas.pins[0]!;
+    expect(pin).not.toHaveProperty("view");
+    expect(pin).not.toHaveProperty("telemetryTiles");
   });
 });
