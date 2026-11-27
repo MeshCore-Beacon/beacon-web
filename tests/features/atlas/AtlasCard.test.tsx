@@ -130,7 +130,7 @@ describe("AtlasCard", () => {
     const actions = remove.closest("[data-card-actions]")!;
     expect(actions).toHaveClass("shrink-0", "self-start");
     expect(actions.parentElement).not.toHaveClass("flex-wrap");
-    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
+    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node", "Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
     expect(remove).toHaveTextContent("");
     expect(remove).toHaveClass("text-text-muted", "hover:text-danger", "focus-visible:text-danger");
     expect(remove).not.toHaveClass("text-primary");
@@ -1001,14 +1001,15 @@ describe("AtlasCard", () => {
       expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "false");
     });
 
-    it("has one footer line: how many repeaters it polls and a link to the Poller view", async () => {
+    it("has one footer line saying how many repeaters it polls; the open button goes to the Poller view", async () => {
       const { container } = mount({ view: "poller" });
       await screen.findByText("3/6");
       expect(container.querySelectorAll("[data-card-footer]")).toHaveLength(1);
       const footer = container.querySelector("[data-card-footer]") as HTMLElement;
       expect(within(footer).getByText("Polling 2 repeaters")).toBeInTheDocument();
       expect(footer.querySelector("[data-fresh]")).toHaveClass("bg-[#ffb454]");
-      fireEvent.click(within(footer).getByRole("button", { name: "Poller view" }));
+      expect(within(footer).queryByRole("button", { name: "Poller view" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Open node" }));
       expect(handlers.onViewNode).toHaveBeenCalledWith(pin.id, "poller");
     });
 

@@ -262,6 +262,14 @@ export function AtlasCard({
   }
   if (pin.kind === "observer" && observer?.observerType) tags.push(<Badge key="type" variant="default">{observer.observerType}</Badge>);
 
+  // The sheet opens on the view that matches the card's tab.
+  const openSheet = () => {
+    if (pin.kind === "observer") onViewObserver(pin.observerId);
+    else if (node && (view === "poller" || view === "observer")) onViewNode(node.id, view);
+    else if (node) onViewNode(node.id);
+  };
+  const openLabel = t(pin.kind === "observer" ? "atlas.openObserver" : "atlas.openNode");
+
   // One tag rides beside the name; more get a row of their own so the name never loses its line.
   const title = (
     <span data-card-name className="flex min-h-[26px] min-w-0 items-center gap-2">
@@ -273,7 +281,7 @@ export function AtlasCard({
       <button
         type="button"
         disabled={pin.kind === "node" && !node}
-        onClick={() => (pin.kind === "observer" ? onViewObserver(pin.observerId) : node && onViewNode(node.id))}
+        onClick={openSheet}
         className={`min-w-0 truncate normal-case disabled:text-text-muted disabled:no-underline ${
           name ? "text-primary hover:underline" : "italic text-text-dim"
         }`}
@@ -288,6 +296,14 @@ export function AtlasCard({
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
       <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
+      <Tooltip label={openLabel}>
+        <button type="button" className={ICON_BUTTON} aria-label={openLabel} disabled={pin.kind === "node" && !node} onClick={openSheet}>
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M4 3.5H1.5v8h7V9" />
+            <path d="M5.5 2.5h3.5V6M9 2.5L4.5 7" />
+          </svg>
+        </button>
+      </Tooltip>
       {views.length > 1 && (
         <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
           <button
@@ -652,7 +668,7 @@ export function AtlasCard({
           <PollerTiles poller={poller} />
           {footer(
             poller?.claim && lead(poller.claim.live, poller.claim.live ? t("atlas.poller.polling", { count: poller.targets.filter((target) => target.role === "poller").length }) : t("atlas.poller.idle"), null, "bg-[#ffb454]"),
-            <button type="button" className="text-primary hover:underline" onClick={() => onViewNode(node.id, "poller")}>{t("atlas.poller.open")}</button>,
+            "",
             pollerTab,
             [
               poller?.claim && `${t("nodeDetail.pollerView.lastClaim")} ${formatAbsolute(poller.claim.receivedAt)}`,

@@ -1029,6 +1029,8 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
+      "openNode": "Öppna nod",
+      "openObserver": "Öppna observatör",
       "alerts": {
         "dialog": "Larm för {{name}}",
         "on_one": "Larm: {{count}} på",
@@ -1045,7 +1047,6 @@
         "polling_one": "Avläser {{count}} repeater",
         "polling_other": "Avläser {{count}} repeatrar",
         "idle": "Avläser inte just nu",
-        "open": "Pollarvy",
         "split": "{{own}} eg · {{requested}} beg",
         "answering": "Svarar",
         "of": "av {{total}}",
@@ -1055,7 +1056,7 @@
         "accepting": "tar emot förfrågningar",
         "notAccepting": "tar inte emot förfrågningar",
         "notPolling": "avläser inte just nu",
-        "help": "Vad den här radion avläser för telemetri: platserna den erbjuder och vem som har dem, hur många av dess repeatrar som svarar, mätvärdena den hämtat på 24 timmar och dess senaste anspråk. Pollarvyn visar varje repeater."
+        "help": "Vad den här radion avläser för telemetri: platserna den erbjuder och vem som har dem, hur många av dess repeatrar som svarar, mätvärdena den hämtat på 24 timmar och dess senaste anspråk. Öppna noden för att se varje repeater."
       },
       "pollerBadge": "Pollare",
       "syncedToAccount": "Synkad med ditt konto",

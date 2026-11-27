@@ -1151,7 +1151,6 @@
         "polling_one": "Polling {{count}} repeater",
         "polling_other": "Polling {{count}} repeaters",
         "idle": "Not currently polling",
-        "open": "Poller view",
         "split": "{{own}} own · {{requested}} req",
         "answering": "Answering",
         "of": "of {{total}}",
@@ -1161,7 +1160,7 @@
         "accepting": "accepting requests",
         "notAccepting": "not accepting requests",
         "notPolling": "not currently polling",
-        "help": "What this radio polls for telemetry: the request slots it offers and who holds them, how many of its repeaters answer, the readings it brought in over 24 hours and its latest claim. The Poller view lists each repeater."
+        "help": "What this radio polls for telemetry: the request slots it offers and who holds them, how many of its repeaters answer, the readings it brought in over 24 hours and its latest claim. Open the node to see each repeater."
       },
       "pollerBadge": "Poller",
       "observerBadge": "Observer",
@@ -1185,6 +1184,8 @@
       "observerUnsupported": "This server does not provide observer activity or telemetry.",
       "observerGone": "This observer is no longer known to the server.",
       "dragToReorder": "Drag to reorder, or use the arrow keys",
+      "openNode": "Open node",
+      "openObserver": "Open observer",
       "remove": "Remove",
       "observerPartialCoverage": "Partial history",
       "changeTile": "Change tile: {{name}}",

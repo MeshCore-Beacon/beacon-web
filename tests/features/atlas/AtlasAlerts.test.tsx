@@ -112,7 +112,7 @@ describe("Atlas card alert bell", () => {
   it("sits before the pin, remove and drag buttons", async () => {
     mount();
     const actions = (await bell()).closest("[data-card-actions]") as HTMLElement;
-    expect(within(actions).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Alerts", "Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
+    expect(within(actions).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Alerts", "Open node", "Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
   });
 
   it("is an outline when no rule is on", async () => {

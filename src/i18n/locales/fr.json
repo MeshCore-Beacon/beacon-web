@@ -1161,7 +1161,6 @@
         "polling_many": "Interroge {{count}} répéteurs",
         "polling_other": "Interroge {{count}} répéteurs",
         "idle": "Aucune interrogation en cours",
-        "open": "Vue Interrogateur",
         "split": "{{own}} pr · {{requested}} dem",
         "answering": "Répondent",
         "of": "sur {{total}}",
@@ -1171,7 +1170,7 @@
         "accepting": "accepte les demandes",
         "notAccepting": "n'accepte pas les demandes",
         "notPolling": "aucune interrogation en cours",
-        "help": "Ce que cette radio interroge pour la télémétrie : les places de demande qu'elle offre et qui les occupe, combien de ses répéteurs répondent, les mesures rapportées en 24 heures et sa dernière déclaration. La vue Interrogateur détaille chaque répéteur."
+        "help": "Ce que cette radio interroge pour la télémétrie : les places de demande qu'elle offre et qui les occupe, combien de ses répéteurs répondent, les mesures rapportées en 24 heures et sa dernière déclaration. Ouvrez le nœud pour voir chaque répéteur."
       },
       "pollerBadge": "Interrogateur",
       "observerBadge": "Observateur",
@@ -1195,6 +1194,8 @@
       "observerUnsupported": "Ce serveur ne fournit pas l’activité ni la télémétrie des observateurs.",
       "observerGone": "Cet observateur n’est plus connu du serveur.",
       "dragToReorder": "Glisser pour réordonner, ou utiliser les flèches",
+      "openNode": "Ouvrir le nœud",
+      "openObserver": "Ouvrir l'observateur",
       "remove": "Retirer",
       "observerPartialCoverage": "Historique partiel",
       "changeTile": "Changer la tuile : {{name}}",
