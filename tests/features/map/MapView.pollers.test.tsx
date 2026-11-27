@@ -77,4 +77,11 @@ describe("MapView pollers only preference", () => {
     fireEvent.click(within(group()).getByRole("button", { name: "Off" }));
     expect(localStorage.getItem("beacon-map-pollers-only")).toBe("off");
   });
+
+  it("opens a shared all-nodes view without changing a saved pollers-only preference", () => {
+    localStorage.setItem("beacon-map-pollers-only", "on");
+    mount("&pollers=0");
+    expect(pressed("Off")).toBe("true");
+    expect(localStorage.getItem("beacon-map-pollers-only")).toBe("on");
+  });
 });

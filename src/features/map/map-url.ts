@@ -96,7 +96,8 @@ export function parseMapView(params: URLSearchParams): ParsedMapView {
   const telemetry = parseBool(params.get("telemetry"));
   if (telemetry !== undefined) view.telemetry = telemetry;
 
-  if (params.get("pollers") === "1") view.pollersOnly = true;
+  const pollers = params.get("pollers");
+  if (pollers === "1" || pollers === "0") view.pollersOnly = pollers === "1";
 
   return view;
 }
@@ -121,7 +122,7 @@ export function buildMapParams(view: MapViewSnapshot): Record<string, string | n
     style: view.styleId,
     flow: view.flow ? "on" : "off",
     borders: view.borders ? "on" : "off",
-    pollers: view.pollersOnly ? "1" : null,
+    pollers: view.pollersOnly === undefined ? null : view.pollersOnly ? "1" : "0",
     ...(view.telemetry !== undefined && { telemetry: view.telemetry ? "on" : "off" }),
   };
 }
