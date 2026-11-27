@@ -248,6 +248,7 @@ function AppInner() {
     });
   }, [setPanels]);
   const viewNode = useCallback((id: string) => openPanel({ kind: "node", id }), [openPanel]);
+  const viewNodeOn = useCallback((id: string, view?: NodeView) => openPanel({ kind: "node", id, view }), [openPanel]);
   const viewPacket = useCallback((hash: string, observationId?: number) => openPanel({ kind: "packet", hash, observationId }), [openPanel]);
   const handleViewPath = useCallback((detail: PacketDetail, key?: string) => openPanel({ kind: "path", detail, selectedKey: key }), [openPanel]);
   const [pathLink] = useState(() => ({ path: searchParams.get("path"), hash: searchParams.get("hash") }));
@@ -395,7 +396,7 @@ function AppInner() {
   usePauseWhenHidden(wsManager);
 
   const tabContent: Record<string, React.ReactNode> = {
-    Atlas: <AtlasPage onViewNode={viewNode} onViewObserver={openObserverDashboard} onAnalyzePacket={viewPacket} />,
+    Atlas: <AtlasPage onViewNode={viewNodeOn} onViewObserver={openObserverDashboard} onAnalyzePacket={viewPacket} />,
     Packets: (
       <PacketList
         wsManager={wsManager}

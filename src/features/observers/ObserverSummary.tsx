@@ -20,8 +20,8 @@ function Measure({ text }: { text: string }) {
 
 const DT = "text-[11px] text-text-dim";
 
-// compact: the node panel's width. The node summary above it already shows the key, so it is left out.
-export function ObserverSummary({ observer, activity, points, pending = false, actions, compact = false }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode; compact?: boolean }) {
+// compact: the node panel's width. The node summary above it already shows the key and the role chips, so they are left out.
+export function ObserverSummary({ observer, activity, points, pending = false, actions, badges, compact = false }: { observer: Observer; activity?: ObserverActivity; points: TelemetryPoint[]; pending?: boolean; actions?: ReactNode; badges?: ReactNode; compact?: boolean }) {
   const { t, i18n } = useTranslation(); const now = useTick();
   const summary = activity?.summary;
   const statusFresh = observer.lastStatusAt != null && now - observer.lastStatusAt < 300_000;
@@ -71,6 +71,7 @@ export function ObserverSummary({ observer, activity, points, pending = false, a
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" />{statusFresh ? <path d="m7 12 3 3 7-7" /> : <><path d="M12 7v6" /><circle cx="12" cy="17" r=".5" fill="currentColor" /></>}</svg>
           </span>
           <IataChip>{observer.iata}</IataChip>
+          {!compact && badges}
         </div>
         <dl className="grid grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5 font-mono text-[12px]">
           {device.length > 0 && <>

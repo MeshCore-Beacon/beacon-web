@@ -1156,6 +1156,16 @@
       "heardUnavailable": "Détails du paquet indisponibles ou expirés.",
       "openPacket": "Ouvrir le paquet",
       "fieldObserver": "Observateur",
+      "poller": {
+        "polling_one": "Interroge {{count}} répéteur",
+        "polling_many": "Interroge {{count}} répéteurs",
+        "polling_other": "Interroge {{count}} répéteurs",
+        "slots_one": "{{used}}/{{count}} place",
+        "slots_many": "{{used}}/{{count}} places",
+        "slots_other": "{{used}}/{{count}} places",
+        "idle": "Aucune interrogation en cours",
+        "open": "Vue Interrogateur"
+      },
       "pollerBadge": "Interrogateur",
       "observerBadge": "Observateur",
       "viewAnalytics": "Analyses",

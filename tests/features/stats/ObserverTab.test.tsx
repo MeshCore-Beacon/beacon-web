@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ObserverTab } from "../../../src/features/stats/ObserverTab";
@@ -8,6 +8,7 @@ import { ApiError } from "../../../src/api/client";
 import type { Observer } from "../../../src/features/observers/types";
 import type { ObserverActivity, ObserverTelemetry, TelemetryPoint } from "../../../src/features/stats/types";
 import type { WsManager } from "../../../src/api/ws-manager";
+import type { NodePoller } from "../../../src/features/nodes/types";
 
 vi.mock("../../../src/hooks/useRegion", () => ({
   useRegion: () => ({ iatas: ["YOW"], regionKey: "YOW" }),
@@ -15,6 +16,11 @@ vi.mock("../../../src/hooks/useRegion", () => ({
 
 vi.mock("../../../src/features/stats/useStats", () => ({
   useTopObservers: () => ({ data: [], isLoading: false }),
+}));
+
+const pollerResult = { data: undefined as NodePoller | undefined };
+vi.mock("../../../src/features/nodes/useNodeTelemetry", () => ({
+  useNodePoller: () => pollerResult,
 }));
 
 vi.mock("../../../src/features/stats/useLiveStats", () => ({
@@ -90,13 +96,13 @@ const activity: ObserverActivity = {
   points: [{ t: Date.now() - 900_000, observations: 9, airtimeMs: 2200, snrAvg: 6.1, snrMin: -1, rssiAvg: -95 }],
 };
 
-function renderTab() {
+function renderTab(props: { pollerNodeId?: string | null; onViewNode?: (id: string) => void } = {}) {
   const qc = new QueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
   return render(
-    <ObserverTab range="24h" selectedObserverId="obs-1" onSelectObserver={() => {}} wsManager={{} as WsManager} />,
+    <ObserverTab range="24h" selectedObserverId="obs-1" onSelectObserver={() => {}} wsManager={{} as WsManager} {...props} />,
     { wrapper },
   );
 }
@@ -112,6 +118,46 @@ beforeEach(() => {
   activityResult.isError = false;
   activityResult.error = null;
   activityResult.dataUpdatedAt = Date.now();
+});
+
+describe("ObserverTab poller", () => {
+  const claimed: NodePoller = {
+    claim: { receivedAt: Date.now(), live: true, acceptsRequests: true, slots: { max: 8, used: 1, own: 1, requested: 0, free: 7 } },
+    readings24h: 4,
+    targets: [{ nodeId: "n-a", publicKey: "aa".repeat(32), name: "Alpha", requested: false, role: "poller", rank: 0, state: "ok", misses: 0, lastAttempt: null, lastOk: null, claimedSnr: null, evidenceSnr: null, evidenceCount: 0, latestReadingAt: null }],
+  };
+  beforeEach(() => { pollerResult.data = claimed; });
+
+  it("adds the Poller chip to the header and the block between the summary and the charts", () => {
+    const onViewNode = vi.fn();
+    renderTab({ pollerNodeId: "node-1", onViewNode });
+    const heading = screen.getByRole("heading", { level: 1, name: "Rooftop" });
+    expect(heading.parentElement!.querySelector("[data-chip='poller']")).not.toBeNull();
+    const block = screen.getByRole("region", { name: "Poller" });
+    const metrics = screen.getByRole("list", { name: "Observer metrics" });
+    const chart = screen.getAllByTestId("chart")[0]!;
+    expect(metrics.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(block.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(within(block).getByText("Alpha"));
+    expect(onViewNode).toHaveBeenCalledWith("n-a");
+  });
+
+  it("shows neither for an observer that is not a poller", () => {
+    renderTab();
+    expect(document.querySelector("[data-chip='poller']")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Poller" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the chip but hides the block when there is no claim to show", () => {
+    pollerResult.data = undefined;
+    const first = renderTab({ pollerNodeId: "node-1" });
+    expect(document.querySelector("[data-chip='poller']")).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "Poller" })).not.toBeInTheDocument();
+    first.unmount();
+    pollerResult.data = { ...claimed, claim: null };
+    renderTab({ pollerNodeId: "node-1" });
+    expect(screen.queryByRole("region", { name: "Poller" })).not.toBeInTheDocument();
+  });
 });
 
 describe("ObserverTab", () => {

@@ -12,6 +12,7 @@ import { Badge } from "../../components/Badge";
 import { EmojiText } from "../../components/EmojiText";
 import { formatHex } from "../../lib/formatters";
 import { useScopes } from "../../hooks/useScopes";
+import { useFeatures } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
 import { ObserverFilterBar } from "./ObserverFilterBar";
 import { ObserverSidebar } from "./ObserverSidebar";
@@ -45,6 +46,9 @@ export function ObserverPage({ wsManager, onAnalyzePacket, onViewNode }: { wsMan
   const { t } = useTranslation();
   const now = useTick(60_000);
   const id = params.get("observer");
+  const features = useFeatures();
+  const { data: observerNode } = useObserverNode(id);
+  const pollerNodeId = features.polling && observerNode?.isPoller ? observerNode.id : null;
   const navigate = useNavigate();
   const inspected = (useLocation().state as { inspected?: boolean } | null)?.inspected;
   const [actionTime, setActionTime] = useState(() => Date.now());
@@ -123,7 +127,7 @@ export function ObserverPage({ wsManager, onAnalyzePacket, onViewNode }: { wsMan
         <div className={`min-h-0 flex-1 overflow-auto ${minimized ? "hidden md:block" : ""}`}>
         {onViewNode && <ObserverNodeRow observerId={id} onViewNode={onViewNode} />}
         <Suspense fallback={<p role="status" className="p-4">{t("common.loading")}</p>}>
-          <ObserverTab range={range} selectedObserverId={id} onSelectObserver={select} wsManager={wsManager} actions={<>
+          <ObserverTab range={range} selectedObserverId={id} onSelectObserver={select} wsManager={wsManager} pollerNodeId={pollerNodeId} onViewNode={onViewNode} actions={<>
             <CopyButton value={share.toString()} label={t("observerPage.copyLinkShort")} copiedLabel={t("observerPage.copied")} ariaLabel={t("observerPage.copyLink")} className="justify-center py-1" />
             <button type="button" onClick={() => comparing ? closeCompare() : compare("")} className={`${ACTION_BUTTON_CLASS} text-center`}>{t(comparing ? "observerCompare.close" : "observerCompare.open")}</button>
           </>} comparison={comparing ? { id: params.getAll("compareWith").length === 1 ? params.get("compareWith") ?? "" : "invalid", until, onSelect: compare, onRefresh: refreshCompare } : undefined} />

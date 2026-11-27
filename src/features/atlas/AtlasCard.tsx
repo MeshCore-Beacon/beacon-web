@@ -4,15 +4,18 @@ import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { Badge } from "../../components/Badge";
+import { RoleChip, TypeChip } from "../../components/NodeChips";
 import { IataChip } from "../../components/IataChip";
 import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
-import { useDisplayUnits } from "../../hooks/useFeatures";
+import { useDisplayUnits, useFeatures } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
 import type { Observation } from "../../types/api";
+import type { NodeView } from "../nodes/NodeDetailPanel";
 import type { NodeSummary } from "../nodes/types";
+import { useNodePoller } from "../nodes/useNodeTelemetry";
 import { deriveObserverStatus } from "../observers/observer-status";
 import { usePacketDetail } from "../packets/usePacketDetail";
 import { Card, StatCard } from "../stats/cards";
@@ -33,7 +36,7 @@ import type { CardHandleProps } from "./useCardDrag";
 export type { AtlasView };
 
 export interface AtlasActions {
-  onViewNode: (id: string) => void;
+  onViewNode: (id: string, view?: NodeView) => void;
   onViewObserver: (id: string) => void;
   onAnalyzePacket: (hash: string, observationId?: number) => void;
 }
@@ -164,6 +167,7 @@ export function AtlasCard({
 }: AtlasCardProps) {
   const { t } = useTranslation();
   const { temperature: tempUnit } = useDisplayUnits();
+  const features = useFeatures();
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
@@ -245,27 +249,42 @@ export function AtlasCard({
     onViewChange(next);
   };
 
+  // Only fetched for a poller's Observer view, where its line is drawn.
+  const pollerShown = !!node?.isPoller && features.polling && view === "observer";
+  const poller = useNodePoller(node?.id, active && pollerShown).data;
+
+  const fresh = pin.kind === "node" ? (node ? !node.stale : null) : status ? status === "online" : null;
+  const freshLabel = fresh === null ? "" : pin.kind === "node" ? t(fresh ? "atlas.recent" : "atlas.stale") : t(fresh ? "atlas.online" : "atlas.offline");
+  const tags: ReactNode[] = [];
+  if (node) {
+    tags.push(<TypeChip key="type" typeName={node.nodeTypeName} />);
+    if (node.isPoller) tags.push(<RoleChip key="poller" role="poller" />);
+    if (node.isObserver || node.isPoller || node.observerId) tags.push(<RoleChip key="observer" role="observer" />);
+  }
+  if (pin.kind === "observer" && observer?.observerType) tags.push(<Badge key="type" variant="default">{observer.observerType}</Badge>);
+
+  // One tag rides beside the name; more get a row of their own so the name never loses its line.
   const title = (
-    <span className="flex min-h-[26px] min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+    <span data-card-name className="flex min-h-[26px] min-w-0 items-center gap-2">
+      {fresh !== null && (
+        <Tooltip label={freshLabel} className="shrink-0">
+          <span role="img" aria-label={freshLabel} className={`h-1.5 w-1.5 rounded-full ${fresh ? "bg-green" : "bg-warn"}`} />
+        </Tooltip>
+      )}
       <button
         type="button"
         disabled={pin.kind === "node" && !node}
         onClick={() => (pin.kind === "observer" ? onViewObserver(pin.observerId) : node && onViewNode(node.id))}
-        className={`min-w-0 max-w-full truncate normal-case disabled:text-text-muted disabled:no-underline ${
+        className={`min-w-0 truncate normal-case disabled:text-text-muted disabled:no-underline ${
           name ? "text-primary hover:underline" : "italic text-text-dim"
         }`}
       >
         {shownName}
       </button>
-      {node && <Badge variant="default">{node.nodeTypeName}</Badge>}
-      {node?.stale === false && <Badge variant="live">{t("atlas.recent")}</Badge>}
-      {node?.stale === true && <Badge variant="stale">{t("atlas.stale")}</Badge>}
-      {pin.kind === "observer" && observer?.observerType && <Badge variant="default">{observer.observerType}</Badge>}
-      {pin.kind === "observer" && status && (
-        <Badge variant={status === "online" ? "live" : "stale"}>{t(status === "online" ? "atlas.online" : "atlas.offline")}</Badge>
-      )}
+      {tags.length === 1 && <span className="flex shrink-0">{tags}</span>}
     </span>
   );
+  const tagRow = tags.length > 1 ? <div data-card-tags className="flex flex-wrap items-center gap-1.5">{tags}</div> : undefined;
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
@@ -489,7 +508,7 @@ export function AtlasCard({
   };
 
   return (
-    <Card title={title} right={actions} className="flex h-full flex-col">
+    <Card title={title} right={actions} below={tagRow} className="flex h-full flex-col">
       {views.length > 1 && (
         <Segmented
           stretch
@@ -634,6 +653,21 @@ export function AtlasCard({
               obs.unsupported && t("atlas.observerUnsupported"),
               t("atlas.observerHelp"),
             ],
+          )}
+          {pollerShown && node && poller?.claim && (
+            <div data-card-poller className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${poller.claim.live ? "bg-[#ffb454]" : "bg-text-dim/30"}`} />
+                <span className="truncate">
+                  {poller.claim.live
+                    ? `${t("atlas.poller.polling", { count: poller.targets.filter((target) => target.role === "poller").length })} · ${t("atlas.poller.slots", { used: poller.claim.slots.used, count: poller.claim.slots.max })}`
+                    : t("atlas.poller.idle")}
+                </span>
+              </span>
+              <button type="button" className="ml-auto shrink-0 text-primary hover:underline" onClick={() => onViewNode(node.id, "poller")}>
+                {t("atlas.poller.open")}
+              </button>
+            </div>
           )}
         </div>
       )}

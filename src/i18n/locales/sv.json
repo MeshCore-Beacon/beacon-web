@@ -1041,6 +1041,14 @@
         "noneReach": "Larm skickas inte förrän du slår på e-post eller push.",
         "openProfile": "Öppna larminställningar"
       },
+      "poller": {
+        "polling_one": "Avläser {{count}} repeater",
+        "polling_other": "Avläser {{count}} repeatrar",
+        "slots_one": "{{used}}/{{count}} plats",
+        "slots_other": "{{used}}/{{count}} platser",
+        "idle": "Avläser inte just nu",
+        "open": "Pollarvy"
+      },
       "pollerBadge": "Pollare",
       "syncedToAccount": "Synkad med ditt konto",
       "conflict": "Atlas ändrades på en annan enhet. Visar den senaste versionen.",

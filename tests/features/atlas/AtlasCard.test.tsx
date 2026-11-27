@@ -24,6 +24,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getServerInfo: vi.fn(),
   getNodeTelemetry: vi.fn(),
   getNodePolling: vi.fn(),
+  getNodePoller: vi.fn(),
 }));
 
 const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -82,8 +83,9 @@ describe("AtlasCard", () => {
   it("renders the Signal tab tiles for one node with its type and freshness badges", async () => {
     mount();
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
-    expect(screen.getByText("REPEATER")).toBeInTheDocument();
-    expect(screen.getByText("Recent")).toBeInTheDocument();
+    expect(screen.getByText("Repeater")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Recent" })).toHaveClass("bg-green");
+    expect(screen.queryByText("Recent")).not.toBeInTheDocument();
     expect(screen.getByText("Observations")).toBeInTheDocument();
     expect(screen.getByText("Mean SNR")).toBeInTheDocument();
     expect(await screen.findByText("0.0 dB")).toBeInTheDocument();
@@ -102,7 +104,7 @@ describe("AtlasCard", () => {
   it("shows the stale badge and the server's type name even when the type is unknown", async () => {
     vi.mocked(api.getNode).mockResolvedValue({ ...node, stale: true, nodeType: 9, nodeTypeName: "WEIRD" });
     mount();
-    expect(await screen.findByText("Stale")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Stale" })).toHaveClass("bg-warn");
     expect(screen.getByText("WEIRD")).toBeInTheDocument();
     expect(screen.queryByText(/atlas\.roles/)).not.toBeInTheDocument();
   });
@@ -377,7 +379,8 @@ describe("AtlasCard", () => {
     expect(await screen.findByText("repeater")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Hill listener" }));
     expect(handlers.onViewObserver).toHaveBeenCalledWith(observerId);
-    expect(screen.getAllByText("Online")[0]).toHaveClass("bg-green/8");
+    expect(screen.getByRole("img", { name: "Online" })).toHaveClass("bg-green");
+    expect(screen.getByText("repeater").closest("[data-card-name]")).not.toBeNull();
     expect(screen.queryByRole("group", { name: "Card view" })).not.toBeInTheDocument();
     expect(await screen.findByText("12")).toBeInTheDocument();
     expect(api.getNode).not.toHaveBeenCalled();
@@ -840,6 +843,117 @@ describe("AtlasCard", () => {
       expect(localStorage.getItem("beacon-atlas-v2")).toBe(saved);
       write.mockRestore();
       localStorage.clear();
+    });
+  });
+
+  describe("header tags", () => {
+    const chips = (root: Element | null) => [...(root?.querySelectorAll("[data-chip]") ?? [])].map((e) => e.getAttribute("data-chip"));
+
+    it("keeps a lone tag on the name's line, which never wraps", async () => {
+      const { container } = mount();
+      const name = await screen.findByRole("button", { name: "Renamed repeater" });
+      const line = name.closest("[data-card-name]")!;
+      expect(chips(line)).toEqual(["type"]);
+      expect(line).not.toHaveClass("flex-wrap");
+      expect(name).toHaveClass("truncate");
+      expect(container.querySelector("[data-card-tags]")).toBeNull();
+    });
+
+    it("moves every tag to a row under the name once there are two", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+      vi.mocked(api.getObserver).mockResolvedValue(observer);
+      const { container } = mount();
+      const name = await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(chips(name.closest("[data-card-name]"))).toEqual([]);
+      expect(chips(container.querySelector("[data-card-tags]"))).toEqual(["type", "observer"]);
+    });
+
+    it("tags a poller as a poller and an observer", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isPoller: true });
+      const { container } = mount();
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(chips(container.querySelector("[data-card-tags]"))).toEqual(["type", "poller", "observer"]);
+    });
+
+    it("marks an offline observer pin with a warn dot", async () => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...observer, status: "offline", lastStatusAt: Date.now() - 86_400_000 });
+      mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+      expect(await screen.findByRole("img", { name: "Offline" })).toHaveClass("bg-warn");
+    });
+  });
+
+  describe("poller line", () => {
+    const target = (role: string) => ({ nodeId: null, publicKey: role.padEnd(64, "0"), name: role, requested: false, role, rank: 0, state: "ok", misses: 0, lastAttempt: null, lastOk: null, claimedSnr: null, evidenceSnr: null, evidenceCount: 0, latestReadingAt: null });
+    const poller = (live = true, targets = [target("poller"), target("poller2"), target("standby")]) => ({
+      claim: { receivedAt: Date.now() - 60_000, live, acceptsRequests: true, slots: { max: 8, used: 2, own: 2, requested: 0, free: 6 } },
+      readings24h: 10,
+      targets: targets.map((row) => ({ ...row, role: row.role.startsWith("poller") ? "poller" : row.role })),
+    }) as never;
+    const line = () => document.querySelector("[data-card-poller]");
+
+    beforeEach(() => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, isPoller: true, observerId });
+      vi.mocked(api.getObserver).mockResolvedValue(observer);
+      vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
+      vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true));
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller());
+    });
+
+    it("counts the repeaters it polls and its slots, and opens the Poller view", async () => {
+      mount({ view: "observer" });
+      expect(await screen.findByText("Polling 2 repeaters · 2/8 slots")).toBeInTheDocument();
+      expect(line()).not.toHaveClass("flex-wrap");
+      fireEvent.click(within(line() as HTMLElement).getByRole("button", { name: "Poller view" }));
+      expect(handlers.onViewNode).toHaveBeenCalledWith(pin.id, "poller");
+    });
+
+    it("uses the singular for one repeater", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller(true, [target("poller")]));
+      mount({ view: "observer" });
+      expect(await screen.findByText("Polling 1 repeater · 2/8 slots")).toBeInTheDocument();
+    });
+
+    it("says so when the claim is stale", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller(false));
+      mount({ view: "observer" });
+      expect(await screen.findByText("Not currently polling")).toBeInTheDocument();
+      expect(screen.queryByText(/Polling \d/)).not.toBeInTheDocument();
+    });
+
+    it("is absent on a server without the route", async () => {
+      vi.mocked(api.getNodePoller).mockRejectedValue(new ApiError(404, "not_found", "no"));
+      mount({ view: "observer" });
+      await screen.findByText("12");
+      await waitFor(() => expect(api.getNodePoller).toHaveBeenCalled());
+      await act(async () => {});
+      expect(line()).toBeNull();
+    });
+
+    it("is absent for a radio with no claim", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue({ claim: null, readings24h: 0, targets: [] });
+      mount({ view: "observer" });
+      await screen.findByText("12");
+      await waitFor(() => expect(api.getNodePoller).toHaveBeenCalled());
+      await act(async () => {});
+      expect(line()).toBeNull();
+    });
+
+    it("fetches nothing with polling off, on another view, or for a node that is no poller", async () => {
+      mount({ view: "analytics" });
+      await screen.findByText("1.2k");
+      client.clear();
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(false));
+      mount({ view: "observer" });
+      await screen.findAllByText("12");
+      client.clear();
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true));
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+      mount({ view: "observer" });
+      await screen.findAllByText("12");
+      await act(async () => {});
+      expect(api.getNodePoller).not.toHaveBeenCalled();
+      expect(line()).toBeNull();
     });
   });
 });

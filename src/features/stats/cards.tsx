@@ -10,19 +10,22 @@ export function Card({
   children,
   className,
   wrap,
+  below,
 }: {
   title: ReactNode;
   right?: ReactNode;
   children: ReactNode;
   className?: string;
   wrap?: boolean; // let `right` drop under the title when the card is too narrow for both
+  below?: ReactNode; // a full-width row under the title and `right`
 }) {
   return (
     <div className={`rounded-lg border border-border bg-bg-surface p-3.5 ${className ?? ""}`}>
-      <div className={`mb-2.5 flex items-center justify-between gap-2 ${wrap ? "flex-wrap" : ""}`}>
+      <div className={`${below ? "mb-1.5" : "mb-2.5"} flex items-center justify-between gap-2 ${wrap ? "flex-wrap" : ""}`}>
         <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-wider text-text-normal">{title}</div>
         {right}
       </div>
+      {below && <div className="mb-2.5">{below}</div>}
       {children}
     </div>
   );

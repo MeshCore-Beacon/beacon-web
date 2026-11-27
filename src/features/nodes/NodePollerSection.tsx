@@ -54,7 +54,8 @@ function seatParts(seats: Record<SeatKind, number>, t: TFunction): { kind: SeatK
   return parts;
 }
 
-function Summary({ claim, readings24h }: { claim: NonNullable<NodePoller["claim"]>; readings24h: number }) {
+// Slot count, seat meter, legend and the claim lines, without a frame so the panel and the dashboard share it.
+export function PollerSlots({ claim, readings24h }: { claim: NonNullable<NodePoller["claim"]>; readings24h: number }) {
   const { t } = useTranslation();
   const { slots } = claim;
   const seats = seatCounts(slots);
@@ -62,7 +63,7 @@ function Summary({ claim, readings24h }: { claim: NonNullable<NodePoller["claim"
   const order: SeatKind[] = ["own", "requested", "free", "closed"];
   const label = `${t("nodeDetail.pollerView.slotsUsedOf", { used: slots.used, max: slots.max })}: ${parts.map((p) => p.text).join(", ")}`;
   return (
-    <Section title={t("nodeDetail.pollerView.slots")}>
+    <>
       <div className="mb-2 flex items-baseline gap-2 font-mono">
         <span className="text-xl font-semibold text-text-bright"><span>{slots.used}</span> <span className="text-text-dim">/ {slots.max}</span></span>
         <span className="text-[13px] text-text-muted">{t("nodeDetail.pollerView.slotsUsed")}</span>
@@ -89,7 +90,7 @@ function Summary({ claim, readings24h }: { claim: NonNullable<NodePoller["claim"
         <span><span className="text-text-dim">{t("nodeDetail.pollerView.requests")}</span> <span className="text-text-normal">{t(claim.acceptsRequests ? "nodeDetail.pollerView.accepting" : "nodeDetail.pollerView.notAccepting")}</span></span>
         <span><span className="text-text-dim">{t("nodeDetail.pollerView.readings24h")}</span> <span className="text-text-normal">{readings24h.toLocaleString()}</span></span>
       </div>
-    </Section>
+    </>
   );
 }
 
@@ -154,6 +155,20 @@ function TargetCard({ target, onClick }: { target: NodePollerTarget; onClick?: (
   );
 }
 
+// The repeater cards. `className` lays them out: a column in the panel, a grid on the dashboard.
+export function PollerTargets({ data, onViewNode, className = "flex flex-col gap-2" }: { data: NodePoller; onViewNode?: (nodeId: string) => void; className?: string }) {
+  const { t } = useTranslation();
+  if (data.targets.length === 0) return <p className="font-mono text-[13px] text-text-dim">{t("nodeDetail.pollerView.noTargets")}</p>;
+  return (
+    <div className={`${className} ${data.claim?.live ? "" : "opacity-50"}`}>
+      {data.targets.map((target) => {
+        const id = target.nodeId;
+        return <TargetCard key={target.publicKey} target={target} onClick={id && onViewNode ? () => onViewNode(id) : undefined} />;
+      })}
+    </div>
+  );
+}
+
 // The node panel's Poller view: this radio's polling slots and the repeaters it polls.
 export function NodePollerSection({ nodeId, onViewNode }: { nodeId: string; onViewNode?: (nodeId: string) => void }) {
   const { t } = useTranslation();
@@ -175,18 +190,11 @@ export function NodePollerSection({ nodeId, onViewNode }: { nodeId: string; onVi
   if (!data.claim) return <p className={`${NOTE} border-t border-border-subtle`}>{t("nodeDetail.pollerView.noClaim")}</p>;
 
   return <>
-    <Summary claim={data.claim} readings24h={data.readings24h} />
+    <Section title={t("nodeDetail.pollerView.slots")}>
+      <PollerSlots claim={data.claim} readings24h={data.readings24h} />
+    </Section>
     <Section title={t("nodeDetail.pollerView.targets")}>
-      {data.targets.length === 0 ? (
-        <p className="font-mono text-[13px] text-text-dim">{t("nodeDetail.pollerView.noTargets")}</p>
-      ) : (
-        <div className={`flex flex-col gap-2 ${data.claim.live ? "" : "opacity-50"}`}>
-          {data.targets.map((target) => {
-            const id = target.nodeId;
-            return <TargetCard key={target.publicKey} target={target} onClick={id && onViewNode ? () => onViewNode(id) : undefined} />;
-          })}
-        </div>
-      )}
+      <PollerTargets data={data} onViewNode={onViewNode} />
     </Section>
   </>;
 }

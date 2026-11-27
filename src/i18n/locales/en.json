@@ -1147,6 +1147,14 @@
       "heardUnavailable": "Packet details are unavailable or expired.",
       "openPacket": "Open packet",
       "fieldObserver": "Observer",
+      "poller": {
+        "polling_one": "Polling {{count}} repeater",
+        "polling_other": "Polling {{count}} repeaters",
+        "slots_one": "{{used}}/{{count}} slot",
+        "slots_other": "{{used}}/{{count}} slots",
+        "idle": "Not currently polling",
+        "open": "Poller view"
+      },
       "pollerBadge": "Poller",
       "observerBadge": "Observer",
       "viewAnalytics": "Analytics",
