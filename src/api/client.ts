@@ -128,7 +128,7 @@ export interface ServerInfo {
   minWebVersion: string | null;
   serverVersion: string;
   // absent on servers that predate the flags
-  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; atlas7d?: boolean; mapTelemetry?: boolean; alertChannels?: { email?: boolean; push?: boolean }; push?: { server?: string; pushId?: string }; portalUrl?: string };
+  features?: { polling?: boolean; accounts?: string; registration?: boolean; telemetryRequests?: boolean; alerts?: boolean; atlasTelemetry?: boolean; atlas7d?: boolean; atlasPoller?: boolean; mapTelemetry?: boolean; alertChannels?: { email?: boolean; push?: boolean }; push?: { server?: string; pushId?: string }; portalUrl?: string };
   display?: { temperatureUnit?: string; distanceUnit?: string };
   limits?: { atlas?: number };
 }

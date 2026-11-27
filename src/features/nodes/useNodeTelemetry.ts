@@ -61,13 +61,16 @@ export function useNodePolling(id: string | undefined, enabled: boolean) {
   });
 }
 
-export function useNodePoller(id: string | undefined, enabled: boolean) {
+// `refetchMs` as in useNodeTelemetry; it stops once the server has said it has no such route.
+export function useNodePoller(id: string | undefined, enabled: boolean, refetchMs?: number) {
   return useQuery({
     queryKey: ["node-poller", id],
     queryFn: ({ signal }) => orNull(() => getNodePoller(id!, signal)),
     enabled: enabled && !!id,
     select: toUndefined,
     staleTime: 60_000,
+    refetchInterval: (q) => (q.state.data === null ? false : (refetchMs ?? false)),
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
 }

@@ -20,7 +20,7 @@ export const DEFAULT_TILES: readonly ObserverTile[] = ["airtime", "battery", "ty
 export const TELEMETRY_TILES = ["battery", "noise", "uptime", "airtime", "temperature", "packets", "signal", "errors"] as const;
 export type TelemetryTile = (typeof TELEMETRY_TILES)[number];
 export const DEFAULT_TELEMETRY_TILES: readonly TelemetryTile[] = ["battery", "noise", "uptime", "airtime"];
-export type AtlasView = "analytics" | "heard" | "observer" | "telemetry";
+export type AtlasView = "analytics" | "heard" | "observer" | "telemetry" | "poller";
 // `view` is the tab the card opens on, stored only when it is not Analytics.
 export interface NodePin { kind: "node"; id: string; publicKey: string; name: string; observerId?: string; tiles?: ObserverTile[]; telemetryTiles?: TelemetryTile[]; view?: AtlasView }
 export interface ObserverPin { kind: "observer"; observerId: string; name: string; tiles?: ObserverTile[] }
@@ -143,7 +143,7 @@ function toPin(raw: unknown): AtlasPin | null {
   if (tiles) pin.tiles = tiles;
   const telemetryTiles = toTelemetryTiles(value.telemetryTiles);
   if (telemetryTiles) pin.telemetryTiles = telemetryTiles;
-  if (value.view === "heard" || value.view === "observer" || value.view === "telemetry") pin.view = value.view;
+  if (value.view === "heard" || value.view === "observer" || value.view === "telemetry" || value.view === "poller") pin.view = value.view;
   return pin;
 }
 

@@ -10,12 +10,11 @@ import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
-import { useDisplayUnits, useFeatures } from "../../hooks/useFeatures";
+import { useDisplayUnits } from "../../hooks/useFeatures";
 import { useTick } from "../../hooks/useTick";
 import type { Observation } from "../../types/api";
 import type { NodeView } from "../nodes/NodeDetailPanel";
 import type { NodeSummary } from "../nodes/types";
-import { useNodePoller } from "../nodes/useNodeTelemetry";
 import { deriveObserverStatus } from "../observers/observer-status";
 import { usePacketDetail } from "../packets/usePacketDetail";
 import { Card, StatCard } from "../stats/cards";
@@ -24,7 +23,8 @@ import { average } from "../stats/signal";
 import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasSample, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { AtlasAlertBell } from "./AtlasAlerts";
 import { TilePicker } from "./TilePicker";
-import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, useTelemetryTab } from "./useAtlas";
+import { PollerTiles } from "./PollerTiles";
+import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, usePollerTab, useTelemetryTab } from "./useAtlas";
 import { DOT_LIMIT, sparkValues } from "./telemetry-sample";
 import type { ObserverSample, PayloadShare } from "./observer-sample";
 import { TileGraph } from "./TileGraph";
@@ -58,7 +58,7 @@ interface AtlasCardProps extends AtlasActions {
   handle: Partial<CardHandleProps>;
 }
 
-const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver", telemetry: "atlas.viewTelemetry" };
+const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver", telemetry: "atlas.viewTelemetry", poller: "atlas.viewPoller" };
 
 const TILE_LABEL: Record<ObserverTile, string> = {
   airtime: "atlas.airtime",
@@ -167,7 +167,6 @@ export function AtlasCard({
 }: AtlasCardProps) {
   const { t } = useTranslation();
   const { temperature: tempUnit } = useDisplayUnits();
-  const features = useFeatures();
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
@@ -180,13 +179,17 @@ export function AtlasCard({
   const observer = obs.observer.data;
   // A card pinned to Telemetry keeps its tab while the answer is still coming in, then falls back to Analytics if there is none.
   const hasTab = pin.kind === "node" && (tab.available || (requested === "telemetry" && tab.settling));
+  const pollerTab = usePollerTab(nodePin ? node : undefined, observerId, active);
+  const poller = pollerTab.poller;
+  const hasPoller = pin.kind === "node" && (pollerTab.available || (requested === "poller" && pollerTab.settling));
   const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : [
     "analytics",
     "heard",
     ...(observerId ? (["observer"] as const) : []),
     ...(hasTab ? (["telemetry"] as const) : []),
+    ...(hasPoller ? (["poller"] as const) : []),
   ];
-  const view: AtlasView = requested === "telemetry" && !views.includes("telemetry") ? "analytics" : requested;
+  const view: AtlasView = (requested === "telemetry" || requested === "poller") && !views.includes(requested) ? "analytics" : requested;
   const tel = useAtlasTelemetry(node?.id ?? null, range, active && view === "telemetry");
 
   const latest = sample.latest;
@@ -248,10 +251,6 @@ export function AtlasCard({
     if (view !== "heard") setHeld(body.current?.offsetHeight);
     onViewChange(next);
   };
-
-  // Only fetched for a poller's Observer view, where its line is drawn.
-  const pollerShown = !!node?.isPoller && features.polling && view === "observer";
-  const poller = useNodePoller(node?.id, active && pollerShown).data;
 
   const fresh = pin.kind === "node" ? (node ? !node.stale : null) : status ? status === "online" : null;
   const freshLabel = fresh === null ? "" : pin.kind === "node" ? t(fresh ? "atlas.recent" : "atlas.stale") : t(fresh ? "atlas.online" : "atlas.offline");
@@ -341,9 +340,9 @@ export function AtlasCard({
   );
 
   // Every footer leads with the same shape: a dot (lit while the fact is fresh), what it is, and how long ago.
-  const lead = (fresh: boolean | null, label: string, at: number | null | undefined) => (
+  const lead = (fresh: boolean | null, label: string, at: number | null | undefined, lit = "bg-green") => (
     <span className="flex min-w-0 items-center gap-1.5">
-      {fresh !== null && <span aria-hidden data-fresh={String(fresh)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? "bg-green" : "bg-text-dim/30"}`} />}
+      {fresh !== null && <span aria-hidden data-fresh={String(fresh)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? lit : "bg-text-dim/30"}`} />}
       <span className="flex min-w-0 items-baseline">
         <span className="truncate">{label}</span>
         {at != null && <span className="shrink-0 whitespace-pre">{" · "}<Timestamp value={at} /></span>}
@@ -646,20 +645,20 @@ export function AtlasCard({
               t("atlas.observerHelp"),
             ],
           )}
-          {pollerShown && node && poller?.claim && (
-            <div data-card-poller className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${poller.claim.live ? "bg-[#ffb454]" : "bg-text-dim/30"}`} />
-                <span className="truncate">
-                  {poller.claim.live
-                    ? `${t("atlas.poller.polling", { count: poller.targets.filter((target) => target.role === "poller").length })} · ${t("atlas.poller.slots", { used: poller.claim.slots.used, count: poller.claim.slots.max })}`
-                    : t("atlas.poller.idle")}
-                </span>
-              </span>
-              <button type="button" className="ml-auto shrink-0 text-primary hover:underline" onClick={() => onViewNode(node.id, "poller")}>
-                {t("atlas.poller.open")}
-              </button>
-            </div>
+        </div>
+      )}
+      {view === "poller" && node && (
+        <div ref={body} className="flex flex-1 flex-col gap-3">
+          <PollerTiles poller={poller} />
+          {footer(
+            poller?.claim && lead(poller.claim.live, poller.claim.live ? t("atlas.poller.polling", { count: poller.targets.filter((target) => target.role === "poller").length }) : t("atlas.poller.idle"), null, "bg-[#ffb454]"),
+            <button type="button" className="text-primary hover:underline" onClick={() => onViewNode(node.id, "poller")}>{t("atlas.poller.open")}</button>,
+            pollerTab,
+            [
+              poller?.claim && `${t("nodeDetail.pollerView.lastClaim")} ${formatAbsolute(poller.claim.receivedAt)}`,
+              poller?.claim && t("nodeDetail.pollerView.slotsUsedOf", { used: poller.claim.slots.used, max: poller.claim.slots.max }),
+              t("atlas.poller.help"),
+            ],
           )}
         </div>
       )}

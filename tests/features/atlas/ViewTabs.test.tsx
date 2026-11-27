@@ -12,8 +12,8 @@ function mount(views: AtlasView[], value: AtlasView, onChange = vi.fn()) {
 
 describe("ViewTabs", () => {
   it("draws an icon on every tab and names only the open one", () => {
-    const { tabs } = mount(["analytics", "heard", "observer", "telemetry"], "observer");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["", "", "Observer", ""]);
+    const { tabs } = mount(["analytics", "heard", "observer", "telemetry", "poller"], "observer");
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["", "", "Observer", "", ""]);
     for (const tab of tabs) expect(tab.querySelectorAll("svg[aria-hidden]")).toHaveLength(1);
   });
 

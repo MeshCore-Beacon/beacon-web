@@ -1044,10 +1044,18 @@
       "poller": {
         "polling_one": "Avläser {{count}} repeater",
         "polling_other": "Avläser {{count}} repeatrar",
-        "slots_one": "{{used}}/{{count}} plats",
-        "slots_other": "{{used}}/{{count}} platser",
         "idle": "Avläser inte just nu",
-        "open": "Pollarvy"
+        "open": "Pollarvy",
+        "split": "{{own}} eg · {{requested}} beg",
+        "answering": "Svarar",
+        "of": "av {{total}}",
+        "readings": "Mätvärden",
+        "lastClaim": "Anspråkets ålder",
+        "claimAge": "{{duration}}",
+        "accepting": "tar emot förfrågningar",
+        "notAccepting": "tar inte emot förfrågningar",
+        "notPolling": "avläser inte just nu",
+        "help": "Vad den här radion avläser för telemetri: platserna den erbjuder och vem som har dem, hur många av dess repeatrar som svarar, mätvärdena den hämtat på 24 timmar och dess senaste anspråk. Pollarvyn visar varje repeater."
       },
       "pollerBadge": "Pollare",
       "syncedToAccount": "Synkad med ditt konto",
@@ -1074,6 +1082,7 @@
       },
       "readingsLabel": "Batteri och temperatur, senaste timmedelvärdet",
       "viewTelemetry": "Telemetri",
+      "viewPoller": "Pollare",
       "telemetry": {
         "temperature": "Temperatur",
         "packets": "Paket",

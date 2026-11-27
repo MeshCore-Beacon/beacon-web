@@ -25,6 +25,7 @@ const ICON: Record<AtlasView, ReactNode> = {
       <circle cx="12" cy="14" r="1.4" fill="currentColor" stroke="none" />
     </>,
   ),
+  poller: <Glyph name="poller" size={SIZE} />,
 };
 
 interface ViewTabsProps {

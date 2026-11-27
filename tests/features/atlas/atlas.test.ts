@@ -228,6 +228,18 @@ describe("Atlas export file", () => {
   });
 });
 
+describe("poller view", () => {
+  const base = { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: "cd".repeat(32), name: "R" };
+  const load = (view: string) => parseAtlas(JSON.stringify({ version: 2, range: "24h", pins: [{ ...base, view }] })).pins[0] as NodePin;
+
+  it("loads a stored Poller view, opens the card on it and drops a view it does not know", () => {
+    expect(load("poller").view).toBe("poller");
+    expect(homeView(load("poller"))).toBe("poller");
+    expect(withView(load("heard"), "poller").view).toBe("poller");
+    expect(load("pollers")).not.toHaveProperty("view");
+  });
+});
+
 describe("telemetry view tiles", () => {
   const key = "cd".repeat(32);
   const base = { kind: "node", id: "11111111-1111-4111-8111-111111111111", publicKey: key, name: "R" };
