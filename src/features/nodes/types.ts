@@ -188,3 +188,27 @@ export interface NodePolling {
   poller: { observerId: string; name: string } | null;
   standbys: { observerId: string; name: string; rank: number }[];
 }
+
+export interface NodePollerTarget {
+  nodeId: string | null;
+  publicKey: string; // 64 lowercase hex
+  name: string | null;
+  requested: boolean;
+  role: "poller" | "standby" | "unassigned";
+  rank: number | null; // 0 poller, 1+ standby, null unassigned
+  state: string; // ok, pending, no_reply, not_direct, login_failed, admin_stop, "" or a newer value
+  misses: number;
+  lastAttempt: number | null; // epoch ms
+  lastOk: number | null;
+  claimedSnr: number | null;
+  evidenceSnr: number | null;
+  evidenceCount: number;
+  latestReadingAt: number | null;
+}
+
+// claim is null for a radio that is not polling.
+export interface NodePoller {
+  claim: { receivedAt: number; live: boolean; acceptsRequests: boolean; slots: { max: number; used: number; own: number; requested: number; free: number } } | null;
+  readings24h: number;
+  targets: NodePollerTarget[];
+}

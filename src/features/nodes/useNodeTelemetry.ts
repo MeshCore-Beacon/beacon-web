@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { getNodePolling, getNodeTelemetry, isNotFound } from "../../api/client";
+import { getNodePoller, getNodePolling, getNodeTelemetry, isNotFound } from "../../api/client";
 
 import type { NodeTelemetry, NodeTelemetryRange } from "./types";
 
 export type { NodeTelemetryRange };
 
-// Polling: a 404 is cached as null and `select` hands callers undefined.
+// Polling and poller: a 404 is cached as null and `select` hands callers undefined.
 async function orNull<T>(load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
@@ -54,6 +54,17 @@ export function useNodePolling(id: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: ["node-polling", id],
     queryFn: ({ signal }) => orNull(() => getNodePolling(id!, signal)),
+    enabled: enabled && !!id,
+    select: toUndefined,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useNodePoller(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["node-poller", id],
+    queryFn: ({ signal }) => orNull(() => getNodePoller(id!, signal)),
     enabled: enabled && !!id,
     select: toUndefined,
     staleTime: 60_000,

@@ -23,7 +23,7 @@ vi.mock("../src/features/observers/ObserverPage", () => ({ ObserverPage: () => <
 vi.mock("../src/features/nodes/NodeDetailPanel", () => ({
   NodeDetailPanel: ({ nodeId, view, onViewChange, onClose, onOpenObserverDashboard }: { nodeId: string; view?: string; onViewChange?: (v: string) => void; onClose: () => void; onOpenObserverDashboard?: (id: string) => void }) => <>
     <h2>Node {nodeId} {view ?? "node"}</h2>
-    {onViewChange && <><button onClick={() => onViewChange("observer")}>To observer</button><button onClick={() => onViewChange("node")}>To node</button></>}
+    {onViewChange && <><button onClick={() => onViewChange("observer")}>To observer</button><button onClick={() => onViewChange("node")}>To node</button><button onClick={() => onViewChange("poller")}>To poller</button></>}
     <button onClick={onClose}>Close node</button>
     <button onClick={() => onOpenObserverDashboard?.("o-node")}>Dashboard</button>
   </>,
@@ -46,6 +46,36 @@ describe("docked node panel view in the URL", () => {
     click("To observer");
     expect(params().get("view")).toBe("observer");
     expect(params().get("node")).toBe("n1");
+  });
+
+  it("restores view=poller and writes it back", () => {
+    window.history.replaceState({}, "", "/?tab=Nodes&node=n1&view=poller");
+    render(<App />);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Node n1 poller");
+    click("To observer");
+    expect(params().get("view")).toBe("observer");
+    click("To poller");
+    expect(params().get("view")).toBe("poller");
+    expect(params().get("node")).toBe("n1");
+    click("To node");
+    expect(params().get("view")).toBeNull();
+  });
+
+  it("keeps view=poller on a desktop move to the map and drops it on close", () => {
+    window.history.replaceState({}, "", "/?tab=Nodes&node=n1&view=poller");
+    render(<App />);
+    click("Map tab");
+    expect(params().get("view")).toBe("poller");
+    click("Close node");
+    expect(params().get("node")).toBeNull();
+    expect(params().get("view")).toBeNull();
+  });
+
+  it("drops view=poller when leaving for another tab", () => {
+    window.history.replaceState({}, "", "/?tab=Nodes&node=n1&view=poller");
+    render(<App />);
+    click("Route tab");
+    expect(params().get("view")).toBeNull();
   });
 
   it("drops view with node on close", () => {

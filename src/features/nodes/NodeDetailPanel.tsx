@@ -21,13 +21,15 @@ import { useFeatures } from "../../hooks/useFeatures";
 import { useRequestsAvailable } from "../../hooks/useTelemetryRequests";
 import { RequestTelemetry } from "./RequestTelemetry";
 import { Segmented } from "../stats/Segmented";
+import { NodePollerSection } from "./NodePollerSection";
+import { useNodePoller } from "./useNodeTelemetry";
 
 // Pulls in ECharts, so it stays out of the main bundle; mounted only for polled node types.
 import { isPolledNodeType } from "./polledType";
 const NodeTelemetrySection = lazy(() => import("./NodeTelemetrySection"));
 const NodeObserverSection = lazy(() => import("./NodeObserverSection"));
 
-export type NodeView = "node" | "observer";
+export type NodeView = "node" | "observer" | "poller";
 
 const SUBHEAD = "mt-2 mb-0.5 font-mono text-[10px] uppercase tracking-wider text-text-dim first:mt-0";
 
@@ -150,7 +152,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
   const features = useFeatures();
   // An observer reports its own readings over MQTT, so it is never polled or requested.
   const observerId = node?.observerId ?? null;
-  const shownView: NodeView = observerId ? requestedView : "node";
+  const isPollerNode = !!observerId && node?.isPoller === true && features.polling;
+  const pollerQuery = useNodePoller(nodeId, isPollerNode);
+  // A 404 comes back as a success with no data: a server without the route, so the option goes.
+  const pollerOffered = isPollerNode && !(pollerQuery.isSuccess && !pollerQuery.data);
+  const shownView: NodeView = requestedView === "poller" ? (pollerOffered ? "poller" : "node") : observerId ? requestedView : "node";
   const showTelemetry = features.polling && !!node && isPolledNodeType(node.nodeTypeName) && !observerId;
   const canRequest = useRequestsAvailable();
   // Handed to the lazy chart section so it sits inside it, without that chunk importing it.
@@ -163,7 +169,7 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
       title={t("nodeDetail.title")}
       onClose={onClose}
       collapsible
-      headerAction={<CopyLinkButton params={() => ({ tab: "Nodes", node: nodeId, view: shownView === "observer" ? "observer" : null })} ariaLabel={t("nodeDetail.copyLink")} />}
+      headerAction={<CopyLinkButton params={() => ({ tab: "Nodes", node: nodeId, view: shownView === "node" ? null : shownView })} ariaLabel={t("nodeDetail.copyLink")} />}
       isLoading={nodeQuery.isPending}
       notFound={missing || (nodeQuery.isSuccess && !node)}
       notFoundLabel={t("nodeDetail.notFound")}
@@ -218,13 +224,19 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
                   ariaLabel={t("nodeDetail.view")}
                   value={shownView}
                   onChange={(v) => setView(v as NodeView)}
-                  options={[{ value: "node", label: t("nodeDetail.viewNode") }, { value: "observer", label: t("nodeDetail.viewObserver") }]}
+                  options={[
+                    { value: "node", label: t("nodeDetail.viewNode") },
+                    { value: "observer", label: t("nodeDetail.viewObserver") },
+                    ...(pollerOffered ? [{ value: "poller", label: t("nodeDetail.viewPoller") }] : []),
+                  ]}
                 />
               )}
             </div>
             </Section>
 
-            {shownView === "observer" && observerId ? (
+            {shownView === "poller" ? (
+              <NodePollerSection key={nodeId} nodeId={nodeId} onViewNode={onViewNode} />
+            ) : shownView === "observer" && observerId ? (
               <Suspense fallback={<p role="status" className="px-3 py-2.5 font-mono text-[13px] text-text-dim">{t("common.loading")}</p>}>
                 <NodeObserverSection key={observerId} observerId={observerId} onOpenDashboard={() => (onOpenObserverDashboard ?? onViewObserver)(observerId)} onAnalyzePacket={onAnalyzePacket} />
               </Suspense>

@@ -176,6 +176,11 @@ export function PathLinkRestore({ initialPath, hash, analyzerDetail, onRestore }
   return null;
 }
 
+// The node panel's own ?view= values; account views share the param.
+function panelView(value: string | null): Exclude<NodeView, "node"> | null {
+  return value === "observer" || value === "poller" ? value : null;
+}
+
 // Drop the shared node/observer selection when the user changes region, so a detail panel doesn't keep
 // showing an entity that's no longer in the re-queried map/table. Watches the raw selection rather than
 // the resolved regionKey: the async slug→IATA expansion on load bumps regionKey without any user action,
@@ -285,10 +290,10 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", tab);
-      // ?view=observer belongs to the docked node panel, which only survives a desktop move between Nodes and Map
-      const keepNodeView = !isMobile && (tab === "Nodes" || tab === "Map") && prev.get("view") === "observer";
+      // ?view=observer|poller belongs to the docked node panel, which only survives a desktop move between Nodes and Map
+      const keepNodeView = !isMobile && (tab === "Nodes" || tab === "Map") ? panelView(prev.get("view")) : null;
       for (const key of VIEW_PARAMS) next.delete(key);
-      if (keepNodeView) next.set("view", "observer");
+      if (keepNodeView) next.set("view", keepNodeView);
       if (tab !== "Routes") for (const key of ["route", "routeIata"]) next.delete(key);
       // the analyzer is URL-backed, so its mobile close lives here rather than above
       if (isMobile) next.delete("analyze");
@@ -333,18 +338,18 @@ function AppInner() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete(key);
-      if (next.get("view") === "observer") next.delete("view");
+      if (panelView(next.get("view"))) next.delete("view");
       return next;
     }, { replace: true });
   }, [setSearchParams]);
 
-  // The docked panel's Node | Observer choice. It counts only for the node the URL names, so picking another node starts on Node.
-  const nodeView: NodeView = searchParams.get("view") === "observer" && searchParams.get("node") === selectedNodeId ? "observer" : "node";
+  // The docked panel's Node | Observer | Poller choice. It counts only for the node the URL names, so picking another node starts on Node.
+  const nodeView: NodeView = (searchParams.get("node") === selectedNodeId ? panelView(searchParams.get("view")) : null) ?? "node";
   const setNodeView = useCallback((view: NodeView) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (view === "observer" && selectedNodeId) { next.set("node", selectedNodeId); next.set("view", "observer"); }
-      else if (next.get("view") === "observer") next.delete("view");
+      if (view !== "node" && selectedNodeId) { next.set("node", selectedNodeId); next.set("view", view); }
+      else if (panelView(next.get("view"))) next.delete("view");
       return next;
     }, { replace: true });
   }, [setSearchParams, selectedNodeId]);

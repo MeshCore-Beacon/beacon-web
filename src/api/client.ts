@@ -3,7 +3,7 @@ import { noteRateLimited, noteRequestOk, parseRetryAfter } from "./rate-limit";
 import type { CursorPage, PacketSummary, PacketDetail, IataCode, RegionSummary, Region, BrokerStatus, RouteEvidence, KnownRoute, CrossIATARoute, TraceTagSummary, TraceType, TraceDetail } from "../types/api";
 import type { ChannelPage, ChannelMessage } from "../features/channels/types";
 import type { ObserverSummary, Observer, AdvertObservation, ObserverDirectoryPage, ObserverDirectorySort } from "../features/observers/types";
-import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodeLatestReading, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling } from "../features/nodes/types";
+import type { Node, NodeActivity, NodeObservation, NodeNeighbor, NodeLatestReading, NodePage, NodeSort, NodeTelemetry, NodeTelemetryRange, NodePolling, NodePoller } from "../features/nodes/types";
 
 import type {
   StatsSeries,
@@ -504,6 +504,10 @@ export function getNodeTelemetry(id: string, range: NodeTelemetryRange, signal?:
 
 export function getNodePolling(id: string, signal?: AbortSignal): Promise<NodePolling> {
   return request(`/nodes/${encodeURIComponent(id)}/polling`, undefined, signal);
+}
+
+export function getNodePoller(id: string, signal?: AbortSignal): Promise<NodePoller> {
+  return request(`/nodes/${encodeURIComponent(id)}/poller`, undefined, signal);
 }
 
 // Lets a caller hide a feature the server doesn't have rather than show it as failed.
