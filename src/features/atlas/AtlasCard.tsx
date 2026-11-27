@@ -295,7 +295,6 @@ export function AtlasCard({
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
-      <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
       <Tooltip label={openLabel}>
         <button type="button" className={ICON_BUTTON} aria-label={openLabel} disabled={pin.kind === "node" && !node} onClick={openSheet}>
           <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -304,6 +303,7 @@ export function AtlasCard({
           </svg>
         </button>
       </Tooltip>
+      <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
       {views.length > 1 && (
         <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
           <button
@@ -320,13 +320,6 @@ export function AtlasCard({
           </button>
         </Tooltip>
       )}
-      <Tooltip label={t("atlas.remove")}>
-        <button type="button" className={REMOVE_BUTTON} aria-label={t("atlas.remove")} onClick={onRemove}>
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
-            <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
-          </svg>
-        </button>
-      </Tooltip>
       <Tooltip label={t("atlas.dragToReorder")} hideOnPress>
         <button
           type="button"
@@ -338,6 +331,13 @@ export function AtlasCard({
             <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
             <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
             <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
+          </svg>
+        </button>
+      </Tooltip>
+      <Tooltip label={t("atlas.remove")}>
+        <button type="button" className={`${REMOVE_BUTTON} ml-1`} aria-label={t("atlas.remove")} onClick={onRemove}>
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+            <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
           </svg>
         </button>
       </Tooltip>

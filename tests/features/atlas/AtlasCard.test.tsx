@@ -130,7 +130,7 @@ describe("AtlasCard", () => {
     const actions = remove.closest("[data-card-actions]")!;
     expect(actions).toHaveClass("shrink-0", "self-start");
     expect(actions.parentElement).not.toHaveClass("flex-wrap");
-    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node", "Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
+    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node", "Open on this tab", "Drag to reorder, or use the arrow keys", "Remove"]);
     expect(remove).toHaveTextContent("");
     expect(remove).toHaveClass("text-text-muted", "hover:text-danger", "focus-visible:text-danger");
     expect(remove).not.toHaveClass("text-primary");
