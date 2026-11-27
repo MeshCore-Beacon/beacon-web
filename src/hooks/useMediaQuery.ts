@@ -24,6 +24,9 @@ export function useMediaQuery(query: string): boolean {
 // Layout boundary: below Tailwind's `md` (768px), so 767px matches the CSS `md:` boundary exactly.
 export const useIsMobile = () => useMediaQuery("(max-width: 767px)");
 
+// The narrowest phones, where one row cannot hold a name or a search beside its controls.
+export const useIsNarrow = () => useMediaQuery("(max-width: 359px)");
+
 // Interaction modality (hover-to-reveal vs tap-to-toggle), not width: a wide touch device must still
 // tap, or hover-driven popovers dismiss before they can be reached.
 export const useHasHover = () => useMediaQuery("(hover: hover)");

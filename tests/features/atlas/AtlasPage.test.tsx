@@ -144,16 +144,30 @@ describe("Atlas page", () => {
   });
 
   it("keeps the toolbar to one row on a phone: short count chip, picker, no info tip", async () => {
-    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /767px/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
     const bar = screen.getByRole("toolbar", { name: "Add nodes" });
     expect(bar).not.toHaveClass("flex-wrap");
+    expect(bar.querySelector("[data-toolbar-search]")).not.toHaveClass("w-full");
     expect(within(bar).getByText("1/12")).toHaveClass("rounded-sm");
     expect(within(bar).queryByText("1 / 12 saved")).not.toBeInTheDocument();
     expect(within(bar).getByRole("button", { name: "3d" })).toBeInTheDocument();
     expect(within(bar).queryByText(/More information/)).not.toBeInTheDocument();
+  });
+
+  it("gives the search its own row under 360 px, with the edit button at the far end below", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    save();
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
+    expect(bar).toHaveClass("flex-wrap");
+    expect(bar.querySelector("[data-toolbar-search]")).toHaveClass("w-full");
+    const controls = bar.querySelector("[data-toolbar-controls]")!;
+    expect(controls).toHaveClass("w-full");
+    expect(within(bar).getByRole("button", { name: "Edit cards" }).closest("[data-toolbar-edit]")).toHaveClass("ml-auto");
   });
 
   it("shows the empty state and queries nothing with no pins", () => {

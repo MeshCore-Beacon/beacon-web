@@ -11,6 +11,7 @@ import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
 import { useDisplayUnits } from "../../hooks/useFeatures";
+import { useIsNarrow } from "../../hooks/useMediaQuery";
 import { useTick } from "../../hooks/useTick";
 import type { Observation } from "../../types/api";
 import type { NodeView } from "../nodes/NodeDetailPanel";
@@ -169,6 +170,7 @@ export function AtlasCard({
 }: AtlasCardProps) {
   const { t } = useTranslation();
   const { temperature: tempUnit } = useDisplayUnits();
+  const narrow = useIsNarrow();
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
@@ -273,6 +275,7 @@ export function AtlasCard({
   const openLabel = t(pin.kind === "observer" ? "atlas.openObserver" : "atlas.openNode");
 
   // One tag rides beside the name; more get a row of their own so the name never loses its line.
+  // Under 360 px there is no room beside the name, so one tag drops to the row too.
   const title = (
     <span data-card-name className="flex min-h-[26px] min-w-0 items-center gap-2">
       {fresh !== null && (
@@ -290,10 +293,10 @@ export function AtlasCard({
       >
         {shownName}
       </button>
-      {tags.length === 1 && <span className="flex shrink-0">{tags}</span>}
+      {tags.length === 1 && !narrow && <span className="flex shrink-0">{tags}</span>}
     </span>
   );
-  const tagRow = tags.length > 1 ? <div data-card-tags className="flex flex-wrap items-center gap-1.5">{tags}</div> : undefined;
+  const tagRow = tags.length > 1 || (tags.length === 1 && narrow) ? <div data-card-tags className="flex flex-wrap items-center gap-1.5">{tags}</div> : undefined;
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">

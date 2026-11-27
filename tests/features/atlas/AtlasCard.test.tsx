@@ -870,6 +870,18 @@ describe("AtlasCard", () => {
       expect(container.querySelector("[data-card-tags]")).toBeNull();
     });
 
+    it("gives a lone tag its own row on a phone under 360 px", async () => {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches: /359px/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+      try {
+        const { container } = mount();
+        const name = await screen.findByRole("button", { name: "Renamed repeater" });
+        expect(chips(name.closest("[data-card-name]"))).toEqual([]);
+        expect(chips(container.querySelector("[data-card-tags]"))).toEqual(["type"]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
     it("moves every tag to a row under the name once there are two", async () => {
       vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
       vi.mocked(api.getObserver).mockResolvedValue(observer);
