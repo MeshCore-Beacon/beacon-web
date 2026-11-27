@@ -52,6 +52,7 @@ describe("Atlas page, signed out", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Add Hilltop" }));
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
     expect(localStorage.getItem(ATLAS_KEY)).toBe(JSON.stringify({ version: 2, range: "3d", pins: [{ kind: "node", id, publicKey, name: "Hilltop" }] }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
     fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
     expect(localStorage.getItem(ATLAS_KEY)).toBe(JSON.stringify({ version: 2, range: "3d", pins: [] }));
     expect(me.atlas).not.toHaveBeenCalled();
@@ -82,6 +83,7 @@ describe("Atlas page, signed in", () => {
     vi.mocked(me.atlas).mockResolvedValue({ revision: 2, range: "24h", limit: 1, pins: [pin(1), pin(2), pin(3)] });
     vi.mocked(me.putAtlas).mockRejectedValue(new ApiError(422, "invalid_input", "at most 1 pins"));
     mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
     const remove = await screen.findAllByRole("button", { name: "Remove" });
     fireEvent.click(remove[0]!);
     expect(await screen.findByText("This server allows 1 card. Remove 1 more to save your Atlas to your account.")).toBeTruthy();

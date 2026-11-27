@@ -56,6 +56,7 @@ interface AtlasCardProps extends AtlasActions {
   onTilesChange: (tiles: readonly ObserverTile[]) => void;
   onTelemetryTilesChange: (tiles: readonly TelemetryTile[]) => void;
   handle: Partial<CardHandleProps>;
+  editing: boolean;
 }
 
 const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver", telemetry: "atlas.viewTelemetry", poller: "atlas.viewPoller" };
@@ -161,6 +162,7 @@ export function AtlasCard({
   onTilesChange,
   onTelemetryTilesChange,
   handle,
+  editing,
   onViewNode,
   onViewObserver,
   onAnalyzePacket,
@@ -295,52 +297,59 @@ export function AtlasCard({
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
-      <Tooltip label={openLabel}>
-        <button type="button" className={ICON_BUTTON} aria-label={openLabel} disabled={pin.kind === "node" && !node} onClick={openSheet}>
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 3.5H1.5v8h7V9" />
-            <path d="M5.5 2.5h3.5V6M9 2.5L4.5 7" />
-          </svg>
-        </button>
-      </Tooltip>
-      <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
-      {views.length > 1 && (
-        <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
-          <button
-            type="button"
-            className={`${ICON_BUTTON} ${view === home ? "bg-primary/10" : ""}`}
-            aria-label={t("atlas.pinView")}
-            aria-pressed={view === home}
-            onClick={() => view !== home && onPinView(view)}
-          >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill={view === home ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
-              <path d="M2.5 1h5v1.5l-1 1V7l2 2v1h-7V9l2-2V3.5l-1-1z" />
-              <path d="M5 10v3.3" />
-            </svg>
-          </button>
-        </Tooltip>
+      {editing ? (
+        <>
+          {views.length > 1 && (
+            <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
+              <button
+                type="button"
+                className={`${ICON_BUTTON} ${view === home ? "bg-primary/10" : ""}`}
+                aria-label={t("atlas.pinView")}
+                aria-pressed={view === home}
+                onClick={() => view !== home && onPinView(view)}
+              >
+                <svg width="10" height="14" viewBox="0 0 10 14" fill={view === home ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+                  <path d="M2.5 1h5v1.5l-1 1V7l2 2v1h-7V9l2-2V3.5l-1-1z" />
+                  <path d="M5 10v3.3" />
+                </svg>
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip label={t("atlas.dragToReorder")} hideOnPress>
+            <button
+              type="button"
+              className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}
+              aria-label={t("atlas.dragToReorder")}
+              {...handle}
+            >
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+                <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
+                <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
+                <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
+              </svg>
+            </button>
+          </Tooltip>
+          <Tooltip label={t("atlas.remove")}>
+            <button type="button" className={REMOVE_BUTTON} aria-label={t("atlas.remove")} onClick={onRemove}>
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+                <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
+              </svg>
+            </button>
+          </Tooltip>
+        </>
+      ) : (
+        <>
+          <Tooltip label={openLabel}>
+            <button type="button" className={ICON_BUTTON} aria-label={openLabel} disabled={pin.kind === "node" && !node} onClick={openSheet}>
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 3.5H1.5v8h7V9" />
+                <path d="M5.5 2.5h3.5V6M9 2.5L4.5 7" />
+              </svg>
+            </button>
+          </Tooltip>
+          <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
+        </>
       )}
-      <Tooltip label={t("atlas.dragToReorder")} hideOnPress>
-        <button
-          type="button"
-          className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}
-          aria-label={t("atlas.dragToReorder")}
-          {...handle}
-        >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
-            <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
-            <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
-            <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
-          </svg>
-        </button>
-      </Tooltip>
-      <Tooltip label={t("atlas.remove")}>
-        <button type="button" className={`${REMOVE_BUTTON} ml-1`} aria-label={t("atlas.remove")} onClick={onRemove}>
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
-            <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
-          </svg>
-        </button>
-      </Tooltip>
     </span>
   );
 
@@ -523,7 +532,7 @@ export function AtlasCard({
   };
 
   return (
-    <Card title={title} right={actions} below={tagRow} className="flex h-full flex-col">
+    <Card title={title} right={actions} below={tagRow} className={`flex h-full flex-col ${editing ? "border-dashed" : ""}`}>
       {views.length > 1 && (
         <ViewTabs className="mb-3" ariaLabel={t("atlas.view")} views={views} value={view} onChange={changeView} label={(value) => t(VIEW_LABEL[value])} />
       )}

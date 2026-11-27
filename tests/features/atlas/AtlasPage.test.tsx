@@ -245,6 +245,7 @@ describe("Atlas page", () => {
     save([pin, second]);
     mount();
     expect(await screen.findByText("2 / 1 saved")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
   });
 
@@ -446,6 +447,7 @@ describe("Atlas page", () => {
       mount();
       const first = await card("Renamed repeater");
       expect(tab(first, "Observer")).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
       expect(toggle(first)).toHaveAttribute("aria-pressed", "true");
       await waitFor(() => expect(api.getObserverActivity).toHaveBeenCalled());
       expect(tab(await card("Second"), "Heard by")).toHaveAttribute("aria-pressed", "true");
@@ -467,6 +469,7 @@ describe("Atlas page", () => {
       const first = await card("Renamed repeater");
       fireEvent.click(tab(first, "Heard by"));
       expect("view" in stored().pins[0]).toBe(false);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
       expect(toggle(first)).toHaveAttribute("aria-pressed", "false");
       fireEvent.click(toggle(first));
       expect(stored().pins).toEqual([{ kind: "node", ...pin, view: "heard" }]);
@@ -483,6 +486,7 @@ describe("Atlas page", () => {
       mount();
       const first = await card("Renamed repeater");
       fireEvent.click(tab(first, "Analytics"));
+      fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
       fireEvent.click(toggle(first));
       expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
     });
@@ -647,6 +651,7 @@ describe("Atlas page", () => {
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
     expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
     expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
     fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder, or use the arrow keys" }), { key: "ArrowRight" });
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));

@@ -67,7 +67,7 @@ function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/?tab=Atlas"]}>
-        <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} {...handlers} {...overrides} />
+        <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} editing={false} {...handlers} {...overrides} />
         <Probe />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -109,10 +109,10 @@ describe("Atlas card alert bell", () => {
     expect(alerts.get).not.toHaveBeenCalled();
   });
 
-  it("sits after the open button, before the pin, drag and remove buttons", async () => {
+  it("sits after the open button", async () => {
     mount();
     const actions = (await bell()).closest("[data-card-actions]") as HTMLElement;
-    expect(within(actions).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node", "Alerts", "Open on this tab", "Drag to reorder, or use the arrow keys", "Remove"]);
+    expect(within(actions).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node", "Alerts"]);
   });
 
   it("is an outline when no rule is on", async () => {

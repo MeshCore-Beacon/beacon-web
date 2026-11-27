@@ -1029,6 +1029,11 @@
       "perDay": "{{value}}/d"
     },
     "atlas": {
+      "edit": "Redigera kort",
+      "editShort": "Redigera",
+      "editDone": "Klar",
+      "editHelp": "Fäst en flik, ändra ordning eller ta bort kort",
+      "editDoneHelp": "Avsluta redigering",
       "openNode": "Öppna nod",
       "openObserver": "Öppna observatör",
       "alerts": {

@@ -56,6 +56,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   // Same single-row bar the other tabs use on a phone: the search shrinks, nothing wraps.
   const isMobile = useIsMobile();
   const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(false);
   const [field, setField] = useState("name");
   // Each card keeps the view picked this session; only the pin saves it as where the card opens.
   const [open, setOpen] = useState<Record<string, AtlasView>>({});
@@ -264,6 +265,22 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
             onChange={(range) => update((value) => ({ ...value, range: range as AtlasRange }))}
             ariaLabel={t("atlas.range")}
           />
+          {saved.pins.length > 0 && (
+            <Tooltip label={t(editing ? "atlas.editDoneHelp" : "atlas.editHelp")}>
+              <button
+                type="button"
+                className={`flex h-[26px] items-center gap-1.5 rounded border px-2 font-mono text-[11px] font-semibold ${editing ? "border-primary bg-primary text-bg-base" : "border-border text-primary hover:bg-bg-raised"}`}
+                aria-label={t(editing ? "atlas.editDone" : "atlas.edit")}
+                aria-pressed={editing}
+                onClick={() => setEditing((value) => !value)}
+              >
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" aria-hidden>
+                  <path d="M1.5 9.5l.6-2.4L7.6 1.6l1.8 1.8-5.5 5.5z" />
+                </svg>
+                {!isMobile && t(editing ? "atlas.editDone" : "atlas.editShort")}
+              </button>
+            </Tooltip>
+          )}
         </span>
       </div>
       <div className="relative min-h-0 flex-1 overflow-y-auto">
@@ -384,6 +401,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                     onTilesChange={(tiles) => retile(pin, tiles)}
                     onTelemetryTilesChange={(tiles) => retelemetry(pin, tiles)}
                     handle={drag.handleProps(index)}
+                    editing={editing && saved.pins.length > 0}
                     {...actions}
                   />
                 </div>

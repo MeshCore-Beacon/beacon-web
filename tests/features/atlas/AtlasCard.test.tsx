@@ -63,7 +63,7 @@ let client: QueryClient;
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
-      <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} {...handlers} {...overrides} />
+      <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} editing={false} {...handlers} {...overrides} />
     </QueryClientProvider>,
   );
 }
@@ -124,16 +124,23 @@ describe("AtlasCard", () => {
   });
 
   it("keeps the header to one line: the name and badges, then icon buttons pinned to the top right", async () => {
-    mount();
+    mount({ editing: true, editing: true });
     await screen.findByRole("button", { name: "Renamed repeater" });
     const remove = screen.getByRole("button", { name: "Remove" });
     const actions = remove.closest("[data-card-actions]")!;
     expect(actions).toHaveClass("shrink-0", "self-start");
     expect(actions.parentElement).not.toHaveClass("flex-wrap");
-    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node", "Open on this tab", "Drag to reorder, or use the arrow keys", "Remove"]);
+    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open on this tab", "Drag to reorder, or use the arrow keys", "Remove"]);
     expect(remove).toHaveTextContent("");
     expect(remove).toHaveClass("text-text-muted", "hover:text-danger", "focus-visible:text-danger");
     expect(remove).not.toHaveClass("text-primary");
+  });
+
+  it("shows only Open outside edit mode: pin, drag and remove wait for it", async () => {
+    mount();
+    const open = await screen.findByRole("button", { name: "Open node" });
+    expect(within(open.closest("[data-card-actions]") as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node"]);
+    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
   });
 
   it("puts the view switch on its own full-width row under the header", async () => {
@@ -210,7 +217,7 @@ describe("AtlasCard", () => {
   it("says the node is gone instead of offering a retry when the server has no such key", async () => {
     vi.mocked(api.getNode).mockRejectedValue(new ApiError(404, "not_found", "missing"));
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
-    mount();
+    mount({ editing: true, editing: true });
     expect(await screen.findByText("Node not found")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
@@ -229,7 +236,7 @@ describe("AtlasCard", () => {
 
   it("flips the body between the tiles and the heard-by list instead of growing the card", async () => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 240 });
-    const view = mount();
+    const view = mount({ editing: true, editing: true });
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(api.getPacketDetail).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Move/ })).not.toBeInTheDocument();
@@ -240,7 +247,7 @@ describe("AtlasCard", () => {
     expect(handlers.onViewChange).toHaveBeenCalledWith("heard");
     view.rerender(
       <QueryClientProvider client={client}>
-        <AtlasCard pin={pin} range="24h" active view="heard" home="analytics" handle={{}} {...handlers} />
+        <AtlasCard pin={pin} range="24h" active view="heard" home="analytics" handle={{}} editing {...handlers} />
       </QueryClientProvider>,
     );
     const summary = await screen.findByText(/2 observers heard the latest packet/);
@@ -296,7 +303,7 @@ describe("AtlasCard", () => {
 
   it("keeps an unavailable node removable and draggable", async () => {
     vi.mocked(api.getNode).mockRejectedValue(new Error("down"));
-    mount({ handle: { "data-grip": "yes" } as Record<string, string> });
+    mount({ editing: true, handle: { "data-grip": "yes" } as Record<string, string> });
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load");
     expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).toHaveAttribute("data-grip", "yes");
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
@@ -423,7 +430,7 @@ describe("AtlasCard", () => {
     const toggle = () => screen.getByRole("button", { name: "Open on this tab" });
 
     it("is pressed on the tab the card opens on and does nothing there", async () => {
-      mount();
+      mount({ editing: true, editing: true });
       await screen.findByRole("button", { name: "Renamed repeater" });
       expect(toggle()).toHaveAttribute("aria-pressed", "true");
       expect(toggle()).toHaveClass("bg-primary/10");
@@ -432,7 +439,7 @@ describe("AtlasCard", () => {
     });
 
     it("pins the tab being looked at when that is not where the card opens", async () => {
-      mount({ view: "heard" });
+      mount({ editing: true, view: "heard" });
       await screen.findByRole("button", { name: "Renamed repeater" });
       expect(toggle()).toHaveAttribute("aria-pressed", "false");
       expect(toggle()).not.toHaveClass("bg-primary/10");
@@ -442,20 +449,20 @@ describe("AtlasCard", () => {
     });
 
     it("sits beside the view switch and is missing from a card with one view", async () => {
-      const first = mount({ view: "heard", home: "heard" });
+      const first = mount({ editing: true, view: "heard", home: "heard" });
       await screen.findByRole("button", { name: "Renamed repeater" });
       expect(toggle()).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByRole("group", { name: "Card view" }).parentElement).toContainElement(toggle());
-      first.unmount();
+      first.unmount({ editing: true, editing: true });
       vi.mocked(api.getObserver).mockResolvedValue({ ...observer, publicKey: "" });
-      mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer", home: "observer" });
+      mount({ editing: true, pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer", home: "observer" });
       await screen.findByText("repeater");
       expect(screen.queryByRole("button", { name: "Open on this tab" })).not.toBeInTheDocument();
     });
 
     it("has a French label", async () => {
       await act(() => i18n.changeLanguage("fr"));
-      mount();
+      mount({ editing: true, editing: true });
       expect(await screen.findByRole("button", { name: "Ouvrir sur cet onglet" })).toBeInTheDocument();
       await act(() => i18n.changeLanguage("en"));
     });
