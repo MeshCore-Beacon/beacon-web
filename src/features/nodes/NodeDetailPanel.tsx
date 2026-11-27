@@ -163,6 +163,19 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
   const requestBlock = canRequest && !!node && isPolledNodeType(node.nodeTypeName) && !observerId ? <RequestTelemetry key={node.id} node={node} /> : null;
   const telemetryInfo = requestBlock ? [t("nodeDetail.telemetry.requestIntro"), t("nodeDetail.telemetry.passwordNotice")] : undefined;
   const LINK = "font-mono text-[11px] text-primary hover:underline";
+  // A lone chip sits beside the name; more share a row under it so none wraps off alone.
+  const chipCount = !node ? 0 : 1 + [node.isPoller, node.isObserver || node.isPoller, node.possiblyForeign === true, node.meshmapper?.carpeater].filter(Boolean).length;
+  const chips = node && <>
+    <TypeChip typeName={node.nodeTypeName} />
+    {node.isPoller && <RoleChip role="poller" />}
+    {(node.isObserver || node.isPoller) && <RoleChip role="observer" />}
+    <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
+    {node.meshmapper?.carpeater && (
+      <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>
+        <CautionChip>{t("nodeDetail.carpeater")}</CautionChip>
+      </Tooltip>
+    )}
+  </>;
 
   return (
     <DetailPanel
@@ -186,19 +199,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
         <>
           <Section title={t("nodeDetail.summary")} first>
             <div data-summary>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className={`mb-2 flex gap-2 ${chipCount > 1 ? "flex-col" : "flex-wrap items-center"}`}>
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   <EmojiText text={node.name ?? formatHex(node.id)} />
                 </span>
-                <TypeChip typeName={node.nodeTypeName} />
-                {node.isPoller && <RoleChip role="poller" />}
-                {(node.isObserver || node.isPoller) && <RoleChip role="observer" />}
-                <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
-                {node.meshmapper?.carpeater && (
-                  <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>
-                    <CautionChip>{t("nodeDetail.carpeater")}</CautionChip>
-                  </Tooltip>
-                )}
+                {chipCount > 1 ? <div data-chips className="flex flex-wrap items-center gap-2">{chips}</div> : chips}
               </div>
               <div className="flex items-center gap-2">
                 <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>

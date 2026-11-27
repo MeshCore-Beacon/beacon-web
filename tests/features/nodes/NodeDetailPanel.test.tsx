@@ -508,6 +508,24 @@ describe("NodeDetailPanel identity chips", () => {
     expect(order(container.querySelector("[data-summary]") as HTMLElement)).toEqual(["type"]);
   });
 
+  it("keeps a lone chip beside the name", async () => {
+    const { container } = renderPanel();
+    const name = await screen.findByText("Self Node");
+    expect(container.querySelector("[data-chips]")).toBeNull();
+    expect(container.querySelector("[data-chip='type']")!.parentElement).toBe(name.parentElement);
+  });
+
+  it("gives the name its own line and one row to two or more chips", async () => {
+    mockGetNode.mockResolvedValue({ ...node, isObserver: true, isPoller: true });
+    const { container } = renderPanel();
+    const name = await screen.findByText("Self Node");
+    const row = container.querySelector("[data-chips]") as HTMLElement;
+    expect(order(row)).toEqual(["type", "poller", "observer"]);
+    expect(row).toHaveClass("flex-wrap");
+    expect(row).not.toContainElement(name);
+    expect(row.parentElement).toHaveClass("flex-col");
+  });
+
   it("shows only the Observer chip for an observer-only node", async () => {
     mockGetNode.mockResolvedValue({ ...node, isObserver: true });
     const { container } = renderPanel();
