@@ -142,7 +142,11 @@ describe("AtlasCard", () => {
     const picker = screen.getByRole("group", { name: "Card view" });
     expect(picker).toHaveClass("w-full");
     expect(picker.closest("[data-card-actions]")).toBeNull();
-    for (const tab of within(picker).getAllByRole("button")) expect(tab).toHaveClass("flex-1");
+    const [open, closed] = within(picker).getAllByRole("button");
+    expect(open!.parentElement).toHaveClass("flex-1");
+    expect(closed!.parentElement).toHaveClass("w-11");
+    expect(closed).toHaveAccessibleName("Heard by");
+    expect(closed).toHaveTextContent("");
   });
 
   it("gives the Analytics view a one-line footer and lists every fact in the tip", async () => {
@@ -304,7 +308,7 @@ describe("AtlasCard", () => {
     const first = mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
     const picker = screen.getByRole("group", { name: "Card view" });
-    expect(within(picker).getAllByRole("button").map((b) => b.textContent)).toEqual(["Analytics", "Heard by"]);
+    expect(within(picker).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Analytics", "Heard by"]);
     expect(handlers.onResolved).not.toHaveBeenCalled();
     first.unmount();
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -597,7 +601,7 @@ describe("AtlasCard", () => {
     it("appears for a polled repeater and leaves the other two tabs as they were", async () => {
       mount();
       expect(await screen.findByRole("button", TAB)).toBeInTheDocument();
-      expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button").map((r) => r.textContent)).toEqual(["Analytics", "Heard by", "Telemetry"]);
+      expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button").map((r) => r.getAttribute("aria-label"))).toEqual(["Analytics", "Heard by", "Telemetry"]);
     });
 
     it("appears for a room server whose polling route says it is polled, without asking for history", async () => {

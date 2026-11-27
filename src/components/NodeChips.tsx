@@ -79,10 +79,10 @@ const GLYPHS: Record<string, { viewBox: string; body: ReactNode }> = {
   },
 };
 
-function Glyph({ name }: { name: string }) {
+export function Glyph({ name, size = 12 }: { name: string; size?: number }) {
   const g = GLYPHS[name];
   if (!g) return null;
-  return <svg viewBox={g.viewBox} width="12" height="12" aria-hidden="true" className="shrink-0">{g.body}</svg>;
+  return <svg viewBox={g.viewBox} width={size} height={size} aria-hidden="true" className="shrink-0">{g.body}</svg>;
 }
 
 const BASE = "inline-flex items-center gap-1 font-mono text-[11px] font-semibold py-0.5 rounded-sm border tracking-wider";

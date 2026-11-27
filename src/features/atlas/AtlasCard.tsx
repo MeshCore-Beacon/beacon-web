@@ -20,7 +20,6 @@ import { deriveObserverStatus } from "../observers/observer-status";
 import { usePacketDetail } from "../packets/usePacketDetail";
 import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
-import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
 import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasSample, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { AtlasAlertBell } from "./AtlasAlerts";
@@ -32,6 +31,7 @@ import { TileGraph } from "./TileGraph";
 import { NODE_METRICS, OBSERVER_METRICS, percent, perHour, readingPoints, shortUptime, slotPoints, telemetryMetrics, type NodeTile } from "./tile-graph";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
+import { ViewTabs } from "./ViewTabs";
 
 export type { AtlasView };
 
@@ -510,15 +510,7 @@ export function AtlasCard({
   return (
     <Card title={title} right={actions} below={tagRow} className="flex h-full flex-col">
       {views.length > 1 && (
-        <Segmented
-          stretch
-          size="xs"
-          className="mb-3"
-          ariaLabel={t("atlas.view")}
-          value={view}
-          onChange={(next) => changeView(next as AtlasView)}
-          options={views.map((value) => ({ value, label: t(VIEW_LABEL[value]) }))}
-        />
+        <ViewTabs className="mb-3" ariaLabel={t("atlas.view")} views={views} value={view} onChange={changeView} label={(value) => t(VIEW_LABEL[value])} />
       )}
       {pin.kind === "node" && query.isPending && <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>}
       {pin.kind === "node" && query.isError && isNotFound(query.error) && (
