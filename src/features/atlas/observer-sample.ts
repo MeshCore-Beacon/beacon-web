@@ -104,6 +104,9 @@ export function summarizeObserver(
   let rxSecs = 0;
   let spanSecs = 0;
   const radioAir = Array<number | null>(hours).fill(null);
+  // Several readings can land in one hour: the hour's share is all its steps over all their time.
+  const airSecs = Array<number>(hours).fill(0);
+  const gapSecs = Array<number>(hours).fill(0);
   const counted = live.filter((p) => finite(p.airtimeTxSecs) && finite(p.airtimeRxSecs));
   for (let i = 1; i < counted.length; i++) {
     const prev = counted[i - 1]!;
@@ -115,7 +118,10 @@ export function summarizeObserver(
     txSecs += tx;
     rxSecs += rx;
     spanSecs += gap;
-    radioAir[bin(cur.t)] = ((tx + rx) / gap) * 100;
+    const slot = bin(cur.t);
+    airSecs[slot] = airSecs[slot]! + tx + rx;
+    gapSecs[slot] = gapSecs[slot]! + gap;
+    radioAir[slot] = (airSecs[slot]! / gapSecs[slot]!) * 100;
   }
   // The 1h points carry receive errors since boot, as the Observers tab charts them: count the steps.
   let errors: number | null = null;

@@ -100,6 +100,20 @@ describe("summarizeObserver", () => {
     expect(sample.airtimeHourly[20]).toBeNull();
   });
 
+  it("gives an hour with several readings the airtime of all its steps, not the last one", () => {
+    const m = 60_000;
+    const sample = summarizeObserver(undefined, tele([
+      { t: now - 60 * m, airtimeTxSecs: 10, airtimeRxSecs: 20 },
+      { t: now - 45 * m, airtimeTxSecs: 40, airtimeRxSecs: 80 },
+      { t: now - 30 * m, airtimeTxSecs: 70, airtimeRxSecs: 140 },
+      { t: now - 15 * m, airtimeTxSecs: 100, airtimeRxSecs: 200 },
+      { t: now, airtimeTxSecs: 106, airtimeRxSecs: 212 },
+    ]), undefined, "24h", now);
+    // 288 s on air over the hour, where the last quarter alone was 2%.
+    expect(sample.airtimeHourly[23]).toBeCloseTo(8);
+    expect(sample.airtime).toBeCloseTo(8);
+  });
+
   it("estimates receive airtime from heard packets without counters, quiet hours as zero", () => {
     const withAir = (hoursAgo: number, ms: number | null) => ({ ...point(hoursAgo, 1, null), airtimeMs: ms });
     const sample = summarizeObserver(activity([withAir(0, 72_000), withAir(1, null), point(2, null, null)]), undefined, undefined, "24h", now);
