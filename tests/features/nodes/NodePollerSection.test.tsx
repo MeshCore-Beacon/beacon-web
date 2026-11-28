@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodePollerSection } from "../../../src/features/nodes/NodePollerSection";
 import { getNodePoller } from "../../../src/api/client";
@@ -28,12 +28,14 @@ function mount(data: NodePoller, onViewNode = vi.fn()) {
   vi.mocked(getNodePoller).mockResolvedValue(data);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={client}><NodePollerSection nodeId="n-self" onViewNode={onViewNode} /></QueryClientProvider>);
-  return { onViewNode };
+  return { onViewNode, client };
 }
+const tick = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
 const seats = (kind: string) => screen.getByRole("img").querySelectorAll(`[data-seat="${kind}"]`).length;
 const card = (name: string) => screen.getByText(name).closest("[data-target]") as HTMLElement;
 
 beforeEach(() => vi.clearAllMocks());
+afterEach(() => vi.useRealTimers());
 
 describe("NodePollerSection summary", () => {
   it("draws every seat and names them, with the ones not offered", async () => {
@@ -66,6 +68,11 @@ describe("NodePollerSection summary", () => {
     expect(screen.getByText("accepting")).toBeInTheDocument();
     expect(screen.getByText("212")).toBeInTheDocument();
     expect(screen.queryByText(/Not currently polling/)).not.toBeInTheDocument();
+  });
+
+  it("shortens a large reading count as the Atlas tile does", async () => {
+    mount(poller({ readings24h: 14_732 }));
+    expect(await screen.findByText("14.7k")).toBeInTheDocument();
   });
 
   it("says when requests are not accepted", async () => {
@@ -149,6 +156,77 @@ describe("NodePollerSection repeaters", () => {
     expect(card("Bravo")).not.toHaveClass("cursor-pointer");
     fireEvent.click(card("Alpha"));
     expect(onViewNode).toHaveBeenCalledWith("n-a");
+  });
+
+  it("gives a known repeater a real button named after it, and none to an unknown one", async () => {
+    const { onViewNode } = mount(poller({ targets: [target(), target({ nodeId: null, publicKey: key("b"), name: "Bravo" })] }));
+    const open = await screen.findByRole("button", { name: "Alpha" });
+    expect(open.tagName).toBe("BUTTON");
+    expect(open).toHaveAttribute("type", "button");
+    expect(card("Alpha")).toContainElement(open);
+    expect(screen.queryByRole("button", { name: "Bravo" })).not.toBeInTheDocument();
+    // A native button takes focus from the keyboard, and Enter or Space on it is its click.
+    open.focus();
+    expect(open).toHaveFocus();
+    open.click();
+    expect(onViewNode).toHaveBeenCalledTimes(1);
+    expect(onViewNode).toHaveBeenCalledWith("n-a");
+  });
+});
+
+describe("NodePollerSection refresh", () => {
+  it("reads again every minute while it is open", async () => {
+    vi.useFakeTimers();
+    mount(poller());
+    await tick(10);
+    expect(getNodePoller).toHaveBeenCalledTimes(1);
+    vi.mocked(getNodePoller).mockResolvedValue(poller({ readings24h: 300 }));
+    await tick(59_000);
+    expect(getNodePoller).toHaveBeenCalledTimes(1);
+    await tick(1_000);
+    expect(getNodePoller).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("300")).toBeInTheDocument();
+  });
+
+  it("stops asking once the server has said it has no such route", async () => {
+    vi.useFakeTimers();
+    vi.mocked(getNodePoller).mockRejectedValue({ status: 404 });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(<QueryClientProvider client={client}><NodePollerSection nodeId="n-self" /></QueryClientProvider>);
+    await tick(10);
+    expect(container).toBeEmptyDOMElement();
+    await tick(180_000);
+    expect(getNodePoller).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits while the tab is hidden", async () => {
+    vi.useFakeTimers();
+    mount(poller());
+    await tick(10);
+    const hidden = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    await tick(180_000);
+    expect(getNodePoller).toHaveBeenCalledTimes(1);
+    hidden.mockRestore();
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    await tick(60_000);
+    expect(vi.mocked(getNodePoller).mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("keeps the data and says it could not refresh when a later read fails, then clears the note", async () => {
+    vi.useFakeTimers();
+    mount(poller());
+    await tick(10);
+    expect(screen.queryByText("Could not refresh")).not.toBeInTheDocument();
+    vi.mocked(getNodePoller).mockRejectedValue({ status: 500 });
+    await tick(60_000);
+    expect(screen.getByRole("status")).toHaveTextContent("Could not refresh");
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    vi.mocked(getNodePoller).mockResolvedValue(poller());
+    await tick(60_000);
+    expect(screen.queryByText("Could not refresh")).not.toBeInTheDocument();
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
   });
 });
 

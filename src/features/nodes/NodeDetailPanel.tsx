@@ -154,8 +154,10 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
   const observerId = node?.observerId ?? null;
   const isPollerNode = !!observerId && node?.isPoller === true && features.polling;
   const pollerQuery = useNodePoller(nodeId, isPollerNode);
-  // A 404 comes back as a success with no data: a server without the route, so the option goes.
-  const pollerOffered = isPollerNode && !(pollerQuery.isSuccess && !pollerQuery.data);
+  // Offered once the read has answered. A requested Poller view holds through a pending or failed
+  // read, so a deep link does not flash the Node view; only a 404 (no such route) lets it go.
+  const pollerKnown = pollerQuery.state === "ready" || pollerQuery.state === "noClaim";
+  const pollerOffered = isPollerNode && (pollerKnown || (requestedView === "poller" && pollerQuery.state !== "unsupported"));
   const shownView: NodeView = requestedView === "poller" ? (pollerOffered ? "poller" : "node") : observerId ? requestedView : "node";
   const showTelemetry = features.polling && !!node && isPolledNodeType(node.nodeTypeName) && !observerId;
   const canRequest = useRequestsAvailable();

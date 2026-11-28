@@ -2,13 +2,15 @@ import { useTranslation } from "react-i18next";
 import { Tooltip } from "../../components/Tooltip";
 import { useTick } from "../../hooks/useTick";
 import { formatAbsolute, formatCount, timeAgoParts } from "../../lib/formatters";
+import { seatCounts, seatParts, type SeatKind } from "../nodes/poller-seats";
 import type { NodePoller } from "../nodes/types";
 import { StatCard } from "../stats/cards";
 
 const POLLER_AMBER = "#ffb454";
 const STRIPES = `repeating-linear-gradient(135deg, ${POLLER_AMBER} 0 3px, transparent 3px 6px)`;
-// A radio offers at most this many slots; the ones it does not offer are drawn dim.
+// A radio has this many slots; the ones it does not offer are drawn dim.
 const SEATS = 8;
+const ORDER: SeatKind[] = ["own", "requested", "free", "closed"];
 const VISUAL = "mt-1.5 flex h-[20px] items-center";
 const spacer = <div className="mt-1.5 h-[20px]" />;
 const DOT: Record<string, string> = { ok: "bg-green", pending: "bg-text-dim/40", no_reply: "bg-warn" };
@@ -17,17 +19,10 @@ type Claim = NonNullable<NodePoller["claim"]>;
 
 function SlotMeter({ slots }: { slots: Claim["slots"] }) {
   const { t } = useTranslation();
-  const free = Math.max(0, slots.max - slots.own - slots.requested);
-  const closed = Math.max(0, SEATS - slots.max);
-  const seats = [...Array(slots.own).fill("own"), ...Array(slots.requested).fill("requested"), ...Array(free).fill("free"), ...Array(closed).fill("closed")] as string[];
-  const parts = [
-    t("nodeDetail.pollerView.own", { count: slots.own }),
-    t("nodeDetail.pollerView.requested", { count: slots.requested }),
-    t("nodeDetail.pollerView.free", { count: free }),
-    closed > 0 && t("nodeDetail.pollerView.notOffered", { count: closed }),
-  ];
+  const counts = seatCounts({ ...slots, max: Math.min(slots.max, SEATS) });
+  const seats = ORDER.flatMap((kind) => Array<SeatKind>(counts[kind]).fill(kind));
   return (
-    <div role="img" aria-label={parts.filter(Boolean).join(", ")} className={`${VISUAL} gap-[3px]`}>
+    <div role="img" aria-label={seatParts(counts, t).map((part) => part.text).join(", ")} className={`${VISUAL} gap-[3px]`}>
       {seats.map((kind, i) => (
         <span
           key={i}

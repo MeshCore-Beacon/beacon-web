@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeDetailPanel, type NodeView } from "../../../src/features/nodes/NodeDetailPanel";
 import {
@@ -45,8 +45,13 @@ function mount(props: { view?: NodeView; onViewChange?: (v: NodeView) => void; o
       <NodeDetailPanel nodeId="node-self" onClose={vi.fn()} onViewObserver={onViewObserver} onOpenObserverDashboard={onOpenObserverDashboard} {...props} />
     </QueryClientProvider>,
   );
-  return { ...result, onOpenObserverDashboard, onViewObserver };
+  return { ...result, client, onOpenObserverDashboard, onViewObserver };
 }
+// /info has answered and the panel has rendered with it, so "no Poller button" means it was decided.
+const infoSettled = async (client: QueryClient) => {
+  await waitFor(() => expect(client.getQueryState(["server-info"])?.status).toBe("success"));
+  await act(async () => {});
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -144,9 +149,9 @@ describe("NodeDetailPanel Poller view", () => {
 
   it("is not offered to an observer that is not a poller", async () => {
     pollingOn();
-    mount({ view: "poller" });
+    const { client } = mount({ view: "poller" });
     await screen.findByText("Self Node");
-    await waitFor(() => expect(getServerInfo).toHaveBeenCalled());
+    await infoSettled(client);
     expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
     expect(screen.getByText("Details")).toBeInTheDocument();
     expect(getNodePoller).not.toHaveBeenCalled();
@@ -155,9 +160,9 @@ describe("NodeDetailPanel Poller view", () => {
   it("is not offered while polling is off", async () => {
     vi.mocked(getServerInfo).mockResolvedValue({ features: { polling: false } } as never);
     vi.mocked(getNode).mockResolvedValue(pollerNode);
-    mount({ view: "poller" });
+    const { client } = mount({ view: "poller" });
     await screen.findByText("Self Node");
-    await waitFor(() => expect(getServerInfo).toHaveBeenCalled());
+    await infoSettled(client);
     expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
     expect(screen.getByText("Details")).toBeInTheDocument();
     expect(getNodePoller).not.toHaveBeenCalled();
@@ -169,6 +174,60 @@ describe("NodeDetailPanel Poller view", () => {
     mount({ view: "poller" });
     expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Poller", pressed: true })).toBeInTheDocument();
+  });
+
+  it("offers Poller only once the read has answered, so it never flashes on a server without the route", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    let answer!: (value: NodePoller) => void;
+    vi.mocked(getNodePoller).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    const { client } = mount();
+    await screen.findByText("Self Node");
+    await infoSettled(client);
+    await waitFor(() => expect(getNodePoller).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Observer" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+    await act(async () => { answer(poller); });
+    expect(await screen.findByRole("button", { name: "Poller", pressed: false })).toBeInTheDocument();
+  });
+
+  it("never offers Poller when the read comes back 404", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    let refuse!: (reason: unknown) => void;
+    vi.mocked(getNodePoller).mockReturnValue(new Promise((_, reject) => { refuse = reject; }));
+    const { client } = mount();
+    await screen.findByText("Self Node");
+    await infoSettled(client);
+    await waitFor(() => expect(getNodePoller).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+    await act(async () => { refuse({ status: 404 }); });
+    await waitFor(() => expect(client.getQueryState(["node-poller", "node-self"])?.status).toBe("success"));
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+  });
+
+  it("holds a requested Poller view while the read is still out", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    let answer!: (value: NodePoller) => void;
+    vi.mocked(getNodePoller).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    mount({ view: "poller" });
+    expect(await screen.findByRole("button", { name: "Poller", pressed: true })).toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    await act(async () => { answer(poller); });
+    expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
+  });
+
+  it("keeps a requested Poller view on a failed read and shows the error with a retry", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    vi.mocked(getNodePoller).mockRejectedValue({ status: 500 });
+    mount({ view: "poller" });
+    expect(await screen.findByText("Could not load the poller.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Poller", pressed: true })).toBeInTheDocument();
+    vi.mocked(getNodePoller).mockResolvedValue(poller);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
   });
 
   it("drops the option and shows the node view when the server has no poller route", async () => {

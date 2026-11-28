@@ -72,7 +72,8 @@
       "clear": "Clear",
       "none": "None",
       "noMatches": "No matches",
-      "filterPlaceholder": "Filter..."
+      "filterPlaceholder": "Filter...",
+      "refreshFailed": "Could not refresh"
     },
     "mesh": {
       "totalPackets": "Total packets",
@@ -1190,7 +1191,9 @@
       "editHelp": "Pin a tab, reorder or remove cards",
       "editDoneHelp": "Finish editing",
       "openNode": "Open node",
+      "openNodeNamed": "Open node {{name}}",
       "openObserver": "Open observer",
+      "openObserverNamed": "Open observer {{name}}",
       "remove": "Remove",
       "observerPartialCoverage": "Partial history",
       "changeTile": "Change tile: {{name}}",

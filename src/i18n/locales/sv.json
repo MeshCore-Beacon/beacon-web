@@ -71,7 +71,8 @@
       "clear": "Rensa",
       "none": "Ingen",
       "noMatches": "Inga träffar",
-      "filterPlaceholder": "Filtrera..."
+      "filterPlaceholder": "Filtrera...",
+      "refreshFailed": "Kunde inte uppdatera"
     },
     "mesh": {
       "totalPackets": "Totalt antal paket",
@@ -1035,7 +1036,9 @@
       "editHelp": "Fäst en flik, ändra ordning eller ta bort kort",
       "editDoneHelp": "Avsluta redigering",
       "openNode": "Öppna nod",
+      "openNodeNamed": "Öppna nod {{name}}",
       "openObserver": "Öppna observatör",
+      "openObserverNamed": "Öppna observatör {{name}}",
       "alerts": {
         "dialog": "Larm för {{name}}",
         "on_one": "Larm: {{count}} på",

@@ -74,7 +74,8 @@
       "clear": "Effacer",
       "none": "Aucun",
       "noMatches": "Aucun résultat",
-      "filterPlaceholder": "Filtrer…"
+      "filterPlaceholder": "Filtrer…",
+      "refreshFailed": "Actualisation impossible"
     },
     "mesh": {
       "totalPackets": "Paquets totaux",
@@ -1200,7 +1201,9 @@
       "editHelp": "Épingler un onglet, réordonner ou retirer des cartes",
       "editDoneHelp": "Terminer la modification",
       "openNode": "Ouvrir le nœud",
+      "openNodeNamed": "Ouvrir le nœud {{name}}",
       "openObserver": "Ouvrir l'observateur",
+      "openObserverNamed": "Ouvrir l'observateur {{name}}",
       "remove": "Retirer",
       "observerPartialCoverage": "Historique partiel",
       "changeTile": "Changer la tuile : {{name}}",

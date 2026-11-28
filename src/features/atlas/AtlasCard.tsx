@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
@@ -92,7 +92,8 @@ const RANGE_MS: Record<AtlasRange, number> = { "24h": 86_400_000, "3d": 259_200_
 const ICON_BOX = "flex h-[26px] w-7 shrink-0 items-center justify-center";
 const ICON_BUTTON = `${ACTION_BUTTON_CLASS} ${ICON_BOX}`;
 // Remove rests muted and only turns to danger under the pointer or focus, so it never reads as a primary action.
-const REMOVE_BUTTON = `${ICON_BOX} rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
+// It deletes at once, so the margin stands it clear of the drag handle under a thumb.
+const REMOVE_BUTTON = `${ICON_BOX} ml-3 rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
 
 const MIX_SLICES = 5;
 
@@ -185,7 +186,7 @@ export function AtlasCard({
   const hasTab = pin.kind === "node" && (tab.available || (requested === "telemetry" && tab.settling));
   const pollerTab = usePollerTab(nodePin ? node : undefined, observerId, active);
   const poller = pollerTab.poller;
-  const hasPoller = pin.kind === "node" && (pollerTab.available || (requested === "poller" && pollerTab.settling));
+  const hasPoller = pin.kind === "node" && (pollerTab.available || (requested === "poller" && (pollerTab.settling || pollerTab.failed)));
   const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : [
     "analytics",
     "heard",
@@ -273,26 +274,29 @@ export function AtlasCard({
     else if (node) onViewNode(node.id);
   };
   const openLabel = t(pin.kind === "observer" ? "atlas.openObserver" : "atlas.openNode");
+  const openName = t(pin.kind === "observer" ? "atlas.openObserverNamed" : "atlas.openNodeNamed", { name: shownName });
 
+  // The dot's meaning rides on the name: its tip shows on hover or focus of either, and the name is described by it.
+  const dotId = useId();
   // One tag rides beside the name; more get a row of their own so the name never loses its line.
   // Under 360 px there is no room beside the name, so one tag drops to the row too.
   const title = (
     <span data-card-name className="flex min-h-[26px] min-w-0 items-center gap-2">
-      {fresh !== null && (
-        <Tooltip label={freshLabel} className="shrink-0">
-          <span role="img" aria-label={freshLabel} className={`h-1.5 w-1.5 rounded-full ${fresh ? "bg-green" : "bg-warn"}`} />
-        </Tooltip>
-      )}
-      <button
-        type="button"
-        disabled={pin.kind === "node" && !node}
-        onClick={openSheet}
-        className={`min-w-0 truncate normal-case disabled:text-text-muted disabled:no-underline ${
-          name ? "text-primary hover:underline" : "italic text-text-dim"
-        }`}
-      >
-        {shownName}
-      </button>
+      <Tooltip label={freshLabel} off={fresh === null} className="min-w-0 items-center gap-2">
+        {fresh !== null && <span role="img" aria-label={freshLabel} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? "bg-green" : "bg-warn"}`} />}
+        {fresh !== null && <span id={dotId} hidden>{freshLabel}</span>}
+        <button
+          type="button"
+          disabled={pin.kind === "node" && !node}
+          onClick={openSheet}
+          aria-describedby={fresh !== null ? dotId : undefined}
+          className={`min-w-0 truncate normal-case disabled:text-text-muted disabled:no-underline ${
+            name ? "text-primary hover:underline" : "italic text-text-dim"
+          }`}
+        >
+          {shownName}
+        </button>
+      </Tooltip>
       {tags.length === 1 && !narrow && <span className="flex shrink-0">{tags}</span>}
     </span>
   );
@@ -343,7 +347,7 @@ export function AtlasCard({
       ) : (
         <>
           <Tooltip label={openLabel}>
-            <button type="button" className={ICON_BUTTON} aria-label={openLabel} disabled={pin.kind === "node" && !node} onClick={openSheet}>
+            <button type="button" className={ICON_BUTTON} aria-label={openName} disabled={pin.kind === "node" && !node} onClick={openSheet}>
               <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M4 3.5H1.5v8h7V9" />
                 <path d="M5.5 2.5h3.5V6M9 2.5L4.5 7" />
@@ -358,10 +362,10 @@ export function AtlasCard({
 
   // One line that never wraps: the right side gives way first, then the left, a failure never does,
   // and the tip carries every fact in full.
-  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[]) => (
+  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean; refreshFailed?: boolean }, tip: (string | false | null | undefined)[]) => (
     <div data-card-footer className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
       {left}
-      {state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
+      {state.refreshFailed ? <span role="status" className="shrink-0 text-warn">{t("common.refreshFailed")}</span> : state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
       {right !== "" && <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>}
       <span className="flex shrink-0"><InfoTip text={tip} /></span>
     </div>
@@ -675,7 +679,8 @@ export function AtlasCard({
           )}
         </div>
       )}
-      {view === "poller" && node && (
+      {view === "poller" && node && pollerTab.failed && retry(pollerTab.refetch)}
+      {view === "poller" && node && !pollerTab.failed && (
         <div ref={body} className="flex flex-1 flex-col gap-3">
           <PollerTiles poller={poller} />
           {footer(

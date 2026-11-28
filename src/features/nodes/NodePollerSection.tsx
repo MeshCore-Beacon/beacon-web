@@ -1,16 +1,15 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Section } from "../../components/DetailPanel";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { EmojiText } from "../../components/EmojiText";
 import { Timestamp } from "../../components/Timestamp";
-import { formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { formatCount, formatSnr, snrLevel, SIGNAL_LEVEL_CLASSES } from "../../lib/formatters";
+import { seatCounts, seatParts, type SeatKind } from "./poller-seats";
 import type { NodePoller, NodePollerTarget } from "./types";
 import { useNodePoller } from "./useNodeTelemetry";
 
-type Slots = NonNullable<NodePoller["claim"]>["slots"];
-type SeatKind = "own" | "requested" | "free" | "closed";
 
 // The Poller chip colour, so the meter reads as the same role.
 const AMBER = "#ffb454";
@@ -32,27 +31,6 @@ const STATE: Record<string, { dot: string; text: string }> = {
   admin_stop: { dot: "bg-danger", text: "text-danger" },
 };
 const UNKNOWN_STATE = { dot: "bg-text-dim", text: "text-text-muted" };
-
-// Seats in drawing order, cut at max: what is left after used and free is not on offer.
-function seatCounts(slots: Slots): Record<SeatKind, number> {
-  const count = (n: number) => (Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0);
-  let left = count(slots.max);
-  const take = (n: number) => { const got = Math.min(count(n), left); left -= got; return got; };
-  const own = take(slots.own);
-  const requested = take(slots.requested);
-  const free = take(slots.free);
-  return { own, requested, free, closed: left };
-}
-
-function seatParts(seats: Record<SeatKind, number>, t: TFunction): { kind: SeatKind; text: string }[] {
-  const parts: { kind: SeatKind; text: string }[] = [
-    { kind: "own", text: t("nodeDetail.pollerView.own", { count: seats.own }) },
-    { kind: "requested", text: t("nodeDetail.pollerView.requested", { count: seats.requested }) },
-    { kind: "free", text: t("nodeDetail.pollerView.free", { count: seats.free }) },
-  ];
-  if (seats.closed > 0) parts.push({ kind: "closed", text: t("nodeDetail.pollerView.notOffered", { count: seats.closed }) });
-  return parts;
-}
 
 // Slot count, seat meter, legend and the claim lines, without a frame so the panel and the dashboard share it.
 export function PollerSlots({ claim, readings24h }: { claim: NonNullable<NodePoller["claim"]>; readings24h: number }) {
@@ -88,7 +66,7 @@ export function PollerSlots({ claim, readings24h }: { claim: NonNullable<NodePol
           <span className="text-warn">{t("nodeDetail.pollerView.stale")} <Timestamp value={claim.receivedAt} />.</span>
         )}
         <span><span className="text-text-dim">{t("nodeDetail.pollerView.requests")}</span> <span className="text-text-normal">{t(claim.acceptsRequests ? "nodeDetail.pollerView.accepting" : "nodeDetail.pollerView.notAccepting")}</span></span>
-        <span><span className="text-text-dim">{t("nodeDetail.pollerView.readings24h")}</span> <span className="text-text-normal">{readings24h.toLocaleString()}</span></span>
+        <span><span className="text-text-dim">{t("nodeDetail.pollerView.readings24h")}</span> <span className="text-text-normal">{formatCount(readings24h)}</span></span>
       </div>
     </>
   );
@@ -101,6 +79,12 @@ function Stat({ label, children, className = "text-text-normal" }: { label: stri
       <span className={`font-medium ${className}`}>{children}</span>
     </div>
   );
+}
+
+// Shown over data that a later refresh failed to replace.
+export function PollerRefreshNote({ className = "" }: { className?: string }) {
+  const { t } = useTranslation();
+  return <p role="status" data-refresh-failed className={`font-mono text-[11px] text-warn ${className}`}>{t("common.refreshFailed")}</p>;
 }
 
 function stateLabel(target: NodePollerTarget, t: TFunction): string {
@@ -123,13 +107,19 @@ function TargetCard({ target, onClick }: { target: NodePollerTarget; onClick?: (
   const role = target.role === "poller" ? t("nodes.poller")
     : target.role === "standby" ? t("nodeDetail.pollerView.standby", { rank: target.rank ?? "" }).trim()
     : t("nodeDetail.pollerView.notAssigned");
+  const nameClass = `truncate font-mono font-semibold tracking-wider ${target.name ? "text-primary" : "text-text-dim italic"}`;
+  const name = <EmojiText text={target.name ?? target.publicKey.slice(0, 8)} />;
+  // The name is the keyboard's way in; the card keeps its pointer click, so the button must not fire it twice.
+  const open = (event: MouseEvent) => { event.stopPropagation(); onClick?.(); };
   const roleClass = target.role === "poller" ? "text-[#ffb454] border-[#ffb454]/55" : target.role === "standby" ? "text-text-normal border-border" : "text-text-dim border-border-subtle";
   return (
     <div data-target className={`rounded border border-border bg-bg-base px-3 py-2 ${onClick ? "cursor-pointer hover:bg-text-normal/3" : ""}`} onClick={onClick}>
       <div className="mb-1 flex items-center gap-2 text-[11px]">
-        <span className={`truncate font-mono font-semibold tracking-wider ${target.name ? "text-primary" : "text-text-dim italic"}`}>
-          <EmojiText text={target.name ?? target.publicKey.slice(0, 8)} />
-        </span>
+        {onClick ? (
+          <button type="button" onClick={open} className={`${nameClass} text-left hover:underline`}>{name}</button>
+        ) : (
+          <span className={nameClass}>{name}</span>
+        )}
         <span className="ml-auto flex shrink-0 gap-1">
           <span className={`${TAG} ${target.requested ? "bg-primary/8 text-primary" : "bg-text-muted/10 text-text-normal"}`}>{t(target.requested ? "nodeDetail.pollerView.tagRequested" : "nodeDetail.pollerView.tagOwn")}</span>
           <span className={`${TAG} border ${roleClass}`}>{role}</span>
@@ -155,6 +145,16 @@ function TargetCard({ target, onClick }: { target: NodePollerTarget; onClick?: (
   );
 }
 
+export function PollerLoadError({ isFetching, onRetry }: { isFetching: boolean; onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div role="alert" className="space-y-1 font-mono text-[13px] text-danger">
+      <p>{t("nodeDetail.pollerView.loadFailed")}</p>
+      <button type="button" disabled={isFetching} className={ACTION_BUTTON_CLASS} onClick={onRetry}>{t("nodeDetail.retry")}</button>
+    </div>
+  );
+}
+
 // The repeater cards. `className` lays them out: a column in the panel, a grid on the dashboard.
 export function PollerTargets({ data, onViewNode, className = "flex flex-col gap-2" }: { data: NodePoller; onViewNode?: (nodeId: string) => void; className?: string }) {
   const { t } = useTranslation();
@@ -176,20 +176,15 @@ export function NodePollerSection({ nodeId, onViewNode }: { nodeId: string; onVi
   const data = query.data;
   const NOTE = "px-3 py-2.5 font-mono text-[13px] text-text-dim";
 
-  if (!data) {
-    if (query.isError) {
-      return (
-        <div role="alert" className="space-y-1 px-3 py-2.5 font-mono text-[13px] text-danger">
-          <p>{t("nodeDetail.pollerView.loadFailed")}</p>
-          <button type="button" disabled={query.isFetching} className={ACTION_BUTTON_CLASS} onClick={() => void query.refetch()}>{t("nodeDetail.retry")}</button>
-        </div>
-      );
-    }
-    return <p role="status" className={NOTE}>{t("common.loading")}</p>;
-  }
-  if (!data.claim) return <p className={`${NOTE} border-t border-border-subtle`}>{t("nodeDetail.pollerView.noClaim")}</p>;
+  if (query.state === "failed") return <div className="px-3 py-2.5"><PollerLoadError isFetching={query.isFetching} onRetry={() => void query.refetch()} /></div>;
+  // A server without the route: the panel takes the view away, so nothing is drawn meanwhile.
+  if (query.state === "unsupported") return null;
+  if (!data) return <p role="status" className={NOTE}>{t("common.loading")}</p>;
+  const stale = query.refreshFailed && <PollerRefreshNote className="px-3 pt-2" />;
+  if (!data.claim) return <>{stale}<p className={`${NOTE} border-t border-border-subtle`}>{t("nodeDetail.pollerView.noClaim")}</p></>;
 
   return <>
+    {stale}
     <Section title={t("nodeDetail.pollerView.slots")}>
       <PollerSlots claim={data.claim} readings24h={data.readings24h} />
     </Section>
