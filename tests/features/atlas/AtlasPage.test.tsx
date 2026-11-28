@@ -693,6 +693,34 @@ describe("Atlas page", () => {
     expect(screen.getByRole("button", { name: "Entendu par" })).toBeInTheDocument();
   });
 
+  it("leaves edit mode when the last card is removed, so a card added later is not in it", async () => {
+    save([pin]);
+    mount();
+    const first = await card("Renamed repeater");
+    fireEvent.click(screen.getByRole("button", { name: "Edit cards" }));
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(first).getByRole("button", { name: "Remove" }));
+    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
+    typeSearch("repeater");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Renamed repeater" }));
+    const again = await card("Renamed repeater");
+    expect(screen.getByRole("button", { name: "Edit cards" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(again).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+  });
+
+  it("leaves edit mode when the collection is emptied from outside, as on an account switch", async () => {
+    save([pin]);
+    mount();
+    await card("Renamed repeater");
+    fireEvent.click(screen.getByRole("button", { name: "Edit cards" }));
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null })));
+    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: ATLAS_KEY, newValue: JSON.stringify({ version: 2, pins: [{ kind: "node", ...second }], range: "24h" }) })));
+    const next = await card("Second");
+    expect(screen.getByRole("button", { name: "Edit cards" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(next).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+  });
+
   it("honours changes made in another tab and survives corrupt storage", async () => {
     localStorage.setItem(ATLAS_KEY, "{");
     mount();

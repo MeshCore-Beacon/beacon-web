@@ -59,6 +59,8 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const narrow = useIsNarrow();
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(false);
+  // Nothing left to edit: a card added later must not arrive in edit mode.
+  if (editing && saved.pins.length === 0) setEditing(false);
   const [field, setField] = useState("name");
   // Each card keeps the view picked this session; only the pin saves it as where the card opens.
   const [open, setOpen] = useState<Record<string, AtlasView>>({});
