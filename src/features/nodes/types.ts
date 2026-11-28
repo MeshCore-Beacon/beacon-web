@@ -206,9 +206,9 @@ export interface NodePollerTarget {
   latestReadingAt: number | null;
 }
 
-// claim is null for a radio that is not polling.
+// claim is null for a radio that is not polling. pollIntervalMinutes is absent or null when nothing reports it.
 export interface NodePoller {
-  claim: { receivedAt: number; live: boolean; acceptsRequests: boolean; slots: { max: number; used: number; own: number; requested: number; free: number } } | null;
+  claim: { receivedAt: number; live: boolean; acceptsRequests: boolean; pollIntervalMinutes?: number | null; slots: { max: number; used: number; own: number; requested: number; free: number } } | null;
   readings24h: number;
   targets: NodePollerTarget[];
 }

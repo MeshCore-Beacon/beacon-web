@@ -8,8 +8,8 @@ import { StatCard } from "../stats/cards";
 
 const POLLER_AMBER = "#ffb454";
 const STRIPES = `repeating-linear-gradient(135deg, ${POLLER_AMBER} 0 3px, transparent 3px 6px)`;
-// A radio has this many slots; the ones it does not offer are drawn dim.
-const SEATS = 8;
+// The most seats the meter draws. The seats a radio does not offer are drawn dim.
+const SEATS = 32;
 const ORDER: SeatKind[] = ["own", "requested", "free", "closed"];
 const VISUAL = "mt-1.5 flex h-[20px] items-center";
 const spacer = <div className="mt-1.5 h-[20px]" />;

@@ -70,6 +70,27 @@ describe("NodePollerSection summary", () => {
     expect(screen.queryByText(/Not currently polling/)).not.toBeInTheDocument();
   });
 
+  it("follows the radio's own slot limit", async () => {
+    mount(poller({}, { slots: { max: 12, used: 9, own: 5, requested: 4, free: 3 } }));
+    expect(await screen.findByRole("img")).toHaveAccessibleName("9 of 12 slots used: 5 own, 4 requested, 3 free");
+    expect(screen.getByText("/ 12")).toBeInTheDocument();
+    expect(screen.getByRole("img").querySelectorAll("[data-seat]")).toHaveLength(12);
+  });
+
+  it("shows the poll interval only when the claim reports one", async () => {
+    const first = mount(poller({}, { pollIntervalMinutes: 60 }));
+    expect(await screen.findByText("Poll interval")).toBeInTheDocument();
+    expect(screen.getByText("every hour")).toBeInTheDocument();
+    first.client.clear();
+    document.body.innerHTML = "";
+    mount(poller({}, { pollIntervalMinutes: 45 }));
+    expect(await screen.findByText("every 45 min")).toBeInTheDocument();
+    document.body.innerHTML = "";
+    mount(poller({}, { pollIntervalMinutes: null }));
+    await screen.findByText("Last claim");
+    expect(screen.queryByText("Poll interval")).not.toBeInTheDocument();
+  });
+
   it("shortens a large reading count as the Atlas tile does", async () => {
     mount(poller({ readings24h: 14_732 }));
     expect(await screen.findByText("14.7k")).toBeInTheDocument();

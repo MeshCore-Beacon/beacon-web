@@ -1030,7 +1030,7 @@ describe("AtlasCard", () => {
       expect(screen.queryByRole("button", { name: /Change tile/ })).not.toBeInTheDocument();
     });
 
-    it("draws the free seats the server reports, not the ones left over, and never more than eight", async () => {
+    it("draws the free seats the server reports, not the ones left over, up to the radio's own limit", async () => {
       const meter = () => within(tile("Slots")).getByRole("img");
       const kinds = () => [...meter().children].map((seat) => seat.getAttribute("data-seat"));
       vi.mocked(api.getNodePoller).mockResolvedValue(poller({ slots: { max: 8, used: 2, own: 2, requested: 0, free: 0 } }));
@@ -1043,7 +1043,7 @@ describe("AtlasCard", () => {
       vi.mocked(api.getNodePoller).mockResolvedValue(poller({ slots: { max: 12, used: 9, own: 5, requested: 4, free: 3 } }));
       mount({ view: "poller" });
       expect(await screen.findByText("9/12")).toBeInTheDocument();
-      expect(kinds()).toEqual(["own", "own", "own", "own", "own", "requested", "requested", "requested"]);
+      expect(kinds()).toEqual([...Array(5).fill("own"), ...Array(4).fill("requested"), ...Array(3).fill("free")]);
     });
 
     it("keeps a pinned card on the tab when the load fails, with the error and a retry", async () => {

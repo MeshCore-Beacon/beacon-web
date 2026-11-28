@@ -36,6 +36,7 @@ const UNKNOWN_STATE = { dot: "bg-text-dim", text: "text-text-muted" };
 export function PollerSlots({ claim, readings24h }: { claim: NonNullable<NodePoller["claim"]>; readings24h: number }) {
   const { t } = useTranslation();
   const { slots } = claim;
+  const interval = claim.pollIntervalMinutes;
   const seats = seatCounts(slots);
   const parts = seatParts(seats, t);
   const order: SeatKind[] = ["own", "requested", "free", "closed"];
@@ -66,6 +67,9 @@ export function PollerSlots({ claim, readings24h }: { claim: NonNullable<NodePol
           <span className="text-warn">{t("nodeDetail.pollerView.stale")} <Timestamp value={claim.receivedAt} />.</span>
         )}
         <span><span className="text-text-dim">{t("nodeDetail.pollerView.requests")}</span> <span className="text-text-normal">{t(claim.acceptsRequests ? "nodeDetail.pollerView.accepting" : "nodeDetail.pollerView.notAccepting")}</span></span>
+        {interval != null && interval > 0 && (
+          <span data-poll-interval><span className="text-text-dim">{t("nodeDetail.pollerView.pollInterval")}</span> <span className="text-text-normal">{interval % 60 === 0 ? t("nodeDetail.pollerView.everyHours", { count: interval / 60 }) : t("nodeDetail.pollerView.everyMinutes", { count: interval })}</span></span>
+        )}
         <span><span className="text-text-dim">{t("nodeDetail.pollerView.readings24h")}</span> <span className="text-text-normal">{formatCount(readings24h)}</span></span>
       </div>
     </>
