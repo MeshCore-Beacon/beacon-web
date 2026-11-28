@@ -78,13 +78,15 @@ describe("A 7d range in a synced Atlas", () => {
     localStorage.setItem(syncedMarker("user-1"), "1");
     vi.mocked(me.atlas).mockResolvedValue(doc("7d", 5));
     const { result } = renderHook(() => useSyncedAtlas(), { wrapper });
-    await waitFor(() => expect(result.current.synced).toBe(true));
-    expect(result.current.saved.range).toBe("7d");
+    await waitFor(() => expect(me.atlas).toHaveBeenCalled());
     act(() => result.current.update(rename));
     await settle();
+    // The account document is not adopted before the flags are in, so nothing is written either.
+    expect(result.current.synced).toBe(false);
     expect(me.putAtlas).not.toHaveBeenCalled();
     await act(async () => { answer({ features: { atlas7d: true } }); });
     await waitFor(() => expect(me.putAtlas).toHaveBeenCalledTimes(1));
     expect(vi.mocked(me.putAtlas).mock.calls[0]![0].range).toBe("7d");
+    expect(result.current.saved.range).toBe("7d");
   });
 });
