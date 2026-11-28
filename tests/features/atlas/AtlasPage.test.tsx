@@ -144,16 +144,30 @@ describe("Atlas page", () => {
   });
 
   it("keeps the toolbar to one row on a phone: short count chip, picker, no info tip", async () => {
-    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /767px/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
     save();
     mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
     const bar = screen.getByRole("toolbar", { name: "Add nodes" });
     expect(bar).not.toHaveClass("flex-wrap");
+    expect(bar.querySelector("[data-toolbar-search]")).not.toHaveClass("w-full");
     expect(within(bar).getByText("1/12")).toHaveClass("rounded-sm");
     expect(within(bar).queryByText("1 / 12 saved")).not.toBeInTheDocument();
     expect(within(bar).getByRole("button", { name: "3d" })).toBeInTheDocument();
     expect(within(bar).queryByText(/More information/)).not.toBeInTheDocument();
+  });
+
+  it("gives the search its own row under 360 px, with the edit button at the far end below", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: /max-width/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    save();
+    mount();
+    await screen.findByRole("button", { name: "Renamed repeater" });
+    const bar = screen.getByRole("toolbar", { name: "Add nodes" });
+    expect(bar).toHaveClass("flex-wrap");
+    expect(bar.querySelector("[data-toolbar-search]")).toHaveClass("w-full");
+    const controls = bar.querySelector("[data-toolbar-controls]")!;
+    expect(controls).toHaveClass("w-full");
+    expect(within(bar).getByRole("button", { name: "Edit cards" }).closest("[data-toolbar-edit]")).toHaveClass("ml-auto");
   });
 
   it("shows the empty state and queries nothing with no pins", () => {
@@ -245,6 +259,7 @@ describe("Atlas page", () => {
     save([pin, second]);
     mount();
     expect(await screen.findByText("2 / 1 saved")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
     expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
   });
 
@@ -446,6 +461,7 @@ describe("Atlas page", () => {
       mount();
       const first = await card("Renamed repeater");
       expect(tab(first, "Observer")).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
       expect(toggle(first)).toHaveAttribute("aria-pressed", "true");
       await waitFor(() => expect(api.getObserverActivity).toHaveBeenCalled());
       expect(tab(await card("Second"), "Heard by")).toHaveAttribute("aria-pressed", "true");
@@ -467,6 +483,7 @@ describe("Atlas page", () => {
       const first = await card("Renamed repeater");
       fireEvent.click(tab(first, "Heard by"));
       expect("view" in stored().pins[0]).toBe(false);
+      fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
       expect(toggle(first)).toHaveAttribute("aria-pressed", "false");
       fireEvent.click(toggle(first));
       expect(stored().pins).toEqual([{ kind: "node", ...pin, view: "heard" }]);
@@ -483,6 +500,7 @@ describe("Atlas page", () => {
       mount();
       const first = await card("Renamed repeater");
       fireEvent.click(tab(first, "Analytics"));
+      fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
       fireEvent.click(toggle(first));
       expect(stored().pins).toEqual([{ kind: "node", ...pin }]);
     });
@@ -647,6 +665,7 @@ describe("Atlas page", () => {
     fireEvent.click(within(next).getByRole("button", { name: "Heard by" }));
     expect(within(first).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
     expect(within(next).getByRole("button", { name: "Heard by" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit cards" }));
     fireEvent.keyDown(within(first).getByRole("button", { name: "Drag to reorder, or use the arrow keys" }), { key: "ArrowRight" });
     expect(JSON.parse(localStorage.getItem(ATLAS_KEY)!).pins[0].publicKey).toBe(second.publicKey);
     fireEvent.click(screen.getByRole("button", { name: "3d" }));
@@ -672,6 +691,34 @@ describe("Atlas page", () => {
     expect(screen.getByText(/Le stockage du navigateur est indisponible/)).toBeInTheDocument();
     expect(screen.getByText("1 / 12 enregistré")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Entendu par" })).toBeInTheDocument();
+  });
+
+  it("leaves edit mode when the last card is removed, so a card added later is not in it", async () => {
+    save([pin]);
+    mount();
+    const first = await card("Renamed repeater");
+    fireEvent.click(screen.getByRole("button", { name: "Edit cards" }));
+    expect(screen.getByRole("button", { name: "Done" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(first).getByRole("button", { name: "Remove" }));
+    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
+    typeSearch("repeater");
+    fireEvent.click(await screen.findByRole("button", { name: "Add Renamed repeater" }));
+    const again = await card("Renamed repeater");
+    expect(screen.getByRole("button", { name: "Edit cards" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(again).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+  });
+
+  it("leaves edit mode when the collection is emptied from outside, as on an account switch", async () => {
+    save([pin]);
+    mount();
+    await card("Renamed repeater");
+    fireEvent.click(screen.getByRole("button", { name: "Edit cards" }));
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null })));
+    expect(screen.getByText("No nodes saved")).toBeInTheDocument();
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: ATLAS_KEY, newValue: JSON.stringify({ version: 2, pins: [{ kind: "node", ...second }], range: "24h" }) })));
+    const next = await card("Second");
+    expect(screen.getByRole("button", { name: "Edit cards" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(next).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
   });
 
   it("honours changes made in another tab and survives corrupt storage", async () => {

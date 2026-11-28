@@ -151,6 +151,33 @@ describe("mergeAtlas", () => {
   });
 });
 
+describe("poller view", () => {
+  const pinned = local([node(1, { view: "poller" })]);
+  const answer = doc([{ kind: "node", publicKey: key(1), id: uuid(1), name: "N1", observerId: null }]);
+
+  it("is sent only to a server with atlasPoller", () => {
+    expect(toPut(pinned, {}, 2, false, false, true).pins).toEqual([{ kind: "node", publicKey: key(1), name: "N1", view: "poller" }]);
+    expect(toPut(pinned, {}, 2, true, true, false).pins).toEqual([{ kind: "node", publicKey: key(1), name: "N1" }]);
+    expect(toPut(pinned, {}, 2).pins).toEqual([{ kind: "node", publicKey: key(1), name: "N1" }]);
+  });
+
+  it("stays in this browser's copy when an older server answers without it", () => {
+    expect(fromServer(answer, pinned, {}, false, false, true).atlas.pins[0]).toMatchObject({ view: "poller" });
+    expect(fromServer(answer, pinned, {}, true, false, false).atlas.pins[0]).not.toHaveProperty("view");
+    const heard = { ...answer, pins: [{ ...answer.pins[0]!, view: "heard" as const }] };
+    expect(fromServer(heard, pinned, {}, false, false, true).atlas.pins[0]).toMatchObject({ view: "heard" });
+  });
+
+  it("is read from a server that stores it", () => {
+    const stored = { ...answer, pins: [{ ...answer.pins[0]!, view: "poller" as const }] };
+    expect(fromServer(stored, null, {}).atlas.pins[0]).toMatchObject({ view: "poller" });
+  });
+
+  it("does not bring a kept Telemetry view along", () => {
+    expect(fromServer(answer, local([node(1, { view: "telemetry" })]), {}, false, false, true).atlas.pins[0]).not.toHaveProperty("view");
+  });
+});
+
 describe("telemetry fields", () => {
   const tiles = ["packets", "signal", "errors", "battery"] as const;
   const withBoth = local([node(1, { view: "telemetry", telemetryTiles: [...tiles] })]);

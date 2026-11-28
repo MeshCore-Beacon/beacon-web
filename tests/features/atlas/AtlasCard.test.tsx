@@ -24,6 +24,7 @@ vi.mock("../../../src/api/client", async (importOriginal) => ({
   getServerInfo: vi.fn(),
   getNodeTelemetry: vi.fn(),
   getNodePolling: vi.fn(),
+  getNodePoller: vi.fn(),
 }));
 
 const pin = { kind: "node" as const, id: "11111111-1111-4111-8111-111111111111", publicKey: "ab".repeat(32), name: "Old name" };
@@ -62,7 +63,7 @@ let client: QueryClient;
 function mount(overrides: Partial<Parameters<typeof AtlasCard>[0]> = {}) {
   return render(
     <QueryClientProvider client={client}>
-      <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} {...handlers} {...overrides} />
+      <AtlasCard pin={pin} range="24h" active view="analytics" home="analytics" handle={{}} editing={false} {...handlers} {...overrides} />
     </QueryClientProvider>,
   );
 }
@@ -82,8 +83,9 @@ describe("AtlasCard", () => {
   it("renders the Signal tab tiles for one node with its type and freshness badges", async () => {
     mount();
     expect(await screen.findByRole("button", { name: "Renamed repeater" })).toBeInTheDocument();
-    expect(screen.getByText("REPEATER")).toBeInTheDocument();
-    expect(screen.getByText("Recent")).toBeInTheDocument();
+    expect(screen.getByText("Repeater")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Recent" })).toHaveClass("bg-green");
+    expect(screen.getByText("Recent")).not.toBeVisible();
     expect(screen.getByText("Observations")).toBeInTheDocument();
     expect(screen.getByText("Mean SNR")).toBeInTheDocument();
     expect(await screen.findByText("0.0 dB")).toBeInTheDocument();
@@ -102,7 +104,7 @@ describe("AtlasCard", () => {
   it("shows the stale badge and the server's type name even when the type is unknown", async () => {
     vi.mocked(api.getNode).mockResolvedValue({ ...node, stale: true, nodeType: 9, nodeTypeName: "WEIRD" });
     mount();
-    expect(await screen.findByText("Stale")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "Stale" })).toHaveClass("bg-warn");
     expect(screen.getByText("WEIRD")).toBeInTheDocument();
     expect(screen.queryByText(/atlas\.roles/)).not.toBeInTheDocument();
   });
@@ -122,16 +124,51 @@ describe("AtlasCard", () => {
   });
 
   it("keeps the header to one line: the name and badges, then icon buttons pinned to the top right", async () => {
-    mount();
+    mount({ editing: true });
     await screen.findByRole("button", { name: "Renamed repeater" });
     const remove = screen.getByRole("button", { name: "Remove" });
     const actions = remove.closest("[data-card-actions]")!;
     expect(actions).toHaveClass("shrink-0", "self-start");
     expect(actions.parentElement).not.toHaveClass("flex-wrap");
-    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open on this tab", "Remove", "Drag to reorder, or use the arrow keys"]);
+    expect(within(actions as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open on this tab", "Drag to reorder, or use the arrow keys", "Remove"]);
     expect(remove).toHaveTextContent("");
     expect(remove).toHaveClass("text-text-muted", "hover:text-danger", "focus-visible:text-danger");
     expect(remove).not.toHaveClass("text-primary");
+  });
+
+  it("says what the freshness dot means on the name: as its description and as a tip on focus", async () => {
+    mount();
+    const name = await screen.findByRole("button", { name: "Renamed repeater" });
+    expect(name).toHaveAccessibleDescription("Recent");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    act(() => name.focus());
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Recent");
+    act(() => name.blur());
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("names the card in its open button, for a node and for an observer", async () => {
+    const first = mount();
+    expect(await screen.findByRole("button", { name: "Open node Renamed repeater" })).toBeInTheDocument();
+    first.unmount();
+    vi.mocked(api.getObserver).mockResolvedValue({ ...observer, displayName: "Hill listener" } as Observer);
+    mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+    expect(await screen.findByRole("button", { name: "Open observer Hill listener" })).toBeInTheDocument();
+  });
+
+  it("stands the remove button clear of the drag handle", async () => {
+    mount({ editing: true });
+    const remove = await screen.findByRole("button", { name: "Remove" });
+    expect(remove).toHaveClass("ml-3");
+    expect(remove.closest("[data-card-actions]")!.lastElementChild).toContainElement(remove);
+    expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).not.toHaveClass("ml-3");
+  });
+
+  it("shows only Open outside edit mode: pin, drag and remove wait for it", async () => {
+    mount();
+    const open = await screen.findByRole("button", { name: "Open node Renamed repeater" });
+    expect(within(open.closest("[data-card-actions]") as HTMLElement).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Open node Renamed repeater"]);
+    expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
   });
 
   it("puts the view switch on its own full-width row under the header", async () => {
@@ -140,7 +177,11 @@ describe("AtlasCard", () => {
     const picker = screen.getByRole("group", { name: "Card view" });
     expect(picker).toHaveClass("w-full");
     expect(picker.closest("[data-card-actions]")).toBeNull();
-    for (const tab of within(picker).getAllByRole("button")) expect(tab).toHaveClass("flex-1");
+    const [open, closed] = within(picker).getAllByRole("button");
+    expect(open!.parentElement).toHaveClass("flex-1");
+    expect(closed!.parentElement).toHaveClass("w-11");
+    expect(closed).toHaveAccessibleName("Heard by");
+    expect(closed).toHaveTextContent("");
   });
 
   it("gives the Analytics view a one-line footer and lists every fact in the tip", async () => {
@@ -204,7 +245,7 @@ describe("AtlasCard", () => {
   it("says the node is gone instead of offering a retry when the server has no such key", async () => {
     vi.mocked(api.getNode).mockRejectedValue(new ApiError(404, "not_found", "missing"));
     vi.mocked(api.getNodesPage).mockResolvedValue({ items: [], hasMore: false, nextCursor: null });
-    mount();
+    mount({ editing: true });
     expect(await screen.findByText("Node not found")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
@@ -223,7 +264,7 @@ describe("AtlasCard", () => {
 
   it("flips the body between the tiles and the heard-by list instead of growing the card", async () => {
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", { configurable: true, get: () => 240 });
-    const view = mount();
+    const view = mount({ editing: true });
     await screen.findByRole("button", { name: "Renamed repeater" });
     expect(api.getPacketDetail).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Move/ })).not.toBeInTheDocument();
@@ -234,7 +275,7 @@ describe("AtlasCard", () => {
     expect(handlers.onViewChange).toHaveBeenCalledWith("heard");
     view.rerender(
       <QueryClientProvider client={client}>
-        <AtlasCard pin={pin} range="24h" active view="heard" home="analytics" handle={{}} {...handlers} />
+        <AtlasCard pin={pin} range="24h" active view="heard" home="analytics" handle={{}} editing {...handlers} />
       </QueryClientProvider>,
     );
     const summary = await screen.findByText(/2 observers heard the latest packet/);
@@ -290,7 +331,7 @@ describe("AtlasCard", () => {
 
   it("keeps an unavailable node removable and draggable", async () => {
     vi.mocked(api.getNode).mockRejectedValue(new Error("down"));
-    mount({ handle: { "data-grip": "yes" } as Record<string, string> });
+    mount({ editing: true, handle: { "data-grip": "yes" } as Record<string, string> });
     expect(await screen.findByRole("alert")).toHaveTextContent("Failed to load");
     expect(screen.getByRole("button", { name: "Drag to reorder, or use the arrow keys" })).toHaveAttribute("data-grip", "yes");
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
@@ -302,7 +343,7 @@ describe("AtlasCard", () => {
     const first = mount();
     await screen.findByRole("button", { name: "Renamed repeater" });
     const picker = screen.getByRole("group", { name: "Card view" });
-    expect(within(picker).getAllByRole("button").map((b) => b.textContent)).toEqual(["Analytics", "Heard by"]);
+    expect(within(picker).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual(["Analytics", "Heard by"]);
     expect(handlers.onResolved).not.toHaveBeenCalled();
     first.unmount();
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -377,7 +418,8 @@ describe("AtlasCard", () => {
     expect(await screen.findByText("repeater")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Hill listener" }));
     expect(handlers.onViewObserver).toHaveBeenCalledWith(observerId);
-    expect(screen.getAllByText("Online")[0]).toHaveClass("bg-green/8");
+    expect(screen.getByRole("img", { name: "Online" })).toHaveClass("bg-green");
+    expect(screen.getByText("repeater").closest("[data-card-name]")).not.toBeNull();
     expect(screen.queryByRole("group", { name: "Card view" })).not.toBeInTheDocument();
     expect(await screen.findByText("12")).toBeInTheDocument();
     expect(api.getNode).not.toHaveBeenCalled();
@@ -416,7 +458,7 @@ describe("AtlasCard", () => {
     const toggle = () => screen.getByRole("button", { name: "Open on this tab" });
 
     it("is pressed on the tab the card opens on and does nothing there", async () => {
-      mount();
+      mount({ editing: true });
       await screen.findByRole("button", { name: "Renamed repeater" });
       expect(toggle()).toHaveAttribute("aria-pressed", "true");
       expect(toggle()).toHaveClass("bg-primary/10");
@@ -425,7 +467,7 @@ describe("AtlasCard", () => {
     });
 
     it("pins the tab being looked at when that is not where the card opens", async () => {
-      mount({ view: "heard" });
+      mount({ editing: true, view: "heard" });
       await screen.findByRole("button", { name: "Renamed repeater" });
       expect(toggle()).toHaveAttribute("aria-pressed", "false");
       expect(toggle()).not.toHaveClass("bg-primary/10");
@@ -435,20 +477,20 @@ describe("AtlasCard", () => {
     });
 
     it("sits beside the view switch and is missing from a card with one view", async () => {
-      const first = mount({ view: "heard", home: "heard" });
+      const first = mount({ editing: true, view: "heard", home: "heard" });
       await screen.findByRole("button", { name: "Renamed repeater" });
       expect(toggle()).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByRole("group", { name: "Card view" }).parentElement).toContainElement(toggle());
       first.unmount();
       vi.mocked(api.getObserver).mockResolvedValue({ ...observer, publicKey: "" });
-      mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer", home: "observer" });
+      mount({ editing: true, pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer", home: "observer" });
       await screen.findByText("repeater");
       expect(screen.queryByRole("button", { name: "Open on this tab" })).not.toBeInTheDocument();
     });
 
     it("has a French label", async () => {
       await act(() => i18n.changeLanguage("fr"));
-      mount();
+      mount({ editing: true });
       expect(await screen.findByRole("button", { name: "Ouvrir sur cet onglet" })).toBeInTheDocument();
       await act(() => i18n.changeLanguage("en"));
     });
@@ -594,7 +636,7 @@ describe("AtlasCard", () => {
     it("appears for a polled repeater and leaves the other two tabs as they were", async () => {
       mount();
       expect(await screen.findByRole("button", TAB)).toBeInTheDocument();
-      expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button").map((r) => r.textContent)).toEqual(["Analytics", "Heard by", "Telemetry"]);
+      expect(within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button").map((r) => r.getAttribute("aria-label"))).toEqual(["Analytics", "Heard by", "Telemetry"]);
     });
 
     it("appears for a room server whose polling route says it is polled, without asking for history", async () => {
@@ -840,6 +882,252 @@ describe("AtlasCard", () => {
       expect(localStorage.getItem("beacon-atlas-v2")).toBe(saved);
       write.mockRestore();
       localStorage.clear();
+    });
+  });
+
+  describe("header tags", () => {
+    const chips = (root: Element | null) => [...(root?.querySelectorAll("[data-chip]") ?? [])].map((e) => e.getAttribute("data-chip"));
+
+    it("keeps a lone tag on the name's line, which never wraps", async () => {
+      const { container } = mount();
+      const name = await screen.findByRole("button", { name: "Renamed repeater" });
+      const line = name.closest("[data-card-name]")!;
+      expect(chips(line)).toEqual(["type"]);
+      expect(line).not.toHaveClass("flex-wrap");
+      expect(name).toHaveClass("truncate");
+      expect(container.querySelector("[data-card-tags]")).toBeNull();
+    });
+
+    it("gives a lone tag its own row on a phone under 360 px", async () => {
+      vi.stubGlobal("matchMedia", (query: string) => ({ matches: /359px/.test(query), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+      try {
+        const { container } = mount();
+        const name = await screen.findByRole("button", { name: "Renamed repeater" });
+        expect(chips(name.closest("[data-card-name]"))).toEqual([]);
+        expect(chips(container.querySelector("[data-card-tags]"))).toEqual(["type"]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("moves every tag to a row under the name once there are two", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+      vi.mocked(api.getObserver).mockResolvedValue(observer);
+      const { container } = mount();
+      const name = await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(chips(name.closest("[data-card-name]"))).toEqual([]);
+      expect(chips(container.querySelector("[data-card-tags]"))).toEqual(["type", "observer"]);
+    });
+
+    it("tags a poller as a poller and an observer", async () => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isPoller: true });
+      const { container } = mount();
+      await screen.findByRole("button", { name: "Renamed repeater" });
+      expect(chips(container.querySelector("[data-card-tags]"))).toEqual(["type", "poller", "observer"]);
+    });
+
+    it("marks an offline observer pin with a warn dot", async () => {
+      vi.mocked(api.getObserver).mockResolvedValue({ ...observer, status: "offline", lastStatusAt: Date.now() - 86_400_000 });
+      mount({ pin: { kind: "observer", observerId, name: "Hill listener" }, view: "observer" });
+      expect(await screen.findByRole("img", { name: "Offline" })).toHaveClass("bg-warn");
+    });
+  });
+
+  describe("Poller tab", () => {
+    const TAB = { name: "Poller" };
+    const target = (name: string, role: string, state = "ok") => ({ nodeId: null, publicKey: name.padEnd(64, "0"), name, requested: false, role, rank: 0, state, misses: 0, lastAttempt: null, lastOk: null, claimedSnr: null, evidenceSnr: null, evidenceCount: 0, latestReadingAt: null });
+    const poller = (claim: object = {}, targets = [target("a", "poller"), target("b", "poller", "no_reply"), target("c", "standby", "pending"), target("d", "unassigned", "login_failed")]) => ({
+      claim: { receivedAt: Date.now() - 10 * 60_000, live: true, acceptsRequests: true, slots: { max: 8, used: 3, own: 1, requested: 2, free: 1 }, ...claim },
+      readings24h: 46,
+      targets,
+    }) as never;
+    const tabs = () => within(screen.getByRole("group", { name: "Card view" })).getAllByRole("button").map((tab) => tab.getAttribute("aria-label"));
+    const tile = (label: string) => screen.getByText(label).parentElement!.parentElement!;
+
+    beforeEach(() => {
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, isPoller: true, observerId });
+      vi.mocked(api.getObserver).mockResolvedValue(observer);
+      vi.mocked(api.getObserverActivity).mockResolvedValue(activity as never);
+      vi.mocked(api.getObserverTelemetry).mockResolvedValue(telemetry as never);
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true));
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling({ polled: false, poller: null }));
+      vi.mocked(api.getNodeTelemetry).mockResolvedValue({ range: "720h", interval: "1h", points: [] } as never);
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller());
+    });
+
+    it("comes last, after Observer, on a poller's card", async () => {
+      mount();
+      expect(await screen.findByRole("button", TAB)).toHaveAttribute("aria-pressed", "false");
+      expect(tabs()).toEqual(["Analytics", "Heard by", "Observer", "Poller"]);
+    });
+
+    it("comes after Telemetry when the card has that tab too", async () => {
+      vi.mocked(api.getNodePolling).mockResolvedValue(polling());
+      mount();
+      await screen.findByRole("button", TAB);
+      await waitFor(() => expect(tabs()).toEqual(["Analytics", "Heard by", "Observer", "Telemetry", "Poller"]));
+    });
+
+    it("is not offered for a node that is no poller, with polling off, or without an observer link", async () => {
+      const absent = async () => {
+        const view = mount();
+        await screen.findByText("1.2k");
+        await act(async () => {});
+        expect(screen.queryByRole("button", TAB)).not.toBeInTheDocument();
+        view.unmount();
+        client.clear();
+      };
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, observerId });
+      await absent();
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isObserver: true, isPoller: true, observerId });
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(false));
+      await absent();
+      vi.mocked(api.getServerInfo).mockResolvedValue(info(true));
+      vi.mocked(api.getNode).mockResolvedValue({ ...node, isPoller: true });
+      await absent();
+      expect(api.getNodePoller).not.toHaveBeenCalled();
+    });
+
+    it("is not offered on a server without the route, and a card pinned to it falls back to Analytics", async () => {
+      vi.mocked(api.getNodePoller).mockRejectedValue(new ApiError(404, "not_found", "no"));
+      mount({ view: "poller", home: "poller" });
+      expect(await screen.findByText("1.2k")).toBeInTheDocument();
+      expect(tabs()).toEqual(["Analytics", "Heard by", "Observer"]);
+      expect(screen.getByRole("button", { name: "Analytics" })).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("is not offered for a radio with no claim", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue({ claim: null, readings24h: 0, targets: [] });
+      mount({ view: "poller", home: "poller" });
+      expect(await screen.findByText("1.2k")).toBeInTheDocument();
+      expect(tabs()).toEqual(["Analytics", "Heard by", "Observer"]);
+    });
+
+    it("keeps a pinned card on the tab while the answer is coming in", async () => {
+      let answer!: (value: never) => void;
+      vi.mocked(api.getNodePoller).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+      mount({ view: "poller", home: "poller" });
+      expect(await screen.findByRole("button", TAB)).toHaveAttribute("aria-pressed", "true");
+      expect(screen.queryByText("Observations")).not.toBeInTheDocument();
+      await act(async () => { answer(poller()); });
+      expect(await screen.findByText("3/8")).toBeInTheDocument();
+    });
+
+    it("shows slots, repeaters answering, readings and the claim on four fixed tiles", async () => {
+      const { container } = mount({ view: "poller" });
+      expect(await screen.findByText("3/8")).toBeInTheDocument();
+      expect(within(tile("Slots")).getByText("1 own · 2 req")).toBeInTheDocument();
+      const meter = within(tile("Slots")).getByRole("img", { name: "1 own, 2 requested, 1 free, 4 not offered" });
+      expect([...meter.children].map((seat) => seat.getAttribute("data-seat"))).toEqual(["own", "requested", "requested", "free", "closed", "closed", "closed", "closed"]);
+      expect(within(tile("Answering")).getByText("1")).toBeInTheDocument();
+      expect(within(tile("Answering")).getByText("of 4")).toBeInTheDocument();
+      expect([...container.querySelectorAll("[data-state]")].map((dot) => dot.className.match(/bg-[\w/-]+/)![0])).toEqual(["bg-green", "bg-warn", "bg-text-dim/40", "bg-danger"]);
+      expect(within(tile("Readings")).getByText("46")).toBeInTheDocument();
+      expect(within(tile("Readings")).getByText("24h")).toBeInTheDocument();
+      expect(within(tile("Last claim")).getByText("10m ago")).toBeInTheDocument();
+      expect(container.querySelector("[data-claim]")).not.toHaveClass("text-warn");
+      expect(within(tile("Last claim")).getByText("accepting requests")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Change tile/ })).not.toBeInTheDocument();
+    });
+
+    it("draws the free seats the server reports, not the ones left over, and never more than eight", async () => {
+      const meter = () => within(tile("Slots")).getByRole("img");
+      const kinds = () => [...meter().children].map((seat) => seat.getAttribute("data-seat"));
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller({ slots: { max: 8, used: 2, own: 2, requested: 0, free: 0 } }));
+      const first = mount({ view: "poller" });
+      expect(await screen.findByText("2/8")).toBeInTheDocument();
+      expect(meter()).toHaveAccessibleName("2 own, 0 requested, 0 free, 6 not offered");
+      expect(kinds()).toEqual(["own", "own", "closed", "closed", "closed", "closed", "closed", "closed"]);
+      first.unmount();
+      client.clear();
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller({ slots: { max: 12, used: 9, own: 5, requested: 4, free: 3 } }));
+      mount({ view: "poller" });
+      expect(await screen.findByText("9/12")).toBeInTheDocument();
+      expect(kinds()).toEqual(["own", "own", "own", "own", "own", "requested", "requested", "requested"]);
+    });
+
+    it("keeps a pinned card on the tab when the load fails, with the error and a retry", async () => {
+      vi.mocked(api.getNodePoller).mockRejectedValue(new ApiError(500, "internal", "down"));
+      mount({ view: "poller", home: "poller" });
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("Failed to load");
+      expect(screen.getByRole("button", TAB)).toHaveAttribute("aria-pressed", "true");
+      expect(screen.queryByText("Observations")).not.toBeInTheDocument();
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller());
+      fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+      expect(await screen.findByText("3/8")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("does not add the tab to a card on another view when the load fails", async () => {
+      vi.mocked(api.getNodePoller).mockRejectedValue(new ApiError(500, "internal", "down"));
+      mount();
+      expect(await screen.findByText("1.2k")).toBeInTheDocument();
+      await waitFor(() => expect(client.getQueryState(["node-poller", pin.id])?.status).toBe("error"));
+      expect(tabs()).toEqual(["Analytics", "Heard by", "Observer"]);
+    });
+
+    it("keeps the tiles and says it could not refresh when a later read fails", async () => {
+      const { container } = mount({ view: "poller", home: "poller" });
+      expect(await screen.findByText("3/8")).toBeInTheDocument();
+      expect(screen.queryByText("Could not refresh")).not.toBeInTheDocument();
+      vi.mocked(api.getNodePoller).mockRejectedValue(new ApiError(500, "internal", "down"));
+      await act(async () => { await client.refetchQueries({ queryKey: ["node-poller", pin.id] }); });
+      expect(await screen.findByText("Could not refresh")).toHaveClass("text-warn");
+      expect(container.querySelector("[data-card-footer]")).toContainElement(screen.getByText("Could not refresh"));
+      expect(screen.getByText("3/8")).toBeInTheDocument();
+      expect(screen.getByRole("button", TAB)).toHaveAttribute("aria-pressed", "true");
+      expect(screen.queryByText("Failed to load")).not.toBeInTheDocument();
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller({ slots: { max: 8, used: 4, own: 2, requested: 2, free: 1 } }));
+      await act(async () => { await client.refetchQueries({ queryKey: ["node-poller", pin.id] }); });
+      expect(await screen.findByText("4/8")).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByText("Could not refresh")).not.toBeInTheDocument());
+    });
+
+    it("says when the radio takes no requests", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller({ acceptsRequests: false }));
+      mount({ view: "poller" });
+      expect(await screen.findByText("not accepting requests")).toBeInTheDocument();
+    });
+
+    it("marks a stale claim and says it is not polling", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller({ live: false, receivedAt: Date.now() - 3 * 3_600_000 }));
+      const { container } = mount({ view: "poller" });
+      expect(await screen.findByText("3h ago")).toBeInTheDocument();
+      expect(container.querySelector("[data-claim]")).toHaveClass("text-warn");
+      expect(screen.getByText("not currently polling")).toBeInTheDocument();
+      expect(screen.queryByText("accepting requests")).not.toBeInTheDocument();
+      const footer = container.querySelector("[data-card-footer]") as HTMLElement;
+      expect(within(footer).getByText("Not currently polling")).toBeInTheDocument();
+      expect(footer.querySelector("[data-fresh]")).toHaveAttribute("data-fresh", "false");
+    });
+
+    it("has one footer line saying how many repeaters it polls; the open button goes to the Poller view", async () => {
+      const { container } = mount({ view: "poller" });
+      await screen.findByText("3/8");
+      expect(container.querySelectorAll("[data-card-footer]")).toHaveLength(1);
+      const footer = container.querySelector("[data-card-footer]") as HTMLElement;
+      expect(within(footer).getByText("Polling 2 repeaters")).toBeInTheDocument();
+      expect(footer.querySelector("[data-fresh]")).toHaveClass("bg-[#ffb454]");
+      expect(within(footer).queryByRole("button", { name: "Poller view" })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Open node Renamed repeater" }));
+      expect(handlers.onViewNode).toHaveBeenCalledWith(pin.id, "poller");
+    });
+
+    it("uses the singular for one repeater", async () => {
+      vi.mocked(api.getNodePoller).mockResolvedValue(poller({}, [target("a", "poller")]));
+      mount({ view: "poller" });
+      expect(await screen.findByText("Polling 1 repeater")).toBeInTheDocument();
+    });
+
+    it("leaves the Observer tab with its one footer line", async () => {
+      const { container } = mount({ view: "observer" });
+      await screen.findByRole("button", TAB);
+      await screen.findAllByText("12");
+      expect(container.querySelector("[data-card-poller]")).toBeNull();
+      expect(container.querySelectorAll("[data-card-footer]")).toHaveLength(1);
+      expect(screen.queryByText(/Polling \d/)).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Poller view" })).not.toBeInTheDocument();
     });
   });
 });

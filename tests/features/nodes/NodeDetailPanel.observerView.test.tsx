@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NodeDetailPanel, type NodeView } from "../../../src/features/nodes/NodeDetailPanel";
 import {
-  getNode, getNodeObservations, getNodeNeighbors, getObserver, getObserverActivity, getObserverAdverts, getObserverTelemetry,
+  getNode, getNodeObservations, getNodeNeighbors, getNodePoller, getServerInfo, getObserver, getObserverActivity, getObserverAdverts, getObserverTelemetry,
 } from "../../../src/api/client";
-import type { Node } from "../../../src/features/nodes/types";
+import type { Node, NodePoller } from "../../../src/features/nodes/types";
 import type { Observer } from "../../../src/features/observers/types";
 
 vi.mock("../../../src/api/client", () => ({
   getNode: vi.fn(), getNodeObservations: vi.fn(), getNodeNeighbors: vi.fn(), getServerInfo: vi.fn(() => new Promise(() => {})),
-  getNodeTelemetry: vi.fn(), getNodePolling: vi.fn(),
+  getNodeTelemetry: vi.fn(), getNodePolling: vi.fn(), getNodePoller: vi.fn(),
   getObserver: vi.fn(), getObserverTelemetry: vi.fn(), getObserverActivity: vi.fn(), getObserverAdverts: vi.fn(),
-  isNotFound: () => false,
+  isNotFound: (err: unknown) => (err as { status?: number } | null)?.status === 404,
 }));
 vi.mock("../../../src/features/stats/EChart", () => ({ EChart: () => <div data-testid="chart" /> }));
 
@@ -26,7 +26,17 @@ const observer = {
   firstSeen: 1, lastSeen: 2, observationCount: 10, batteryLevel: 4100, lastStatusAt: Date.now(),
 } as unknown as Observer;
 
-function mount(props: { view?: NodeView; onViewChange?: (v: NodeView) => void } = {}) {
+const poller: NodePoller = {
+  claim: { receivedAt: Date.now() - 60_000, live: true, acceptsRequests: true, slots: { max: 8, used: 1, own: 1, requested: 0, free: 3 } },
+  readings24h: 12,
+  targets: [{
+    nodeId: "node-far", publicKey: "5be1c07a".repeat(8), name: "Far Repeater", requested: false, role: "poller", rank: 0, state: "ok", misses: 0,
+    lastAttempt: 1, lastOk: Date.now() - 60_000, claimedSnr: 9, evidenceSnr: 8, evidenceCount: 3, latestReadingAt: Date.now() - 60_000,
+  }],
+};
+const pollingOn = () => vi.mocked(getServerInfo).mockResolvedValue({ features: { polling: true } } as never);
+
+function mount(props: { view?: NodeView; onViewChange?: (v: NodeView) => void; onViewNode?: (id: string) => void } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const onOpenObserverDashboard = vi.fn();
   const onViewObserver = vi.fn();
@@ -35,11 +45,18 @@ function mount(props: { view?: NodeView; onViewChange?: (v: NodeView) => void } 
       <NodeDetailPanel nodeId="node-self" onClose={vi.fn()} onViewObserver={onViewObserver} onOpenObserverDashboard={onOpenObserverDashboard} {...props} />
     </QueryClientProvider>,
   );
-  return { ...result, onOpenObserverDashboard, onViewObserver };
+  return { ...result, client, onOpenObserverDashboard, onViewObserver };
 }
+// /info has answered and the panel has rendered with it, so "no Poller button" means it was decided.
+const infoSettled = async (client: QueryClient) => {
+  await waitFor(() => expect(client.getQueryState(["server-info"])?.status).toBe("success"));
+  await act(async () => {});
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getServerInfo).mockReturnValue(new Promise(() => {}));
+  vi.mocked(getNodePoller).mockResolvedValue(poller);
   vi.mocked(getNode).mockResolvedValue(node);
   vi.mocked(getNodeObservations).mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
   vi.mocked(getNodeNeighbors).mockResolvedValue([]);
@@ -111,5 +128,115 @@ describe("NodeDetailPanel Node | Observer switch", () => {
     await screen.findByText("Self Node");
     expect(screen.getByText("Details")).toBeInTheDocument();
     expect(getObserver).not.toHaveBeenCalled();
+  });
+});
+
+describe("NodeDetailPanel Poller view", () => {
+  const pollerNode = { ...node, isPoller: true };
+
+  it("offers Poller for a poller when polling is on, and shows its repeaters", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    const onViewNode = vi.fn();
+    mount({ onViewNode });
+    fireEvent.click(await screen.findByRole("button", { name: "Poller" }));
+    expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    expect(vi.mocked(getNodePoller).mock.calls[0]?.[0]).toBe("node-self");
+    fireEvent.click(screen.getByText("Far Repeater"));
+    expect(onViewNode).toHaveBeenCalledWith("node-far");
+  });
+
+  it("is not offered to an observer that is not a poller", async () => {
+    pollingOn();
+    const { client } = mount({ view: "poller" });
+    await screen.findByText("Self Node");
+    await infoSettled(client);
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+    expect(screen.getByText("Details")).toBeInTheDocument();
+    expect(getNodePoller).not.toHaveBeenCalled();
+  });
+
+  it("is not offered while polling is off", async () => {
+    vi.mocked(getServerInfo).mockResolvedValue({ features: { polling: false } } as never);
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    const { client } = mount({ view: "poller" });
+    await screen.findByText("Self Node");
+    await infoSettled(client);
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+    expect(screen.getByText("Details")).toBeInTheDocument();
+    expect(getNodePoller).not.toHaveBeenCalled();
+  });
+
+  it("opens on the Poller view when asked", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    mount({ view: "poller" });
+    expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Poller", pressed: true })).toBeInTheDocument();
+  });
+
+  it("offers Poller only once the read has answered, so it never flashes on a server without the route", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    let answer!: (value: NodePoller) => void;
+    vi.mocked(getNodePoller).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    const { client } = mount();
+    await screen.findByText("Self Node");
+    await infoSettled(client);
+    await waitFor(() => expect(getNodePoller).toHaveBeenCalled());
+    expect(screen.getByRole("button", { name: "Observer" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+    await act(async () => { answer(poller); });
+    expect(await screen.findByRole("button", { name: "Poller", pressed: false })).toBeInTheDocument();
+  });
+
+  it("never offers Poller when the read comes back 404", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    let refuse!: (reason: unknown) => void;
+    vi.mocked(getNodePoller).mockReturnValue(new Promise((_, reject) => { refuse = reject; }));
+    const { client } = mount();
+    await screen.findByText("Self Node");
+    await infoSettled(client);
+    await waitFor(() => expect(getNodePoller).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+    await act(async () => { refuse({ status: 404 }); });
+    await waitFor(() => expect(client.getQueryState(["node-poller", "node-self"])?.status).toBe("success"));
+    expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument();
+  });
+
+  it("holds a requested Poller view while the read is still out", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    let answer!: (value: NodePoller) => void;
+    vi.mocked(getNodePoller).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    mount({ view: "poller" });
+    expect(await screen.findByRole("button", { name: "Poller", pressed: true })).toBeInTheDocument();
+    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+    await act(async () => { answer(poller); });
+    expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
+  });
+
+  it("keeps a requested Poller view on a failed read and shows the error with a retry", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    vi.mocked(getNodePoller).mockRejectedValue({ status: 500 });
+    mount({ view: "poller" });
+    expect(await screen.findByText("Could not load the poller.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Poller", pressed: true })).toBeInTheDocument();
+    vi.mocked(getNodePoller).mockResolvedValue(poller);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("Far Repeater")).toBeInTheDocument();
+  });
+
+  it("drops the option and shows the node view when the server has no poller route", async () => {
+    pollingOn();
+    vi.mocked(getNode).mockResolvedValue(pollerNode);
+    vi.mocked(getNodePoller).mockRejectedValue({ status: 404 });
+    mount({ view: "poller" });
+    expect(await screen.findByText("Details")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Poller" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Node", pressed: true })).toBeInTheDocument();
   });
 });

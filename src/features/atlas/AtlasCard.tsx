@@ -1,39 +1,43 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { isNotFound } from "../../api/client";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { Badge } from "../../components/Badge";
+import { RoleChip, TypeChip } from "../../components/NodeChips";
 import { IataChip } from "../../components/IataChip";
 import { InfoTip } from "../../components/InfoTip";
 import { Timestamp } from "../../components/Timestamp";
 import { Tooltip } from "../../components/Tooltip";
 import { formatAbsolute, formatBattery, formatCount, formatHex, formatRadio, formatRadioParts, formatUptime } from "../../lib/formatters";
 import { useDisplayUnits } from "../../hooks/useFeatures";
+import { useIsNarrow } from "../../hooks/useMediaQuery";
 import { useTick } from "../../hooks/useTick";
 import type { Observation } from "../../types/api";
+import type { NodeView } from "../nodes/NodeDetailPanel";
 import type { NodeSummary } from "../nodes/types";
 import { deriveObserverStatus } from "../observers/observer-status";
 import { usePacketDetail } from "../packets/usePacketDetail";
 import { Card, StatCard } from "../stats/cards";
 import { useChartColors } from "../stats/chartTheme";
-import { Segmented } from "../stats/Segmented";
 import { average } from "../stats/signal";
 import { DEFAULT_TELEMETRY_TILES, DEFAULT_TILES, OBSERVER_TILES, TELEMETRY_TILES, resolveObserverNode, type AtlasPin, type AtlasSample, type AtlasRange, type AtlasView, type ObserverTile, type TelemetryTile } from "./atlas";
 import { AtlasAlertBell } from "./AtlasAlerts";
 import { TilePicker } from "./TilePicker";
-import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, useTelemetryTab } from "./useAtlas";
+import { PollerTiles } from "./PollerTiles";
+import { ATLAS_REFRESH_MS, useAtlasNode, useAtlasReadings, useAtlasTelemetry, usePollerTab, useTelemetryTab } from "./useAtlas";
 import { DOT_LIMIT, sparkValues } from "./telemetry-sample";
 import type { ObserverSample, PayloadShare } from "./observer-sample";
 import { TileGraph } from "./TileGraph";
 import { NODE_METRICS, OBSERVER_METRICS, percent, perHour, readingPoints, shortUptime, slotPoints, telemetryMetrics, type NodeTile } from "./tile-graph";
 import { useAtlasObserver } from "./useAtlasObserver";
 import type { CardHandleProps } from "./useCardDrag";
+import { ViewTabs } from "./ViewTabs";
 
 export type { AtlasView };
 
 export interface AtlasActions {
-  onViewNode: (id: string) => void;
+  onViewNode: (id: string, view?: NodeView) => void;
   onViewObserver: (id: string) => void;
   onAnalyzePacket: (hash: string, observationId?: number) => void;
 }
@@ -53,9 +57,10 @@ interface AtlasCardProps extends AtlasActions {
   onTilesChange: (tiles: readonly ObserverTile[]) => void;
   onTelemetryTilesChange: (tiles: readonly TelemetryTile[]) => void;
   handle: Partial<CardHandleProps>;
+  editing: boolean;
 }
 
-const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver", telemetry: "atlas.viewTelemetry" };
+const VIEW_LABEL: Record<AtlasView, string> = { analytics: "atlas.viewAnalytics", heard: "atlas.viewHeard", observer: "atlas.viewObserver", telemetry: "atlas.viewTelemetry", poller: "atlas.viewPoller" };
 
 const TILE_LABEL: Record<ObserverTile, string> = {
   airtime: "atlas.airtime",
@@ -87,7 +92,8 @@ const RANGE_MS: Record<AtlasRange, number> = { "24h": 86_400_000, "3d": 259_200_
 const ICON_BOX = "flex h-[26px] w-7 shrink-0 items-center justify-center";
 const ICON_BUTTON = `${ACTION_BUTTON_CLASS} ${ICON_BOX}`;
 // Remove rests muted and only turns to danger under the pointer or focus, so it never reads as a primary action.
-const REMOVE_BUTTON = `${ICON_BOX} rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
+// It deletes at once, so the margin stands it clear of the drag handle under a thumb.
+const REMOVE_BUTTON = `${ICON_BOX} ml-3 rounded border border-border text-text-muted hover:bg-bg-raised hover:text-danger focus-visible:text-danger`;
 
 const MIX_SLICES = 5;
 
@@ -158,12 +164,14 @@ export function AtlasCard({
   onTilesChange,
   onTelemetryTilesChange,
   handle,
+  editing,
   onViewNode,
   onViewObserver,
   onAnalyzePacket,
 }: AtlasCardProps) {
   const { t } = useTranslation();
   const { temperature: tempUnit } = useDisplayUnits();
+  const narrow = useIsNarrow();
   const c = useChartColors();
   const nodePin = pin.kind === "node" ? pin : null;
   const { query, node, sample, activity } = useAtlasNode(nodePin, range, active);
@@ -176,13 +184,17 @@ export function AtlasCard({
   const observer = obs.observer.data;
   // A card pinned to Telemetry keeps its tab while the answer is still coming in, then falls back to Analytics if there is none.
   const hasTab = pin.kind === "node" && (tab.available || (requested === "telemetry" && tab.settling));
+  const pollerTab = usePollerTab(nodePin ? node : undefined, observerId, active);
+  const poller = pollerTab.poller;
+  const hasPoller = pin.kind === "node" && (pollerTab.available || (requested === "poller" && (pollerTab.settling || pollerTab.failed)));
   const views: AtlasView[] = pin.kind === "observer" ? ["observer"] : [
     "analytics",
     "heard",
     ...(observerId ? (["observer"] as const) : []),
     ...(hasTab ? (["telemetry"] as const) : []),
+    ...(hasPoller ? (["poller"] as const) : []),
   ];
-  const view: AtlasView = requested === "telemetry" && !views.includes("telemetry") ? "analytics" : requested;
+  const view: AtlasView = (requested === "telemetry" || requested === "poller") && !views.includes(requested) ? "analytics" : requested;
   const tel = useAtlasTelemetry(node?.id ?? null, range, active && view === "telemetry");
 
   const latest = sample.latest;
@@ -245,86 +257,124 @@ export function AtlasCard({
     onViewChange(next);
   };
 
+  const fresh = pin.kind === "node" ? (node ? !node.stale : null) : status ? status === "online" : null;
+  const freshLabel = fresh === null ? "" : pin.kind === "node" ? t(fresh ? "atlas.recent" : "atlas.stale") : t(fresh ? "atlas.online" : "atlas.offline");
+  const tags: ReactNode[] = [];
+  if (node) {
+    tags.push(<TypeChip key="type" typeName={node.nodeTypeName} />);
+    if (node.isPoller) tags.push(<RoleChip key="poller" role="poller" />);
+    if (node.isObserver || node.isPoller || node.observerId) tags.push(<RoleChip key="observer" role="observer" />);
+  }
+  if (pin.kind === "observer" && observer?.observerType) tags.push(<Badge key="type" variant="default">{observer.observerType}</Badge>);
+
+  // The sheet opens on the view that matches the card's tab.
+  const openSheet = () => {
+    if (pin.kind === "observer") onViewObserver(pin.observerId);
+    else if (node && (view === "poller" || view === "observer")) onViewNode(node.id, view);
+    else if (node) onViewNode(node.id);
+  };
+  const openLabel = t(pin.kind === "observer" ? "atlas.openObserver" : "atlas.openNode");
+  const openName = t(pin.kind === "observer" ? "atlas.openObserverNamed" : "atlas.openNodeNamed", { name: shownName });
+
+  // The dot's meaning rides on the name: its tip shows on hover or focus of either, and the name is described by it.
+  const dotId = useId();
+  // One tag rides beside the name; more get a row of their own so the name never loses its line.
+  // Under 360 px there is no room beside the name, so one tag drops to the row too.
   const title = (
-    <span className="flex min-h-[26px] min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-      <button
-        type="button"
-        disabled={pin.kind === "node" && !node}
-        onClick={() => (pin.kind === "observer" ? onViewObserver(pin.observerId) : node && onViewNode(node.id))}
-        className={`min-w-0 max-w-full truncate normal-case disabled:text-text-muted disabled:no-underline ${
-          name ? "text-primary hover:underline" : "italic text-text-dim"
-        }`}
-      >
-        {shownName}
-      </button>
-      {node && <Badge variant="default">{node.nodeTypeName}</Badge>}
-      {node?.stale === false && <Badge variant="live">{t("atlas.recent")}</Badge>}
-      {node?.stale === true && <Badge variant="stale">{t("atlas.stale")}</Badge>}
-      {pin.kind === "observer" && observer?.observerType && <Badge variant="default">{observer.observerType}</Badge>}
-      {pin.kind === "observer" && status && (
-        <Badge variant={status === "online" ? "live" : "stale"}>{t(status === "online" ? "atlas.online" : "atlas.offline")}</Badge>
-      )}
+    <span data-card-name className="flex min-h-[26px] min-w-0 items-center gap-2">
+      <Tooltip label={freshLabel} off={fresh === null} className="min-w-0 items-center gap-2">
+        {fresh !== null && <span role="img" aria-label={freshLabel} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? "bg-green" : "bg-warn"}`} />}
+        {fresh !== null && <span id={dotId} hidden>{freshLabel}</span>}
+        <button
+          type="button"
+          disabled={pin.kind === "node" && !node}
+          onClick={openSheet}
+          aria-describedby={fresh !== null ? dotId : undefined}
+          className={`min-w-0 truncate normal-case disabled:text-text-muted disabled:no-underline ${
+            name ? "text-primary hover:underline" : "italic text-text-dim"
+          }`}
+        >
+          {shownName}
+        </button>
+      </Tooltip>
+      {tags.length === 1 && !narrow && <span className="flex shrink-0">{tags}</span>}
     </span>
   );
+  const tagRow = tags.length > 1 || (tags.length === 1 && narrow) ? <div data-card-tags className="flex flex-wrap items-center gap-1.5">{tags}</div> : undefined;
 
   const actions = (
     <span data-card-actions className="flex shrink-0 items-center gap-1 self-start">
-      <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
-      {views.length > 1 && (
-        <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
-          <button
-            type="button"
-            className={`${ICON_BUTTON} ${view === home ? "bg-primary/10" : ""}`}
-            aria-label={t("atlas.pinView")}
-            aria-pressed={view === home}
-            onClick={() => view !== home && onPinView(view)}
-          >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill={view === home ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
-              <path d="M2.5 1h5v1.5l-1 1V7l2 2v1h-7V9l2-2V3.5l-1-1z" />
-              <path d="M5 10v3.3" />
-            </svg>
-          </button>
-        </Tooltip>
+      {editing ? (
+        <>
+          {views.length > 1 && (
+            <Tooltip label={t(view === home ? "atlas.viewPinned" : "atlas.pinViewHelp")}>
+              <button
+                type="button"
+                className={`${ICON_BUTTON} ${view === home ? "bg-primary/10" : ""}`}
+                aria-label={t("atlas.pinView")}
+                aria-pressed={view === home}
+                onClick={() => view !== home && onPinView(view)}
+              >
+                <svg width="10" height="14" viewBox="0 0 10 14" fill={view === home ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+                  <path d="M2.5 1h5v1.5l-1 1V7l2 2v1h-7V9l2-2V3.5l-1-1z" />
+                  <path d="M5 10v3.3" />
+                </svg>
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip label={t("atlas.dragToReorder")} hideOnPress>
+            <button
+              type="button"
+              className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}
+              aria-label={t("atlas.dragToReorder")}
+              {...handle}
+            >
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
+                <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
+                <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
+                <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
+              </svg>
+            </button>
+          </Tooltip>
+          <Tooltip label={t("atlas.remove")}>
+            <button type="button" className={REMOVE_BUTTON} aria-label={t("atlas.remove")} onClick={onRemove}>
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+                <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
+              </svg>
+            </button>
+          </Tooltip>
+        </>
+      ) : (
+        <>
+          <Tooltip label={openLabel}>
+            <button type="button" className={ICON_BUTTON} aria-label={openName} disabled={pin.kind === "node" && !node} onClick={openSheet}>
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 3.5H1.5v8h7V9" />
+                <path d="M5.5 2.5h3.5V6M9 2.5L4.5 7" />
+              </svg>
+            </button>
+          </Tooltip>
+          <AtlasAlertBell pin={pin} name={shownName} observerKey={observer?.publicKey ?? observerKey} box={ICON_BOX} />
+        </>
       )}
-      <Tooltip label={t("atlas.remove")}>
-        <button type="button" className={REMOVE_BUTTON} aria-label={t("atlas.remove")} onClick={onRemove}>
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
-            <path d="M1.5 3.5l7 7M8.5 3.5l-7 7" />
-          </svg>
-        </button>
-      </Tooltip>
-      <Tooltip label={t("atlas.dragToReorder")} hideOnPress>
-        <button
-          type="button"
-          className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}
-          aria-label={t("atlas.dragToReorder")}
-          {...handle}
-        >
-          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor" aria-hidden>
-            <circle cx="2.5" cy="2" r="1.3" /><circle cx="7.5" cy="2" r="1.3" />
-            <circle cx="2.5" cy="7" r="1.3" /><circle cx="7.5" cy="7" r="1.3" />
-            <circle cx="2.5" cy="12" r="1.3" /><circle cx="7.5" cy="12" r="1.3" />
-          </svg>
-        </button>
-      </Tooltip>
     </span>
   );
 
   // One line that never wraps: the right side gives way first, then the left, a failure never does,
   // and the tip carries every fact in full.
-  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean }, tip: (string | false | null | undefined)[]) => (
+  const footer = (left: ReactNode, right: ReactNode, state: { loading: boolean; failed: boolean; refreshFailed?: boolean }, tip: (string | false | null | undefined)[]) => (
     <div data-card-footer className="flex items-center gap-3 whitespace-nowrap font-mono text-[11px] text-text-muted">
       {left}
-      {state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
+      {state.refreshFailed ? <span role="status" className="shrink-0 text-warn">{t("common.refreshFailed")}</span> : state.failed ? <span className="shrink-0 text-danger">{t("common.loadFailed")}</span> : state.loading ? <span role="status" className="shrink-0">{t("common.loading")}</span> : null}
       {right !== "" && <span className="ml-auto min-w-0 shrink-[999] truncate">{right}</span>}
       <span className="flex shrink-0"><InfoTip text={tip} /></span>
     </div>
   );
 
   // Every footer leads with the same shape: a dot (lit while the fact is fresh), what it is, and how long ago.
-  const lead = (fresh: boolean | null, label: string, at: number | null | undefined) => (
+  const lead = (fresh: boolean | null, label: string, at: number | null | undefined, lit = "bg-green") => (
     <span className="flex min-w-0 items-center gap-1.5">
-      {fresh !== null && <span aria-hidden data-fresh={String(fresh)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? "bg-green" : "bg-text-dim/30"}`} />}
+      {fresh !== null && <span aria-hidden data-fresh={String(fresh)} className={`h-1.5 w-1.5 shrink-0 rounded-full ${fresh ? lit : "bg-text-dim/30"}`} />}
       <span className="flex min-w-0 items-baseline">
         <span className="truncate">{label}</span>
         {at != null && <span className="shrink-0 whitespace-pre">{" · "}<Timestamp value={at} /></span>}
@@ -489,17 +539,9 @@ export function AtlasCard({
   };
 
   return (
-    <Card title={title} right={actions} className="flex h-full flex-col">
+    <Card title={title} right={actions} below={tagRow} className={`flex h-full flex-col ${editing ? "border-dashed" : ""}`}>
       {views.length > 1 && (
-        <Segmented
-          stretch
-          size="xs"
-          className="mb-3"
-          ariaLabel={t("atlas.view")}
-          value={view}
-          onChange={(next) => changeView(next as AtlasView)}
-          options={views.map((value) => ({ value, label: t(VIEW_LABEL[value]) }))}
-        />
+        <ViewTabs className="mb-3" ariaLabel={t("atlas.view")} views={views} value={view} onChange={changeView} label={(value) => t(VIEW_LABEL[value])} />
       )}
       {pin.kind === "node" && query.isPending && <p role="status" className="text-sm text-text-muted">{t("common.loading")}</p>}
       {pin.kind === "node" && query.isError && isNotFound(query.error) && (
@@ -633,6 +675,22 @@ export function AtlasCard({
               !uptimeOnTile && obs.sample.uptime !== null && `${t("atlas.uptime")} ${formatUptime(obs.sample.uptime)}`,
               obs.unsupported && t("atlas.observerUnsupported"),
               t("atlas.observerHelp"),
+            ],
+          )}
+        </div>
+      )}
+      {view === "poller" && node && pollerTab.failed && retry(pollerTab.refetch)}
+      {view === "poller" && node && !pollerTab.failed && (
+        <div ref={body} className="flex flex-1 flex-col gap-3">
+          <PollerTiles poller={poller} />
+          {footer(
+            poller?.claim && lead(poller.claim.live, poller.claim.live ? t("atlas.poller.polling", { count: poller.targets.filter((target) => target.role === "poller").length }) : t("atlas.poller.idle"), null, "bg-[#ffb454]"),
+            "",
+            pollerTab,
+            [
+              poller?.claim && `${t("nodeDetail.pollerView.lastClaim")} ${formatAbsolute(poller.claim.receivedAt)}`,
+              poller?.claim && t("nodeDetail.pollerView.slotsUsedOf", { used: poller.claim.slots.used, max: poller.claim.slots.max }),
+              t("atlas.poller.help"),
             ],
           )}
         </div>

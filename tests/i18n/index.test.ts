@@ -166,3 +166,15 @@ describe("catalog loading", () => {
     expect(fresh.t("fallbackTest")).toBe("English fallback");
   });
 });
+
+describe("Swedish catalog", () => {
+  it.each(["recent", "stale", "online", "offline", "remove", "dragToReorder", "pinView", "pinViewHelp", "viewPinned", "openNodeNamed", "openObserverNamed"])("has the Atlas card string atlas.%s", (key) => {
+    const text = i18n.getResource("sv", "translation", `atlas.${key}`) as unknown;
+    expect(typeof text).toBe("string");
+    expect(text).not.toBe("");
+  });
+
+  it.each(["en", "fr", "sv"])("says a refresh failed in %s", (lng) => {
+    expect(i18n.getResource(lng, "translation", "common.refreshFailed")).toEqual(expect.any(String));
+  });
+});

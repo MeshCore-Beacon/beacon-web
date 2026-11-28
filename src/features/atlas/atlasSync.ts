@@ -25,8 +25,9 @@ export const emptyAtlas = (): SavedAtlas => ({ version: 2, range: "24h", pins: [
 // The server document as a local Atlas. `previous` lends the ids the server could not resolve. A server
 // without Telemetry tab support never stores `view: "telemetry"` or `telemetryTiles`, so with
 // `keepTelemetry` the previous local pin's two stay in this browser's copy. Likewise `keep7d`: a server
-// without 7d was sent 3d for a local 7d, so its 3d does not replace it.
-export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys, keepTelemetry = false, keep7d = false): { atlas: SavedAtlas; keys: ObserverKeys } {
+// without 7d was sent 3d for a local 7d, so its 3d does not replace it. `keepPoller` does for
+// `view: "poller"` what `keepTelemetry` does for the Telemetry view.
+export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known: ObserverKeys, keepTelemetry = false, keep7d = false, keepPoller = false): { atlas: SavedAtlas; keys: ObserverKeys } {
   const nodeIds = new Map<string, string>();
   const before = new Map<string, NodePin>();
   const observerIds = new Map<string, string>();
@@ -43,9 +44,10 @@ export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known:
     if (pin.kind === "node") {
       const publicKey = pin.publicKey.toLowerCase();
       if (pin.observerId) keys[pin.observerId] = publicKey;
-      const local = keepTelemetry ? before.get(publicKey) : undefined;
-      const telemetryTiles = pin.telemetryTiles ?? local?.telemetryTiles;
-      const view = pin.view ?? (local?.view === "telemetry" ? local.view : undefined);
+      const local = before.get(publicKey);
+      const telemetryTiles = pin.telemetryTiles ?? (keepTelemetry ? local?.telemetryTiles : undefined);
+      const kept = (keepTelemetry && local?.view === "telemetry") || (keepPoller && local?.view === "poller");
+      const view = pin.view ?? (kept ? local!.view : undefined);
       return { kind: "node", id: pin.id ?? nodeIds.get(publicKey) ?? NO_NODE_ID, publicKey, name: pin.name, observerId: pin.observerId ?? undefined, ...tiles, ...(telemetryTiles && { telemetryTiles }), view };
     }
     const key = pin.observerPublicKey.toLowerCase();
@@ -60,12 +62,13 @@ export function fromServer(doc: ServerAtlas, previous: SavedAtlas | null, known:
 
 // `telemetry` is the server's `features.atlasTelemetry`. Without it the Telemetry tab's two fields stay
 // out of the body, which an older server would reject; a pin on that tab is sent as having no view.
-// `atlas7d` is `features.atlas7d`: without it a 7d range goes out as 3d.
-export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number, telemetry = false, atlas7d = false): PutAtlas {
+// `atlas7d` is `features.atlas7d`: without it a 7d range goes out as 3d. `poller` is
+// `features.atlasPoller`: without it a pin on the Poller tab is sent as having no view.
+export function toPut(saved: SavedAtlas, keys: ObserverKeys, baseRevision: number, telemetry = false, atlas7d = false, poller = false): PutAtlas {
   const pins = saved.pins.map((pin): PutPin => {
     const tiles = pin.tiles && { tiles: pin.tiles };
     if (pin.kind === "node") {
-      const view = telemetry || pin.view !== "telemetry" ? pin.view : undefined;
+      const view = (telemetry || pin.view !== "telemetry") && (poller || pin.view !== "poller") ? pin.view : undefined;
       return { kind: "node", publicKey: pin.publicKey, name: pin.name, ...tiles, ...(telemetry && pin.telemetryTiles && { telemetryTiles: pin.telemetryTiles }), ...(view && { view }) };
     }
     const key = keys[pin.observerId];

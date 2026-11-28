@@ -6,7 +6,8 @@ import { useHasHover } from "../hooks/useMediaQuery";
 // Hover reveals with a mouse; on touch it toggles on tap and dismisses on an outside tap.
 // `focusable` makes a non-interactive trigger a tab stop whose label is exposed to screen readers.
 // `hideOnPress` drops the tip when the trigger is pressed, for one that then moves (a drag handle).
-export function Tooltip({ label, children, className = "", wrap = false, focusable = false, hideOnPress = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean; focusable?: boolean; hideOnPress?: boolean }) {
+// `off` keeps the wrapper but shows no tip, for a trigger that already spells its label out.
+export function Tooltip({ label, children, className = "", wrap = false, focusable = false, hideOnPress = false, off = false }: { label: ReactNode; children: ReactNode; className?: string; wrap?: boolean; focusable?: boolean; hideOnPress?: boolean; off?: boolean }) {
   const hasHover = useHasHover();
   const descId = useId();
   const ref = useRef<HTMLSpanElement>(null);
@@ -72,7 +73,7 @@ export function Tooltip({ label, children, className = "", wrap = false, focusab
     >
       {children}
       {focusable && <span id={descId} hidden>{label}</span>}
-      {anchor &&
+      {anchor && !off &&
         createPortal(
           <span
             ref={tipRef}

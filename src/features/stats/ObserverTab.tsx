@@ -5,7 +5,9 @@ import { EmptyState } from "../../components/EmptyState";
 import { ACTION_BUTTON_CLASS } from "../../components/action-button";
 import { formatRadioParts } from "../../lib/formatters";
 import { ObserverComparison } from "../observers/ObserverComparison";
+import { ObserverPoller } from "../observers/ObserverPoller";
 import { ObserverSummary } from "../observers/ObserverSummary";
+import { RoleChip } from "../../components/NodeChips";
 import { useChartColors } from "./chartTheme";
 import { activityParamsFor, useObserver, useObserverActivity, useObserverTelemetry } from "./useTelemetry";
 import {
@@ -37,8 +39,11 @@ interface ObserverTabProps {
   comparison?: { id: string; until: number | null; onSelect: (id: string) => void; onRefresh: () => number };
   // observer-level controls the host page puts on the header's name row
   actions?: ReactNode;
+  // the observer's node when it is a poller and polling is on
+  pollerNodeId?: string | null;
+  onViewNode?: (nodeId: string) => void;
 }
-export function ObserverTab({ range, selectedObserverId, wsManager, comparison, actions }: ObserverTabProps) {
+export function ObserverTab({ range, selectedObserverId, wsManager, comparison, actions, pollerNodeId, onViewNode }: ObserverTabProps) {
   const { t } = useTranslation();
   const colors = useChartColors();
   useLiveObserver(wsManager, selectedObserverId, range);
@@ -147,7 +152,9 @@ export function ObserverTab({ range, selectedObserverId, wsManager, comparison, 
         points={points}
         pending={heardLoading || (!heardData && activity.isError)}
         actions={actions}
+        badges={pollerNodeId ? <RoleChip role="poller" /> : undefined}
       />
+      {pollerNodeId && <ObserverPoller key={pollerNodeId} nodeId={pollerNodeId} onViewNode={onViewNode} />}
       {comparison && <ObserverComparison observerA={observer.data} activityA={heardData} range={range} observerBId={comparison.id} until={comparison.until} onSelect={comparison.onSelect} onRefresh={() => {
         const nextUntil = comparison.onRefresh();
         void observer.refetch();

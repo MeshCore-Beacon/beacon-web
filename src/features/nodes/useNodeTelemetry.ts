@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { getNodePolling, getNodeTelemetry, isNotFound } from "../../api/client";
+import { getNodePoller, getNodePolling, getNodeTelemetry, isNotFound } from "../../api/client";
 
 import type { NodeTelemetry, NodeTelemetryRange } from "./types";
 
 export type { NodeTelemetryRange };
 
-// Polling: a 404 is cached as null and `select` hands callers undefined.
+// Polling and poller: a 404 is cached as null and `select` hands callers undefined.
 async function orNull<T>(load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
@@ -59,4 +59,26 @@ export function useNodePolling(id: string | undefined, enabled: boolean) {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
+}
+
+export const POLLER_REFRESH_MS = 60_000;
+// unsupported: the server has no such route (404). failed: any other error with nothing cached.
+export type PollerState = "loading" | "unsupported" | "noClaim" | "failed" | "ready";
+
+// Refreshed every minute while mounted; that stops once the server has said it has no such route.
+// `refreshFailed` is a failed refresh with the earlier answer still in `data`.
+export function useNodePoller(id: string | undefined, enabled: boolean, refetchMs: number = POLLER_REFRESH_MS) {
+  const query = useQuery({
+    queryKey: ["node-poller", id],
+    queryFn: ({ signal }) => orNull(() => getNodePoller(id!, signal)),
+    enabled: enabled && !!id,
+    select: toUndefined,
+    staleTime: 60_000,
+    refetchInterval: (q) => (q.state.data === null ? false : refetchMs),
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+  });
+  const data = query.data;
+  const state: PollerState = data ? (data.claim ? "ready" : "noClaim") : query.isError ? "failed" : query.isSuccess ? "unsupported" : "loading";
+  return { ...query, state, refreshFailed: !!data && query.isError };
 }

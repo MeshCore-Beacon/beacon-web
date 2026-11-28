@@ -8,7 +8,7 @@ import { formatTemp } from "../../lib/units";
 import { mvToVolts } from "../stats/chartOptions";
 import type { NodeTelemetryPoint } from "../nodes/types";
 import { isPolledNodeType } from "../nodes/polledType";
-import { useNodePolling, useNodeTelemetry } from "../nodes/useNodeTelemetry";
+import { useNodePoller, useNodePolling, useNodeTelemetry } from "../nodes/useNodeTelemetry";
 import { loadAtlasNode, summarizeActivity, type NodePin, type AtlasRange } from "./atlas";
 import { OBSERVER_RANGE } from "./observer-sample";
 import { summarizeTelemetry, telemetryInterval, telemetryRange } from "./telemetry-sample";
@@ -108,6 +108,28 @@ export function useTelemetryTab(nodeId: string | null, nodeTypeName: string | un
     // Still finding out, so a card pinned to the tab does not flash another one first.
     settling: nodeId === null || featuresLoading || (ask && (!route.isFetched || (look && !routePolled && history.isPending && !history.isError))),
     polling: route.data,
+  };
+}
+
+// Does this node get a Poller tab? The server calls it a poller, polling is on, it is linked to its
+// observer and the poller route answers with a claim. One small request per poller card. A 404 or a
+// missing claim takes the tab away; a failed read does not, so a card pinned to it can say so.
+export function usePollerTab(node: { id: string; isPoller?: boolean } | undefined, observerId: string | null, active: boolean) {
+  const { polling } = useFeatures();
+  const featuresLoading = useFeaturesLoading();
+  const throttled = useThrottled();
+  const eligible = polling && !!node?.isPoller && observerId !== null;
+  const ask = eligible && active && !throttled;
+  const query = useNodePoller(node?.id, ask, ATLAS_REFRESH_MS);
+  return {
+    available: eligible && query.state === "ready",
+    // Still finding out, so a card pinned to the tab does not flash another one first.
+    settling: !node || featuresLoading || (ask && query.state === "loading"),
+    poller: eligible ? query.data : undefined,
+    loading: query.isLoading,
+    failed: ask && query.state === "failed",
+    refreshFailed: eligible && query.refreshFailed,
+    refetch: query.refetch,
   };
 }
 

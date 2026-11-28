@@ -21,13 +21,15 @@ import { useFeatures } from "../../hooks/useFeatures";
 import { useRequestsAvailable } from "../../hooks/useTelemetryRequests";
 import { RequestTelemetry } from "./RequestTelemetry";
 import { Segmented } from "../stats/Segmented";
+import { NodePollerSection } from "./NodePollerSection";
+import { useNodePoller } from "./useNodeTelemetry";
 
 // Pulls in ECharts, so it stays out of the main bundle; mounted only for polled node types.
 import { isPolledNodeType } from "./polledType";
 const NodeTelemetrySection = lazy(() => import("./NodeTelemetrySection"));
 const NodeObserverSection = lazy(() => import("./NodeObserverSection"));
 
-export type NodeView = "node" | "observer";
+export type NodeView = "node" | "observer" | "poller";
 
 const SUBHEAD = "mt-2 mb-0.5 font-mono text-[10px] uppercase tracking-wider text-text-dim first:mt-0";
 
@@ -150,20 +152,39 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
   const features = useFeatures();
   // An observer reports its own readings over MQTT, so it is never polled or requested.
   const observerId = node?.observerId ?? null;
-  const shownView: NodeView = observerId ? requestedView : "node";
+  const isPollerNode = !!observerId && node?.isPoller === true && features.polling;
+  const pollerQuery = useNodePoller(nodeId, isPollerNode);
+  // Offered once the read has answered. A requested Poller view holds through a pending or failed
+  // read, so a deep link does not flash the Node view; only a 404 (no such route) lets it go.
+  const pollerKnown = pollerQuery.state === "ready" || pollerQuery.state === "noClaim";
+  const pollerOffered = isPollerNode && (pollerKnown || (requestedView === "poller" && pollerQuery.state !== "unsupported"));
+  const shownView: NodeView = requestedView === "poller" ? (pollerOffered ? "poller" : "node") : observerId ? requestedView : "node";
   const showTelemetry = features.polling && !!node && isPolledNodeType(node.nodeTypeName) && !observerId;
   const canRequest = useRequestsAvailable();
   // Handed to the lazy chart section so it sits inside it, without that chunk importing it.
   const requestBlock = canRequest && !!node && isPolledNodeType(node.nodeTypeName) && !observerId ? <RequestTelemetry key={node.id} node={node} /> : null;
   const telemetryInfo = requestBlock ? [t("nodeDetail.telemetry.requestIntro"), t("nodeDetail.telemetry.passwordNotice")] : undefined;
   const LINK = "font-mono text-[11px] text-primary hover:underline";
+  // A lone chip sits beside the name; more share a row under it so none wraps off alone.
+  const chipCount = !node ? 0 : 1 + [node.isPoller, node.isObserver || node.isPoller, node.possiblyForeign === true, node.meshmapper?.carpeater].filter(Boolean).length;
+  const chips = node && <>
+    <TypeChip typeName={node.nodeTypeName} />
+    {node.isPoller && <RoleChip role="poller" />}
+    {(node.isObserver || node.isPoller) && <RoleChip role="observer" />}
+    <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
+    {node.meshmapper?.carpeater && (
+      <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>
+        <CautionChip>{t("nodeDetail.carpeater")}</CautionChip>
+      </Tooltip>
+    )}
+  </>;
 
   return (
     <DetailPanel
       title={t("nodeDetail.title")}
       onClose={onClose}
       collapsible
-      headerAction={<CopyLinkButton params={() => ({ tab: "Nodes", node: nodeId, view: shownView === "observer" ? "observer" : null })} ariaLabel={t("nodeDetail.copyLink")} />}
+      headerAction={<CopyLinkButton params={() => ({ tab: "Nodes", node: nodeId, view: shownView === "node" ? null : shownView })} ariaLabel={t("nodeDetail.copyLink")} />}
       isLoading={nodeQuery.isPending}
       notFound={missing || (nodeQuery.isSuccess && !node)}
       notFoundLabel={t("nodeDetail.notFound")}
@@ -180,19 +201,11 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
         <>
           <Section title={t("nodeDetail.summary")} first>
             <div data-summary>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className={`mb-2 flex gap-2 ${chipCount > 1 ? "flex-col" : "flex-wrap items-center"}`}>
                 <span className={`font-mono text-xs font-semibold tracking-wider ${node.name ? "text-primary" : "text-text-dim italic"}`}>
                   <EmojiText text={node.name ?? formatHex(node.id)} />
                 </span>
-                <TypeChip typeName={node.nodeTypeName} />
-                {node.isPoller && <RoleChip role="poller" />}
-                {(node.isObserver || node.isPoller) && <RoleChip role="observer" />}
-                <ForeignNodeBadge possiblyForeign={node.possiblyForeign} />
-                {node.meshmapper?.carpeater && (
-                  <Tooltip label={t("nodeDetail.carpeaterHint")} focusable>
-                    <CautionChip>{t("nodeDetail.carpeater")}</CautionChip>
-                  </Tooltip>
-                )}
+                {chipCount > 1 ? <div data-chips className="flex flex-wrap items-center gap-2">{chips}</div> : chips}
               </div>
               <div className="flex items-center gap-2">
                 <div className="font-mono text-[13px] text-text-muted truncate min-w-0 flex-1" title={node.publicKey}>
@@ -218,13 +231,19 @@ export function NodeDetailPanel({ nodeId, onClose, onViewObserver, onOpenObserve
                   ariaLabel={t("nodeDetail.view")}
                   value={shownView}
                   onChange={(v) => setView(v as NodeView)}
-                  options={[{ value: "node", label: t("nodeDetail.viewNode") }, { value: "observer", label: t("nodeDetail.viewObserver") }]}
+                  options={[
+                    { value: "node", label: t("nodeDetail.viewNode") },
+                    { value: "observer", label: t("nodeDetail.viewObserver") },
+                    ...(pollerOffered ? [{ value: "poller", label: t("nodeDetail.viewPoller") }] : []),
+                  ]}
                 />
               )}
             </div>
             </Section>
 
-            {shownView === "observer" && observerId ? (
+            {shownView === "poller" ? (
+              <NodePollerSection key={nodeId} nodeId={nodeId} onViewNode={onViewNode} />
+            ) : shownView === "observer" && observerId ? (
               <Suspense fallback={<p role="status" className="px-3 py-2.5 font-mono text-[13px] text-text-dim">{t("common.loading")}</p>}>
                 <NodeObserverSection key={observerId} observerId={observerId} onOpenDashboard={() => (onOpenObserverDashboard ?? onViewObserver)(observerId)} onAnalyzePacket={onAnalyzePacket} />
               </Suspense>

@@ -9,7 +9,7 @@ import { InfoTip } from "../../components/InfoTip";
 import { SearchBar, type SearchFieldOption } from "../../components/SearchBar";
 import { Tooltip } from "../../components/Tooltip";
 import { useAtlasLimit, useFeatures, useFeaturesLoading } from "../../hooks/useFeatures";
-import { useIsMobile } from "../../hooks/useMediaQuery";
+import { useIsMobile, useIsNarrow } from "../../hooks/useMediaQuery";
 import { formatHex } from "../../lib/formatters";
 import { nodeSearchParams } from "../nodes/node-search";
 import type { NodeSummary } from "../nodes/types";
@@ -55,7 +55,12 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   const { saved, update, adjust, storageFailed, synced, observerKeys, notice: syncNotice, clearNotice } = useSyncedAtlas();
   // Same single-row bar the other tabs use on a phone: the search shrinks, nothing wraps.
   const isMobile = useIsMobile();
+  // Under 360 px the search takes a row of its own, with the count, range and edit button below.
+  const narrow = useIsNarrow();
   const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState(false);
+  // Nothing left to edit: a card added later must not arrive in edit mode.
+  if (editing && saved.pins.length === 0) setEditing(false);
   const [field, setField] = useState("name");
   // Each card keeps the view picked this session; only the pin saves it as where the card opens.
   const [open, setOpen] = useState<Record<string, AtlasView>>({});
@@ -235,20 +240,22 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label={t("tabs.Atlas")}>
       <div
-        className={`flex shrink-0 items-center gap-1.5 gap-y-1.5 border-b border-border-subtle bg-bg-base px-4 py-2 ${isMobile ? "" : "flex-wrap"}`}
+        className={`flex shrink-0 items-center gap-1.5 gap-y-1.5 border-b border-border-subtle bg-bg-base px-4 py-2 ${isMobile && !narrow ? "" : "flex-wrap"}`}
         role="toolbar"
         aria-label={t("atlas.addNodes")}
       >
-        <SearchBar
-          value={search}
-          onChange={changeSearch}
-          fields={fields}
-          field={field}
-          onFieldChange={changeField}
-          inputLabel={t("atlas.search")}
-        />
+        <div data-toolbar-search className={narrow ? "flex w-full min-w-0" : "contents"}>
+          <SearchBar
+            value={search}
+            onChange={changeSearch}
+            fields={fields}
+            field={field}
+            onFieldChange={changeField}
+            inputLabel={t("atlas.search")}
+          />
+        </div>
         {!isMobile && <InfoTip text={t("atlas.searchHelp", { min: SEARCH_MIN, limit: limit })} />}
-        <span className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] text-text-muted">
+        <span data-toolbar-controls className={`flex shrink-0 items-center gap-2 font-mono text-[11px] text-text-muted ${narrow ? "w-full" : "ml-auto"}`}>
           <Tooltip label={t(synced ? "atlas.syncedToAccount" : "atlas.localOnly")}>
             <span className={`rounded-sm border px-2.5 py-1 ${full ? "border-warn/15 bg-warn/7 text-warn" : "border-border bg-bg-surface"}`}>
               {t(isMobile ? "atlas.savedCountShort" : "atlas.savedCount", { count: saved.pins.length, limit: limit })}
@@ -264,6 +271,24 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
             onChange={(range) => update((value) => ({ ...value, range: range as AtlasRange }))}
             ariaLabel={t("atlas.range")}
           />
+          {saved.pins.length > 0 && (
+            <span data-toolbar-edit className={narrow ? "ml-auto flex" : "contents"}>
+            <Tooltip label={t(editing ? "atlas.editDoneHelp" : "atlas.editHelp")}>
+              <button
+                type="button"
+                className={`flex h-[26px] items-center gap-1.5 rounded border px-2 font-mono text-[11px] font-semibold ${editing ? "border-primary bg-primary text-bg-base" : "border-border text-primary hover:bg-bg-raised"}`}
+                aria-label={t(editing ? "atlas.editDone" : "atlas.edit")}
+                aria-pressed={editing}
+                onClick={() => setEditing((value) => !value)}
+              >
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" aria-hidden>
+                  <path d="M1.5 9.5l.6-2.4L7.6 1.6l1.8 1.8-5.5 5.5z" />
+                </svg>
+                {!isMobile && t(editing ? "atlas.editDone" : "atlas.editShort")}
+              </button>
+            </Tooltip>
+            </span>
+          )}
         </span>
       </div>
       <div className="relative min-h-0 flex-1 overflow-y-auto">
@@ -384,6 +409,7 @@ export function AtlasPage({ active = true, ...actions }: AtlasActions & { active
                     onTilesChange={(tiles) => retile(pin, tiles)}
                     onTelemetryTilesChange={(tiles) => retelemetry(pin, tiles)}
                     handle={drag.handleProps(index)}
+                    editing={editing && saved.pins.length > 0}
                     {...actions}
                   />
                 </div>

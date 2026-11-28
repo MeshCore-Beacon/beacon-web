@@ -52,8 +52,9 @@ describe("AccountMenuItems", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(client.getQueryData(["me"])).toBeNull());
     expect(auth.logout).toHaveBeenCalled();
-    expect(search().has("view")).toBe(false);
-    expect(onPick).toHaveBeenCalled();
+    // The router commits the URL change on its own, after the session clears.
+    await waitFor(() => expect(search().has("view")).toBe(false));
+    await waitFor(() => expect(onPick).toHaveBeenCalled());
   });
 
   it("keeps the account and the menu open with an error when sign out fails", async () => {
@@ -74,7 +75,7 @@ describe("AccountMenuItems", () => {
     const { client } = renderAt("?view=profile", <AccountMenuItems onPick={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(client.getQueryData(["me"])).toBeNull());
-    expect(search().has("view")).toBe(false);
+    await waitFor(() => expect(search().has("view")).toBe(false));
   });
 
   it("is empty when accounts are off", () => {

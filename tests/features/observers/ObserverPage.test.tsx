@@ -7,6 +7,7 @@ import type { WsManager } from "../../../src/api/ws-manager";
 import type { ObserverSummary } from "../../../src/features/observers/types";
 import { useObserverDirectory } from "../../../src/features/observers/useObserverDirectory";
 import { ObserverPage } from "../../../src/features/observers/ObserverPage";
+import { getServerInfo } from "../../../src/api/client";
 
 const directory: ObserverSummary[] = [
   { id: "observer-a", displayName: "Roof A", iata: "YOW", status: "online", observerType: "meshcore-ha" },
@@ -20,12 +21,14 @@ vi.mock("../../../src/features/observers/useObserverDirectory", () => ({
       isError: false, retry: vi.fn(), refetch: vi.fn(), loadMore: vi.fn(), resetKey: search };
   }),
 }));
+const pollerNode = vi.hoisted(() => ({ on: false }));
 vi.mock("../../../src/hooks/useScopes", () => ({ useScopes: () => [] }));
 vi.mock("../../../src/api/client", () => ({
   getBrokers: () => Promise.resolve([]),
+  getServerInfo: vi.fn(() => Promise.resolve({ features: { polling: false } })),
   getObserver: vi.fn((id: string) => Promise.resolve({ id, publicKey: id === "observer-a" ? "AABB" : "ccdd" })),
   getNodesPage: vi.fn((_region: unknown, { pubkey }: { pubkey: string }) => Promise.resolve({
-    items: pubkey === "aabb" ? [{ id: "node-a", publicKey: "aabb", name: "Roof Node", nodeTypeName: "repeater" }] : [], nextCursor: null, hasMore: false,
+    items: pubkey === "aabb" ? [{ id: "node-a", publicKey: "aabb", name: "Roof Node", nodeTypeName: "repeater", isPoller: pollerNode.on }] : [], nextCursor: null, hasMore: false,
   })),
 }));
 vi.mock("../../../src/features/observers/ObserverSidebar", () => ({
@@ -41,7 +44,11 @@ vi.mock("../../../src/features/stats/ObserverTab", () => ({
     range,
     comparison,
     actions,
+    pollerNodeId,
+    onViewNode,
   }: {
+    pollerNodeId?: string | null;
+    onViewNode?: (id: string) => void;
     selectedObserverId: string;
     range: string;
     comparison?: { until: number | null; onRefresh: () => void };
@@ -49,6 +56,7 @@ vi.mock("../../../src/features/stats/ObserverTab", () => ({
   }) => (
     <>
       <div data-testid="header-actions">{actions}</div>
+      {pollerNodeId && <button onClick={() => onViewNode?.("polled-node")}>Poller of {pollerNodeId}</button>}
       <h1>
         Dashboard {selectedObserverId} {range}
       </h1>
@@ -198,6 +206,39 @@ it("changes the detail range without changing the directory request", async () =
   expect(await screen.findByRole("heading")).toHaveTextContent("Dashboard observer-a 30d");
   expect(vi.mocked(useObserverDirectory).mock.calls.at(-1)![1]).toEqual(before);
   expect(list().getAllByRole("button")).toHaveLength(2);
+});
+
+describe("observer poller", () => {
+  const setup = (polling: boolean, isPoller: boolean) => {
+    vi.mocked(getServerInfo).mockResolvedValue({ features: { polling } } as never);
+    pollerNode.on = isPoller;
+  };
+  const quiet = async () => {
+    await screen.findByRole("region", { name: "Node record" });
+    await act(async () => {});
+  };
+
+  it("hands the dashboard the node of a poller when polling is on", async () => {
+    setup(true, true);
+    const onViewNode = vi.fn();
+    view("?tab=Observers&observer=observer-a", onViewNode);
+    fireEvent.click(await screen.findByRole("button", { name: "Poller of node-a" }));
+    expect(onViewNode).toHaveBeenCalledWith("polled-node");
+  });
+
+  it("does not when polling is off", async () => {
+    setup(false, true);
+    view("?tab=Observers&observer=observer-a", vi.fn());
+    await quiet();
+    expect(screen.queryByRole("button", { name: /Poller of/ })).not.toBeInTheDocument();
+  });
+
+  it("does not for an observer that is no poller", async () => {
+    setup(true, false);
+    view("?tab=Observers&observer=observer-a", vi.fn());
+    await quiet();
+    expect(screen.queryByRole("button", { name: /Poller of/ })).not.toBeInTheDocument();
+  });
 });
 
 describe("observer node row", () => {
