@@ -59,6 +59,8 @@ function TraceTagCard({ tag, selected, onSelect }: {
   onSelect: (tag: string) => void;
 }) {
   const { t } = useTranslation();
+  // TRACE carries the whole requested route, but only reached hops have an SNR byte.
+  const reached = tag.pathHashes?.slice(0, tag.snrValues?.length ?? 0);
   return (
     <div
       className={`bg-bg-surface border rounded-md px-3.5 py-2.5 cursor-pointer ${
@@ -83,7 +85,7 @@ function TraceTagCard({ tag, selected, onSelect }: {
       <div className="mt-1 text-[11px] text-text-dim font-mono">
         {t("traces.pkt", { count: tag.packetCount })} · {t("traces.iata", { count: tag.iataCount })}
       </div>
-      {tag.pathHashes?.length ? <TracePathPreview hashes={tag.pathHashes} snrs={tag.snrValues ?? []} /> : null}
+      {reached?.length ? <TracePathPreview hashes={reached} snrs={tag.snrValues} /> : null}
     </div>
   );
 }

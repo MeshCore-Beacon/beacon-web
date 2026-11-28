@@ -52,6 +52,20 @@ beforeEach(() => {
 });
 
 describe("TraceList", () => {
+  it("shows only reached hops in the overview, including a zero-dB hop", async () => {
+    mockGetTraces.mockResolvedValue([
+      tag("3f2a11c0", 3, { pathHashes: ["a1", "b2", "c3"], snrValues: [0, -2] }),
+      tag("2311cc00", 1, { pathHashes: ["d4"], snrValues: [] }),
+    ]);
+    renderTraces();
+
+    expect(await screen.findByText("A1")).toBeInTheDocument();
+    expect(screen.getByText("B2")).toBeInTheDocument();
+    expect(screen.queryByText("C3")).not.toBeInTheDocument();
+    expect(screen.queryByText("D4")).not.toBeInTheDocument();
+    expect(mockGetTraceDetail).not.toHaveBeenCalled();
+  });
+
   it("renders a card per trace tag and no detail panel until one is clicked", async () => {
     mockGetTraces.mockResolvedValue([tag("3f2a11c0", 12), tag("9b40de22", 5)]);
 
